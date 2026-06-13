@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS</title>
+  <title>FORTRESS v1.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -634,6 +634,31 @@ window.FortressApp = function Fortress() {
   const [mpCode, setMpCode] = useState("");
   const [mpInput, setMpInput] = useState("");
   const [mpError, setMpError] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
+  function copyCode() {
+    const code = mpCode;
+    const done = () => {
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2e3);
+    };
+    const fallback = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = code;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        done();
+      } catch (e) {
+      }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(done).catch(fallback);
+    } else fallback();
+  }
   const online = useRef(false);
   const myRole = useRef(0);
   const mpChannel = useRef(null);
@@ -1925,7 +1950,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 11, color: "#334155", letterSpacing: "0.05em" } }, "FORTRESS \xB7 Version 1.0")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
@@ -2023,17 +2048,36 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, "Zur\xFCck")), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u23F3"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? "Warte auf Mitspieler\u2026" : "Verbinde mit Host\u2026"), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, "Teile diesen Code mit deinem Mitspieler:"), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "Zur\xFCck")), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u23F3"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? "Warte auf Mitspieler\u2026" : "Verbinde mit Host\u2026"), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, "Teile diesen Code mit deinem Mitspieler:"), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+    cursor: "pointer",
     fontSize: 38,
     fontWeight: 900,
-    letterSpacing: "0.25em",
+    letterSpacing: "0.2em",
     fontFamily: "monospace",
     color: "#4ade80",
     background: "rgba(0,0,0,0.3)",
+    border: "1px solid rgba(74,222,128,0.3)",
     borderRadius: 10,
     padding: "14px",
     marginBottom: 8
-  } }, mpCode), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, "Spiel startet automatisch wenn Mitspieler beitritt")), myRole.current === 2 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, "Warte auf den ersten Spielzustand vom Host\u2026", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, "(Spiel startet automatisch)")), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  } }, mpCode, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, codeCopied ? "\u2713" : "\u{1F4CB}")), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+    width: "100%",
+    cursor: "pointer",
+    marginBottom: 8,
+    background: codeCopied ? "rgba(74,222,128,0.15)" : "linear-gradient(135deg,#059669,#0284c7)",
+    color: codeCopied ? "#4ade80" : "#fff",
+    border: codeCopied ? "1px solid rgba(74,222,128,0.4)" : "none",
+    padding: "12px",
+    borderRadius: 10,
+    fontSize: 15,
+    fontWeight: 700,
+    transition: "all 0.2s"
+  } }, codeCopied ? "\u2713 Code kopiert!" : "\u{1F4CB} Code kopieren"), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, "Spiel startet automatisch wenn Mitspieler beitritt")), myRole.current === 2 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, "Warte auf den ersten Spielzustand vom Host\u2026", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, "(Spiel startet automatisch)")), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
     color: "#64748b",
     border: "none",
