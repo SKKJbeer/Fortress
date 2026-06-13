@@ -1387,26 +1387,35 @@ window.FortressApp = function Fortress() {
     pointers.current.delete(e.pointerId);
     if (!pt) return;
     const player = pt.player;
-    const { x, y } = toCanvas(e);
     const guest = online.current && myRole.current === 2;
     if (phase_r.current === "build") {
-      const { gr, gc } = liftedGhost(player, x, y);
-      if (guest) sendAction({ type: "place", r: gr, c: gc });
-      else {
-        placePiece(player, gr, gc);
-        if (online.current) pushState(true);
+      const gr = pieces.current[player].ghostR;
+      const gc = pieces.current[player].ghostC;
+      if (gr !== null && gc !== null) {
+        if (guest) sendAction({ type: "place", r: gr, c: gc });
+        else {
+          placePiece(player, gr, gc);
+          if (online.current) pushState(true);
+        }
       }
+      pieces.current[player].ghostR = null;
+      pieces.current[player].ghostC = null;
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
-      const { gr, gc } = liftedGhost(player, x, y);
-      if (guest) sendAction({ type: "cannon", r: gr, c: gc });
-      else {
-        placeCannon(player, gr, gc);
-        if (online.current) pushState(true);
+      const gr = pieces.current[player].ghostR;
+      const gc = pieces.current[player].ghostC;
+      if (gr !== null && gc !== null) {
+        if (guest) sendAction({ type: "cannon", r: gr, c: gc });
+        else {
+          placeCannon(player, gr, gc);
+          if (online.current) pushState(true);
+        }
       }
+      pieces.current[player].ghostR = null;
+      pieces.current[player].ghostC = null;
     } else if (phase_r.current === "shoot") {
       if (activeDrag.current[player] === e.pointerId) {
         activeDrag.current[player] = null;
-        const tgt = slingTarget(player, x, y);
+        const tgt = slingTarget(player, pt.x, pt.y);
         if (tgt) {
           if (guest) sendAction({ type: "fire", tx: tgt.tx, ty: tgt.ty });
           else {
@@ -1416,7 +1425,7 @@ window.FortressApp = function Fortress() {
         }
       }
     }
-  }, [toCanvas]);
+  }, []);
   const onPointerCancel = useCallback((e) => {
     const pt = pointers.current.get(e.pointerId);
     pointers.current.delete(e.pointerId);
