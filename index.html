@@ -707,10 +707,20 @@ window.FortressApp = function Fortress() {
       const vh = window.innerHeight - 150;
       const scale = Math.min(vw / W, vh / H, 1.4);
       setViewSize({ w: Math.floor(W * scale), h: Math.floor(H * scale) });
+      setTimeout(() => {
+        if (canvasRef.current) canvasRect.current = canvasRef.current.getBoundingClientRect();
+      }, 50);
     }
     fit();
+    const onScroll = () => {
+      if (canvasRef.current) canvasRect.current = canvasRef.current.getBoundingClientRect();
+    };
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("resize", fit);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, []);
   function serializeState() {
     return {
@@ -740,6 +750,7 @@ window.FortressApp = function Fortress() {
       screen: screenRef.current,
       resultInfo: resultRef.current,
       lastShot: lastShot.current,
+      frozenReady: frozenReady.current,
       hostSession: SESSION_ID,
       t: Date.now()
     };
@@ -783,6 +794,7 @@ window.FortressApp = function Fortress() {
     }
     explosions.current = s.explosions || [];
     lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
+    frozenReady.current = s.frozenReady || { 1: [], 2: [] };
     phase_r.current = s.phase;
     timerVal.current = s.timer;
     roundRefVal.current = s.round;
@@ -1068,9 +1080,15 @@ window.FortressApp = function Fortress() {
       reload.current = { 1: 1, 2: 1 };
       lastShot.current = { 1: -99999, 2: -99999 };
       activeDrag.current = { 1: null, 2: null };
+      const g = grid.current;
+      frozenReady.current = {
+        1: closedCannons(g, 1, cannons.current[1]).map((c) => c.id),
+        2: closedCannons(g, 2, cannons.current[2]).map((c) => c.id)
+      };
       startTimer();
     });
   }
+  const frozenReady = useRef({ 1: [], 2: [] });
   function endShoot() {
     phase_r.current = "cannon";
     setPhase("cannon");
@@ -1109,7 +1127,13 @@ window.FortressApp = function Fortress() {
     const now = performance.now();
     if (now - lastShot.current[player] < RELOAD_MS) return false;
     const g = grid.current;
-    const ready = closedCannons(g, player, cannons.current[player]);
+    let ready;
+    if (phase_r.current === "shoot" && frozenReady.current[player]) {
+      const frozenIds = frozenReady.current[player];
+      ready = cannons.current[player].filter((c) => frozenIds.includes(c.id) && c.hp > 0);
+    } else {
+      ready = closedCannons(g, player, cannons.current[player]);
+    }
     if (ready.length === 0) {
       showWarn(player === 1 ? "\u2654 Keine schussbereite Kanone \u2014 Kanonen m\xFCssen ummauert sein!" : "\u265A Keine schussbereite Kanone \u2014 Kanonen m\xFCssen ummauert sein!");
       return false;
@@ -1265,9 +1289,19 @@ window.FortressApp = function Fortress() {
   const rotatePiece = (player) => {
     pieces.current[player].cells = rotateCW(pieces.current[player].cells);
   };
-  const toCanvas = useCallback((e) => {
+  const canvasRect = useRef(null);
+  function refreshRect() {
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    if (canvas) canvasRect.current = canvas.getBoundingClientRect();
+  }
+  const toCanvas = useCallback((e) => {
+    let rect = canvasRect.current;
+    if (!rect) {
+      const canvas = canvasRef.current;
+      if (!canvas) return { x: 0, y: 0 };
+      rect = canvas.getBoundingClientRect();
+      canvasRect.current = rect;
+    }
     return {
       x: (e.clientX - rect.left) / rect.width * W,
       y: (e.clientY - rect.top) / rect.height * H
@@ -1283,6 +1317,7 @@ window.FortressApp = function Fortress() {
     e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
+    canvasRect.current = canvas.getBoundingClientRect();
     try {
       canvas.setPointerCapture(e.pointerId);
     } catch (e2) {
@@ -1602,9 +1637,11 @@ window.FortressApp = function Fortress() {
     }
     for (const player of [1, 2]) {
       const angle = cannonAngle.current[player];
-      const outsideMap = computeOutsideMap(g, player);
+      const outsideMap = player === 1 ? fc.cannonOutsideP1 : fc.cannonOutsideP2;
       const list = cannons.current[player];
       const anchor = slingAnchor(player);
+      const frozen = frozenReady.current[player] || [];
+      const isReady = (cn) => cn.hp > 0 && (phase_r.current === "shoot" ? frozen.includes(cn.id) : isCannonClosed(outsideMap, cn));
       if (phase_r.current === "shoot" && activeDrag.current[player] !== null) {
         const pid = activeDrag.current[player];
         const pt = pointers.current.get(pid);
@@ -1620,7 +1657,7 @@ window.FortressApp = function Fortress() {
           if (tgt) {
             const { tx, ty } = tgt;
             const pulse2 = 1 + 0.15 * Math.sin(now / 150);
-            const readyCannons = list.filter((cn) => isCannonClosed(outsideMap, cn));
+            const readyCannons = list.filter((cn) => isReady(cn));
             ctx.strokeStyle = col + "0.45)";
             ctx.lineWidth = 1.5;
             ctx.setLineDash([4, 7]);
@@ -1672,7 +1709,7 @@ window.FortressApp = function Fortress() {
       for (const cn of list) {
         const cx = cn.c * CELL + CELL / 2;
         const cy = cn.r * CELL + CELL / 2;
-        const isClosed = isCannonClosed(outsideMap, cn);
+        const isClosed = isReady(cn);
         drawCannonFull(ctx, cx, cy, angle, player, reload.current[player]);
         if (cn.hp < CANNON_HP) {
           const bw = CELL * 2.4, bx = cx - bw / 2, by = cy - CELL * 2.1;
