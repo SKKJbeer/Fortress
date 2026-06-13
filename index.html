@@ -795,9 +795,15 @@ window.FortressApp = function Fortress() {
   const hostSessionRef = useRef("");
   async function pushState(force) {
     if (!online.current || myRole.current !== 1) return;
-    if (!force && document.hidden) return;
     const now = Date.now();
-    if (!force && now - lastPush.current < 125) return;
+    if (force) {
+      lastPush.current = now;
+      const s2 = serializeState();
+      fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s2), updatedAt: now });
+      return;
+    }
+    if (document.hidden) return;
+    if (now - lastPush.current < 125) return;
     if (now - _pushWindow > 1e3) {
       _pushWindow = now;
       _pushCount = 0;
@@ -806,10 +812,7 @@ window.FortressApp = function Fortress() {
     _pushCount++;
     lastPush.current = now;
     const s = serializeState();
-    fb.patch(`games/${mpCodeRef.current}`, {
-      state: JSON.stringify(s),
-      updatedAt: now
-    });
+    fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s), updatedAt: now });
   }
   async function sendAction(action) {
     if (!online.current || myRole.current !== 2) return;
@@ -1019,9 +1022,15 @@ window.FortressApp = function Fortress() {
       const info = { loser, winner, reason: "open" };
       resultRef.current = info;
       screenRef.current = "result";
+      phase_r.current = "result";
       setResultInfo(info);
+      setPhase("result");
       setScreen("result");
-      pushState(true);
+      if (online.current && myRole.current === 1) {
+        pushState(true);
+        setTimeout(() => pushState(true), 300);
+        setTimeout(() => pushState(true), 800);
+      }
       return false;
     }
     nextPhaseFn();
