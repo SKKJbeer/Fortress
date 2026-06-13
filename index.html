@@ -24,6 +24,25 @@
     #ios-hint p b{color:#4ade80}
     #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#059669,#0284c7);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
   </style>
+
+  <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, update, remove, get, onValue, off }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    try {
+      const app = initializeApp({
+        databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "fortress-cbe30",
+      });
+      const db = getDatabase(app);
+      window.__fb = { db, ref, set, update, remove, get, onValue, off };
+      window.dispatchEvent(new Event("fb-ready"));
+    } catch (e) {
+      console.error("Firebase init failed:", e);
+      window.__fbError = e.message;
+    }
+  </script>
 </head><body>
   <div id="splash">
     <svg width="90" height="90" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -44,7 +63,7 @@
     <div id="splash-bar"><span></span></div>
   </div>
   <div id="ios-hint">
-    <p>📲 Als App speichern:<br/>Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm"</b></p>
+    <p>📲 Als App speichern:<br/>Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm“</b></p>
     <button onclick="this.closest('#ios-hint').style.display='none'">Verstanden ✓</button>
   </div>
   <div id="root"></div>
@@ -72,118 +91,106 @@ var __spreadValues = (a, b) => {
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 const FB_URL = "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app";
+const FB_CONFIG = {
+  databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fortress-cbe30"
+};
 const MP_CONFIGURED = FB_URL.startsWith("https://") && FB_URL.includes("firebasedatabase");
 const SESSION_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
 const MAX_STATE_BYTES = 15e4;
 let _fbError = "";
 let _pushCount = 0;
 let _pushWindow = 0;
+function sdk() {
+  return typeof window !== "undefined" && window.__fb ? window.__fb : null;
+}
 const fb = {
-  _url: (path) => `${FB_URL}/${path}.json`,
-  async get(path) {
-    try {
-      const r = await fetch(fb._url(path));
-      if (!r.ok) {
-        _fbError = `HTTP ${r.status}`;
-        return null;
-      }
-      return await r.json();
-    } catch (e) {
-      _fbError = e.message;
-      return null;
-    }
-  },
+  // Einmalig Wert schreiben (PUT-Äquivalent)
   async set(path, data) {
+    const s = sdk();
+    if (!s) {
+      _fbError = "SDK nicht geladen";
+      return false;
+    }
     try {
       const body = JSON.stringify(data);
       if (body.length > MAX_STATE_BYTES) {
-        _fbError = "State zu gro\xDF (" + Math.round(body.length / 1024) + " KB)";
+        _fbError = "State zu gro\xDF";
         return false;
       }
-      const r = await fetch(fb._url(path), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body
-      });
-      if (!r.ok) {
-        _fbError = `HTTP ${r.status}`;
-        return false;
-      }
+      await s.set(s.ref(s.db, path), data);
       return true;
     } catch (e) {
       _fbError = e.message;
       return false;
     }
   },
+  // Teilweise aktualisieren (PATCH-Äquivalent)
   async patch(path, data) {
+    const s = sdk();
+    if (!s) {
+      _fbError = "SDK nicht geladen";
+      return false;
+    }
     try {
       const body = JSON.stringify(data);
       if (body.length > MAX_STATE_BYTES) {
         _fbError = "Payload zu gro\xDF";
         return false;
       }
-      const r = await fetch(fb._url(path), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body
-      });
-      if (!r.ok) {
-        _fbError = `HTTP ${r.status}`;
-        return false;
-      }
+      await s.update(s.ref(s.db, path), data);
       return true;
     } catch (e) {
       _fbError = e.message;
       return false;
     }
   },
-  async delete(path) {
+  // Einmalig lesen
+  async get(path) {
+    const s = sdk();
+    if (!s) {
+      _fbError = "SDK nicht geladen";
+      return null;
+    }
     try {
-      await fetch(fb._url(path), { method: "DELETE" });
+      const snap = await s.get(s.ref(s.db, path));
+      return snap.exists() ? snap.val() : null;
+    } catch (e) {
+      _fbError = e.message;
+      return null;
+    }
+  },
+  // Löschen
+  async delete(path) {
+    const s = sdk();
+    if (!s) return;
+    try {
+      await s.remove(s.ref(s.db, path));
     } catch (e) {
     }
   },
-  // Polling mit ETag-Deduplizierung und Fehler-Backoff
-  poll(path, onData, baseInterval = 400) {
-    let active = true;
-    let lastEtag = "";
-    let errors = 0;
-    const handle = { stop: () => {
-      active = false;
-    }, _bgMode: false };
-    const run = async () => {
-      var _a, _b, _c, _d;
-      while (active) {
-        const interval = handle._bgMode ? 4e3 : baseInterval;
-        try {
-          const r = await fetch(fb._url(path), {
-            headers: { "X-Firebase-ETag": "true" },
-            signal: AbortSignal.timeout(3e3)
-            // 3s Timeout pro Request
-          });
-          const etag = r.headers.get("ETag") || "";
-          if (r.ok) {
-            errors = 0;
-            if (etag && etag !== lastEtag) {
-              lastEtag = etag;
-              const data = await r.json();
-              if (data) onData(data);
-            } else {
-              (_b = (_a = r.body) == null ? void 0 : _a.cancel) == null ? void 0 : _b.call(_a);
-            }
-          } else {
-            errors++;
-            (_d = (_c = r.body) == null ? void 0 : _c.cancel) == null ? void 0 : _d.call(_c);
-          }
-        } catch (e) {
-          errors++;
-        }
-        const wait = errors > 0 ? Math.min(interval * Math.pow(1.5, Math.min(errors, 6)), 8e3) : interval;
-        await new Promise((res) => setTimeout(res, wait));
+  // 🚀 ECHTES REALTIME: onValue-Subscription statt Polling
+  // Liefert sofort bei jeder Änderung — kein Intervall, kein Lag.
+  subscribe(path, onData) {
+    const s = sdk();
+    if (!s) {
+      _fbError = "SDK nicht geladen";
+      return { stop: () => {
+      } };
+    }
+    const nodeRef = s.ref(s.db, path);
+    const cb = s.onValue(nodeRef, (snap) => {
+      const data = snap.exists() ? snap.val() : null;
+      if (data) onData(data);
+    }, (err) => {
+      _fbError = err.message;
+    });
+    return { stop: () => {
+      try {
+        s.off(nodeRef, "value", cb);
+      } catch (e) {
       }
-    };
-    run();
-    return handle;
+    } };
   }
 };
 async function getFirebase() {
@@ -191,18 +198,20 @@ async function getFirebase() {
     _fbError = "Firebase-URL fehlt";
     return null;
   }
-  try {
-    const r = await fetch(`${FB_URL}/games/ping.json`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ createdAt: Date.now(), state: null, guestAction: null })
-    });
-    if (!r.ok && r.status !== 400) {
-      const t = await r.text();
-      _fbError = `HTTP ${r.status}: ${t.slice(0, 120)}`;
-      return null;
+  let s = sdk();
+  if (!s) {
+    for (let i = 0; i < 30 && !s; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      s = sdk();
     }
-    fetch(`${FB_URL}/games/ping.json`, { method: "DELETE" });
+  }
+  if (!s) {
+    _fbError = typeof window !== "undefined" && window.__fbError ? "Firebase-Fehler: " + window.__fbError : "Firebase SDK konnte nicht geladen werden (Internet?)";
+    return null;
+  }
+  try {
+    await s.set(s.ref(s.db, "games/ping"), { createdAt: Date.now() });
+    s.remove(s.ref(s.db, "games/ping"));
     _fbError = "";
     return fb;
   } catch (e) {
@@ -811,6 +820,14 @@ window.FortressApp = function Fortress() {
   function handleGuestAction(raw) {
     const a = sanitizeAction(raw);
     if (!a || myRole.current !== 1) return;
+    if (a.type === "join") {
+      if (!gameStarted.current) {
+        gameStarted.current = true;
+        startOnlineGame(1);
+      }
+      return;
+    }
+    if (!gameStarted.current) return;
     if (a.n && a.n <= guestStateApplied.current) return;
     guestStateApplied.current = a.n || 0;
     if (a.type === "place") placePiece(2, a.r, a.c);
@@ -825,32 +842,31 @@ window.FortressApp = function Fortress() {
       mpChannel.current = null;
     }
     lastStateAt.current = Date.now();
-    mpChannel.current = fb.poll(`games/${code}`, (data) => {
-      if (role === 2 && data.state) {
+    if (role === 2) {
+      mpChannel.current = fb.subscribe(`games/${code}/state`, (stateStr) => {
+        lastStateAt.current = Date.now();
         try {
-          applyState(JSON.parse(data.state));
+          applyState(JSON.parse(stateStr));
         } catch (e) {
         }
-      }
-      if (role === 1 && data.guestAction) {
-        handleGuestAction(data.guestAction);
-      }
-    }, 400);
-    if (role === 2) {
+      });
       const timeoutCheck = setInterval(() => {
         if (!online.current) {
           clearInterval(timeoutCheck);
           return;
         }
-        if (Date.now() - lastStateAt.current > 15e3) {
+        if (Date.now() - lastStateAt.current > 15e3)
           showWarn("\u26A0\uFE0F Host antwortet nicht \u2014 Verbindung unterbrochen?");
-        }
       }, 5e3);
       const origStop = mpChannel.current.stop;
       mpChannel.current.stop = () => {
         clearInterval(timeoutCheck);
         origStop();
       };
+    } else {
+      mpChannel.current = fb.subscribe(`games/${code}/guestAction`, (actionStr) => {
+        handleGuestAction(actionStr);
+      });
     }
   }
   async function hostCreateGame() {
@@ -873,24 +889,12 @@ window.FortressApp = function Fortress() {
     mpCodeRef.current = code;
     myRole.current = 1;
     online.current = true;
+    gameStarted.current = false;
     setMpCode(code);
     setMpScreen("waiting");
     startPolling(code, 1);
-    joinPollRef.current = setInterval(async () => {
-      const data = await fb.get(`games/${code}/guestAction`);
-      if (!data) return;
-      let a;
-      try {
-        a = typeof data === "string" ? JSON.parse(data) : data;
-      } catch (e) {
-      }
-      if (a && a.type === "join") {
-        clearInterval(joinPollRef.current);
-        joinPollRef.current = null;
-        startOnlineGame(1);
-      }
-    }, 600);
   }
+  const gameStarted = useRef(false);
   async function guestJoinGame() {
     setMpError("");
     const code = mpInput.trim().toUpperCase();
