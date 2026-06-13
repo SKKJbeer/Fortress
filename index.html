@@ -27,7 +27,6 @@
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       transition:opacity 0.5s ease;
     }
-    #splash svg{filter:drop-shadow(0 0 24px #4ade8066)}
     #splash h1{
       font-family:'Segoe UI',system-ui,sans-serif;
       font-size:52px;font-weight:900;letter-spacing:-2px;margin-top:16px;
@@ -35,30 +34,18 @@
       -webkit-background-clip:text;-webkit-text-fill-color:transparent;
     }
     #splash p{color:#475569;font-family:system-ui;font-size:13px;margin-top:4px}
-    #splash-bar{
-      width:48px;height:3px;background:rgba(255,255,255,0.1);
-      border-radius:2px;margin-top:28px;overflow:hidden;
-    }
-    #splash-bar span{
-      display:block;height:100%;width:35%;background:#4ade80;
-      border-radius:2px;animation:sl 1s ease-in-out infinite;
-    }
+    #splash-bar{width:48px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:28px;overflow:hidden}
+    #splash-bar span{display:block;height:100%;width:35%;background:#4ade80;border-radius:2px;animation:sl 1s ease-in-out infinite}
     @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
     #ios-hint{
       display:none;position:fixed;bottom:16px;left:12px;right:12px;
       background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);
-      border-radius:16px;padding:14px 16px;z-index:8888;
-      font-family:system-ui;backdrop-filter:blur(20px);
-      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+      border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;
+      backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5);
     }
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
     #ios-hint p b{color:#4ade80}
-    #ios-hint button{
-      margin-top:10px;width:100%;
-      background:linear-gradient(135deg,#059669,#0284c7);
-      color:#fff;border:none;padding:11px;border-radius:10px;
-      font-size:14px;font-weight:700;
-    }
+    #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#059669,#0284c7);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
   </style>
 </head>
 <body>
@@ -80,20 +67,14 @@
     <p>Baue · Verteidige · Zerstöre</p>
     <div id="splash-bar"><span></span></div>
   </div>
-
   <div id="ios-hint">
-    <p>📲 Als App speichern:<br/>
-    Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm"</b></p>
+    <p>📲 Als App speichern:<br/>Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm"</b></p>
     <button onclick="this.closest('#ios-hint').style.display='none'">Verstanden ✓</button>
   </div>
-
   <div id="root"></div>
-
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-
   <script>
-// ── Fortress Game (pre-compiled, no Babel needed) ──
 const { useState, useEffect, useRef, useCallback } = React;
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -235,12 +216,17 @@ async function getFirebase() {
     return null;
   }
   try {
-    const r = await fetch(`${FB_URL}/games.json?shallow=true&limitToFirst=1`);
-    if (!r.ok) {
+    const r = await fetch(`${FB_URL}/games/ping.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ createdAt: Date.now(), state: null, guestAction: null })
+    });
+    if (!r.ok && r.status !== 400) {
       const t = await r.text();
       _fbError = `HTTP ${r.status}: ${t.slice(0, 120)}`;
       return null;
     }
+    fetch(`${FB_URL}/games/ping.json`, { method: "DELETE" });
     _fbError = "";
     return fb;
   } catch (e) {
@@ -2208,24 +2194,18 @@ window.FortressApp = function Fortress() {
   } }, "\u{1F3F9} Schleuder: Finger von deiner Kanone wegziehen \xB7 \u{1F3AF} Kreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern")));
 };
 
-
-// Mount
 const _root = ReactDOM.createRoot(document.getElementById('root'));
 _root.render(React.createElement(window.FortressApp));
-
-// Splash entfernen
 setTimeout(() => {
   const s = document.getElementById('splash');
-  if (s) { s.style.opacity = '0'; setTimeout(() => s.remove(), 500); }
+  if (s) { s.style.opacity='0'; setTimeout(()=>s.remove(),500); }
 }, 600);
-
-// iOS Homescreen Hint (nur Safari, nicht schon installiert)
 const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const _isStandalone = window.navigator.standalone === true;
 if (_isIOS && !_isStandalone && !localStorage.getItem('_fh')) {
   setTimeout(() => {
-    document.getElementById('ios-hint').style.display = 'block';
-    localStorage.setItem('_fh', '1');
+    document.getElementById('ios-hint').style.display='block';
+    localStorage.setItem('_fh','1');
   }, 3500);
 }
   </script>
