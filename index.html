@@ -12,37 +12,15 @@
   <title>FORTRESS</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{
-      height:100dvh;background:#050d05;overflow:hidden;
-      touch-action:none;-webkit-user-select:none;user-select:none;
-      padding-top:env(safe-area-inset-top);
-      padding-bottom:env(safe-area-inset-bottom);
-      padding-left:env(safe-area-inset-left);
-      padding-right:env(safe-area-inset-right);
-    }
+    html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
     #root{height:100%}
-    #splash{
-      position:fixed;inset:0;z-index:9999;
-      background:radial-gradient(ellipse at 30% 20%,#0f2d12 0%,#050d05 55%,#15082a 100%);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      transition:opacity 0.5s ease;
-    }
-    #splash h1{
-      font-family:'Segoe UI',system-ui,sans-serif;
-      font-size:52px;font-weight:900;letter-spacing:-2px;margin-top:16px;
-      background:linear-gradient(135deg,#4ade80,#38bdf8 50%,#a78bfa);
-      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-    }
+    #splash{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 30% 20%,#0f2d12 0%,#050d05 55%,#15082a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s ease}
+    #splash h1{font-family:'Segoe UI',system-ui,sans-serif;font-size:52px;font-weight:900;letter-spacing:-2px;margin-top:16px;background:linear-gradient(135deg,#4ade80,#38bdf8 50%,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     #splash p{color:#475569;font-family:system-ui;font-size:13px;margin-top:4px}
     #splash-bar{width:48px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:28px;overflow:hidden}
     #splash-bar span{display:block;height:100%;width:35%;background:#4ade80;border-radius:2px;animation:sl 1s ease-in-out infinite}
     @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
-    #ios-hint{
-      display:none;position:fixed;bottom:16px;left:12px;right:12px;
-      background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);
-      border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;
-      backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5);
-    }
+    #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
     #ios-hint p b{color:#4ade80}
     #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#059669,#0284c7);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
@@ -1080,11 +1058,20 @@ window.FortressApp = function Fortress() {
       return false;
     }
     lastShot.current[player] = now;
-    for (const cn of ready) {
+    const MAX_SCATTER_CELLS = 2.2;
+    ready.forEach((cn, index) => {
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
-      let tx = Math.max(CELL / 2, Math.min(W - CELL / 2, sx + vecX));
-      let ty = Math.max(CELL / 2, Math.min(H - CELL / 2, sy + vecY));
+      let tx = sx + vecX;
+      let ty = sy + vecY;
+      if (index > 0) {
+        const scatter = Math.min(index * 0.6, MAX_SCATTER_CELLS) * CELL;
+        const scatterAngle = Math.random() * Math.PI * 2;
+        tx += Math.cos(scatterAngle) * scatter * (0.4 + Math.random() * 0.6);
+        ty += Math.sin(scatterAngle) * scatter * (0.4 + Math.random() * 0.6);
+      }
+      tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
+      ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
       const dist = Math.hypot(tx - sx, ty - sy);
       const dur = Math.max(30, 26 + dist * 0.09);
       balls.current.push({
@@ -1096,7 +1083,9 @@ window.FortressApp = function Fortress() {
         dur,
         arcH: 24 + dist * 0.22,
         player,
-        alive: true
+        alive: true,
+        cannonIndex: index
+        // für visuelle Unterscheidung (erste = heller)
       });
       const angle = Math.atan2(ty - sy, tx - sx);
       for (let i = 0; i < 6; i++) {
@@ -1112,7 +1101,7 @@ window.FortressApp = function Fortress() {
           color: player === 1 ? "#fbbf24" : "#a78bfa"
         });
       }
-    }
+    });
     return true;
   }
   function impactAt(ball) {
@@ -1564,33 +1553,53 @@ window.FortressApp = function Fortress() {
           ctx.stroke();
           if (vec) {
             const pulse2 = 1 + 0.15 * Math.sin(now / 150);
-            for (const cn of list) {
-              if (!isCannonClosed(outsideMap, cn)) continue;
-              const scx = cn.c * CELL + CELL / 2;
-              const scy = cn.r * CELL + CELL / 2;
-              const tx = Math.max(CELL / 2, Math.min(W - CELL / 2, scx + vec.vx));
-              const ty = Math.max(CELL / 2, Math.min(H - CELL / 2, scy + vec.vy));
-              ctx.strokeStyle = col + "0.6)";
-              ctx.lineWidth = 2;
-              ctx.setLineDash([4, 7]);
+            const readyCannons = list.filter((cn) => isCannonClosed(outsideMap, cn));
+            const leadCn = readyCannons[0];
+            if (leadCn) {
+              const leadX = leadCn.c * CELL + CELL / 2;
+              const leadY = leadCn.r * CELL + CELL / 2;
+              const tx = Math.max(CELL / 2, Math.min(W - CELL / 2, leadX + vec.vx));
+              const ty = Math.max(CELL / 2, Math.min(H - CELL / 2, leadY + vec.vy));
+              for (const cn of readyCannons) {
+                const scx = cn.c * CELL + CELL / 2;
+                const scy = cn.r * CELL + CELL / 2;
+                ctx.strokeStyle = col + "0.45)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 7]);
+                ctx.beginPath();
+                ctx.moveTo(scx, scy);
+                ctx.lineTo(tx, ty);
+                ctx.stroke();
+                ctx.setLineDash([]);
+              }
+              ctx.strokeStyle = col + "0.95)";
+              ctx.lineWidth = 2.5;
               ctx.beginPath();
-              ctx.moveTo(scx, scy);
-              ctx.lineTo(tx, ty);
+              ctx.arc(tx, ty, CELL * 0.85 * pulse2, 0, Math.PI * 2);
               ctx.stroke();
-              ctx.setLineDash([]);
-              ctx.strokeStyle = col + "0.9)";
-              ctx.lineWidth = 2;
               ctx.beginPath();
-              ctx.arc(tx, ty, CELL * 0.8 * pulse2, 0, Math.PI * 2);
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.arc(tx, ty, CELL * 0.3, 0, Math.PI * 2);
+              ctx.arc(tx, ty, CELL * 0.28, 0, Math.PI * 2);
               ctx.stroke();
               for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                 ctx.beginPath();
                 ctx.moveTo(tx + ddx * CELL * 0.5, ty + ddy * CELL * 0.5);
-                ctx.lineTo(tx + ddx * CELL * 1.1 * pulse2, ty + ddy * CELL * 1.1 * pulse2);
+                ctx.lineTo(tx + ddx * CELL * 1.15 * pulse2, ty + ddy * CELL * 1.15 * pulse2);
                 ctx.stroke();
+              }
+              if (readyCannons.length > 1) {
+                const maxScatter = Math.min((readyCannons.length - 1) * 0.6, 2.2) * CELL;
+                ctx.strokeStyle = col + "0.25)";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.arc(tx, ty, maxScatter, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = col + "0.9)";
+                ctx.font = `bold ${CELL * 0.75}px system-ui`;
+                ctx.textAlign = "center";
+                ctx.fillText(`\xD7${readyCannons.length}`, tx, ty - CELL * 1.4 * pulse2);
+                ctx.textAlign = "left";
               }
             }
           } else {
@@ -2196,17 +2205,10 @@ window.FortressApp = function Fortress() {
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));
 _root.render(React.createElement(window.FortressApp));
-setTimeout(() => {
-  const s = document.getElementById('splash');
-  if (s) { s.style.opacity='0'; setTimeout(()=>s.remove(),500); }
-}, 600);
+setTimeout(() => { const s = document.getElementById('splash'); if (s) { s.style.opacity='0'; setTimeout(()=>s.remove(),500); } }, 600);
 const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const _isStandalone = window.navigator.standalone === true;
-if (_isIOS && !_isStandalone && !localStorage.getItem('_fh')) {
-  setTimeout(() => {
-    document.getElementById('ios-hint').style.display='block';
-    localStorage.setItem('_fh','1');
-  }, 3500);
+if (_isIOS && !window.navigator.standalone && !localStorage.getItem('_fh')) {
+  setTimeout(() => { document.getElementById('ios-hint').style.display='block'; localStorage.setItem('_fh','1'); }, 3500);
 }
   </script>
 </body>
