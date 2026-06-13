@@ -1,0 +1,2233 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Fortress"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="theme-color" content="#050d05"/>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
+  <title>FORTRESS</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{
+      height:100dvh;background:#050d05;overflow:hidden;
+      touch-action:none;-webkit-user-select:none;user-select:none;
+      padding-top:env(safe-area-inset-top);
+      padding-bottom:env(safe-area-inset-bottom);
+      padding-left:env(safe-area-inset-left);
+      padding-right:env(safe-area-inset-right);
+    }
+    #root{height:100%}
+    #splash{
+      position:fixed;inset:0;z-index:9999;
+      background:radial-gradient(ellipse at 30% 20%,#0f2d12 0%,#050d05 55%,#15082a 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      transition:opacity 0.5s ease;
+    }
+    #splash svg{filter:drop-shadow(0 0 24px #4ade8066)}
+    #splash h1{
+      font-family:'Segoe UI',system-ui,sans-serif;
+      font-size:52px;font-weight:900;letter-spacing:-2px;margin-top:16px;
+      background:linear-gradient(135deg,#4ade80,#38bdf8 50%,#a78bfa);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    #splash p{color:#475569;font-family:system-ui;font-size:13px;margin-top:4px}
+    #splash-bar{
+      width:48px;height:3px;background:rgba(255,255,255,0.1);
+      border-radius:2px;margin-top:28px;overflow:hidden;
+    }
+    #splash-bar span{
+      display:block;height:100%;width:35%;background:#4ade80;
+      border-radius:2px;animation:sl 1s ease-in-out infinite;
+    }
+    @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
+    #ios-hint{
+      display:none;position:fixed;bottom:16px;left:12px;right:12px;
+      background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);
+      border-radius:16px;padding:14px 16px;z-index:8888;
+      font-family:system-ui;backdrop-filter:blur(20px);
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    }
+    #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
+    #ios-hint p b{color:#4ade80}
+    #ios-hint button{
+      margin-top:10px;width:100%;
+      background:linear-gradient(135deg,#059669,#0284c7);
+      color:#fff;border:none;padding:11px;border-radius:10px;
+      font-size:14px;font-weight:700;
+    }
+  </style>
+</head>
+<body>
+  <div id="splash">
+    <svg width="90" height="90" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <rect width="512" height="512" rx="80" fill="#0f1f2e"/>
+      <rect x="80" y="140" width="60" height="70" rx="6" fill="#4ade80"/>
+      <rect x="160" y="140" width="60" height="70" rx="6" fill="#4ade80"/>
+      <rect x="292" y="140" width="60" height="70" rx="6" fill="#f87171"/>
+      <rect x="372" y="140" width="60" height="70" rx="6" fill="#f87171"/>
+      <rect x="70" y="190" width="100" height="190" rx="10" fill="#2563eb"/>
+      <rect x="342" y="190" width="100" height="190" rx="10" fill="#dc2626"/>
+      <rect x="186" y="210" width="140" height="170" rx="8" fill="#cbd5e1"/>
+      <rect x="236" y="310" width="40" height="70" rx="20" fill="#451a03"/>
+      <line x1="256" y1="80" x2="256" y2="420" stroke="#38bdf8" stroke-width="16" stroke-linecap="round"/>
+      <line x1="180" y1="240" x2="332" y2="240" stroke="#38bdf8" stroke-width="14" stroke-linecap="round"/>
+    </svg>
+    <h1>FORTRESS</h1>
+    <p>Baue · Verteidige · Zerstöre</p>
+    <div id="splash-bar"><span></span></div>
+  </div>
+
+  <div id="ios-hint">
+    <p>📲 Als App speichern:<br/>
+    Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm"</b></p>
+    <button onclick="this.closest('#ios-hint').style.display='none'">Verstanden ✓</button>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <script>
+// ── Fortress Game (pre-compiled, no Babel needed) ──
+const { useState, useEffect, useRef, useCallback } = React;
+var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+const FB_URL = "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app";
+const MP_CONFIGURED = FB_URL.startsWith("https://") && FB_URL.includes("firebasedatabase");
+const SESSION_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+const MAX_STATE_BYTES = 15e4;
+let _fbError = "";
+let _pushCount = 0;
+let _pushWindow = 0;
+const fb = {
+  _url: (path) => `${FB_URL}/${path}.json`,
+  async get(path) {
+    try {
+      const r = await fetch(fb._url(path));
+      if (!r.ok) {
+        _fbError = `HTTP ${r.status}`;
+        return null;
+      }
+      return await r.json();
+    } catch (e) {
+      _fbError = e.message;
+      return null;
+    }
+  },
+  async set(path, data) {
+    try {
+      const body = JSON.stringify(data);
+      if (body.length > MAX_STATE_BYTES) {
+        _fbError = "State zu gro\xDF (" + Math.round(body.length / 1024) + " KB)";
+        return false;
+      }
+      const r = await fetch(fb._url(path), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
+      if (!r.ok) {
+        _fbError = `HTTP ${r.status}`;
+        return false;
+      }
+      return true;
+    } catch (e) {
+      _fbError = e.message;
+      return false;
+    }
+  },
+  async patch(path, data) {
+    try {
+      const body = JSON.stringify(data);
+      if (body.length > MAX_STATE_BYTES) {
+        _fbError = "Payload zu gro\xDF";
+        return false;
+      }
+      const r = await fetch(fb._url(path), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
+      if (!r.ok) {
+        _fbError = `HTTP ${r.status}`;
+        return false;
+      }
+      return true;
+    } catch (e) {
+      _fbError = e.message;
+      return false;
+    }
+  },
+  async delete(path) {
+    try {
+      await fetch(fb._url(path), { method: "DELETE" });
+    } catch (e) {
+    }
+  },
+  // Polling mit ETag-Deduplizierung und Fehler-Backoff
+  poll(path, onData, baseInterval = 400) {
+    let active = true;
+    let lastEtag = "";
+    let errors = 0;
+    const handle = { stop: () => {
+      active = false;
+    }, _bgMode: false };
+    const run = async () => {
+      var _a, _b, _c, _d;
+      while (active) {
+        const interval = handle._bgMode ? 4e3 : baseInterval;
+        try {
+          const r = await fetch(fb._url(path), {
+            headers: { "X-Firebase-ETag": "true" },
+            signal: AbortSignal.timeout(3e3)
+            // 3s Timeout pro Request
+          });
+          const etag = r.headers.get("ETag") || "";
+          if (r.ok) {
+            errors = 0;
+            if (etag && etag !== lastEtag) {
+              lastEtag = etag;
+              const data = await r.json();
+              if (data) onData(data);
+            } else {
+              (_b = (_a = r.body) == null ? void 0 : _a.cancel) == null ? void 0 : _b.call(_a);
+            }
+          } else {
+            errors++;
+            (_d = (_c = r.body) == null ? void 0 : _c.cancel) == null ? void 0 : _d.call(_c);
+          }
+        } catch (e) {
+          errors++;
+        }
+        const wait = errors > 0 ? Math.min(interval * Math.pow(1.5, Math.min(errors, 6)), 8e3) : interval;
+        await new Promise((res) => setTimeout(res, wait));
+      }
+    };
+    run();
+    return handle;
+  }
+};
+async function getFirebase() {
+  if (!MP_CONFIGURED) {
+    _fbError = "Firebase-URL fehlt";
+    return null;
+  }
+  try {
+    const r = await fetch(`${FB_URL}/games.json?shallow=true&limitToFirst=1`);
+    if (!r.ok) {
+      const t = await r.text();
+      _fbError = `HTTP ${r.status}: ${t.slice(0, 120)}`;
+      return null;
+    }
+    _fbError = "";
+    return fb;
+  } catch (e) {
+    _fbError = e.message;
+    return null;
+  }
+}
+function makeCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+function sanitizeState(s) {
+  if (!s || typeof s !== "object") return null;
+  if (!Array.isArray(s.grid) || !s.phase || typeof s.timer !== "number") return null;
+  if (!["setup", "build", "shoot", "cannon", "result", "menu", "game"].includes(s.phase)) return null;
+  if (s.grid.length > 200) return null;
+  for (const row of s.grid) if (!Array.isArray(row) || row.length > 200) return null;
+  if (s.timer < 0 || s.timer > 300) return null;
+  return s;
+}
+function sanitizeAction(raw) {
+  let a;
+  try {
+    a = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return null;
+  }
+  if (!a || typeof a !== "object") return null;
+  const validTypes = ["place", "cannon", "fire", "aim", "join"];
+  if (!validTypes.includes(a.type)) return null;
+  if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
+  if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
+  if (a.vx !== void 0 && Math.abs(a.vx) > 5e3) return null;
+  if (a.vy !== void 0 && Math.abs(a.vy) > 5e3) return null;
+  return a;
+}
+const CELL = 16;
+const COLS = 36;
+const ROWS_HALF = 28;
+const ROWS = ROWS_HALF * 2;
+const W = COLS * CELL;
+const H = ROWS * CELL;
+const BUILD_TIME = 25;
+const SHOOT_TIME = 30;
+const CANNON_TIME = 12;
+const SETUP_TIME = 20;
+const CANNON_HP = 10;
+const RELOAD_MS = 2500;
+const GRAV = 0.07;
+const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9;
+const CASTLE_P1 = { c: Math.floor(COLS / 2), r: Math.floor(ROWS_HALF * 0.5) };
+const CASTLE_P2 = { c: Math.floor(COLS / 2), r: ROWS_HALF + Math.floor(ROWS_HALF * 0.5) };
+const C1 = CASTLE_P1;
+const C2 = CASTLE_P2;
+const SHAPES = [
+  [[0, 0]],
+  // 1×1 Einzelstein
+  [[0, 0], [0, 1], [0, 2], [0, 3]],
+  [[0, 0], [1, 0], [2, 0], [3, 0]],
+  [[0, 0], [0, 1], [1, 0], [1, 1]],
+  [[0, 0], [0, 1], [0, 2], [1, 1]],
+  [[0, 0], [1, 0], [2, 0], [2, 1]],
+  [[0, 1], [1, 1], [2, 1], [2, 0]],
+  [[0, 1], [0, 2], [1, 0], [1, 1]],
+  [[0, 0], [0, 1], [1, 1], [1, 2]],
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2]],
+  [[0, 0], [1, 0], [1, 1], [2, 0], [2, 1]]
+];
+function rotateCW(cells) {
+  const r = cells.map(([y, x]) => [x, -y]);
+  const minR = Math.min(...r.map(([y]) => y));
+  const minC = Math.min(...r.map(([, x]) => x));
+  return r.map(([y, x]) => [y - minR, x - minC]);
+}
+const randomShape = () => SHAPES[Math.floor(Math.random() * SHAPES.length)].map((c) => [...c]);
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s += 1831565813;
+    let t = s;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967295;
+  };
+}
+function generateTerrainFromSeed(seed) {
+  const rng = makeRng(seed);
+  const t = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) {
+      const n = Math.sin(r * 0.35 + c * 0.22 + seed * 1e-3) + Math.sin(c * 0.5 - r * 0.15) * 0.7;
+      t[r][c] = n > 0.8 ? 0 : n > -0.5 ? 1 : 2;
+    }
+  const midR = Math.floor(ROWS / 2);
+  let rrow = midR;
+  for (let c = 0; c < COLS; c++) {
+    rrow += (rng() - 0.5) * 1.4;
+    rrow = Math.max(midR - 2, Math.min(midR + 2, rrow));
+    const center = Math.round(rrow);
+    for (let dr = -1; dr <= 1; dr++) {
+      const r = center + dr;
+      if (r >= 0 && r < ROWS) t[r][c] = 3;
+    }
+  }
+  const borderRow = new Array(COLS);
+  for (let c = 0; c < COLS; c++) {
+    let topR = 0;
+    for (let r = 0; r < ROWS; r++) if (t[r][c] === 3) topR = r;
+    borderRow[c] = topR;
+  }
+  const mtnClusters = 3 + Math.floor(rng() * 3);
+  for (let m = 0; m < mtnClusters; m++) {
+    const cr = Math.floor(rng() * ROWS);
+    const cc = Math.floor(rng() * COLS);
+    const size = 2 + Math.floor(rng() * 3);
+    for (let i = 0; i < size; i++) {
+      const r = cr + Math.floor((rng() - 0.5) * 4);
+      const c = cc + Math.floor((rng() - 0.5) * 4);
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS && t[r][c] !== 3) t[r][c] = 4;
+    }
+  }
+  return { grid: t, borderRow };
+}
+function generateTerrain() {
+  const seed = Math.floor(Math.random() * 4294967295);
+  return __spreadProps(__spreadValues({}, generateTerrainFromSeed(seed)), { seed });
+}
+function isBuildable(terrainObj, r, c, player) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+  const t = terrainObj.grid;
+  if (t[r][c] === 3 || t[r][c] === 4) return false;
+  if (player === 1 && r >= terrainObj.borderRow[c]) return false;
+  if (player === 2 && r <= terrainObj.borderRow[c]) return false;
+  return true;
+}
+function computeOutsideMap(g, player) {
+  const ownWall = player === 1 ? WALL1 : WALL2;
+  const ownCannon = player === 1 ? CANNON1 : CANNON2;
+  const ownCastle = player === 1 ? CASTLE1 : CASTLE2;
+  const visited = new Uint8Array(ROWS * COLS);
+  const stack = [];
+  for (let c = 0; c < COLS; c++) {
+    stack.push(c);
+    stack.push((ROWS - 1) * COLS + c);
+  }
+  for (let r = 0; r < ROWS; r++) {
+    stack.push(r * COLS);
+    stack.push(r * COLS + COLS - 1);
+  }
+  while (stack.length) {
+    const idx = stack.pop();
+    if (visited[idx]) continue;
+    const r = Math.floor(idx / COLS), c = idx % COLS;
+    const v = g[r][c];
+    if (v === ownWall || v === ownCannon || v === ownCastle) continue;
+    visited[idx] = 1;
+    if (r > 0) stack.push(idx - COLS);
+    if (r < ROWS - 1) stack.push(idx + COLS);
+    if (c > 0) stack.push(idx - 1);
+    if (c < COLS - 1) stack.push(idx + 1);
+  }
+  return visited;
+}
+function isObjectClosed(outsideMap, obj) {
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const r = obj.r + dr, c = obj.c + dc;
+      if (r <= 0 || r >= ROWS - 1 || c <= 0 || c >= COLS - 1) return false;
+      for (const [nr, nc] of [[r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1]]) {
+        if (outsideMap[nr * COLS + nc]) return false;
+      }
+    }
+  }
+  return true;
+}
+function isCastleClosed(g, player, castle) {
+  if (!castle) return true;
+  return isObjectClosed(computeOutsideMap(g, player), castle);
+}
+function closedCannons(g, player, cannonList) {
+  const outside = computeOutsideMap(g, player);
+  return cannonList.filter((cn) => isObjectClosed(outside, cn));
+}
+const isCannonClosed = isObjectClosed;
+function drawWall(ctx, px, py, base, hi, lo, mortar) {
+  const m = 1;
+  const g = ctx.createLinearGradient(px, py, px, py + CELL);
+  g.addColorStop(0, hi);
+  g.addColorStop(0.5, base);
+  g.addColorStop(1, lo);
+  ctx.fillStyle = g;
+  roundRectPath(ctx, px + m, py + m, CELL - 2 * m, CELL - 2 * m, 4);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  roundRectPath(ctx, px + m + 1, py + m + 1, CELL - 2 * m - 2, 3, 2);
+  ctx.fill();
+}
+function __oldWall(ctx, px, py, base, hi, lo, mortar) {
+  ctx.fillStyle = base;
+  ctx.fillRect(px, py, CELL, CELL);
+  ctx.fillStyle = mortar;
+  ctx.fillRect(px, py + CELL / 2 - 1, CELL, 1.5);
+  ctx.fillRect(px + CELL / 2 - 1, py, 1.5, CELL / 2);
+  ctx.fillRect(px + CELL / 4 - 1, py + CELL / 2, 1.5, CELL / 2);
+  ctx.fillRect(px + CELL * 0.75 - 1, py + CELL / 2, 1.5, CELL / 2);
+  ctx.fillStyle = hi;
+  ctx.fillRect(px, py, CELL, 1.5);
+  ctx.fillRect(px, py, 1.5, CELL);
+  ctx.fillStyle = lo;
+  ctx.fillRect(px, py + CELL - 1.5, CELL, 1.5);
+  ctx.fillRect(px + CELL - 1.5, py, 1.5, CELL);
+}
+function drawRubble(ctx, px, py) {
+  ctx.fillStyle = "#2d3748";
+  ctx.fillRect(px, py, CELL, CELL);
+  ctx.fillStyle = "#4a5568";
+  ctx.fillRect(px + 2, py + 2, 5, 4);
+  ctx.fillRect(px + 8, py + 4, 5, 3);
+  ctx.fillRect(px + 3, py + 9, 6, 4);
+}
+function drawCastle(ctx, cx, cy, player, open, now) {
+  const S = CELL * 1.5;
+  const base = "#cbd5e1", dark = "#64748b";
+  const roof = player === 1 ? "#2563eb" : "#dc2626";
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillRect(cx - S + 3, cy - S + 4, S * 2, S * 2);
+  ctx.fillStyle = base;
+  ctx.fillRect(cx - S, cy - S, S * 2, S * 2);
+  ctx.fillStyle = dark;
+  ctx.fillRect(cx - S, cy - S, S * 2, 3);
+  ctx.fillStyle = base;
+  for (let i = 0; i < 5; i++)
+    ctx.fillRect(cx - S + i * (S * 2 / 5), cy - S - 4, S * 2 / 5 - 2, 5);
+  for (const sx of [-1, 1]) {
+    ctx.fillStyle = dark;
+    ctx.fillRect(cx + sx * S - (sx < 0 ? 0 : 6), cy - S - 2, 6, S * 2 + 2);
+    ctx.fillStyle = roof;
+    ctx.beginPath();
+    ctx.moveTo(cx + sx * S - (sx < 0 ? -3 : 3), cy - S - 9);
+    ctx.lineTo(cx + sx * S - (sx < 0 ? 0 : 6), cy - S - 2);
+    ctx.lineTo(cx + sx * S - (sx < 0 ? -6 : 0), cy - S - 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = "#451a03";
+  ctx.fillRect(cx - 5, cy + 1, 10, S - 1);
+  const wave = Math.sin(now / 200) * 2;
+  ctx.strokeStyle = "#78716c";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - S - 9);
+  ctx.lineTo(cx, cy - S - 20);
+  ctx.stroke();
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - S - 20);
+  ctx.lineTo(cx + 10, cy - S - 18 + wave);
+  ctx.lineTo(cx, cy - S - 14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.font = `${CELL * 0.7}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(player === 1 ? "\u2654" : "\u265A", cx, cy - S * 0.4);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  if (open) {
+    const a = 0.4 + 0.3 * Math.sin(now / 180);
+    ctx.strokeStyle = `rgba(239,68,68,${a})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(cx - S - 2, cy - S - 2, S * 2 + 4, S * 2 + 4);
+    ctx.fillStyle = `rgba(239,68,68,${a})`;
+    ctx.font = `bold ${CELL}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("\u26A0", cx, cy + S + CELL * 0.8);
+    ctx.textAlign = "left";
+  }
+}
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
+  const R = CELL * 1.6;
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, cy + 4, R, R * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const barrelLen = CELL * 2.6;
+  const barrelW = 8;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  const bG = ctx.createLinearGradient(0, -barrelW / 2, 0, barrelW / 2);
+  bG.addColorStop(0, player === 1 ? "#fcd34d" : "#c4b5fd");
+  bG.addColorStop(0.5, player === 1 ? "#b45309" : "#6d28d9");
+  bG.addColorStop(1, player === 1 ? "#78350f" : "#3b0764");
+  ctx.fillStyle = bG;
+  roundRectPath(ctx, 0, -barrelW / 2, barrelLen, barrelW, 3);
+  ctx.fill();
+  ctx.fillStyle = player === 1 ? "#92400e" : "#4c1d95";
+  ctx.fillRect(barrelLen - 6, -barrelW / 2 - 2, 8, barrelW + 4);
+  ctx.restore();
+  const grad = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx, cy, R);
+  if (player === 1) {
+    grad.addColorStop(0, "#fde68a");
+    grad.addColorStop(0.45, "#f59e0b");
+    grad.addColorStop(1, "#92400e");
+  } else {
+    grad.addColorStop(0, "#ede9fe");
+    grad.addColorStop(0.45, "#8b5cf6");
+    grad.addColorStop(1, "#4c1d95");
+  }
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = player === 1 ? "#78350f" : "#2e1065";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * R * 0.55, cy + Math.sin(a) * R * 0.55, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath();
+  ctx.arc(cx - R * 0.25, cy - R * 0.25, R * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  const flagH = CELL * 2.2;
+  const fx = cx + R * 0.55, fy = cy - R * 0.7;
+  ctx.strokeStyle = "#78716c";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.lineTo(fx, fy - flagH);
+  ctx.stroke();
+  const wave = Math.sin(Date.now() / 200) * 3;
+  ctx.fillStyle = player === 1 ? "#3b82f6" : "#ef4444";
+  ctx.beginPath();
+  ctx.moveTo(fx, fy - flagH);
+  ctx.quadraticCurveTo(fx + CELL * 0.8, fy - flagH + wave, fx + CELL * 1.4, fy - flagH + wave * 0.5);
+  ctx.lineTo(fx + CELL * 1.4, fy - flagH + CELL * 0.8 + wave * 0.5);
+  ctx.quadraticCurveTo(fx + CELL * 0.8, fy - flagH + CELL * 0.8 + wave, fx, fy - flagH + CELL * 0.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `${CELL * 0.55}px serif`;
+  ctx.fillText(player === 1 ? "\u2654" : "\u265A", fx + CELL * 0.35, fy - flagH + CELL * 0.6 + wave * 0.6);
+  if (reloadFrac < 1) {
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = player === 1 ? "#fbbf24" : "#a78bfa";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * reloadFrac);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = player === 1 ? "rgba(251,191,36,0.35)" : "rgba(167,139,250,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 6 + Math.sin(Date.now() / 250) * 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+window.FortressApp = function Fortress() {
+  const canvasRef = useRef(null);
+  const wrapRef = useRef(null);
+  const [screen, setScreen] = useState("menu");
+  const [phase, setPhase] = useState("build");
+  const [timer, setTimer] = useState(BUILD_TIME);
+  const [round, setRound] = useState(1);
+  const [scores, setScores] = useState({ 1: 0, 2: 0 });
+  const [resultInfo, setResultInfo] = useState(null);
+  const [viewSize, setViewSize] = useState({ w: W, h: H });
+  const [warn, setWarn] = useState(null);
+  const warnTimer = useRef(null);
+  const [, setUiTick] = useState(0);
+  const [mpScreen, setMpScreen] = useState(null);
+  const [mpCode, setMpCode] = useState("");
+  const [mpInput, setMpInput] = useState("");
+  const [mpError, setMpError] = useState("");
+  const online = useRef(false);
+  const myRole = useRef(0);
+  const mpChannel = useRef(null);
+  const joinPollRef = useRef(null);
+  const mpCodeRef = useRef("");
+  const lastPush = useRef(0);
+  const pendingActions = useRef([]);
+  const guestStateApplied = useRef(0);
+  function showWarn(msg) {
+    setWarn(msg);
+    clearTimeout(warnTimer.current);
+    warnTimer.current = setTimeout(() => setWarn(null), 3e3);
+  }
+  const grid = useRef(null);
+  const phase_r = useRef("build");
+  const running = useRef(false);
+  const animId = useRef(null);
+  const timerID = useRef(null);
+  const timerVal = useRef(BUILD_TIME);
+  const scoresRef = useRef({ 1: 0, 2: 0 });
+  const pieces = useRef({
+    1: { cells: randomShape(), ghostR: null, ghostC: null },
+    2: { cells: randomShape(), ghostR: null, ghostC: null }
+  });
+  const terrain = useRef(null);
+  const castles = useRef({ 1: __spreadValues({}, CASTLE_P1), 2: __spreadValues({}, CASTLE_P2) });
+  const cannons = useRef({ 1: [], 2: [] });
+  const cannonSeq = useRef(0);
+  const cannonBudget = useRef({ 1: 0, 2: 0 });
+  const warnedOpen = useRef({ 1: false, 2: false });
+  const cannonAngle = useRef({ 1: Math.PI / 2, 2: -Math.PI / 2 });
+  const balls = useRef([]);
+  const explosions = useRef([]);
+  const particles = useRef([]);
+  const reload = useRef({ 1: 1, 2: 1 });
+  const lastShot = useRef({ 1: -99999, 2: -99999 });
+  const pointers = useRef(/* @__PURE__ */ new Map());
+  const activeDrag = useRef({ 1: null, 2: null });
+  useEffect(() => {
+    function fit() {
+      const vw = window.innerWidth - 8;
+      const vh = window.innerHeight - 150;
+      const scale = Math.min(vw / W, vh / H, 1.4);
+      setViewSize({ w: Math.floor(W * scale), h: Math.floor(H * scale) });
+    }
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
+  function serializeState() {
+    return {
+      grid: grid.current,
+      terrainSeed: terrainSeed.current,
+      // nur der Seed (kleiner Integer)
+      castles: castles.current,
+      cannons: cannons.current,
+      cannonBudget: cannonBudget.current,
+      balls: balls.current.map((b) => ({
+        // nur das Nötigste
+        sx: b.sx,
+        sy: b.sy,
+        tx: b.tx,
+        ty: b.ty,
+        prog: b.prog,
+        dur: b.dur,
+        arcH: b.arcH,
+        player: b.player,
+        alive: b.alive
+      })),
+      explosions: explosions.current.map((e) => ({ x: e.x, y: e.y, frame: e.frame, big: e.big })),
+      phase: phase_r.current,
+      timer: timerVal.current,
+      round: roundRefVal.current,
+      scores: scoresRef.current,
+      screen: screenRef.current,
+      resultInfo: resultRef.current,
+      lastShot: lastShot.current,
+      hostSession: SESSION_ID,
+      t: Date.now()
+    };
+  }
+  const roundRefVal = useRef(1);
+  const screenRef = useRef("menu");
+  const resultRef = useRef(null);
+  const terrainSeed = useRef(0);
+  const lastStateAt = useRef(0);
+  function applyState(raw) {
+    let s;
+    try {
+      s = typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch (e) {
+      return;
+    }
+    s = sanitizeState(s);
+    if (!s) return;
+    if (s.hostSession && s.hostSession !== hostSessionRef.current) {
+      if (hostSessionRef.current) return;
+      hostSessionRef.current = s.hostSession;
+    }
+    lastStateAt.current = Date.now();
+    grid.current = s.grid;
+    if (s.terrainSeed && s.terrainSeed !== terrainSeed.current) {
+      terrainSeed.current = s.terrainSeed;
+      terrain.current = generateTerrainFromSeed(s.terrainSeed);
+    }
+    castles.current = s.castles || castles.current;
+    cannons.current = s.cannons || cannons.current;
+    cannonBudget.current = s.cannonBudget || { 1: 0, 2: 0 };
+    balls.current = s.balls || [];
+    explosions.current = s.explosions || [];
+    lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
+    phase_r.current = s.phase;
+    timerVal.current = s.timer;
+    roundRefVal.current = s.round;
+    scoresRef.current = s.scores;
+    setPhase(s.phase);
+    setTimer(s.timer);
+    setRound(s.round);
+    setScores(__spreadValues({}, s.scores));
+    resultRef.current = s.resultInfo || null;
+    setResultInfo(s.resultInfo || null);
+    const newScreen = s.screen || "game";
+    if (newScreen !== screenRef.current) {
+      screenRef.current = newScreen;
+      setScreen(newScreen);
+    }
+    setUiTick((t) => t + 1);
+  }
+  const hostSessionRef = useRef("");
+  async function pushState(force) {
+    if (!online.current || myRole.current !== 1) return;
+    if (!force && document.hidden) return;
+    const now = Date.now();
+    if (!force && now - lastPush.current < 125) return;
+    if (now - _pushWindow > 1e3) {
+      _pushWindow = now;
+      _pushCount = 0;
+    }
+    if (_pushCount >= 8) return;
+    _pushCount++;
+    lastPush.current = now;
+    const s = serializeState();
+    fb.patch(`games/${mpCodeRef.current}`, {
+      state: JSON.stringify(s),
+      updatedAt: now
+    });
+  }
+  async function sendAction(action) {
+    if (!online.current || myRole.current !== 2) return;
+    fb.patch(`games/${mpCodeRef.current}`, {
+      guestAction: JSON.stringify(__spreadProps(__spreadValues({}, action), { n: Date.now() }))
+    });
+  }
+  function handleGuestAction(raw) {
+    const a = sanitizeAction(raw);
+    if (!a || myRole.current !== 1) return;
+    if (a.n && a.n <= guestStateApplied.current) return;
+    guestStateApplied.current = a.n || 0;
+    if (a.type === "place") placePiece(2, a.r, a.c);
+    else if (a.type === "cannon") placeCannon(2, a.r, a.c);
+    else if (a.type === "fire") fireMortar(2, a.vx, a.vy);
+    else if (a.type === "aim") cannonAngle.current[2] = a.angle;
+    pushState(true);
+  }
+  function startPolling(code, role) {
+    if (mpChannel.current) {
+      mpChannel.current.stop();
+      mpChannel.current = null;
+    }
+    lastStateAt.current = Date.now();
+    mpChannel.current = fb.poll(`games/${code}`, (data) => {
+      if (role === 2 && data.state) {
+        try {
+          applyState(JSON.parse(data.state));
+        } catch (e) {
+        }
+      }
+      if (role === 1 && data.guestAction) {
+        handleGuestAction(data.guestAction);
+      }
+    }, 400);
+    if (role === 2) {
+      const timeoutCheck = setInterval(() => {
+        if (!online.current) {
+          clearInterval(timeoutCheck);
+          return;
+        }
+        if (Date.now() - lastStateAt.current > 15e3) {
+          showWarn("\u26A0\uFE0F Host antwortet nicht \u2014 Verbindung unterbrochen?");
+        }
+      }, 5e3);
+      const origStop = mpChannel.current.stop;
+      mpChannel.current.stop = () => {
+        clearInterval(timeoutCheck);
+        origStop();
+      };
+    }
+  }
+  async function hostCreateGame() {
+    setMpError("");
+    const client = await getFirebase();
+    if (!client) {
+      setMpError(MP_CONFIGURED ? "Verbindung fehlgeschlagen: " + _fbError : "Firebase-URL fehlt. Trage deine Datenbank-URL oben im Code ein.");
+      return;
+    }
+    const code = makeCode();
+    const ok = await fb.set(`games/${code}`, {
+      createdAt: Date.now(),
+      state: null,
+      guestAction: null
+    });
+    if (!ok) {
+      setMpError("Konnte Spiel nicht anlegen: " + _fbError);
+      return;
+    }
+    mpCodeRef.current = code;
+    myRole.current = 1;
+    online.current = true;
+    setMpCode(code);
+    setMpScreen("waiting");
+    startPolling(code, 1);
+    joinPollRef.current = setInterval(async () => {
+      const data = await fb.get(`games/${code}/guestAction`);
+      if (!data) return;
+      let a;
+      try {
+        a = typeof data === "string" ? JSON.parse(data) : data;
+      } catch (e) {
+      }
+      if (a && a.type === "join") {
+        clearInterval(joinPollRef.current);
+        joinPollRef.current = null;
+        startOnlineGame(1);
+      }
+    }, 600);
+  }
+  async function guestJoinGame() {
+    setMpError("");
+    const code = mpInput.trim().toUpperCase();
+    if (code.length !== 6) {
+      setMpError("Bitte 6-stelligen Code eingeben.");
+      return;
+    }
+    const client = await getFirebase();
+    if (!client) {
+      setMpError(MP_CONFIGURED ? "Verbindung fehlgeschlagen: " + _fbError : "Firebase-URL fehlt.");
+      return;
+    }
+    const data = await fb.get(`games/${code}`);
+    if (!data) {
+      setMpError("Spiel nicht gefunden \u2014 Code pr\xFCfen.");
+      return;
+    }
+    mpCodeRef.current = code;
+    myRole.current = 2;
+    online.current = true;
+    setMpCode(code);
+    await fb.patch(`games/${code}`, {
+      guestAction: JSON.stringify({ type: "join", n: Date.now() })
+    });
+    startPolling(code, 2);
+    setMpScreen("waiting");
+  }
+  function startOnlineGame(role) {
+    myRole.current = role;
+    online.current = true;
+    setMpScreen(null);
+    if (role === 1) {
+      initGrid();
+      setRound(1);
+      roundRefVal.current = 1;
+      beginSetup();
+      screenRef.current = "game";
+      setTimeout(() => pushState(true), 300);
+    } else {
+      screenRef.current = "game";
+      setScreen("game");
+    }
+  }
+  function cleanupGame(code, wasHost) {
+    if (wasHost && code) fb.delete(`games/${code}`);
+    if (mpChannel.current) {
+      mpChannel.current.stop();
+      mpChannel.current = null;
+    }
+    if (joinPollRef.current) {
+      clearInterval(joinPollRef.current);
+      joinPollRef.current = null;
+    }
+  }
+  function leaveOnline() {
+    const code = mpCodeRef.current;
+    const wasHost = myRole.current === 1;
+    online.current = false;
+    myRole.current = 0;
+    hostSessionRef.current = "";
+    cleanupGame(code, wasHost);
+    setMpScreen(null);
+    setMpCode("");
+    setMpInput("");
+    setMpError("");
+    mpCodeRef.current = "";
+    setScreen("menu");
+  }
+  useEffect(() => {
+    const handler = () => {
+      var _a;
+      if (online.current && myRole.current === 1 && mpCodeRef.current) {
+        (_a = navigator.sendBeacon) == null ? void 0 : _a.call(
+          navigator,
+          `${FB_URL}/games/${mpCodeRef.current}.json`,
+          new Blob(["null"], { type: "application/json" })
+        );
+      }
+    };
+    const onVisibility = () => {
+      if (!mpChannel.current) return;
+      if (document.hidden) {
+        mpChannel.current._bgMode = true;
+      } else {
+        mpChannel.current._bgMode = false;
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    window.addEventListener("pagehide", handler);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", handler);
+      window.removeEventListener("pagehide", handler);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+  function initGrid() {
+    const terObj = generateTerrain();
+    terrain.current = terObj;
+    terrainSeed.current = terObj.seed;
+    const ter = terObj.grid;
+    const g = Array.from({ length: ROWS }, () => new Array(COLS).fill(EMPTY));
+    castles.current = { 1: __spreadValues({}, CASTLE_P1), 2: __spreadValues({}, CASTLE_P2) };
+    cannons.current = { 1: [], 2: [] };
+    cannonSeq.current = 0;
+    for (const [castle, castleMark, wallMark] of [[CASTLE_P1, CASTLE1, WALL1], [CASTLE_P2, CASTLE2, WALL2]]) {
+      const innerW = 5;
+      const innerH = 2;
+      for (let dr = -innerH - 2; dr <= innerH + 2; dr++)
+        for (let dc = -innerW - 2; dc <= innerW + 2; dc++) {
+          const r = castle.r + dr, c = castle.c + dc;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS && ter[r][c] >= 3) ter[r][c] = 1;
+        }
+      for (let dr = -innerH - 1; dr <= innerH + 1; dr++)
+        for (let dc = -innerW - 1; dc <= innerW + 1; dc++) {
+          const isBorder = dr === -innerH - 1 || dr === innerH + 1 || dc === -innerW - 1 || dc === innerW + 1;
+          if (!isBorder) continue;
+          const r = castle.r + dr, c = castle.c + dc;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = wallMark;
+        }
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++)
+          g[castle.r + dr][castle.c + dc] = castleMark;
+    }
+    grid.current = g;
+  }
+  function checkLossOrContinue(nextPhaseFn) {
+    const g = grid.current;
+    const lost1 = !isCastleClosed(g, 1, castles.current[1]);
+    const lost2 = !isCastleClosed(g, 2, castles.current[2]);
+    if (lost1 || lost2) {
+      running.current = false;
+      clearInterval(timerID.current);
+      const loser = lost1 && lost2 ? "both" : lost1 ? 1 : 2;
+      const winner = loser === "both" ? null : loser === 1 ? 2 : 1;
+      if (winner) {
+        const ns = __spreadProps(__spreadValues({}, scoresRef.current), { [winner]: scoresRef.current[winner] + 1 });
+        scoresRef.current = ns;
+        setScores(__spreadValues({}, ns));
+      }
+      const info = { loser, winner, reason: "open" };
+      resultRef.current = info;
+      screenRef.current = "result";
+      setResultInfo(info);
+      setScreen("result");
+      pushState(true);
+      return false;
+    }
+    nextPhaseFn();
+    return true;
+  }
+  function startBuild() {
+    phase_r.current = "build";
+    setPhase("build");
+    timerVal.current = BUILD_TIME;
+    setTimer(BUILD_TIME);
+    pieces.current = {
+      1: { cells: randomShape(), ghostR: null, ghostC: null },
+      2: { cells: randomShape(), ghostR: null, ghostC: null }
+    };
+    warnedOpen.current = { 1: false, 2: false };
+    setUiTick((t) => t + 1);
+    startTimer();
+  }
+  function endBuild() {
+    checkLossOrContinue(() => {
+      phase_r.current = "shoot";
+      setPhase("shoot");
+      timerVal.current = SHOOT_TIME;
+      setTimer(SHOOT_TIME);
+      balls.current = [];
+      explosions.current = [];
+      reload.current = { 1: 1, 2: 1 };
+      lastShot.current = { 1: -99999, 2: -99999 };
+      activeDrag.current = { 1: null, 2: null };
+      startTimer();
+    });
+  }
+  function endShoot() {
+    phase_r.current = "cannon";
+    setPhase("cannon");
+    timerVal.current = CANNON_TIME;
+    setTimer(CANNON_TIME);
+    balls.current = [];
+    explosions.current = [];
+    cannonBudget.current = { 1: 1, 2: 1 };
+    setUiTick((t) => t + 1);
+    startTimer();
+  }
+  function endCannon() {
+    setRound((r) => r + 1);
+    startBuild();
+  }
+  function endSetup() {
+    setRound(1);
+    startBuild();
+  }
+  function startTimer() {
+    clearInterval(timerID.current);
+    if (online.current && myRole.current === 2) return;
+    timerID.current = setInterval(() => {
+      timerVal.current -= 1;
+      setTimer(timerVal.current);
+      if (timerVal.current <= 0) {
+        clearInterval(timerID.current);
+        if (phase_r.current === "setup") endSetup();
+        else if (phase_r.current === "build") endBuild();
+        else if (phase_r.current === "shoot") endShoot();
+        else if (phase_r.current === "cannon") endCannon();
+      }
+    }, 1e3);
+  }
+  function fireMortar(player, vecX, vecY) {
+    const now = performance.now();
+    if (now - lastShot.current[player] < RELOAD_MS) return false;
+    const g = grid.current;
+    const ready = closedCannons(g, player, cannons.current[player]);
+    if (ready.length === 0) {
+      showWarn(player === 1 ? "\u2654 Keine schussbereite Kanone \u2014 Kanonen m\xFCssen ummauert sein!" : "\u265A Keine schussbereite Kanone \u2014 Kanonen m\xFCssen ummauert sein!");
+      return false;
+    }
+    lastShot.current[player] = now;
+    for (const cn of ready) {
+      const sx = cn.c * CELL + CELL / 2;
+      const sy = cn.r * CELL + CELL / 2;
+      let tx = Math.max(CELL / 2, Math.min(W - CELL / 2, sx + vecX));
+      let ty = Math.max(CELL / 2, Math.min(H - CELL / 2, sy + vecY));
+      const dist = Math.hypot(tx - sx, ty - sy);
+      const dur = Math.max(30, 26 + dist * 0.09);
+      balls.current.push({
+        sx,
+        sy,
+        tx,
+        ty,
+        prog: 0,
+        dur,
+        arcH: 24 + dist * 0.22,
+        player,
+        alive: true
+      });
+      const angle = Math.atan2(ty - sy, tx - sx);
+      for (let i = 0; i < 6; i++) {
+        const a = angle + (Math.random() - 0.5) * 0.6;
+        const s = 2 + Math.random() * 3;
+        particles.current.push({
+          x: sx + Math.cos(angle) * CELL * 2.4,
+          y: sy + Math.sin(angle) * CELL * 2.4,
+          vx: Math.cos(a) * s,
+          vy: Math.sin(a) * s,
+          life: 12,
+          maxLife: 12,
+          color: player === 1 ? "#fbbf24" : "#a78bfa"
+        });
+      }
+    }
+    return true;
+  }
+  function impactAt(ball) {
+    const g = grid.current;
+    const hitC = Math.floor(ball.tx / CELL);
+    const hitR = Math.floor(ball.ty / CELL);
+    if (hitR < 0 || hitR >= ROWS || hitC < 0 || hitC >= COLS) return;
+    const enemyWall = ball.player === 1 ? WALL2 : WALL1;
+    const enemyCannon = ball.player === 1 ? CANNON2 : CANNON1;
+    const ep = ball.player === 1 ? 2 : 1;
+    const target = g[hitR][hitC];
+    explosions.current.push({ x: ball.tx, y: ball.ty, frame: 0 });
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 1 + Math.random() * 3.5;
+      particles.current.push({
+        x: hitC * CELL + CELL / 2,
+        y: hitR * CELL + CELL / 2,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        life: 22,
+        maxLife: 22,
+        color: ["#9ca3af", "#6b7280", "#fbbf24"][Math.floor(Math.random() * 3)]
+      });
+    }
+    if (target === enemyCannon) {
+      const cn = cannons.current[ep].find((c) => Math.abs(hitR - c.r) <= 1 && Math.abs(hitC - c.c) <= 1);
+      if (cn) {
+        cn.hp -= 1;
+        if (cn.hp <= 0) {
+          const newG2 = g.map((row) => [...row]);
+          for (let dr = -1; dr <= 1; dr++)
+            for (let dc = -1; dc <= 1; dc++) {
+              const r = cn.r + dr, c = cn.c + dc;
+              if (r >= 0 && r < ROWS && c >= 0 && c < COLS && newG2[r][c] === enemyCannon)
+                newG2[r][c] = RUBBLE;
+            }
+          grid.current = newG2;
+          cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
+          explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
+          showWarn(ep === 1 ? "\u{1F4A5} \u2654 Blaue Kanone zerst\xF6rt!" : "\u{1F4A5} \u265A Rote Kanone zerst\xF6rt!");
+          setUiTick((t) => t + 1);
+        }
+      }
+      return;
+    }
+    const enemyCastle = ball.player === 1 ? CASTLE2 : CASTLE1;
+    if (target === enemyCastle) {
+      return;
+    }
+    const castleClosedBefore = isCastleClosed(g, ep, castles.current[ep]);
+    const newG = g.map((row) => [...row]);
+    if (target === enemyWall) newG[hitR][hitC] = RUBBLE;
+    grid.current = newG;
+    const castleClosedAfter = isCastleClosed(newG, ep, castles.current[ep]);
+    if (castleClosedBefore && !castleClosedAfter && !warnedOpen.current[ep]) {
+      warnedOpen.current[ep] = true;
+      showWarn(ep === 1 ? "\u26A0\uFE0F \u2654 Blaue BURG offen \u2014 bis Bauende schlie\xDFen, sonst verloren!" : "\u26A0\uFE0F \u265A Rote BURG offen \u2014 bis Bauende schlie\xDFen, sonst verloren!");
+    }
+  }
+  function placePiece(player, gr, gc) {
+    const g = grid.current;
+    if (!g) return;
+    const ter = terrain.current;
+    const p = pieces.current[player];
+    const { cells } = p;
+    const offR = gr - Math.floor(Math.max(...cells.map(([r]) => r)) / 2);
+    const offC = gc - Math.floor(Math.max(...cells.map(([, c]) => c)) / 2);
+    const abs = cells.map(([r, c]) => [r + offR, c + offC]);
+    for (const [r, c] of abs) {
+      if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+      if (g[r][c] !== EMPTY) return;
+      if (!isBuildable(ter, r, c, player)) return;
+    }
+    const newG = g.map((row) => [...row]);
+    const mark = player === 1 ? WALL1 : WALL2;
+    for (const [r, c] of abs) newG[r][c] = mark;
+    grid.current = newG;
+    pieces.current[player] = { cells: randomShape(), ghostR: gr, ghostC: gc };
+  }
+  function placeCannon(player, gr, gc) {
+    const g = grid.current;
+    if (!g) return;
+    if (cannonBudget.current[player] <= 0) return;
+    const ter = terrain.current;
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++) {
+        const r = gr + dr, c = gc + dc;
+        if (r < 1 || r >= ROWS - 1 || c < 1 || c >= COLS - 1) return;
+        if (g[r][c] !== EMPTY) return;
+        if (!isBuildable(ter, r, c, player)) return;
+      }
+    const newG = g.map((row) => [...row]);
+    const mark = player === 1 ? CANNON1 : CANNON2;
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++)
+        newG[gr + dr][gc + dc] = mark;
+    grid.current = newG;
+    cannonSeq.current += 1;
+    cannons.current[player].push({ r: gr, c: gc, id: "c" + cannonSeq.current, hp: CANNON_HP });
+    cannonBudget.current[player] -= 1;
+    setUiTick((t) => t + 1);
+    const left = cannonBudget.current[player];
+    showWarn(player === 1 ? `\u2654 Blaue Kanone platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}` : `\u265A Rote Kanone platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}`);
+  }
+  const rotatePiece = (player) => {
+    pieces.current[player].cells = rotateCW(pieces.current[player].cells);
+  };
+  const toCanvas = useCallback((e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) / rect.width * W,
+      y: (e.clientY - rect.top) / rect.height * H
+    };
+  }, []);
+  const onPointerDown = useCallback((e) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch (e2) {
+    }
+    const { x, y } = toCanvas(e);
+    const player = online.current ? myRole.current : y < ROWS_HALF * CELL ? 1 : 2;
+    pointers.current.set(e.pointerId, { player, x, y, startX: x, startY: y, t: performance.now() });
+    if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
+      const gc = Math.floor(x / CELL);
+      const gr = Math.floor(y / CELL);
+      pieces.current[player].ghostR = gr;
+      pieces.current[player].ghostC = gc;
+    } else if (phase_r.current === "shoot") {
+      if (activeDrag.current[player] === null) {
+        activeDrag.current[player] = e.pointerId;
+        const a = slingAnchor(player);
+        const dx = a.x - x, dy = a.y - y;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1)
+          cannonAngle.current[player] = Math.atan2(dy, dx);
+      }
+    }
+  }, [toCanvas]);
+  const onPointerMove = useCallback((e) => {
+    e.preventDefault();
+    const pt = pointers.current.get(e.pointerId);
+    if (!pt) return;
+    const { x, y } = toCanvas(e);
+    pt.x = x;
+    pt.y = y;
+    const player = pt.player;
+    if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
+      const gc = Math.floor(x / CELL);
+      const gr = Math.floor(y / CELL);
+      pieces.current[player].ghostR = gr;
+      pieces.current[player].ghostC = gc;
+    } else if (phase_r.current === "shoot") {
+      if (activeDrag.current[player] === e.pointerId) {
+        const a = slingAnchor(player);
+        const dx = a.x - x, dy = a.y - y;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1)
+          cannonAngle.current[player] = Math.atan2(dy, dx);
+      }
+    }
+  }, [toCanvas]);
+  function slingAnchor(player) {
+    const g = grid.current;
+    let list = g ? closedCannons(g, player, cannons.current[player]) : [];
+    if (list.length === 0) list = cannons.current[player];
+    let sx = 0, sy = 0;
+    for (const cn of list) {
+      sx += cn.c * CELL + CELL / 2;
+      sy += cn.r * CELL + CELL / 2;
+    }
+    return { x: sx / list.length, y: sy / list.length };
+  }
+  const SLING_K = 3.2;
+  function slingVector(player, fx, fy) {
+    const a = slingAnchor(player);
+    const dx = a.x - fx, dy = a.y - fy;
+    const dist = Math.hypot(dx, dy);
+    if (dist < CELL * 0.9) return null;
+    return { vx: dx * SLING_K, vy: dy * SLING_K };
+  }
+  const onPointerUp = useCallback((e) => {
+    e.preventDefault();
+    const pt = pointers.current.get(e.pointerId);
+    pointers.current.delete(e.pointerId);
+    if (!pt) return;
+    const player = pt.player;
+    const { x, y } = toCanvas(e);
+    const guest = online.current && myRole.current === 2;
+    if (phase_r.current === "build") {
+      const gc = Math.floor(x / CELL), gr = Math.floor(y / CELL);
+      if (guest) sendAction({ type: "place", r: gr, c: gc });
+      else {
+        placePiece(player, gr, gc);
+        if (online.current) pushState(true);
+      }
+    } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
+      const gc = Math.floor(x / CELL), gr = Math.floor(y / CELL);
+      if (guest) sendAction({ type: "cannon", r: gr, c: gc });
+      else {
+        placeCannon(player, gr, gc);
+        if (online.current) pushState(true);
+      }
+    } else if (phase_r.current === "shoot") {
+      if (activeDrag.current[player] === e.pointerId) {
+        activeDrag.current[player] = null;
+        const vec = slingVector(player, x, y);
+        if (vec) {
+          if (guest) sendAction({ type: "fire", vx: vec.vx, vy: vec.vy });
+          else {
+            fireMortar(player, vec.vx, vec.vy);
+            if (online.current) pushState(true);
+          }
+        }
+      }
+    }
+  }, [toCanvas]);
+  const onPointerCancel = useCallback((e) => {
+    const pt = pointers.current.get(e.pointerId);
+    pointers.current.delete(e.pointerId);
+    if (pt && activeDrag.current[pt.player] === e.pointerId)
+      activeDrag.current[pt.player] = null;
+  }, []);
+  const renderLoop = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !running.current) return;
+    const ctx = canvas.getContext("2d");
+    const g = grid.current;
+    if (!g) {
+      animId.current = requestAnimationFrame(renderLoop);
+      return;
+    }
+    const now = performance.now();
+    for (const p of [1, 2])
+      reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
+    const isGuest = online.current && myRole.current === 2;
+    if (phase_r.current === "shoot" && !isGuest) {
+      for (const ball of balls.current) {
+        if (!ball.alive) continue;
+        ball.prog += 1 / ball.dur;
+        if (ball.prog >= 1) {
+          ball.alive = false;
+          impactAt(ball);
+        }
+      }
+      balls.current = balls.current.filter((b) => b.alive);
+    }
+    for (const p of particles.current) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.92;
+      p.vy *= 0.92;
+      p.life--;
+    }
+    particles.current = particles.current.filter((p) => p.life > 0);
+    ctx.clearRect(0, 0, W, H);
+    const terObj = terrain.current;
+    const ter = terObj ? terObj.grid : null;
+    const meadowGrad = ctx.createLinearGradient(0, 0, 0, H);
+    meadowGrad.addColorStop(0, "#4a8f3c");
+    meadowGrad.addColorStop(0.5, "#3d7d31");
+    meadowGrad.addColorStop(1, "#356e2b");
+    ctx.fillStyle = meadowGrad;
+    ctx.fillRect(0, 0, W, H);
+    if (ter) {
+      ctx.globalAlpha = 0.5;
+      for (let r = 0; r < ROWS; r += 2)
+        for (let c = 0; c < COLS; c += 2) {
+          const t = ter[r][c];
+          if (t === 1 || t === 2) {
+            ctx.fillStyle = t === 1 ? "rgba(45,95,30,0.5)" : "rgba(30,70,20,0.6)";
+            ctx.beginPath();
+            ctx.ellipse(c * CELL + CELL, r * CELL + CELL, CELL * 1.8, CELL * 1.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      ctx.globalAlpha = 1;
+    }
+    if (ter) {
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] === 3) {
+            ctx.fillStyle = "rgba(120,160,90,0.5)";
+            ctx.fillRect(c * CELL - 1, r * CELL - 1, CELL + 2, CELL + 2);
+          }
+        }
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] === 3) {
+            const px = c * CELL, py = r * CELL;
+            const wg = ctx.createLinearGradient(px, py, px, py + CELL);
+            wg.addColorStop(0, "#3b82d4");
+            wg.addColorStop(1, "#2563a8");
+            ctx.fillStyle = wg;
+            ctx.fillRect(px, py, CELL, CELL);
+          }
+        }
+      ctx.strokeStyle = "rgba(160,210,255,0.4)";
+      ctx.lineWidth = 1.5;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] === 3 && (r * 7 + c) % 4 === 0) {
+            const px = c * CELL, py = r * CELL;
+            const ph = Math.sin(now / 400 + c * 0.5) * 2;
+            ctx.beginPath();
+            ctx.moveTo(px + 2, py + CELL / 2 + ph);
+            ctx.quadraticCurveTo(px + CELL / 2, py + CELL / 2 - 2 + ph, px + CELL - 2, py + CELL / 2 + ph);
+            ctx.stroke();
+          }
+        }
+    }
+    if (ter) {
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] === 4) {
+            const cx = c * CELL + CELL / 2, cy = c * CELL && r * CELL + CELL / 2;
+            const baseY = r * CELL + CELL;
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.beginPath();
+            ctx.ellipse(cx + 2, baseY - 2, CELL * 0.7, CELL * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const mg = ctx.createLinearGradient(cx, r * CELL, cx, baseY);
+            mg.addColorStop(0, "#9ca3af");
+            mg.addColorStop(1, "#5b6470");
+            ctx.fillStyle = mg;
+            ctx.beginPath();
+            ctx.moveTo(cx, r * CELL + 1);
+            ctx.lineTo(c * CELL + CELL - 1, baseY - 1);
+            ctx.lineTo(c * CELL + 1, baseY - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "#f1f5f9";
+            ctx.beginPath();
+            ctx.moveTo(cx, r * CELL + 1);
+            ctx.lineTo(cx + 3.5, r * CELL + 6);
+            ctx.lineTo(cx - 3.5, r * CELL + 6);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+    }
+    for (let i = 0; i < 26; i++) {
+      const c = i * 313 % COLS, r = i * 191 % ROWS;
+      if (ter && ter[r][c] >= 3) continue;
+      const fx2 = c * CELL + i * 71 % CELL, fy2 = r * CELL + i * 37 % CELL;
+      ctx.fillStyle = ["#fde047", "#f9a8d4", "#e0e7ff", "#fdba74"][i % 4];
+      for (let p2 = 0; p2 < 5; p2++) {
+        const pa = p2 / 5 * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(fx2 + Math.cos(pa) * 2, fy2 + Math.sin(pa) * 2, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#facc15";
+      ctx.beginPath();
+      ctx.arc(fx2, fy2, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (const player of [1, 2]) {
+      const outside = computeOutsideMap(g, player);
+      const ownWall = player === 1 ? WALL1 : WALL2;
+      const fill = player === 1 ? "rgba(56,120,230,0.30)" : "rgba(220,50,50,0.30)";
+      ctx.fillStyle = fill;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          const idx = r * COLS + c;
+          if (!outside[idx] && g[r][c] !== ownWall) {
+            ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+          }
+        }
+    }
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const v = g[r][c];
+        if (v === EMPTY) continue;
+        const px = c * CELL, py = r * CELL;
+        if (v === WALL1) drawWall(ctx, px, py, "#2563eb", "#7db4fc", "#1e3a8a", "#172a63");
+        else if (v === WALL2) drawWall(ctx, px, py, "#c92a2a", "#fc9a9a", "#7f1d1d", "#5e1414");
+        else if (v === RUBBLE) drawRubble(ctx, px, py);
+      }
+    }
+    for (const player of [1, 2]) {
+      const ct = castles.current[player];
+      const cx = ct.c * CELL + CELL / 2, cy = ct.r * CELL + CELL / 2;
+      const open = !isCastleClosed(g, player, ct);
+      drawCastle(ctx, cx, cy, player, open, now);
+    }
+    if (phase_r.current === "build") {
+      for (const player of [1, 2]) {
+        const p = pieces.current[player];
+        if (p.ghostR === null) continue;
+        const { cells } = p;
+        const offR = p.ghostR - Math.floor(Math.max(...cells.map(([r]) => r)) / 2);
+        const offC = p.ghostC - Math.floor(Math.max(...cells.map(([, c]) => c)) / 2);
+        const abs = cells.map(([r, c]) => [r + offR, c + offC]);
+        let valid = abs.every(
+          ([r, c]) => r >= 0 && r < ROWS && c >= 0 && c < COLS && g[r][c] === EMPTY && isBuildable(terObj, r, c, player)
+        );
+        ctx.fillStyle = valid ? player === 1 ? "rgba(96,165,250,0.5)" : "rgba(248,113,113,0.5)" : "rgba(120,120,120,0.25)";
+        ctx.strokeStyle = valid ? player === 1 ? "#60a5fa" : "#f87171" : "rgba(160,160,160,0.5)";
+        ctx.lineWidth = 1.5;
+        for (const [r, c] of abs) {
+          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+          ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
+          ctx.strokeRect(c * CELL + 1.5, r * CELL + 1.5, CELL - 3, CELL - 3);
+        }
+      }
+    } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
+      for (const player of [1, 2]) {
+        if (cannonBudget.current[player] <= 0) continue;
+        const p = pieces.current[player];
+        if (p.ghostR === null) continue;
+        const gr0 = p.ghostR, gc0 = p.ghostC;
+        let valid = true;
+        for (let dr = -1; dr <= 1; dr++)
+          for (let dc = -1; dc <= 1; dc++) {
+            const r = gr0 + dr, c = gc0 + dc;
+            if (r < 1 || r >= ROWS - 1 || c < 1 || c >= COLS - 1 || g[r][c] !== EMPTY || !isBuildable(terObj, r, c, player)) valid = false;
+          }
+        ctx.fillStyle = valid ? player === 1 ? "rgba(245,158,11,0.45)" : "rgba(139,92,246,0.45)" : "rgba(120,120,120,0.3)";
+        ctx.strokeStyle = valid ? player === 1 ? "#fbbf24" : "#a78bfa" : "rgba(160,160,160,0.5)";
+        ctx.lineWidth = 2;
+        ctx.fillRect((gc0 - 1) * CELL, (gr0 - 1) * CELL, CELL * 3, CELL * 3);
+        ctx.strokeRect((gc0 - 1) * CELL + 1, (gr0 - 1) * CELL + 1, CELL * 3 - 2, CELL * 3 - 2);
+        ctx.fillStyle = valid ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.4)";
+        ctx.font = `${CELL * 1.4}px serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("\u2295", gc0 * CELL + CELL / 2, gr0 * CELL + CELL);
+        ctx.textAlign = "left";
+      }
+    }
+    for (const player of [1, 2]) {
+      const angle = cannonAngle.current[player];
+      const outsideMap = computeOutsideMap(g, player);
+      const list = cannons.current[player];
+      const anchor = slingAnchor(player);
+      if (phase_r.current === "shoot" && activeDrag.current[player] !== null) {
+        const pid = activeDrag.current[player];
+        const pt = pointers.current.get(pid);
+        if (pt) {
+          const vec = slingVector(player, pt.x, pt.y);
+          const col = player === 1 ? "rgba(251,191,36," : "rgba(167,139,250,";
+          ctx.strokeStyle = col + "0.35)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(anchor.x, anchor.y);
+          ctx.lineTo(pt.x, pt.y);
+          ctx.stroke();
+          if (vec) {
+            const pulse2 = 1 + 0.15 * Math.sin(now / 150);
+            for (const cn of list) {
+              if (!isCannonClosed(outsideMap, cn)) continue;
+              const scx = cn.c * CELL + CELL / 2;
+              const scy = cn.r * CELL + CELL / 2;
+              const tx = Math.max(CELL / 2, Math.min(W - CELL / 2, scx + vec.vx));
+              const ty = Math.max(CELL / 2, Math.min(H - CELL / 2, scy + vec.vy));
+              ctx.strokeStyle = col + "0.6)";
+              ctx.lineWidth = 2;
+              ctx.setLineDash([4, 7]);
+              ctx.beginPath();
+              ctx.moveTo(scx, scy);
+              ctx.lineTo(tx, ty);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.strokeStyle = col + "0.9)";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(tx, ty, CELL * 0.8 * pulse2, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(tx, ty, CELL * 0.3, 0, Math.PI * 2);
+              ctx.stroke();
+              for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                ctx.beginPath();
+                ctx.moveTo(tx + ddx * CELL * 0.5, ty + ddy * CELL * 0.5);
+                ctx.lineTo(tx + ddx * CELL * 1.1 * pulse2, ty + ddy * CELL * 1.1 * pulse2);
+                ctx.stroke();
+              }
+            }
+          } else {
+            ctx.fillStyle = "rgba(255,255,255,0.5)";
+            ctx.font = `${CELL * 0.6}px sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText("weiter ziehen\u2026", anchor.x, player === 1 ? anchor.y - CELL * 3.2 : anchor.y + CELL * 3.6);
+            ctx.textAlign = "left";
+          }
+        }
+      }
+      for (const cn of list) {
+        const cx = cn.c * CELL + CELL / 2;
+        const cy = cn.r * CELL + CELL / 2;
+        const isClosed = isCannonClosed(outsideMap, cn);
+        drawCannonFull(ctx, cx, cy, angle, player, reload.current[player]);
+        if (cn.hp < CANNON_HP) {
+          const bw = CELL * 2.4, bx = cx - bw / 2, by = cy - CELL * 2.1;
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          roundRectPath(ctx, bx, by, bw, 5, 2.5);
+          ctx.fill();
+          const frac = cn.hp / CANNON_HP;
+          ctx.fillStyle = frac > 0.5 ? "#4ade80" : frac > 0.25 ? "#fbbf24" : "#ef4444";
+          roundRectPath(ctx, bx + 1, by + 1, (bw - 2) * frac, 3, 1.5);
+          ctx.fill();
+        }
+        if (!isClosed) {
+          ctx.fillStyle = "rgba(0,0,0,0.45)";
+          ctx.beginPath();
+          ctx.arc(cx, cy, CELL * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(239,68,68,0.9)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(cx - CELL * 0.6, cy - CELL * 0.6);
+          ctx.lineTo(cx + CELL * 0.6, cy + CELL * 0.6);
+          ctx.moveTo(cx + CELL * 0.6, cy - CELL * 0.6);
+          ctx.lineTo(cx - CELL * 0.6, cy + CELL * 0.6);
+          ctx.stroke();
+        }
+      }
+    }
+    for (const ball of balls.current) {
+      const p2 = ball.prog;
+      const bx = ball.sx + (ball.tx - ball.sx) * p2;
+      const by = ball.sy + (ball.ty - ball.sy) * p2;
+      const h = Math.sin(Math.PI * p2) * ball.arcH;
+      const shScale = 1 - h / (ball.arcH + 40) * 0.6;
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(bx, by, 6 * shScale, 4 * shScale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const ballR = 5 + h / (ball.arcH + 1) * 5;
+      const drawY = by - h * 0.55;
+      const bg2 = ctx.createRadialGradient(bx - 2, drawY - 2, 0, bx, drawY, ballR);
+      bg2.addColorStop(0, "#ffffff");
+      bg2.addColorStop(0.4, ball.player === 1 ? "#fbbf24" : "#a78bfa");
+      bg2.addColorStop(1, ball.player === 1 ? "#92400e" : "#4c1d95");
+      ctx.fillStyle = bg2;
+      ctx.beginPath();
+      ctx.arc(bx, drawY, ballR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for (const p of particles.current) {
+      const a = p.life / p.maxLife;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+    explosions.current = explosions.current.filter((e2) => e2.frame < 22);
+    for (const ex of explosions.current) {
+      const t = ex.frame / 22;
+      const rr = t * CELL * (ex.big ? 6 : 2.8);
+      const a = 1 - t;
+      const grd = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, Math.max(rr, 1));
+      grd.addColorStop(0, `rgba(255,255,210,${a})`);
+      grd.addColorStop(0.35, `rgba(251,191,36,${a * 0.9})`);
+      grd.addColorStop(0.7, `rgba(239,68,68,${a * 0.6})`);
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, Math.max(rr, 1), 0, Math.PI * 2);
+      ctx.fill();
+      ex.frame++;
+    }
+    if (online.current && myRole.current === 1) pushState(false);
+    animId.current = requestAnimationFrame(renderLoop);
+  }, []);
+  useEffect(() => {
+    if (screen !== "game") {
+      running.current = false;
+      clearInterval(timerID.current);
+      cancelAnimationFrame(animId.current);
+      return;
+    }
+    running.current = true;
+    animId.current = requestAnimationFrame(renderLoop);
+    startTimer();
+    return () => {
+      running.current = false;
+      clearInterval(timerID.current);
+      cancelAnimationFrame(animId.current);
+    };
+  }, [screen]);
+  useEffect(() => {
+    const h = (e) => {
+      if (phase_r.current !== "build") return;
+      if (e.key === "r" || e.key === "R") rotatePiece(1);
+      if (e.key === "t" || e.key === "T") rotatePiece(2);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
+  function beginSetup() {
+    pieces.current = {
+      1: { cells: randomShape(), ghostR: null, ghostC: null },
+      2: { cells: randomShape(), ghostR: null, ghostC: null }
+    };
+    balls.current = [];
+    explosions.current = [];
+    particles.current = [];
+    reload.current = { 1: 1, 2: 1 };
+    lastShot.current = { 1: -99999, 2: -99999 };
+    pointers.current.clear();
+    activeDrag.current = { 1: null, 2: null };
+    warnedOpen.current = { 1: false, 2: false };
+    cannonBudget.current = { 1: 2, 2: 2 };
+    cannonAngle.current = { 1: Math.PI / 2, 2: -Math.PI / 2 };
+    phase_r.current = "setup";
+    setPhase("setup");
+    timerVal.current = SETUP_TIME;
+    setTimer(SETUP_TIME);
+    setResultInfo(null);
+    setScreen("game");
+  }
+  function startGame() {
+    initGrid();
+    setRound(1);
+    beginSetup();
+  }
+  function fullReset() {
+    scoresRef.current = { 1: 0, 2: 0 };
+    setScores({ 1: 0, 2: 0 });
+    startGame();
+  }
+  function nextRound() {
+    initGrid();
+    setRound((r) => r + 1);
+    beginSetup();
+  }
+  const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
+  if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
+    background: "radial-gradient(ellipse at 30% 15%, #10260f 0%, #0a0e1a 55%, #140828 100%)",
+    minHeight: "100dvh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontFamily: "'Segoe UI',system-ui,sans-serif",
+    color: "#e2e8f0",
+    padding: 16,
+    boxSizing: "border-box"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 38, marginBottom: 4, letterSpacing: 8 } }, "\u{1F3F0}\u2694\uFE0F\u{1F3F0}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#4ade80", marginBottom: 8 } }, "2 SPIELER \xB7 GLEICHZEITIG \xB7 EIN GER\xC4T"), /* @__PURE__ */ React.createElement("h1", { style: {
+    fontSize: "clamp(50px,14vw,76px)",
+    fontWeight: 900,
+    margin: "0 0 4px",
+    background: "linear-gradient(135deg,#4ade80,#38bdf8 50%,#a78bfa)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    letterSpacing: "-2px",
+    lineHeight: 1,
+    filter: "drop-shadow(0 4px 24px rgba(56,189,248,0.3))"
+  } }, "FORTRESS"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#475569", marginBottom: 6 } }, "Baue \xB7 Verteidige \xB7 Zerst\xF6re"), /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 20,
+    fontSize: 13
+  } }, /* @__PURE__ */ React.createElement("span", { style: { background: "rgba(59,130,246,0.15)", border: "1px solid rgba(96,165,250,0.3)", borderRadius: 20, padding: "3px 12px", color: "#93c5fd" } }, "\u2654 Blaues K\xF6nigreich"), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", alignSelf: "center" } }, "vs"), /* @__PURE__ */ React.createElement("span", { style: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 20, padding: "3px 12px", color: "#fca5a5" } }, "\u265A Rotes K\xF6nigreich")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 22, fontSize: 11.5 } }, [
+    ["\u{1F3F0}", "Start", "Platziere zu Beginn 2 Kanonen rund um deine Burg, dann ummauere alles dicht."],
+    ["\u{1F9F1}", "Bauen (25s)", "Tippe = zuf\xE4lliges Teil platzieren (auch 1\xD71). Burg & Kanonen l\xFCckenlos einmauern \u2014 nicht auf Fluss/Berg!"],
+    ["\u{1F4A3}", "Schie\xDFen (30s)", "Schleuder: Finger von der Kanone wegziehen, Zielkreuz zeigt den Einschlag. Nur eingebaute Kanonen feuern!"],
+    ["\u2620\uFE0F", "Verlieren", "Deine BURG muss geschlossen bleiben \u2014 ist sie am Ende der Bauphase offen, verlierst du. Offene Kanonen schie\xDFen nur nicht."]
+  ].map(([i, t, d]) => /* @__PURE__ */ React.createElement("div", { key: t, style: {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 10,
+    padding: "11px 10px",
+    textAlign: "left"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, marginBottom: 3 } }, i), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, color: "#94a3b8", marginBottom: 3, fontSize: 11 } }, t), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", lineHeight: 1.45 } }, d)))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    online.current = false;
+    fullReset();
+  }, style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#059669,#0284c7)",
+    color: "white",
+    border: "none",
+    padding: "17px",
+    fontSize: 17,
+    fontWeight: 800,
+    borderRadius: 12,
+    cursor: "pointer",
+    letterSpacing: "0.04em",
+    boxShadow: "0 0 36px rgba(5,150,105,0.35)"
+  } }, "\u25B6 LOKAL SPIELEN (1 Ger\xE4t)"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    setMpError("");
+    setMpScreen("online");
+  }, style: {
+    width: "100%",
+    marginTop: 10,
+    background: "rgba(255,255,255,0.06)",
+    color: "#e2e8f0",
+    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "15px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 12,
+    cursor: "pointer"
+  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(5,8,15,0.92)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1e3,
+    padding: 20
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 16,
+    padding: 28,
+    maxWidth: 380,
+    width: "100%",
+    textAlign: "center"
+  } }, mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F310}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, "Online-Multiplayer"), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, "Spielt gegeneinander, jeder am eigenen Smartphone."), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
+    background: "rgba(245,158,11,0.12)",
+    border: "1px solid rgba(245,158,11,0.3)",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 12,
+    color: "#fbbf24",
+    marginBottom: 16,
+    lineHeight: 1.5
+  } }, "\u26A0\uFE0F Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit ", /* @__PURE__ */ React.createElement("b", null, "FB_URL"), ")."), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#059669,#0284c7)",
+    color: "white",
+    border: "none",
+    padding: "15px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 10,
+    cursor: "pointer",
+    marginBottom: 10
+  } }, "\u2795 Spiel erstellen"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: {
+    width: "100%",
+    background: "rgba(255,255,255,0.08)",
+    color: "#e2e8f0",
+    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "14px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 10,
+    cursor: "pointer",
+    marginBottom: 16
+  } }, "\u{1F511} Spiel beitreten"), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+    background: "transparent",
+    color: "#64748b",
+    border: "none",
+    fontSize: 13,
+    cursor: "pointer",
+    textDecoration: "underline"
+  } }, "Zur\xFCck")), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 14px", fontSize: 20 } }, "Code eingeben"), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      value: mpInput,
+      onChange: (e) => setMpInput(e.target.value.toUpperCase().slice(0, 6)),
+      placeholder: "ABC123",
+      style: {
+        width: "100%",
+        boxSizing: "border-box",
+        textAlign: "center",
+        fontSize: 28,
+        fontWeight: 800,
+        letterSpacing: "0.3em",
+        padding: "12px",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.2)",
+        background: "rgba(0,0,0,0.3)",
+        color: "#fff",
+        marginBottom: 16,
+        fontFamily: "monospace"
+      }
+    }
+  ), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#059669,#0284c7)",
+    color: "white",
+    border: "none",
+    padding: "15px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 10,
+    cursor: "pointer",
+    marginBottom: 12
+  } }, "Beitreten"), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    setMpScreen("online");
+    setMpError("");
+  }, style: {
+    background: "transparent",
+    color: "#64748b",
+    border: "none",
+    fontSize: 13,
+    cursor: "pointer",
+    textDecoration: "underline"
+  } }, "Zur\xFCck")), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u23F3"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? "Warte auf Mitspieler\u2026" : "Verbinde mit Host\u2026"), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, "Teile diesen Code mit deinem Mitspieler:"), /* @__PURE__ */ React.createElement("div", { style: {
+    fontSize: 38,
+    fontWeight: 900,
+    letterSpacing: "0.25em",
+    fontFamily: "monospace",
+    color: "#4ade80",
+    background: "rgba(0,0,0,0.3)",
+    borderRadius: 10,
+    padding: "14px",
+    marginBottom: 8
+  } }, mpCode), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, "Spiel startet automatisch wenn Mitspieler beitritt")), myRole.current === 2 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, "Warte auf den ersten Spielzustand vom Host\u2026", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, "(Spiel startet automatisch)")), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+    background: "transparent",
+    color: "#64748b",
+    border: "none",
+    fontSize: 13,
+    cursor: "pointer",
+    textDecoration: "underline"
+  } }, "Abbrechen")))));
+  if (screen === "result") {
+    let onlineNextRound2 = function() {
+      if (!isHost) return;
+      nextRound();
+    }, onlineNewGame2 = function() {
+      if (!isHost) return;
+      startGame();
+    };
+    var onlineNextRound = onlineNextRound2, onlineNewGame = onlineNewGame2;
+    const info = resultInfo || {};
+    const isWin = !!info.winner;
+    const isHost = !online.current || myRole.current === 1;
+    const myKingdom = myRole.current === 2 ? "\u265A Rotes K\xF6nigreich" : "\u2654 Blaues K\xF6nigreich";
+    const iWon = online.current ? info.winner === myRole.current : isWin;
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      background: "radial-gradient(ellipse,#131a2e 0%,#06080f 100%)",
+      minHeight: "100dvh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'Segoe UI',system-ui,sans-serif",
+      color: "#e2e8f0",
+      padding: 24,
+      textAlign: "center"
+    } }, online.current && /* @__PURE__ */ React.createElement("div", { style: {
+      fontSize: 11,
+      color: "#4ade80",
+      marginBottom: 10,
+      fontWeight: 700,
+      background: "rgba(74,222,128,0.08)",
+      borderRadius: 6,
+      padding: "4px 12px"
+    } }, "\u{1F310} ONLINE \xB7 ", myKingdom), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, marginBottom: 14 } }, online.current ? iWon ? "\u{1F3C6}" : "\u{1F480}" : isWin ? "\u{1F3C6}" : "\u{1F480}"), /* @__PURE__ */ React.createElement("div", { style: {
+      fontSize: "clamp(20px,5vw,28px)",
+      fontWeight: 800,
+      marginBottom: 6,
+      color: isWin ? info.winner === 1 ? "#60a5fa" : "#f87171" : "#ef4444"
+    } }, isWin ? online.current ? iWon ? "Du gewinnst! \u{1F389}" : "Du verlierst." : `${info.winner === 1 ? "\u2654 Blaues K\xF6nigreich" : "\u265A Rotes K\xF6nigreich"} siegt!` : info.loser === "both" ? "Unentschieden!" : `Spieler ${info.loser} verliert!`), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 20 } }, info.reason === "breach" ? "Burg durchbrochen \u{1F4A5}" : "Burg war nicht geschlossen"), /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex",
+      gap: 20,
+      fontSize: 24,
+      fontWeight: 800,
+      marginBottom: 28,
+      background: "rgba(255,255,255,0.05)",
+      borderRadius: 12,
+      padding: "12px 26px",
+      border: "1px solid rgba(255,255,255,0.08)"
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#60a5fa" } }, "\u2654 ", scores[1]), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#f87171" } }, scores[2], " \u265A")), online.current && !isHost ? (
+      // Gast wartet darauf dass Host die nächste Runde startet
+      /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 14, fontStyle: "italic" } }, "\u23F3 Warte auf Host f\xFCr n\xE4chste Runde\u2026")
+    ) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 } }, /* @__PURE__ */ React.createElement("button", { onClick: onlineNextRound2, style: {
+      background: "linear-gradient(135deg,#059669,#0284c7)",
+      color: "white",
+      border: "none",
+      padding: "16px",
+      fontSize: 16,
+      fontWeight: 700,
+      borderRadius: 10,
+      cursor: "pointer"
+    } }, "\u{1F504} N\xE4chste Runde"), /* @__PURE__ */ React.createElement("button", { onClick: onlineNewGame2, style: {
+      background: "rgba(255,255,255,0.08)",
+      color: "#cbd5e1",
+      border: "1px solid rgba(255,255,255,0.12)",
+      padding: "13px",
+      fontSize: 14,
+      borderRadius: 10,
+      cursor: "pointer"
+    } }, "\u{1F195} Neues Spielfeld"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      scoresRef.current = { 1: 0, 2: 0 };
+      setScores({ 1: 0, 2: 0 });
+      if (online.current) leaveOnline();
+      else setScreen("menu");
+    }, style: {
+      background: "transparent",
+      color: "#64748b",
+      border: "1px solid rgba(255,255,255,0.08)",
+      padding: "12px",
+      fontSize: 13,
+      borderRadius: 10,
+      cursor: "pointer"
+    } }, "\u{1F3E0} Hauptmen\xFC")));
+  }
+  return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
+    background: "#04080d",
+    minHeight: "100dvh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    fontFamily: "'Segoe UI',system-ui,sans-serif",
+    color: "#e2e8f0",
+    overflow: "hidden",
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none"
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    width: viewSize.w,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "6px 4px 4px",
+    boxSizing: "border-box"
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(135deg, rgba(37,99,235,0.25), rgba(30,58,138,0.15))",
+    border: "1px solid rgba(96,165,250,0.4)",
+    borderRadius: 10,
+    padding: "5px 13px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "0 0 12px rgba(59,130,246,0.15)"
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#93c5fd", fontWeight: 700, letterSpacing: "0.05em" } }, "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 900, color: "#dbeafe" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: {
+    background: phase === "build" ? "rgba(74,222,128,0.12)" : phase === "shoot" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.14)",
+    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.3)" : phase === "shoot" ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.35)"}`,
+    borderRadius: 6,
+    padding: "1px 8px",
+    fontSize: 10,
+    fontWeight: 700,
+    color: phase === "build" ? "#4ade80" : phase === "shoot" ? "#f87171" : "#fbbf24",
+    marginRight: 8
+  } }, phase === "build" ? "\u{1F9F1} BAUEN" : phase === "shoot" ? "\u{1F4A3} FEUER" : phase === "setup" ? "\u{1F3F0} START" : "\u{1F3F0} KANONE"), /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: 30,
+    fontWeight: 900,
+    color: timerColor,
+    textShadow: timer <= 5 ? `0 0 14px ${timerColor}` : "none",
+    fontVariantNumeric: "tabular-nums",
+    verticalAlign: "middle"
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#334155", marginLeft: 6 } }, "R", round), online.current && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#4ade80", marginTop: 2, fontWeight: 700 } }, "\u{1F310} ONLINE \xB7 DU = ", myRole.current === 1 ? "\u2654 BLAU" : "\u265A ROT")), /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(135deg, rgba(220,38,38,0.25), rgba(127,29,29,0.15))",
+    border: "1px solid rgba(248,113,113,0.4)",
+    borderRadius: 10,
+    padding: "5px 13px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "0 0 12px rgba(239,68,68,0.15)"
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 900, color: "#fee2e2" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.05em" } }, "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, "\u265A"))), warn && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    top: 70,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "rgba(127,29,29,0.92)",
+    border: "1px solid rgba(248,113,113,0.5)",
+    borderRadius: 10,
+    padding: "10px 20px",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#fecaca",
+    zIndex: 999,
+    pointerEvents: "none",
+    boxShadow: "0 4px 24px rgba(239,68,68,0.4)",
+    whiteSpace: "nowrap",
+    maxWidth: "92vw",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
+  } }, warn), /* @__PURE__ */ React.createElement("div", { style: {
+    width: viewSize.w,
+    height: viewSize.h,
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 6,
+    overflow: "hidden",
+    boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
+    position: "relative"
+  } }, /* @__PURE__ */ React.createElement(
+    "canvas",
+    {
+      ref: canvasRef,
+      width: W,
+      height: H,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+      style: {
+        display: "block",
+        width: viewSize.w,
+        height: viewSize.h,
+        touchAction: "none",
+        cursor: phase === "build" || phase === "cannon" || phase === "setup" ? "crosshair" : "default"
+      }
+    }
+  )), /* @__PURE__ */ React.createElement("div", { style: {
+    width: viewSize.w,
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "6px 2px",
+    boxSizing: "border-box",
+    gap: 8
+  } }, phase === "build" ? /* @__PURE__ */ React.createElement(React.Fragment, null, (!online.current || myRole.current === 1) && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        rotatePiece(1);
+      },
+      style: {
+        flex: 1,
+        background: "rgba(96,165,250,0.18)",
+        border: "1px solid rgba(96,165,250,0.35)",
+        color: "#bfdbfe",
+        padding: "13px 4px",
+        fontSize: 14,
+        fontWeight: 700,
+        borderRadius: 10,
+        cursor: "pointer",
+        touchAction: "manipulation"
+      }
+    },
+    "\u21BB ",
+    online.current ? "Drehen" : "Blau drehen"
+  ), /* @__PURE__ */ React.createElement("div", { style: {
+    flex: 0.7,
+    fontSize: 10,
+    color: "#334155",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    lineHeight: 1.3
+  } }, "Tippen =", /* @__PURE__ */ React.createElement("br", null), "platzieren"), (!online.current || myRole.current === 2) && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        rotatePiece(2);
+      },
+      style: {
+        flex: 1,
+        background: "rgba(248,113,113,0.18)",
+        border: "1px solid rgba(248,113,113,0.35)",
+        color: "#fecaca",
+        padding: "13px 4px",
+        fontSize: 14,
+        fontWeight: 700,
+        borderRadius: 10,
+        cursor: "pointer",
+        touchAction: "manipulation"
+      }
+    },
+    "\u21BB ",
+    online.current ? "Drehen" : "Rot drehen"
+  )) : phase === "cannon" ? /* @__PURE__ */ React.createElement("div", { style: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 12,
+    color: "#fbbf24",
+    padding: "8px",
+    fontWeight: 600
+  } }, "\u{1F3F0} Neue Kanone setzen! Tippe auf eine freie 3\xD73-Fl\xE4che \u2014 dann in der Bauphase ummauern") : phase === "setup" ? /* @__PURE__ */ React.createElement("div", { style: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 12,
+    color: "#fbbf24",
+    padding: "8px",
+    fontWeight: 600
+  } }, "\u{1F3F0} START: Platziere deine 2 Kanonen rund um die Burg \u2014 danach ummauern (Burg muss dicht sein!)") : /* @__PURE__ */ React.createElement("div", { style: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    color: "#475569",
+    padding: "8px"
+  } }, "\u{1F3F9} Schleuder: Finger von deiner Kanone wegziehen \xB7 \u{1F3AF} Kreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern")));
+};
+
+
+// Mount
+const _root = ReactDOM.createRoot(document.getElementById('root'));
+_root.render(React.createElement(window.FortressApp));
+
+// Splash entfernen
+setTimeout(() => {
+  const s = document.getElementById('splash');
+  if (s) { s.style.opacity = '0'; setTimeout(() => s.remove(), 500); }
+}, 600);
+
+// iOS Homescreen Hint (nur Safari, nicht schon installiert)
+const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const _isStandalone = window.navigator.standalone === true;
+if (_isIOS && !_isStandalone && !localStorage.getItem('_fh')) {
+  setTimeout(() => {
+    document.getElementById('ios-hint').style.display = 'block';
+    localStorage.setItem('_fh', '1');
+  }, 3500);
+}
+  </script>
+</body>
+</html>
