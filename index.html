@@ -772,7 +772,15 @@ window.FortressApp = function Fortress() {
     castles.current = s.castles || castles.current;
     cannons.current = s.cannons || cannons.current;
     cannonBudget.current = s.cannonBudget || { 1: 0, 2: 0 };
-    balls.current = s.balls || [];
+    const incoming = s.balls || [];
+    const localBalls = balls.current || [];
+    if (incoming.length === 0) {
+      balls.current = [];
+    } else if (localBalls.length === 0) {
+      balls.current = incoming;
+    } else {
+      if (incoming.length > localBalls.length) balls.current = incoming;
+    }
     explosions.current = s.explosions || [];
     lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
     phase_r.current = s.phase;
@@ -1393,16 +1401,25 @@ window.FortressApp = function Fortress() {
     for (const p of [1, 2])
       reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
     const isGuest = online.current && myRole.current === 2;
-    if (phase_r.current === "shoot" && !isGuest) {
-      for (const ball of balls.current) {
-        if (!ball.alive) continue;
-        ball.prog += 1 / ball.dur;
-        if (ball.prog >= 1) {
-          ball.alive = false;
-          impactAt(ball);
+    if (phase_r.current === "shoot") {
+      if (!isGuest) {
+        for (const ball of balls.current) {
+          if (!ball.alive) continue;
+          ball.prog += 1 / ball.dur;
+          if (ball.prog >= 1) {
+            ball.alive = false;
+            impactAt(ball);
+          }
         }
+        balls.current = balls.current.filter((b) => b.alive);
+      } else {
+        for (const ball of balls.current) {
+          if (!ball.alive) continue;
+          ball.prog += 1 / ball.dur;
+          if (ball.prog >= 1) ball.alive = false;
+        }
+        balls.current = balls.current.filter((b) => b.alive);
       }
-      balls.current = balls.current.filter((b) => b.alive);
     }
     for (const p of particles.current) {
       p.x += p.vx;
