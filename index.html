@@ -1241,6 +1241,12 @@ window.FortressApp = function Fortress() {
       y: (e.clientY - rect.top) / rect.height * H
     };
   }, []);
+  const LIFT_ROWS = 3;
+  function liftedGhost(player, x, y) {
+    const gc = Math.floor(x / CELL);
+    const gr = Math.floor(y / CELL) - LIFT_ROWS;
+    return { gr, gc };
+  }
   const onPointerDown = useCallback((e) => {
     e.preventDefault();
     const canvas = canvasRef.current;
@@ -1253,8 +1259,7 @@ window.FortressApp = function Fortress() {
     const player = online.current ? myRole.current : y < ROWS_HALF * CELL ? 1 : 2;
     pointers.current.set(e.pointerId, { player, x, y, startX: x, startY: y, t: performance.now() });
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
-      const gc = Math.floor(x / CELL);
-      const gr = Math.floor(y / CELL);
+      const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
     } else if (phase_r.current === "shoot") {
@@ -1276,8 +1281,7 @@ window.FortressApp = function Fortress() {
     pt.y = y;
     const player = pt.player;
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
-      const gc = Math.floor(x / CELL);
-      const gr = Math.floor(y / CELL);
+      const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
     } else if (phase_r.current === "shoot") {
@@ -1319,14 +1323,14 @@ window.FortressApp = function Fortress() {
     const { x, y } = toCanvas(e);
     const guest = online.current && myRole.current === 2;
     if (phase_r.current === "build") {
-      const gc = Math.floor(x / CELL), gr = Math.floor(y / CELL);
+      const { gr, gc } = liftedGhost(player, x, y);
       if (guest) sendAction({ type: "place", r: gr, c: gc });
       else {
         placePiece(player, gr, gc);
         if (online.current) pushState(true);
       }
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
-      const gc = Math.floor(x / CELL), gr = Math.floor(y / CELL);
+      const { gr, gc } = liftedGhost(player, x, y);
       if (guest) sendAction({ type: "cannon", r: gr, c: gc });
       else {
         placeCannon(player, gr, gc);
@@ -1526,14 +1530,35 @@ window.FortressApp = function Fortress() {
         let valid = abs.every(
           ([r, c]) => r >= 0 && r < ROWS && c >= 0 && c < COLS && g[r][c] === EMPTY && isBuildable(terObj, r, c, player)
         );
-        ctx.fillStyle = valid ? player === 1 ? "rgba(96,165,250,0.5)" : "rgba(248,113,113,0.5)" : "rgba(120,120,120,0.25)";
-        ctx.strokeStyle = valid ? player === 1 ? "#60a5fa" : "#f87171" : "rgba(160,160,160,0.5)";
-        ctx.lineWidth = 1.5;
+        const ghostCenterX = (p.ghostC + 0.5) * CELL;
+        const ghostCenterY = (p.ghostR + 0.5) * CELL;
+        ctx.fillStyle = "rgba(0,0,0,0.2)";
+        for (const [r, c] of abs) {
+          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+          ctx.fillRect(c * CELL + 2, r * CELL + 2, CELL - 4, CELL - 4);
+        }
+        const col = player === 1 ? valid ? "rgba(96,165,250," : "rgba(120,120,120," : valid ? "rgba(248,113,113," : "rgba(120,120,120,";
+        ctx.fillStyle = col + "0.55)";
+        ctx.strokeStyle = col + "0.9)";
+        ctx.lineWidth = 2;
         for (const [r, c] of abs) {
           if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
           ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
           ctx.strokeRect(c * CELL + 1.5, r * CELL + 1.5, CELL - 3, CELL - 3);
         }
+        ctx.strokeStyle = col + "0.4)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(ghostCenterX, (p.ghostR + Math.floor(Math.max(...cells.map(([r]) => r)) / 2) + 1) * CELL);
+        ctx.lineTo(ghostCenterX, ghostCenterY + LIFT_ROWS * CELL);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = valid ? player === 1 ? "#60a5fa" : "#f87171" : "#6b7280";
+        ctx.font = `bold ${CELL * 0.8}px system-ui`;
+        ctx.textAlign = "center";
+        ctx.fillText(valid ? "\u2713" : "\u2717", ghostCenterX, ghostCenterY + LIFT_ROWS * CELL - 2);
+        ctx.textAlign = "left";
       }
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
       for (const player of [1, 2]) {
