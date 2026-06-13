@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
-<head>
+<html lang="de"><head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -20,13 +19,12 @@
     #splash-bar{width:48px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:28px;overflow:hidden}
     #splash-bar span{display:block;height:100%;width:35%;background:#4ade80;border-radius:2px;animation:sl 1s ease-in-out infinite}
     @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
-    #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+    #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(20px)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
     #ios-hint p b{color:#4ade80}
     #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#059669,#0284c7);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
   </style>
-</head>
-<body>
+</head><body>
   <div id="splash">
     <svg width="90" height="90" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
       <rect width="512" height="512" rx="80" fill="#0f1f2e"/>
@@ -239,8 +237,8 @@ function sanitizeAction(raw) {
   if (!validTypes.includes(a.type)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
-  if (a.vx !== void 0 && Math.abs(a.vx) > 5e3) return null;
-  if (a.vy !== void 0 && Math.abs(a.vy) > 5e3) return null;
+  if (a.tx !== void 0 && (typeof a.tx !== "number" || a.tx < 0 || a.tx > W * 2)) return null;
+  if (a.ty !== void 0 && (typeof a.ty !== "number" || a.ty < 0 || a.ty > H * 2)) return null;
   return a;
 }
 const CELL = 16;
@@ -370,6 +368,33 @@ function computeOutsideMap(g, player) {
   }
   return visited;
 }
+function computeOutsideMapForCannons(g, player) {
+  const ownWall = player === 1 ? WALL1 : WALL2;
+  const ownCannon = player === 1 ? CANNON1 : CANNON2;
+  const visited = new Uint8Array(ROWS * COLS);
+  const stack = [];
+  for (let c = 0; c < COLS; c++) {
+    stack.push(c);
+    stack.push((ROWS - 1) * COLS + c);
+  }
+  for (let r = 0; r < ROWS; r++) {
+    stack.push(r * COLS);
+    stack.push(r * COLS + COLS - 1);
+  }
+  while (stack.length) {
+    const idx = stack.pop();
+    if (visited[idx]) continue;
+    const r = Math.floor(idx / COLS), c = idx % COLS;
+    const v = g[r][c];
+    if (v === ownWall || v === ownCannon) continue;
+    visited[idx] = 1;
+    if (r > 0) stack.push(idx - COLS);
+    if (r < ROWS - 1) stack.push(idx + COLS);
+    if (c > 0) stack.push(idx - 1);
+    if (c < COLS - 1) stack.push(idx + 1);
+  }
+  return visited;
+}
 function isObjectClosed(outsideMap, obj) {
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
@@ -387,7 +412,7 @@ function isCastleClosed(g, player, castle) {
   return isObjectClosed(computeOutsideMap(g, player), castle);
 }
 function closedCannons(g, player, cannonList) {
-  const outside = computeOutsideMap(g, player);
+  const outside = computeOutsideMapForCannons(g, player);
   return cannonList.filter((cn) => isObjectClosed(outside, cn));
 }
 const isCannonClosed = isObjectClosed;
@@ -760,7 +785,7 @@ window.FortressApp = function Fortress() {
     guestStateApplied.current = a.n || 0;
     if (a.type === "place") placePiece(2, a.r, a.c);
     else if (a.type === "cannon") placeCannon(2, a.r, a.c);
-    else if (a.type === "fire") fireMortar(2, a.vx, a.vy);
+    else if (a.type === "fire") fireMortar(2, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[2] = a.angle;
     pushState(true);
   }
@@ -1048,7 +1073,7 @@ window.FortressApp = function Fortress() {
       }
     }, 1e3);
   }
-  function fireMortar(player, vecX, vecY) {
+  function fireMortar(player, targetX, targetY) {
     const now = performance.now();
     if (now - lastShot.current[player] < RELOAD_MS) return false;
     const g = grid.current;
@@ -1058,20 +1083,20 @@ window.FortressApp = function Fortress() {
       return false;
     }
     lastShot.current[player] = now;
-    const MAX_SCATTER_CELLS = 2.2;
+    const MAX_SCATTER = 2.2 * CELL;
     ready.forEach((cn, index) => {
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
-      let tx = sx + vecX;
-      let ty = sy + vecY;
+      let tx = targetX;
+      let ty = targetY;
       if (index > 0) {
-        const scatter = Math.min(index * 0.6, MAX_SCATTER_CELLS) * CELL;
+        const scatter = Math.min(index * 0.6, MAX_SCATTER / CELL) * CELL;
         const scatterAngle = Math.random() * Math.PI * 2;
         tx += Math.cos(scatterAngle) * scatter * (0.4 + Math.random() * 0.6);
         ty += Math.sin(scatterAngle) * scatter * (0.4 + Math.random() * 0.6);
+        tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
+        ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
       }
-      tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
-      ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
       const dist = Math.hypot(tx - sx, ty - sy);
       const dur = Math.max(30, 26 + dist * 0.09);
       balls.current.push({
@@ -1085,7 +1110,6 @@ window.FortressApp = function Fortress() {
         player,
         alive: true,
         cannonIndex: index
-        // für visuelle Unterscheidung (erste = heller)
       });
       const angle = Math.atan2(ty - sy, tx - sx);
       for (let i = 0; i < 6; i++) {
@@ -1278,12 +1302,14 @@ window.FortressApp = function Fortress() {
     return { x: sx / list.length, y: sy / list.length };
   }
   const SLING_K = 3.2;
-  function slingVector(player, fx, fy) {
+  function slingTarget(player, fx, fy) {
     const a = slingAnchor(player);
     const dx = a.x - fx, dy = a.y - fy;
     const dist = Math.hypot(dx, dy);
     if (dist < CELL * 0.9) return null;
-    return { vx: dx * SLING_K, vy: dy * SLING_K };
+    const tx = Math.max(CELL / 2, Math.min(W - CELL / 2, a.x + dx * SLING_K));
+    const ty = Math.max(CELL / 2, Math.min(H - CELL / 2, a.y + dy * SLING_K));
+    return { tx, ty };
   }
   const onPointerUp = useCallback((e) => {
     e.preventDefault();
@@ -1310,11 +1336,11 @@ window.FortressApp = function Fortress() {
     } else if (phase_r.current === "shoot") {
       if (activeDrag.current[player] === e.pointerId) {
         activeDrag.current[player] = null;
-        const vec = slingVector(player, x, y);
-        if (vec) {
-          if (guest) sendAction({ type: "fire", vx: vec.vx, vy: vec.vy });
+        const tgt = slingTarget(player, x, y);
+        if (tgt) {
+          if (guest) sendAction({ type: "fire", tx: tgt.tx, ty: tgt.ty });
           else {
-            fireMortar(player, vec.vx, vec.vy);
+            fireMortar(player, tgt.tx, tgt.ty);
             if (online.current) pushState(true);
           }
         }
@@ -1543,7 +1569,7 @@ window.FortressApp = function Fortress() {
         const pid = activeDrag.current[player];
         const pt = pointers.current.get(pid);
         if (pt) {
-          const vec = slingVector(player, pt.x, pt.y);
+          const tgt = slingTarget(player, pt.x, pt.y);
           const col = player === 1 ? "rgba(251,191,36," : "rgba(167,139,250,";
           ctx.strokeStyle = col + "0.35)";
           ctx.lineWidth = 2;
@@ -1551,56 +1577,48 @@ window.FortressApp = function Fortress() {
           ctx.moveTo(anchor.x, anchor.y);
           ctx.lineTo(pt.x, pt.y);
           ctx.stroke();
-          if (vec) {
+          if (tgt) {
+            const { tx, ty } = tgt;
             const pulse2 = 1 + 0.15 * Math.sin(now / 150);
             const readyCannons = list.filter((cn) => isCannonClosed(outsideMap, cn));
-            const leadCn = readyCannons[0];
-            if (leadCn) {
-              const leadX = leadCn.c * CELL + CELL / 2;
-              const leadY = leadCn.r * CELL + CELL / 2;
-              const tx = Math.max(CELL / 2, Math.min(W - CELL / 2, leadX + vec.vx));
-              const ty = Math.max(CELL / 2, Math.min(H - CELL / 2, leadY + vec.vy));
-              for (const cn of readyCannons) {
-                const scx = cn.c * CELL + CELL / 2;
-                const scy = cn.r * CELL + CELL / 2;
-                ctx.strokeStyle = col + "0.45)";
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 7]);
-                ctx.beginPath();
-                ctx.moveTo(scx, scy);
-                ctx.lineTo(tx, ty);
-                ctx.stroke();
-                ctx.setLineDash([]);
-              }
-              ctx.strokeStyle = col + "0.95)";
-              ctx.lineWidth = 2.5;
+            ctx.strokeStyle = col + "0.45)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 7]);
+            for (const cn of readyCannons) {
               ctx.beginPath();
-              ctx.arc(tx, ty, CELL * 0.85 * pulse2, 0, Math.PI * 2);
+              ctx.moveTo(cn.c * CELL + CELL / 2, cn.r * CELL + CELL / 2);
+              ctx.lineTo(tx, ty);
               ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            ctx.strokeStyle = col + "0.95)";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(tx, ty, CELL * 0.85 * pulse2, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(tx, ty, CELL * 0.28, 0, Math.PI * 2);
+            ctx.stroke();
+            for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
               ctx.beginPath();
-              ctx.arc(tx, ty, CELL * 0.28, 0, Math.PI * 2);
+              ctx.moveTo(tx + ddx * CELL * 0.5, ty + ddy * CELL * 0.5);
+              ctx.lineTo(tx + ddx * CELL * 1.15 * pulse2, ty + ddy * CELL * 1.15 * pulse2);
               ctx.stroke();
-              for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-                ctx.beginPath();
-                ctx.moveTo(tx + ddx * CELL * 0.5, ty + ddy * CELL * 0.5);
-                ctx.lineTo(tx + ddx * CELL * 1.15 * pulse2, ty + ddy * CELL * 1.15 * pulse2);
-                ctx.stroke();
-              }
-              if (readyCannons.length > 1) {
-                const maxScatter = Math.min((readyCannons.length - 1) * 0.6, 2.2) * CELL;
-                ctx.strokeStyle = col + "0.25)";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([2, 4]);
-                ctx.beginPath();
-                ctx.arc(tx, ty, maxScatter, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillStyle = col + "0.9)";
-                ctx.font = `bold ${CELL * 0.75}px system-ui`;
-                ctx.textAlign = "center";
-                ctx.fillText(`\xD7${readyCannons.length}`, tx, ty - CELL * 1.4 * pulse2);
-                ctx.textAlign = "left";
-              }
+            }
+            if (readyCannons.length > 1) {
+              const maxScatter = Math.min((readyCannons.length - 1) * 0.6, 2.2) * CELL;
+              ctx.strokeStyle = col + "0.25)";
+              ctx.lineWidth = 1;
+              ctx.setLineDash([2, 4]);
+              ctx.beginPath();
+              ctx.arc(tx, ty, maxScatter, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.fillStyle = col + "0.9)";
+              ctx.font = `bold ${CELL * 0.75}px system-ui`;
+              ctx.textAlign = "center";
+              ctx.fillText(`\xD7${readyCannons.length}`, tx, ty - CELL * 1.4 * pulse2);
+              ctx.textAlign = "left";
             }
           } else {
             ctx.fillStyle = "rgba(255,255,255,0.5)";
@@ -2211,5 +2229,4 @@ if (_isIOS && !window.navigator.standalone && !localStorage.getItem('_fh')) {
   setTimeout(() => { document.getElementById('ios-hint').style.display='block'; localStorage.setItem('_fh','1'); }, 3500);
 }
   </script>
-</body>
-</html>
+</body></html>
