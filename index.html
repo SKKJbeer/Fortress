@@ -645,6 +645,35 @@ window.FortressApp = function Fortress() {
   const timerID = useRef(null);
   const timerVal = useRef(BUILD_TIME);
   const scoresRef = useRef({ 1: 0, 2: 0 });
+  const bgCanvas = useRef(null);
+  const bgDirty = useRef(true);
+  const floodCache = useRef({
+    gridVersion: -1,
+    outsideP1: null,
+    outsideP2: null,
+    cannonOutsideP1: null,
+    cannonOutsideP2: null,
+    castleClosedP1: true,
+    castleClosedP2: true
+  });
+  const gridVersion = useRef(0);
+  function setGrid(newG) {
+    setGrid(newG);
+    gridVersion.current++;
+  }
+  function getFloodCache() {
+    const fc = floodCache.current;
+    const g = grid.current;
+    if (!g || fc.gridVersion === gridVersion.current) return fc;
+    fc.outsideP1 = computeOutsideMap(g, 1);
+    fc.outsideP2 = computeOutsideMap(g, 2);
+    fc.cannonOutsideP1 = computeOutsideMapForCannons(g, 1);
+    fc.cannonOutsideP2 = computeOutsideMapForCannons(g, 2);
+    fc.castleClosedP1 = castles.current[1] ? isObjectClosed(fc.outsideP1, castles.current[1]) : true;
+    fc.castleClosedP2 = castles.current[2] ? isObjectClosed(fc.outsideP2, castles.current[2]) : true;
+    fc.gridVersion = gridVersion.current;
+    return fc;
+  }
   const pieces = useRef({
     1: { cells: randomShape(), ghostR: null, ghostC: null },
     2: { cells: randomShape(), ghostR: null, ghostC: null }
@@ -725,7 +754,7 @@ window.FortressApp = function Fortress() {
       hostSessionRef.current = s.hostSession;
     }
     lastStateAt.current = Date.now();
-    grid.current = s.grid;
+    setGrid(s.grid);
     if (s.terrainSeed && s.terrainSeed !== terrainSeed.current) {
       terrainSeed.current = s.terrainSeed;
       terrain.current = generateTerrainFromSeed(s.terrainSeed);
@@ -961,6 +990,7 @@ window.FortressApp = function Fortress() {
     const terObj = generateTerrain();
     terrain.current = terObj;
     terrainSeed.current = terObj.seed;
+    bgDirty.current = true;
     const ter = terObj.grid;
     const g = Array.from({ length: ROWS }, () => new Array(COLS).fill(EMPTY));
     castles.current = { 1: __spreadValues({}, CASTLE_P1), 2: __spreadValues({}, CASTLE_P2) };
@@ -985,7 +1015,7 @@ window.FortressApp = function Fortress() {
         for (let dc = -1; dc <= 1; dc++)
           g[castle.r + dr][castle.c + dc] = castleMark;
     }
-    grid.current = g;
+    setGrid(g);
   }
   function checkLossOrContinue(nextPhaseFn) {
     const g = grid.current;
@@ -1162,7 +1192,7 @@ window.FortressApp = function Fortress() {
               if (r >= 0 && r < ROWS && c >= 0 && c < COLS && newG2[r][c] === enemyCannon)
                 newG2[r][c] = RUBBLE;
             }
-          grid.current = newG2;
+          setGrid(newG2);
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
           explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
           showWarn(ep === 1 ? "\u{1F4A5} \u2654 Blaue Kanone zerst\xF6rt!" : "\u{1F4A5} \u265A Rote Kanone zerst\xF6rt!");
@@ -1178,7 +1208,7 @@ window.FortressApp = function Fortress() {
     const castleClosedBefore = isCastleClosed(g, ep, castles.current[ep]);
     const newG = g.map((row) => [...row]);
     if (target === enemyWall) newG[hitR][hitC] = RUBBLE;
-    grid.current = newG;
+    setGrid(newG);
     const castleClosedAfter = isCastleClosed(newG, ep, castles.current[ep]);
     if (castleClosedBefore && !castleClosedAfter && !warnedOpen.current[ep]) {
       warnedOpen.current[ep] = true;
@@ -1202,7 +1232,7 @@ window.FortressApp = function Fortress() {
     const newG = g.map((row) => [...row]);
     const mark = player === 1 ? WALL1 : WALL2;
     for (const [r, c] of abs) newG[r][c] = mark;
-    grid.current = newG;
+    setGrid(newG);
     pieces.current[player] = { cells: randomShape(), ghostR: gr, ghostC: gc };
   }
   function placeCannon(player, gr, gc) {
@@ -1222,7 +1252,7 @@ window.FortressApp = function Fortress() {
     for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++)
         newG[gr + dr][gc + dc] = mark;
-    grid.current = newG;
+    setGrid(newG);
     cannonSeq.current += 1;
     cannons.current[player].push({ r: gr, c: gc, id: "c" + cannonSeq.current, hp: CANNON_HP });
     cannonBudget.current[player] -= 1;
@@ -1391,116 +1421,91 @@ window.FortressApp = function Fortress() {
     ctx.clearRect(0, 0, W, H);
     const terObj = terrain.current;
     const ter = terObj ? terObj.grid : null;
-    const meadowGrad = ctx.createLinearGradient(0, 0, 0, H);
-    meadowGrad.addColorStop(0, "#4a8f3c");
-    meadowGrad.addColorStop(0.5, "#3d7d31");
-    meadowGrad.addColorStop(1, "#356e2b");
-    ctx.fillStyle = meadowGrad;
-    ctx.fillRect(0, 0, W, H);
-    if (ter) {
-      ctx.globalAlpha = 0.5;
+    if (!bgCanvas.current) {
+      bgCanvas.current = document.createElement("canvas");
+      bgCanvas.current.width = W;
+      bgCanvas.current.height = H;
+      bgDirty.current = true;
+    }
+    if (bgDirty.current && ter) {
+      bgDirty.current = false;
+      const bc = bgCanvas.current.getContext("2d");
+      const mg2 = bc.createLinearGradient(0, 0, 0, H);
+      mg2.addColorStop(0, "#4a8f3c");
+      mg2.addColorStop(0.5, "#3d7d31");
+      mg2.addColorStop(1, "#356e2b");
+      bc.fillStyle = mg2;
+      bc.fillRect(0, 0, W, H);
       for (let r = 0; r < ROWS; r += 2)
         for (let c = 0; c < COLS; c += 2) {
           const t = ter[r][c];
           if (t === 1 || t === 2) {
-            ctx.fillStyle = t === 1 ? "rgba(45,95,30,0.5)" : "rgba(30,70,20,0.6)";
-            ctx.beginPath();
-            ctx.ellipse(c * CELL + CELL, r * CELL + CELL, CELL * 1.8, CELL * 1.5, 0, 0, Math.PI * 2);
-            ctx.fill();
+            bc.fillStyle = t === 1 ? "rgba(45,95,30,0.45)" : "rgba(30,70,20,0.55)";
+            bc.fillRect(c * CELL, r * CELL, CELL * 2, CELL * 2);
           }
         }
-      ctx.globalAlpha = 1;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] !== 3) continue;
+          bc.fillStyle = "#2563a8";
+          bc.fillRect(c * CELL, r * CELL, CELL, CELL);
+          bc.fillStyle = "rgba(100,140,75,0.35)";
+          bc.fillRect(c * CELL - 1, r * CELL, CELL + 2, 2);
+        }
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] !== 4) continue;
+          const cx3 = c * CELL + CELL / 2, baseY3 = r * CELL + CELL;
+          bc.fillStyle = "#6b7280";
+          bc.beginPath();
+          bc.moveTo(cx3, r * CELL + 1);
+          bc.lineTo(c * CELL + CELL - 1, baseY3 - 1);
+          bc.lineTo(c * CELL + 1, baseY3 - 1);
+          bc.closePath();
+          bc.fill();
+          bc.fillStyle = "#f1f5f9";
+          bc.beginPath();
+          bc.moveTo(cx3, r * CELL + 1);
+          bc.lineTo(cx3 + 3, r * CELL + 6);
+          bc.lineTo(cx3 - 3, r * CELL + 6);
+          bc.closePath();
+          bc.fill();
+        }
+      for (let i = 0; i < 22; i++) {
+        const fc3 = i * 313 % COLS, fr3 = i * 191 % ROWS;
+        if (ter[fr3][fc3] >= 3) continue;
+        const fx3 = fc3 * CELL + i * 71 % CELL, fy3 = fr3 * CELL + i * 37 % CELL;
+        bc.fillStyle = ["#fde047", "#f9a8d4", "#e0e7ff", "#fdba74"][i % 4];
+        bc.fillRect(fx3 - 2, fy3 - 1, 4, 2);
+        bc.fillRect(fx3 - 1, fy3 - 2, 2, 4);
+        bc.fillStyle = "#facc15";
+        bc.fillRect(fx3 - 1, fy3 - 1, 2, 2);
+      }
     }
+    if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
     if (ter) {
+      ctx.strokeStyle = `rgba(160,210,255,${0.15 + 0.1 * Math.sin(now / 500)})`;
+      ctx.lineWidth = 1;
+      const wFrame = Math.floor(now / 600) % 8;
       for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (ter[r][c] === 3) {
-            ctx.fillStyle = "rgba(120,160,90,0.5)";
-            ctx.fillRect(c * CELL - 1, r * CELL - 1, CELL + 2, CELL + 2);
-          }
-        }
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (ter[r][c] === 3) {
-            const px = c * CELL, py = r * CELL;
-            const wg = ctx.createLinearGradient(px, py, px, py + CELL);
-            wg.addColorStop(0, "#3b82d4");
-            wg.addColorStop(1, "#2563a8");
-            ctx.fillStyle = wg;
-            ctx.fillRect(px, py, CELL, CELL);
-          }
-        }
-      ctx.strokeStyle = "rgba(160,210,255,0.4)";
-      ctx.lineWidth = 1.5;
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (ter[r][c] === 3 && (r * 7 + c) % 4 === 0) {
-            const px = c * CELL, py = r * CELL;
-            const ph = Math.sin(now / 400 + c * 0.5) * 2;
+        for (let c = 0; c < COLS; c++)
+          if (ter[r][c] === 3 && (r * 3 + c) % 8 === wFrame) {
             ctx.beginPath();
-            ctx.moveTo(px + 2, py + CELL / 2 + ph);
-            ctx.quadraticCurveTo(px + CELL / 2, py + CELL / 2 - 2 + ph, px + CELL - 2, py + CELL / 2 + ph);
+            ctx.moveTo(c * CELL + 2, r * CELL + CELL / 2);
+            ctx.lineTo(c * CELL + CELL - 2, r * CELL + CELL / 2);
             ctx.stroke();
           }
-        }
     }
-    if (ter) {
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (ter[r][c] === 4) {
-            const cx = c * CELL + CELL / 2, cy = c * CELL && r * CELL + CELL / 2;
-            const baseY = r * CELL + CELL;
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
-            ctx.beginPath();
-            ctx.ellipse(cx + 2, baseY - 2, CELL * 0.7, CELL * 0.3, 0, 0, Math.PI * 2);
-            ctx.fill();
-            const mg = ctx.createLinearGradient(cx, r * CELL, cx, baseY);
-            mg.addColorStop(0, "#9ca3af");
-            mg.addColorStop(1, "#5b6470");
-            ctx.fillStyle = mg;
-            ctx.beginPath();
-            ctx.moveTo(cx, r * CELL + 1);
-            ctx.lineTo(c * CELL + CELL - 1, baseY - 1);
-            ctx.lineTo(c * CELL + 1, baseY - 1);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = "#f1f5f9";
-            ctx.beginPath();
-            ctx.moveTo(cx, r * CELL + 1);
-            ctx.lineTo(cx + 3.5, r * CELL + 6);
-            ctx.lineTo(cx - 3.5, r * CELL + 6);
-            ctx.closePath();
-            ctx.fill();
-          }
-        }
-    }
-    for (let i = 0; i < 26; i++) {
-      const c = i * 313 % COLS, r = i * 191 % ROWS;
-      if (ter && ter[r][c] >= 3) continue;
-      const fx2 = c * CELL + i * 71 % CELL, fy2 = r * CELL + i * 37 % CELL;
-      ctx.fillStyle = ["#fde047", "#f9a8d4", "#e0e7ff", "#fdba74"][i % 4];
-      for (let p2 = 0; p2 < 5; p2++) {
-        const pa = p2 / 5 * Math.PI * 2;
-        ctx.beginPath();
-        ctx.arc(fx2 + Math.cos(pa) * 2, fy2 + Math.sin(pa) * 2, 1.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = "#facc15";
-      ctx.beginPath();
-      ctx.arc(fx2, fy2, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const fc = getFloodCache();
     for (const player of [1, 2]) {
-      const outside = computeOutsideMap(g, player);
+      const outside = player === 1 ? fc.outsideP1 : fc.outsideP2;
+      if (!outside) continue;
       const ownWall = player === 1 ? WALL1 : WALL2;
-      const fill = player === 1 ? "rgba(56,120,230,0.30)" : "rgba(220,50,50,0.30)";
-      ctx.fillStyle = fill;
+      ctx.fillStyle = player === 1 ? "rgba(56,120,230,0.28)" : "rgba(220,50,50,0.28)";
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
-          const idx = r * COLS + c;
-          if (!outside[idx] && g[r][c] !== ownWall) {
+          if (!outside[r * COLS + c] && g[r][c] !== ownWall)
             ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
-          }
         }
     }
     for (let r = 0; r < ROWS; r++) {
@@ -1515,9 +1520,9 @@ window.FortressApp = function Fortress() {
     }
     for (const player of [1, 2]) {
       const ct = castles.current[player];
-      const cx = ct.c * CELL + CELL / 2, cy = ct.r * CELL + CELL / 2;
-      const open = !isCastleClosed(g, player, ct);
-      drawCastle(ctx, cx, cy, player, open, now);
+      const cx2 = ct.c * CELL + CELL / 2, cy2 = ct.r * CELL + CELL / 2;
+      const open2 = player === 1 ? !fc.castleClosedP1 : !fc.castleClosedP2;
+      drawCastle(ctx, cx2, cy2, player, open2, now);
     }
     if (phase_r.current === "build") {
       for (const player of [1, 2]) {
