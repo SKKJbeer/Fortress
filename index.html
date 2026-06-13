@@ -758,6 +758,7 @@ window.FortressApp = function Fortress() {
     if (s.terrainSeed && s.terrainSeed !== terrainSeed.current) {
       terrainSeed.current = s.terrainSeed;
       terrain.current = generateTerrainFromSeed(s.terrainSeed);
+      bgDirty.current = true;
     }
     castles.current = s.castles || castles.current;
     cannons.current = s.cannons || cannons.current;
@@ -959,32 +960,12 @@ window.FortressApp = function Fortress() {
     setScreen("menu");
   }
   useEffect(() => {
-    const handler = () => {
-      var _a;
-      if (online.current && myRole.current === 1 && mpCodeRef.current) {
-        (_a = navigator.sendBeacon) == null ? void 0 : _a.call(
-          navigator,
-          `${FB_URL}/games/${mpCodeRef.current}.json`,
-          new Blob(["null"], { type: "application/json" })
-        );
-      }
-    };
     const onVisibility = () => {
       if (!mpChannel.current) return;
-      if (document.hidden) {
-        mpChannel.current._bgMode = true;
-      } else {
-        mpChannel.current._bgMode = false;
-      }
+      mpChannel.current._bgMode = document.hidden;
     };
-    window.addEventListener("beforeunload", handler);
-    window.addEventListener("pagehide", handler);
     document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.removeEventListener("beforeunload", handler);
-      window.removeEventListener("pagehide", handler);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
   function initGrid() {
     const terObj = generateTerrain();
