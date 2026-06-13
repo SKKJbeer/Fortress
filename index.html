@@ -658,7 +658,7 @@ window.FortressApp = function Fortress() {
   });
   const gridVersion = useRef(0);
   function setGrid(newG) {
-    setGrid(newG);
+    grid.current = newG;
     gridVersion.current++;
   }
   function getFloodCache() {
