@@ -1241,7 +1241,7 @@ window.FortressApp = function Fortress() {
       y: (e.clientY - rect.top) / rect.height * H
     };
   }, []);
-  const LIFT_ROWS = 3;
+  const LIFT_ROWS = 6;
   function liftedGhost(player, x, y) {
     const gc = Math.floor(x / CELL);
     const gr = Math.floor(y / CELL) - LIFT_ROWS;
