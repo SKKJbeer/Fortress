@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.7</title>
+  <title>FORTRESS v2.8.2</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -28,7 +28,7 @@
   <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, update, remove, get, onValue, off }
+    import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     try {
       const app = initializeApp({
@@ -36,7 +36,7 @@
         projectId: "fortress-cbe30",
       });
       const db = getDatabase(app);
-      window.__fb = { db, ref, set, update, remove, get, onValue, off };
+      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction };
       window.dispatchEvent(new Event("fb-ready"));
     } catch (e) {
       console.error("Firebase init failed:", e);
@@ -191,6 +191,26 @@ const fb = {
       } catch (e) {
       }
     } };
+  },
+  // Atomare Slot-Reservierung per Transaktion. Schreibt joinData NUR wenn der
+  // Slot noch leer ist. Gibt true zurück bei Erfolg, false wenn schon belegt.
+  // Verhindert, dass zwei gleichzeitig beitretende Gäste denselben Slot bekommen.
+  async reserve(path, joinData) {
+    const s = sdk();
+    if (!s || !s.runTransaction) {
+      _fbError = "Transaktion nicht verf\xFCgbar";
+      return false;
+    }
+    try {
+      const res = await s.runTransaction(s.ref(s.db, path), (current) => {
+        if (current != null) return;
+        return joinData;
+      });
+      return !!(res && res.committed);
+    } catch (e) {
+      _fbError = e.message;
+      return false;
+    }
   }
 };
 async function getFirebase() {
@@ -1242,8 +1262,10 @@ window.FortressApp = function Fortress() {
     if (s.playerInfo) playerInfo.current = s.playerInfo;
     if (online.current && myRole.current !== 1 && s.phase !== lastSeenPhase.current) {
       lastSeenPhase.current = s.phase;
-      activeBuild.current = { 1: null, 2: null };
-      activeDrag.current = { 1: null, 2: null };
+      const np = s.numPlayers || numPlayersRef.current || 2;
+      const pl = np === 3 ? [1, 2, 3] : [1, 2];
+      activeBuild.current = pl.reduce((o, p) => (o[p] = null, o), {});
+      activeDrag.current = pl.reduce((o, p) => (o[p] = null, o), {});
       pointers.current.clear();
       if (s.phase === "build") showWarn("\u{1F9F1} Bauphase \u2014 schlie\xDFe deine Mauern!");
       else if (s.phase === "shoot") showWarn("\u{1F3AF} Feuer frei \u2014 zieh zum Zielen!");
@@ -1332,6 +1354,19 @@ window.FortressApp = function Fortress() {
     if (a.type === "leave") {
       handlePlayerLeft(actingPlayer);
       return;
+    }
+    if (!joinedGuests.current[actingPlayer]) {
+      joinedGuests.current[actingPlayer] = true;
+      if (!playerInfo.current[actingPlayer]) {
+        playerInfo.current[actingPlayer] = {
+          name: "Gast " + actingPlayer,
+          wappen: actingPlayer === 2 ? "\u265A" : "\u265C",
+          color: actingPlayer === 2 ? "#dc2626" : "#059669"
+        };
+      }
+    }
+    if (!pieces.current[actingPlayer]) {
+      pieces.current[actingPlayer] = { cells: randomShape(), ghostR: null, ghostC: null };
     }
     if (a.n && a.n <= (guestActionApplied.current[actingPlayer] || 0)) return;
     guestActionApplied.current[actingPlayer] = a.n || 0;
@@ -1478,30 +1513,27 @@ window.FortressApp = function Fortress() {
     const np = data.numPlayers || 2;
     numPlayersRef.current = np;
     setNumPlayers(np);
-    let role = 2;
-    if (data.guestAction2 != null && np === 3) role = 3;
-    if (data.guestAction2 != null && np === 2) {
-      setMpError("Dieses Spiel ist bereits voll.");
-      return;
+    const joinPayload = (role2) => JSON.stringify({
+      type: "join",
+      n: Date.now(),
+      name: (profile == null ? void 0 : profile.name) || "Gast " + role2,
+      wappen: (profile == null ? void 0 : profile.wappen) || (role2 === 2 ? "\u265A" : "\u265C"),
+      color: (profile == null ? void 0 : profile.color) || (role2 === 2 ? "#dc2626" : "#059669")
+    });
+    let role = 0;
+    if (await fb.reserve(`games/${code}/guestAction2`, joinPayload(2))) {
+      role = 2;
+    } else if (np === 3 && await fb.reserve(`games/${code}/guestAction3`, joinPayload(3))) {
+      role = 3;
     }
-    if (np === 3 && data.guestAction2 != null && data.guestAction3 != null) {
-      setMpError("Dieses Spiel ist bereits voll (3 Spieler).");
+    if (!role) {
+      setMpError(np === 3 ? "Dieses Spiel ist bereits voll (3 Spieler)." : "Dieses Spiel ist bereits voll.");
       return;
     }
     mpCodeRef.current = code;
     myRole.current = role;
     online.current = true;
     setMpCode(code);
-    const slot = "guestAction" + role;
-    await fb.patch(`games/${code}`, {
-      [slot]: JSON.stringify({
-        type: "join",
-        n: Date.now(),
-        name: (profile == null ? void 0 : profile.name) || "Gast " + role,
-        wappen: (profile == null ? void 0 : profile.wappen) || (role === 2 ? "\u265A" : "\u265C"),
-        color: (profile == null ? void 0 : profile.color) || (role === 2 ? "#dc2626" : "#059669")
-      })
-    });
     startPolling(code, role);
     setMpScreen("waiting");
   }
@@ -2642,13 +2674,7 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     flexShrink: 0
-  } }, "\u270F\uFE0F")), /* @__PURE__ */ React.createElement("div", { style: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 14,
-    fontSize: 12
-  } }, /* @__PURE__ */ React.createElement("span", { style: { background: "rgba(59,130,246,0.15)", border: "1px solid rgba(96,165,250,0.3)", borderRadius: 20, padding: "2px 10px", color: "#93c5fd" } }, "\u2654 Blau"), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", alignSelf: "center" } }, "vs"), /* @__PURE__ */ React.createElement("span", { style: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 20, padding: "2px 10px", color: "#fca5a5" } }, "\u265A Rot")), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
+  } }, "\u270F\uFE0F")), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
     ["\u{1F3F0}", "Start", "Platziere zu Beginn 2 Kanonen rund um deine Burg, dann ummauere alles dicht."],
     ["\u{1F9F1}", "Bauen (25s)", "Tippe = zuf\xE4lliges Teil platzieren (auch 1\xD71). Burg & Kanonen l\xFCckenlos einmauern \u2014 nicht auf den Fluss!"],
     ["\u{1F4A3}", "Schie\xDFen (30s)", "Schleuder: Finger von der Kanone wegziehen, Zielkreuz zeigt den Einschlag. Nur eingebaute Kanonen feuern!"],
@@ -2736,7 +2762,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.8.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3190,23 +3216,24 @@ window.FortressApp = function Fortress() {
     gap: 6,
     boxShadow: "0 0 12px rgba(59,130,246,0.15)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#93c5fd", fontWeight: 700, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#dbeafe", flexShrink: 0 } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px" } }, /* @__PURE__ */ React.createElement("span", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#93c5fd", fontWeight: 700, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#dbeafe", flexShrink: 0 } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "34%" } }, /* @__PURE__ */ React.createElement("span", { style: {
     background: phase === "build" ? "rgba(74,222,128,0.12)" : phase === "shoot" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.14)",
     border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.3)" : phase === "shoot" ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.35)"}`,
     borderRadius: 6,
-    padding: "1px 8px",
-    fontSize: 10,
+    padding: "1px 6px",
+    fontSize: 9,
     fontWeight: 700,
     color: phase === "build" ? "#4ade80" : phase === "shoot" ? "#f87171" : "#fbbf24",
-    marginRight: 8
-  } }, phase === "build" ? "\u{1F9F1} BAUEN" : phase === "shoot" ? "\u{1F4A3} FEUER" : phase === "setup" ? "\u{1F3F0} START" : "\u{1F3F0} KANONE"), /* @__PURE__ */ React.createElement("span", { style: {
-    fontSize: 30,
+    display: "inline-block",
+    marginBottom: 1
+  } }, phase === "build" ? "\u{1F9F1} BAUEN" : phase === "shoot" ? "\u{1F4A3} FEUER" : phase === "setup" ? "\u{1F3F0} START" : "\u{1F3F0} KANONE"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: 28,
     fontWeight: 900,
     color: timerColor,
     textShadow: timer <= 5 ? `0 0 14px ${timerColor}` : "none",
     fontVariantNumeric: "tabular-nums",
-    verticalAlign: "middle"
-  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#334155", marginLeft: 6 } }, "R", round), online.current && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#4ade80", marginTop: 2, fontWeight: 700 } }, "\u{1F310} ONLINE \xB7 DU = ", myRole.current === 1 ? "\u2654 BLAU" : "\u265A ROT")), /* @__PURE__ */ React.createElement("div", { style: {
+    lineHeight: 1
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, "R", round))), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
     background: "linear-gradient(135deg, rgba(220,38,38,0.25), rgba(127,29,29,0.15))",
@@ -3218,7 +3245,7 @@ window.FortressApp = function Fortress() {
     gap: 6,
     boxShadow: "0 0 12px rgba(239,68,68,0.15)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fee2e2", flexShrink: 0 } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fee2e2", flexShrink: 0 } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(135deg, rgba(5,150,105,0.25), rgba(6,95,70,0.15))",
     border: "1px solid rgba(52,211,153,0.4)",
     borderRadius: 10,
@@ -3227,8 +3254,9 @@ window.FortressApp = function Fortress() {
     alignItems: "center",
     gap: 8,
     boxShadow: "0 0 12px rgba(16,185,129,0.15)",
+    maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, online.current ? ((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "\u265C" : "\u265C"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700 } }, online.current ? ((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3" : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#d1fae5" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? ((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "\u265C" : "\u265C"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? " (Du)" : "") : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#d1fae5", flexShrink: 0 } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     top: 70,
     left: "50%",

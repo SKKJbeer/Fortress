@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.7)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.8.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -389,3 +389,25 @@ und beschiessen danach gegenseitig ihre Festungen.
   Gäste den Endzustand sicher empfangen. Result-Screen zeigt “Ein Spieler hat das
   Spiel verlassen”. sanitizeAction erlaubt “leave”. Hinweis: deckt sauberes
   Beenden ab; harter Verbindungsabbruch (App-Crash) bräuchte später Heartbeat.
+- **v2.8**: UI-Anpassungen. (1) HUD-Spielerbalken werden nicht mehr abgeschnitten:
+  Mittelblock (Phase+Timer) verschlankt (kein “DU = BLAU”-Text mehr, maxWidth 34%,
+  Phase-Badge über Timer gestapelt), Namen elliptisch gekürzt statt überlaufend,
+  eigener Spieler im Online-Modus mit “(Du)” markiert (alle 3 Balken). 3er-Balken
+  ebenfalls breitenbegrenzt. (2) Obsolete “♔ Blau vs ♚ Rot”-Badges aus dem
+  Hauptmenü entfernt (haben durch 2/3-Spieler-Wahl keine feste Bedeutung mehr).
+- **v2.8.1**: 3-Spieler-Online Platzierungs-Bug behoben. Ursache war eine Race
+  Condition beim Beitreten: lasen beide Gäste fast gleichzeitig den Snapshot,
+  bekamen beide Rolle P2 → P3-Slot blieb leer, ein Gast konnte nichts platzieren.
+  Fix: atomare Slot-Reservierung per Firebase-Transaktion (fb.reserve →
+  runTransaction, neu im SDK-Import). Erst guestAction2 versuchen, dann
+  guestAction3 — schreibt nur wenn Slot leer. Zusätzlich Sicherheitsnetz im Host:
+  Aktion von noch nicht registriertem Gast registriert ihn nach + sichert
+  pieces-Struktur, statt die Aktion zu verwerfen.
+  ⚠️ index.html SDK-Header importiert jetzt runTransaction (Build-Header beibehalten).
+- **v2.8.2**: ECHTE Ursache des 3er-Online-Platzierungsbugs gefunden (Gäste
+  nacheinander verbunden, also keine Join-Race). Beim Gast-seitigen
+  Phasenwechsel-Reset in applyState wurden activeBuild/activeDrag hart auf
+  { 1:null, 2:null } gesetzt — Slot für P3 FEHLTE. Dadurch hatte P3 nach dem
+  ersten Phasenwechsel keinen gültigen Bau-Pointer-Slot und konnte nichts mehr
+  platzieren. Fix: Reset für alle aktiven Spieler (modusabhängig 1/2/3). Die
+  Transaktions-Reservierung aus v2.8.1 bleibt als zusätzliche Absicherung.
