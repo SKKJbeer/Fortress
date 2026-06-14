@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.3)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.4)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -23,7 +23,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 ## 2. SPIELFELD
 
 - Top-Down-Sicht, prozedural generierte Landschaft
-- Grid: 36 Spalten × 56 Zeilen, Zellgröße 16px (W=576, H=896)
+- Grid: 44 Spalten × 68 Zeilen, Zellgröße 14px (W=616, H=952). Ab v2.4
+  vergrößert (vorher 36×56) für mehr Baufläche.
 - Terrain-Typen: Wiese (3 Grüntöne), Fluss, Berge (mit Schneekappe), Blumen
 - **Fluss** = EINE geschwungene horizontale Grenze; trennt die Baugebiete:
   - Spieler 1 (Blau, ♔) baut NUR oberhalb des Flusses
@@ -347,3 +348,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   recordResult(won, mode) bucht in den richtigen Topf. Lokale Spiele zählen
   weiterhin GAR NICHT (nur online). 3-Spieler-Liste füllt sich erst mit dem
   künftigen 3-Spieler-Online-Modus.
+- **v2.4**: (1) 3-Spieler-Bauzonen per Land-Flood-Fill von den Burgen
+  (`buildSectorMap`) statt Winkel-Sektor → man kann exakt bis ans Wasser bauen,
+  keine toten 2-3-Zellen-Streifen mehr an den Grenzen. (2) Spielfeld vergrößert
+  auf 44×68 (CELL 14) für mehr Baufläche in allen Modi.

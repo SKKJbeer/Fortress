@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.3</title>
+  <title>FORTRESS v2.4</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -250,9 +250,9 @@ function sanitizeAction(raw) {
   if (a.ty !== void 0 && (typeof a.ty !== "number" || a.ty < 0 || a.ty > H * 2)) return null;
   return a;
 }
-const CELL = 16;
-const COLS = 36;
-const ROWS_HALF = 28;
+const CELL = 14;
+const COLS = 44;
+const ROWS_HALF = 34;
 const ROWS = ROWS_HALF * 2;
 const W = COLS * CELL;
 const H = ROWS * CELL;
@@ -424,11 +424,38 @@ function generateTerrain3FromSeed(seed) {
   }
   return { grid: t, mode3: true };
 }
+function buildSectorMap(terObj, castlePos) {
+  const t = terObj.grid;
+  const map = new Int8Array(ROWS * COLS).fill(0);
+  for (const p of [1, 2, 3]) {
+    const cp = castlePos[p];
+    if (!cp) continue;
+    const stack = [];
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++) {
+        const r = cp.r + dr, c = cp.c + dc;
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) stack.push(r * COLS + c);
+      }
+    while (stack.length) {
+      const idx = stack.pop();
+      if (map[idx]) continue;
+      const r = Math.floor(idx / COLS), c = idx % COLS;
+      if (t[r][c] === 3) continue;
+      map[idx] = p;
+      if (r > 0) stack.push(idx - COLS);
+      if (r < ROWS - 1) stack.push(idx + COLS);
+      if (c > 0) stack.push(idx - 1);
+      if (c < COLS - 1) stack.push(idx + 1);
+    }
+  }
+  return map;
+}
 function isBuildable(terrainObj, r, c, player) {
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
   const t = terrainObj.grid;
   if (t[r][c] === 3) return false;
   if (terrainObj.mode3) {
+    if (terrainObj.sectorMap) return terrainObj.sectorMap[r * COLS + c] === player;
     return sectorOf(r, c) === player;
   }
   if (player === 1 && r >= terrainObj.borderRow[c]) return false;
@@ -1408,6 +1435,9 @@ window.FortressApp = function Fortress() {
           const r = castle.r + dr, c = castle.c + dc;
           if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = castleMark;
         }
+    }
+    if (is3) {
+      terObj.sectorMap = buildSectorMap(terObj, castles.current);
     }
     setGrid(g);
   }
@@ -2510,7 +2540,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
