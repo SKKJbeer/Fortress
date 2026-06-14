@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.0.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.0.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -198,7 +198,12 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Hauptmenü kompakt** (muss auf einen Screen passen): Titel → Profil-Karte →
   kurze vs-Zeile → ausklappbare Anleitung (`showHelp`, standardmäßig zu) →
   Spiel-Buttons (Lokal/Online) → Versionsanzeige
-- Result-Screen: nur Host darf “Nächste Runde”/“Neues Spielfeld”, Gast wartet
+- Result-Screen: nur Host darf “Nächste Runde”/“Neues Spielfeld” (steuert die
+  nächste Runde). Der Gast sieht “Warte auf Host”, hat aber IMMER auch einen
+  eigenen “🏠 Hauptmenü”-Button zum Verlassen.
+- HUD oben: drei Flex-Bereiche (P1 links / Timer mitte fest / P2 rechts). Namen
+  per ellipsis gekürzt, flex 1 1 0 + min-width 0, damit lange Namen die mittlere
+  Timer-Anzeige NICHT überlappen.
 - Online-Result zeigt “Du gewinnst/verlierst” je nach eigener Rolle
 - Versionsanzeige im Menü gut lesbar (#64748b), Format “⚔️ FORTRESS · Version X.Y.Z”
 
@@ -257,3 +262,6 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v2.0.1**: Hauptmenü kompakter — Anleitung ist jetzt ausklappbar (standardmäßig
   zu, “Wie spielt man?”-Toggle), Königreich-Badges gekürzt, Abstände reduziert,
   damit Profil-Karte + Spiel-Buttons wieder auf einen Screen passen.
+- **v2.0.2**: HUD-Overlap-Fix — Spielernamen oben überlappten die Timer-Anzeige;
+  jetzt sauberes Flex-Layout mit ellipsis. Gast bekommt auf dem Online-Result-
+  Screen einen eigenen “Hauptmenü”-Button (vorher nur Warte-Hinweis).
