@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.5.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.5.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -370,3 +370,9 @@ und beschiessen danach gegenseitig ihre Festungen.
   (2–3 Geräte)”, Online-Screen-Text “zu zweit oder zu dritt”. Die 2/3-Spieler-
   Wahl war schon da (im Online-Screen über “Spiel erstellen”), nur missverständlich
   beschriftet.
+- **v2.5.2**: (1) Anleitung-Aufklapper ist jetzt ein klar sichtbarer Button
+  (📖 Rahmen + Icon) statt unscheinbarem Link. (2) Leaderboard-Overlay hat einen
+  “🧹 Doppelte entfernen”-Button: sammelt alle Einträge mit dem eigenen Namen,
+  merged Stats (Maximum je Feld), behält den aktuellen id-Eintrag, löscht die
+  anderen (cleanupMyDuplicates). Behebt die durch den alten id-Bug entstandenen
+  Mehrfach-Einträge.

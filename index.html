@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.5.1</title>
+  <title>FORTRESS v2.5.2</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -909,6 +909,51 @@ window.FortressApp = function Fortress() {
   function switchLbMode(mode) {
     setLbMode(mode);
     if (lbRaw) applyLbMode(lbRaw, mode);
+  }
+  const [cleanupBusy, setCleanupBusy] = useState(false);
+  async function cleanupMyDuplicates() {
+    if (!profile || !profile.id || !MP_CONFIGURED) return;
+    setCleanupBusy(true);
+    try {
+      if (!sdk()) await getFirebase();
+      const data = await fb.get("leaderboard");
+      if (!data) {
+        setCleanupBusy(false);
+        return;
+      }
+      const myName = (profile.name || "").trim().toLowerCase();
+      const mine = Object.entries(data).filter(([id]) => id !== "ping").map(([id, v]) => __spreadValues({ id }, v)).filter((e) => (e.name || "").trim().toLowerCase() === myName);
+      if (mine.length <= 1) {
+        setCleanupBusy(false);
+        setLbRaw(null);
+        openLeaderboard();
+        return;
+      }
+      const merged = {
+        name: profile.name,
+        wappen: profile.wappen,
+        color: profile.color,
+        wins: Math.max(...mine.map((e) => e.wins || 0)),
+        losses: Math.max(...mine.map((e) => e.losses || 0)),
+        games: Math.max(...mine.map((e) => e.games || 0)),
+        wins3: Math.max(...mine.map((e) => e.wins3 || 0)),
+        losses3: Math.max(...mine.map((e) => e.losses3 || 0)),
+        games3: Math.max(...mine.map((e) => e.games3 || 0)),
+        updatedAt: Date.now()
+      };
+      await fb.set(`leaderboard/${profile.id}`, merged);
+      for (const e of mine) {
+        if (e.id !== profile.id) await fb.delete(`leaderboard/${e.id}`);
+      }
+      saveProfile(__spreadProps(__spreadValues({}, profile), {
+        stats: { wins: merged.wins, losses: merged.losses, games: merged.games },
+        stats3: { wins: merged.wins3, losses: merged.losses3, games: merged.games3 }
+      }));
+      setLbRaw(null);
+      await openLeaderboard();
+    } catch (e) {
+    }
+    setCleanupBusy(false);
   }
   const [mpScreen, setMpScreen] = useState(null);
   const [mpCode, setMpCode] = useState("");
@@ -2526,14 +2571,21 @@ window.FortressApp = function Fortress() {
     padding: "11px 10px",
     textAlign: "left"
   } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, marginBottom: 3 } }, i), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, color: "#94a3b8", marginBottom: 3, fontSize: 11 } }, t), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", lineHeight: 1.45 } }, d)))), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowHelp((h) => !h), style: {
-    background: "transparent",
-    color: "#64748b",
-    border: "none",
-    fontSize: 12,
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    background: showHelp ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.05)",
+    color: showHelp ? "#93c5fd" : "#cbd5e1",
+    border: showHelp ? "1px solid rgba(96,165,250,0.35)" : "1px solid rgba(255,255,255,0.12)",
+    fontSize: 14,
+    fontWeight: 600,
     cursor: "pointer",
-    marginBottom: 14,
-    textDecoration: "underline"
-  } }, showHelp ? "\u25B2 Anleitung ausblenden" : "\u25BE Wie spielt man?"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    marginBottom: 16,
+    padding: "12px",
+    borderRadius: 12
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, "\u{1F4D6}"), showHelp ? "Anleitung ausblenden" : "Wie spielt man?", /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, opacity: 0.7 } }, showHelp ? "\u25B2" : "\u25BC")), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     numPlayersRef.current = 2;
     setNumPlayers(2);
@@ -2595,7 +2647,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.5.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.5.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -2726,8 +2778,8 @@ window.FortressApp = function Fortress() {
       justifyContent: "center",
       fontSize: 18
     } }, e.wappen || "\u2654"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, e.games, " Spiele \xB7 ", quote, "% Quote")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#4ade80" } }, e.wins), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "Siege")));
-  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
-    marginTop: 12,
+  })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    flex: 1,
     background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
     border: "1px solid rgba(255,255,255,0.12)",
@@ -2736,7 +2788,18 @@ window.FortressApp = function Fortress() {
     fontWeight: 600,
     borderRadius: 10,
     cursor: "pointer"
-  } }, "\u{1F504} Aktualisieren"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F504} Aktualisieren"), /* @__PURE__ */ React.createElement("button", { onClick: cleanupMyDuplicates, disabled: cleanupBusy, style: {
+    flex: 1,
+    background: "rgba(220,38,38,0.12)",
+    color: "#fca5a5",
+    border: "1px solid rgba(220,38,38,0.3)",
+    padding: "11px",
+    fontSize: 13,
+    fontWeight: 600,
+    borderRadius: 10,
+    cursor: cleanupBusy ? "default" : "pointer",
+    opacity: cleanupBusy ? 0.6 : 1
+  } }, cleanupBusy ? "\u2026" : "\u{1F9F9} Doppelte entfernen")))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
