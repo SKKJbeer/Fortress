@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.1.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -234,7 +234,9 @@ und beschiessen danach gegenseitig ihre Festungen.
   losses, games, updatedAt }
 - Jeder Spieler hat eine stabile `id` im Profil (Leaderboard-Identität)
 - `pushLeaderboard(profile)`: schreibt/aktualisiert den eigenen Eintrag — wird bei
-  `recordResult()` (nach jedem Online-Spiel) und bei `saveProfileEditor()` aufgerufen
+  `recordResult()` (nach jedem Online-Spiel), bei `saveProfileEditor()` und
+  EINMAL beim App-Start (useEffect on mount, sobald Firebase bereit) aufgerufen.
+  Letzteres trägt bestehende Stats (vor v2.1) nach.
 - `openLeaderboard()`: liest `/leaderboard`, filtert `ping` + Einträge mit games=0,
   **sortiert primär nach Siegen, dann nach Spielen** (Tiebreaker)
 - **Sortierung laut Vorgabe: nach Siegen, Quote nur als Zusatzanzeige** (nicht
@@ -288,3 +290,6 @@ und beschiessen danach gegenseitig ihre Festungen.
   Medaillen-Rängen, eigener Eintrag hervorgehoben. Profil bekam stabile ID.
   Stats werden nach jedem Online-Spiel hochgeladen. ⚠️ Firebase-Rules müssen für
   /leaderboard erweitert werden.
+- **v2.1.1**: Bestehende Stats werden beim App-Start einmalig ins Leaderboard
+  hochgeladen (vorher wurden nur Spiele AB v2.1 gezählt). So erscheinen schon
+  gespielte Partien sofort in der Bestenliste.
