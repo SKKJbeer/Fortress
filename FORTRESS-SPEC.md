@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.0.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -212,8 +212,9 @@ und beschiessen danach gegenseitig ihre Festungen.
 ## 11. SPIELER-PROFIL (ab v2.0)
 
 - Persistent via **localStorage** (`fortress_profile`) — funktioniert in der PWA
-- Felder: `name` (max 16 Zeichen), `wappen` (Emoji aus WAPPEN-Pool), `color`
-  (aus PROFILE_COLORS), `stats` { wins, losses, games }
+- Felder: `id` (stabil, für Leaderboard-Identität), `name` (max 16 Zeichen),
+  `wappen` (Emoji aus WAPPEN-Pool), `color` (aus PROFILE_COLORS),
+  `stats` { wins, losses, games }
 - **Erstanlage**: beim ersten Start wird der Editor automatisch gezeigt (Pflicht)
 - **Bearbeiten**: über ✏️-Button in der Profil-Karte im Hauptmenü
 - **Profil-Karte** im Menü: Wappen, Name, Statistik (Siege/Niederlagen/Spiele/Quote)
@@ -223,8 +224,25 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Namen im Spiel**: Beim Online-Spiel werden Name + Wappen über `playerInfo` im
   State (Host) bzw. join-Aktion (Gast→Host) ausgetauscht und im HUD angezeigt.
   Lokal bleibt es bei “P1”/“P2”.
-- **Geplant (künftige Versionen)**: weitere Individualisierung, Ladder-/Bestenliste
-  (würde Firebase-Aggregation über alle Spieler brauchen).
+- **Geplant (künftige Versionen)**: weitere Individualisierung.
+
+-----
+
+## 12. LEADERBOARD / BESTENLISTE (ab v2.1)
+
+- Global über Firebase: `/leaderboard/{playerId}` → { name, wappen, color, wins,
+  losses, games, updatedAt }
+- Jeder Spieler hat eine stabile `id` im Profil (Leaderboard-Identität)
+- `pushLeaderboard(profile)`: schreibt/aktualisiert den eigenen Eintrag — wird bei
+  `recordResult()` (nach jedem Online-Spiel) und bei `saveProfileEditor()` aufgerufen
+- `openLeaderboard()`: liest `/leaderboard`, filtert `ping` + Einträge mit games=0,
+  **sortiert primär nach Siegen, dann nach Spielen** (Tiebreaker)
+- **Sortierung laut Vorgabe: nach Siegen, Quote nur als Zusatzanzeige** (nicht
+  als Sortierkriterium)
+- UI: eigenes Overlay (Button “🏆 Bestenliste” im Menü), Rang mit Medaillen
+  (🥇🥈🥉) für Top 3, eigener Eintrag hervorgehoben (”(Du)”), Aktualisieren-Button
+- **Firebase Security Rules müssen `/leaderboard` erlauben** (read: alle,
+  write: validiert) — siehe Hinweis unten
 
 -----
 
@@ -265,3 +283,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v2.0.2**: HUD-Overlap-Fix — Spielernamen oben überlappten die Timer-Anzeige;
   jetzt sauberes Flex-Layout mit ellipsis. Gast bekommt auf dem Online-Result-
   Screen einen eigenen “Hauptmenü”-Button (vorher nur Warte-Hinweis).
+- **v2.1**: Globales Leaderboard/Bestenliste eingeführt — über Firebase
+  `/leaderboard`, sortiert nach Siegen (Quote als Zusatz), eigenes Overlay mit
+  Medaillen-Rängen, eigener Eintrag hervorgehoben. Profil bekam stabile ID.
+  Stats werden nach jedem Online-Spiel hochgeladen. ⚠️ Firebase-Rules müssen für
+  /leaderboard erweitert werden.

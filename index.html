@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.0.2</title>
+  <title>FORTRESS v2.1</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -646,6 +646,7 @@ window.FortressApp = function Fortress() {
       if (raw) {
         const p = JSON.parse(raw);
         return {
+          id: p.id || "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
           name: p.name || "",
           wappen: p.wappen || "\u2654",
           color: p.color || "#2563eb",
@@ -669,7 +670,9 @@ window.FortressApp = function Fortress() {
     const stats = __spreadProps(__spreadValues({}, profile.stats), { games: profile.stats.games + 1 });
     if (won === true) stats.wins += 1;
     else if (won === false) stats.losses += 1;
-    saveProfile(__spreadProps(__spreadValues({}, profile), { stats }));
+    const updated = __spreadProps(__spreadValues({}, profile), { stats });
+    saveProfile(updated);
+    pushLeaderboard(updated);
   }
   const [editName, setEditName] = useState("");
   const [editWappen, setEditWappen] = useState("\u2654");
@@ -684,13 +687,54 @@ window.FortressApp = function Fortress() {
   }
   function saveProfileEditor() {
     const name = editName.trim().slice(0, 16) || "Spieler";
-    saveProfile({
+    const id = (profile == null ? void 0 : profile.id) || "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const p = {
+      id,
       name,
       wappen: editWappen,
       color: editColor,
       stats: (profile == null ? void 0 : profile.stats) || { wins: 0, losses: 0, games: 0 }
-    });
+    };
+    saveProfile(p);
     setShowProfileEditor(false);
+    pushLeaderboard(p);
+  }
+  const [leaderboard, setLeaderboard] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  async function pushLeaderboard(p) {
+    if (!p || !p.id || !MP_CONFIGURED) return;
+    try {
+      const s = sdk();
+      if (!s) {
+        await getFirebase();
+      }
+      await fb.set(`leaderboard/${p.id}`, {
+        name: p.name,
+        wappen: p.wappen,
+        color: p.color,
+        wins: p.stats.wins,
+        losses: p.stats.losses,
+        games: p.stats.games,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+    }
+  }
+  async function openLeaderboard() {
+    setShowLeaderboard(true);
+    setLeaderboard(null);
+    if (!MP_CONFIGURED) {
+      setLeaderboard([]);
+      return;
+    }
+    if (!sdk()) await getFirebase();
+    const data = await fb.get("leaderboard");
+    if (!data) {
+      setLeaderboard([]);
+      return;
+    }
+    const list = Object.entries(data).filter(([id]) => id !== "ping").map(([id, v]) => __spreadValues({ id }, v)).filter((e) => e.games > 0).sort((a, b) => b.wins - a.wins || b.games - a.games);
+    setLeaderboard(list);
   }
   const [mpScreen, setMpScreen] = useState(null);
   const [mpCode, setMpCode] = useState("");
@@ -2170,7 +2214,18 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.0.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    width: "100%",
+    marginTop: 10,
+    background: "rgba(202,138,4,0.12)",
+    color: "#fde68a",
+    border: "1px solid rgba(202,138,4,0.35)",
+    padding: "13px",
+    fontSize: 14,
+    fontWeight: 700,
+    borderRadius: 12,
+    cursor: "pointer"
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -2240,7 +2295,68 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, "Abbrechen"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "Abbrechen"))), showLeaderboard && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(5,8,15,0.94)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1100,
+    padding: 20
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
+    border: "1px solid rgba(202,138,4,0.3)",
+    borderRadius: 16,
+    padding: 22,
+    maxWidth: 420,
+    width: "100%",
+    maxHeight: "85vh",
+    display: "flex",
+    flexDirection: "column"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("h2", { style: { margin: 0, fontSize: 20 } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowLeaderboard(false), style: {
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "#cbd5e1",
+    borderRadius: 8,
+    padding: "6px 12px",
+    fontSize: 14,
+    cursor: "pointer"
+  } }, "\u2715")), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 12, margin: "0 0 14px" } }, "Sortiert nach Siegen \xB7 weltweit"), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, "L\xE4dt\u2026"), leaderboard && leaderboard.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, "Noch keine Eintr\xE4ge \u2014 spiele ein Online-Spiel, um dich zu platzieren!"), leaderboard && leaderboard.map((e, i) => {
+    const isMe = profile && e.id === profile.id;
+    const quote = e.games > 0 ? Math.round(e.wins / e.games * 100) : 0;
+    const medal = i === 0 ? "\u{1F947}" : i === 1 ? "\u{1F948}" : i === 2 ? "\u{1F949}" : `${i + 1}.`;
+    return /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      background: isMe ? "rgba(202,138,4,0.15)" : "rgba(255,255,255,0.04)",
+      border: isMe ? "1px solid rgba(202,138,4,0.5)" : "1px solid rgba(255,255,255,0.06)",
+      borderRadius: 10,
+      padding: "9px 11px",
+      marginBottom: 6
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: "#94a3b8", width: 28, textAlign: "center", flexShrink: 0 } }, medal), /* @__PURE__ */ React.createElement("div", { style: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      flexShrink: 0,
+      background: e.color || "#2563eb",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18
+    } }, e.wappen || "\u2654"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, e.games, " Spiele \xB7 ", quote, "% Quote")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#4ade80" } }, e.wins), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "Siege")));
+  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    marginTop: 12,
+    background: "rgba(255,255,255,0.06)",
+    color: "#cbd5e1",
+    border: "1px solid rgba(255,255,255,0.12)",
+    padding: "11px",
+    fontSize: 13,
+    fontWeight: 600,
+    borderRadius: 10,
+    cursor: "pointer"
+  } }, "\u{1F504} Aktualisieren"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
