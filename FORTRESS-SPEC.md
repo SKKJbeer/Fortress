@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (v1.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.0.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -195,8 +195,12 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Sprache: Deutsch
 - Spieler 1 = Blau (♔ Blaues Königreich), Spieler 2 = Rot (♚ Rotes Königreich)
 - Minimale, klare Hinweise; nicht überladen
+- **Hauptmenü kompakt** (muss auf einen Screen passen): Titel → Profil-Karte →
+  kurze vs-Zeile → ausklappbare Anleitung (`showHelp`, standardmäßig zu) →
+  Spiel-Buttons (Lokal/Online) → Versionsanzeige
 - Result-Screen: nur Host darf “Nächste Runde”/“Neues Spielfeld”, Gast wartet
 - Online-Result zeigt “Du gewinnst/verlierst” je nach eigener Rolle
+- Versionsanzeige im Menü gut lesbar (#64748b), Format “⚔️ FORTRESS · Version X.Y.Z”
 
 -----
 
@@ -250,3 +254,6 @@ und beschiessen danach gegenseitig ihre Festungen.
   beim ersten Start, Bearbeiten im Menü. Namen werden online ausgetauscht und im
   HUD angezeigt. Versionsanzeige im Menü besser sichtbar. Fundament für künftige
   Individualisierung + Ladder-Board.
+- **v2.0.1**: Hauptmenü kompakter — Anleitung ist jetzt ausklappbar (standardmäßig
+  zu, “Wie spielt man?”-Toggle), Königreich-Badges gekürzt, Abstände reduziert,
+  damit Profil-Karte + Spiel-Buttons wieder auf einen Screen passen.
