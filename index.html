@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.5.2</title>
+  <title>FORTRESS v2.7</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -242,7 +242,7 @@ function sanitizeAction(raw) {
     return null;
   }
   if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate"];
+  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave"];
   if (!validTypes.includes(a.type)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
@@ -845,6 +845,43 @@ window.FortressApp = function Fortress() {
   }
   const [leaderboard, setLeaderboard] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  async function quitGame() {
+    setShowQuitConfirm(false);
+    running.current = false;
+    if (online.current) {
+      const wasHost = myRole.current === 1;
+      if (wasHost) {
+        await hostLeaveResolve();
+      } else {
+        try {
+          await sendAction({ type: "leave" });
+        } catch (e) {
+        }
+        await new Promise((res) => setTimeout(res, 250));
+      }
+      leaveOnline();
+    } else {
+      setScreen("menu");
+    }
+  }
+  async function hostLeaveResolve() {
+    eliminated.current[1] = true;
+    const players = playersList();
+    const stillIn = players.filter((p) => !eliminated.current[p]);
+    const winner = stillIn.length >= 1 ? stillIn[0] : null;
+    const info = { loser: 1, winner, reason: "host_left", numPlayers: numPlayersRef.current };
+    resultRef.current = info;
+    screenRef.current = "result";
+    phase_r.current = "result";
+    try {
+      await pushState(true);
+      await new Promise((res) => setTimeout(res, 250));
+      await pushState(true);
+      await new Promise((res) => setTimeout(res, 250));
+    } catch (e) {
+    }
+  }
   async function pushLeaderboard(p) {
     if (!p || !p.id || !MP_CONFIGURED) return;
     try {
@@ -1292,6 +1329,10 @@ window.FortressApp = function Fortress() {
       return;
     }
     if (!gameStarted.current) return;
+    if (a.type === "leave") {
+      handlePlayerLeft(actingPlayer);
+      return;
+    }
     if (a.n && a.n <= (guestActionApplied.current[actingPlayer] || 0)) return;
     guestActionApplied.current[actingPlayer] = a.n || 0;
     const p = actingPlayer;
@@ -1304,6 +1345,47 @@ window.FortressApp = function Fortress() {
   }
   const joinedGuests = useRef({ 2: false, 3: false });
   const guestActionApplied = useRef({ 2: 0, 3: 0 });
+  function handlePlayerLeft(player) {
+    if (myRole.current !== 1) return;
+    if (eliminated.current[player]) return;
+    eliminated.current[player] = true;
+    joinedGuests.current[player] = false;
+    const players = playersList();
+    const stillIn = players.filter((p) => !eliminated.current[p]);
+    const pname = (x) => {
+      var _a2;
+      return ((_a2 = playerInfo.current[x]) == null ? void 0 : _a2.name) || `Spieler ${x}`;
+    };
+    if (stillIn.length <= 1) {
+      running.current = false;
+      clearInterval(timerID.current);
+      const winner = stillIn.length === 1 ? stillIn[0] : null;
+      if (winner) {
+        const ns = __spreadProps(__spreadValues({}, scoresRef.current), { [winner]: (scoresRef.current[winner] || 0) + 1 });
+        scoresRef.current = ns;
+        setScores(__spreadValues({}, ns));
+      }
+      const info = { loser: player, winner, reason: "left", numPlayers: numPlayersRef.current };
+      resultRef.current = info;
+      screenRef.current = "result";
+      phase_r.current = "result";
+      setResultInfo(info);
+      setPhase("result");
+      setScreen("result");
+      if (!statRecorded.current) {
+        statRecorded.current = true;
+        const myWin = winner === myRole.current ? true : winner === null ? null : false;
+        recordResult(myWin, numPlayersRef.current);
+      }
+      pushState(true);
+      setTimeout(() => pushState(true), 300);
+      setTimeout(() => pushState(true), 800);
+    } else {
+      showWarn(`\u{1F6AA} ${pname(player)} hat das Spiel verlassen`);
+      setUiTick((t) => t + 1);
+      pushState(true);
+    }
+  }
   function startPolling(code, role) {
     if (mpChannel.current) {
       mpChannel.current.stop();
@@ -1445,7 +1527,14 @@ window.FortressApp = function Fortress() {
     }
   }
   function cleanupGame(code, wasHost) {
-    if (wasHost && code) fb.delete(`games/${code}`);
+    if (wasHost && code) {
+      setTimeout(() => {
+        try {
+          fb.delete(`games/${code}`);
+        } catch (e) {
+        }
+      }, 2500);
+    }
     if (mpChannel.current) {
       mpChannel.current.stop();
       mpChannel.current = null;
@@ -2647,7 +2736,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.5.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -2778,8 +2867,8 @@ window.FortressApp = function Fortress() {
       justifyContent: "center",
       fontSize: 18
     } }, e.wappen || "\u2654"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, e.games, " Spiele \xB7 ", quote, "% Quote")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#4ade80" } }, e.wins), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "Siege")));
-  })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
-    flex: 1,
+  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    marginTop: 12,
     background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
     border: "1px solid rgba(255,255,255,0.12)",
@@ -2788,18 +2877,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 600,
     borderRadius: 10,
     cursor: "pointer"
-  } }, "\u{1F504} Aktualisieren"), /* @__PURE__ */ React.createElement("button", { onClick: cleanupMyDuplicates, disabled: cleanupBusy, style: {
-    flex: 1,
-    background: "rgba(220,38,38,0.12)",
-    color: "#fca5a5",
-    border: "1px solid rgba(220,38,38,0.3)",
-    padding: "11px",
-    fontSize: 13,
-    fontWeight: 600,
-    borderRadius: 10,
-    cursor: cleanupBusy ? "default" : "pointer",
-    opacity: cleanupBusy ? 0.6 : 1
-  } }, cleanupBusy ? "\u2026" : "\u{1F9F9} Doppelte entfernen")))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F504} Aktualisieren"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
@@ -3004,7 +3082,7 @@ window.FortressApp = function Fortress() {
       if (!isWin) return "Unentschieden!";
       if (online.current) return iWon ? "Du gewinnst! \u{1F389}" : "Du verlierst.";
       return `${wname(info.winner)} siegt!`;
-    })()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 20 } }, info.numPlayers === 3 || numPlayers === 3 ? "Letzte geschlossene Burg gewinnt" : info.reason === "breach" ? "Burg durchbrochen \u{1F4A5}" : "Burg war nicht geschlossen"), /* @__PURE__ */ React.createElement("div", { style: {
+    })()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 20 } }, info.reason === "left" || info.reason === "host_left" ? "\u{1F6AA} Ein Spieler hat das Spiel verlassen" : info.numPlayers === 3 || numPlayers === 3 ? "Letzte geschlossene Burg gewinnt" : info.reason === "breach" ? "Burg durchbrochen \u{1F4A5}" : "Burg war nicht geschlossen"), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
       gap: 16,
       fontSize: 22,
@@ -3075,6 +3153,24 @@ window.FortressApp = function Fortress() {
     userSelect: "none",
     WebkitUserSelect: "none"
   } }, /* @__PURE__ */ React.createElement("div", { style: {
+    width: viewSize.w,
+    display: "flex",
+    justifyContent: "flex-end",
+    padding: "4px 4px 0",
+    boxSizing: "border-box"
+  } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    color: "#94a3b8",
+    borderRadius: 8,
+    padding: "4px 12px",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 5
+  } }, "\u2715 Beenden")), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     display: "flex",
     alignItems: "center",
@@ -3280,7 +3376,45 @@ window.FortressApp = function Fortress() {
     fontSize: 11,
     color: "#475569",
     padding: "8px"
-  } }, "\u{1F3F9} Schleuder: Finger von deiner Kanone wegziehen \xB7 \u{1F3AF} Kreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern")));
+  } }, "\u{1F3F9} Schleuder: Finger von deiner Kanone wegziehen \xB7 \u{1F3AF} Kreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern")), showQuitConfirm && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(5,8,15,0.92)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1200,
+    padding: 20
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 340,
+    width: "100%",
+    textAlign: "center"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 8 } }, "\u{1F6AA}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, "Spiel beenden?"), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 22 } }, online.current ? "Du verl\xE4sst das laufende Online-Spiel und kehrst ins Hauptmen\xFC zur\xFCck." : "Das laufende Spiel wird beendet und du kehrst ins Hauptmen\xFC zur\xFCck."), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#dc2626,#991b1b)",
+    color: "white",
+    border: "none",
+    padding: "14px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 10,
+    cursor: "pointer",
+    marginBottom: 10
+  } }, "Ja, beenden"), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: {
+    width: "100%",
+    background: "rgba(255,255,255,0.08)",
+    color: "#cbd5e1",
+    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "13px",
+    fontSize: 14,
+    fontWeight: 600,
+    borderRadius: 10,
+    cursor: "pointer"
+  } }, "Weiterspielen"))));
 };
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));

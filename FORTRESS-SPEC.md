@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.5.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.7)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -376,3 +376,16 @@ und beschiessen danach gegenseitig ihre Festungen.
   merged Stats (Maximum je Feld), behält den aktuellen id-Eintrag, löscht die
   anderen (cleanupMyDuplicates). Behebt die durch den alten id-Bug entstandenen
   Mehrfach-Einträge.
+- **v2.6**: (1) Temporären “Doppelte entfernen”-Button wieder entfernt (Funktion
+  cleanupMyDuplicates bleibt im Code, nur ohne Button). (2) “✕ Beenden”-Button in
+  der Top-Leiste des Spielbildschirms (lokal UND online). Öffnet eine
+  Sicherheitsabfrage (“Spiel beenden? Ja/Weiterspielen”) → verhindert
+  versehentliches Verlassen. Lokal → Hauptmenü, Online → leaveOnline.
+- **v2.7**: Online-Verlassen wird jetzt korrekt aufgelöst. Gast verlässt → sendet
+  “leave”-Aktion, Host markiert ihn als ausgeschieden (handlePlayerLeft):
+  bei ≤1 Verbliebenem endet das Spiel (Sieger), sonst läuft es weiter (3er).
+  Host verlässt → hostLeaveResolve() pusht finalen “host_left”-Zustand mit dem/den
+  Verbliebenen als Sieger, Spiel-Löschung um 2,5s verzögert (cleanupGame) damit
+  Gäste den Endzustand sicher empfangen. Result-Screen zeigt “Ein Spieler hat das
+  Spiel verlassen”. sanitizeAction erlaubt “leave”. Hinweis: deckt sauberes
+  Beenden ab; harter Verbindungsabbruch (App-Crash) bräuchte später Heartbeat.
