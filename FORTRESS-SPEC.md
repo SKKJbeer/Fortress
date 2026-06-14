@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.8.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.9)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -411,3 +411,11 @@ und beschiessen danach gegenseitig ihre Festungen.
   ersten Phasenwechsel keinen gültigen Bau-Pointer-Slot und konnte nichts mehr
   platzieren. Fix: Reset für alle aktiven Spieler (modusabhängig 1/2/3). Die
   Transaktions-Reservierung aus v2.8.1 bleibt als zusätzliche Absicherung.
+- **v2.9**: UI-Vereinheitlichung & Platz. (1) Hauptmenü: ein einziger “LOKAL
+  SPIELEN”-Button öffnet (wie Online) einen Auswahl-Screen für 2 oder 3 Spieler
+  (mpScreen “local”) — stringent zur Online-Flow-Struktur, statt zwei separater
+  lokaler Buttons. (2) Ingame: Beenden-Button ist jetzt ein kompaktes “✕” oben
+  rechts schwebend (position absolute) statt einer eigenen vollbreiten Zeile —
+  spart vertikalen Platz. (3) HUD-Namen: letterSpacing entfernt, Mittelblock auf
+  28% verschmälert, Namensschrift 12px → lange Namen wie “Bierkönig” passen jetzt
+  ohne Abschneiden.
