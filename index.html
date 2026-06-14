@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v1.0.7</title>
+  <title>FORTRESS v2.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -628,6 +628,69 @@ window.FortressApp = function Fortress() {
   const [warn, setWarn] = useState(null);
   const warnTimer = useRef(null);
   const [, setUiTick] = useState(0);
+  const WAPPEN = ["\u2654", "\u265A", "\u2694\uFE0F", "\u{1F6E1}\uFE0F", "\u{1F3F0}", "\u{1F451}", "\u{1F409}", "\u{1F985}", "\u{1F981}", "\u{1F43A}", "\u2B50", "\u{1F525}"];
+  const PROFILE_COLORS = [
+    { name: "Blau", hex: "#2563eb" },
+    { name: "Rot", hex: "#dc2626" },
+    { name: "Gr\xFCn", hex: "#059669" },
+    { name: "Lila", hex: "#7c3aed" },
+    { name: "Orange", hex: "#ea580c" },
+    { name: "Gold", hex: "#ca8a04" },
+    { name: "T\xFCrkis", hex: "#0891b2" },
+    { name: "Pink", hex: "#db2777" }
+  ];
+  function loadProfile() {
+    var _a, _b, _c;
+    try {
+      const raw = localStorage.getItem("fortress_profile");
+      if (raw) {
+        const p = JSON.parse(raw);
+        return {
+          name: p.name || "",
+          wappen: p.wappen || "\u2654",
+          color: p.color || "#2563eb",
+          stats: { wins: ((_a = p.stats) == null ? void 0 : _a.wins) || 0, losses: ((_b = p.stats) == null ? void 0 : _b.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 }
+        };
+      }
+    } catch (e) {
+    }
+    return null;
+  }
+  const [profile, setProfile] = useState(() => loadProfile());
+  function saveProfile(p) {
+    try {
+      localStorage.setItem("fortress_profile", JSON.stringify(p));
+    } catch (e) {
+    }
+    setProfile(p);
+  }
+  function recordResult(won) {
+    if (!profile) return;
+    const stats = __spreadProps(__spreadValues({}, profile.stats), { games: profile.stats.games + 1 });
+    if (won === true) stats.wins += 1;
+    else if (won === false) stats.losses += 1;
+    saveProfile(__spreadProps(__spreadValues({}, profile), { stats }));
+  }
+  const [editName, setEditName] = useState("");
+  const [editWappen, setEditWappen] = useState("\u2654");
+  const [editColor, setEditColor] = useState("#2563eb");
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
+  function openProfileEditor() {
+    setEditName((profile == null ? void 0 : profile.name) || "");
+    setEditWappen((profile == null ? void 0 : profile.wappen) || "\u2654");
+    setEditColor((profile == null ? void 0 : profile.color) || "#2563eb");
+    setShowProfileEditor(true);
+  }
+  function saveProfileEditor() {
+    const name = editName.trim().slice(0, 16) || "Spieler";
+    saveProfile({
+      name,
+      wappen: editWappen,
+      color: editColor,
+      stats: (profile == null ? void 0 : profile.stats) || { wins: 0, losses: 0, games: 0 }
+    });
+    setShowProfileEditor(false);
+  }
   const [mpScreen, setMpScreen] = useState(null);
   const [mpCode, setMpCode] = useState("");
   const [mpInput, setMpInput] = useState("");
@@ -801,6 +864,7 @@ window.FortressApp = function Fortress() {
       },
       frozenReady: frozenReady.current,
       hostSession: SESSION_ID,
+      playerInfo: playerInfo.current,
       t: Date.now()
     };
   }
@@ -810,6 +874,7 @@ window.FortressApp = function Fortress() {
   const terrainSeed = useRef(0);
   const reloadProgRef = useRef(null);
   const lastSeenPhase = useRef(null);
+  const playerInfo = useRef({ 1: { name: "Spieler 1", wappen: "\u2654", color: "#2563eb" }, 2: { name: "Spieler 2", wappen: "\u265A", color: "#dc2626" } });
   const lastStateAt = useRef(0);
   function applyState(raw) {
     let s;
@@ -853,6 +918,7 @@ window.FortressApp = function Fortress() {
       at: performance.now()
     };
     frozenReady.current = s.frozenReady || { 1: [], 2: [] };
+    if (s.playerInfo) playerInfo.current = s.playerInfo;
     if (online.current && myRole.current === 2 && s.phase !== lastSeenPhase.current) {
       lastSeenPhase.current = s.phase;
       activeBuild.current = { 1: null, 2: null };
@@ -873,6 +939,13 @@ window.FortressApp = function Fortress() {
     setScores(__spreadValues({}, s.scores));
     resultRef.current = s.resultInfo || null;
     setResultInfo(s.resultInfo || null);
+    if (s.resultInfo && online.current && myRole.current === 2 && !statRecorded.current) {
+      statRecorded.current = true;
+      const w = s.resultInfo.winner;
+      const l = s.resultInfo.loser;
+      const myWin = w === 2 ? true : l === "both" ? null : false;
+      recordResult(myWin);
+    }
     const newScreen = s.screen || "game";
     if (newScreen !== screenRef.current) {
       screenRef.current = newScreen;
@@ -914,6 +987,16 @@ window.FortressApp = function Fortress() {
     if (a.type === "join") {
       if (!gameStarted.current) {
         gameStarted.current = true;
+        playerInfo.current[2] = {
+          name: a.name || "Gast",
+          wappen: a.wappen || "\u265A",
+          color: a.color || "#dc2626"
+        };
+        playerInfo.current[1] = {
+          name: (profile == null ? void 0 : profile.name) || "Host",
+          wappen: (profile == null ? void 0 : profile.wappen) || "\u2654",
+          color: (profile == null ? void 0 : profile.color) || "#2563eb"
+        };
         startOnlineGame(1);
       }
       return;
@@ -1009,7 +1092,13 @@ window.FortressApp = function Fortress() {
     online.current = true;
     setMpCode(code);
     await fb.patch(`games/${code}`, {
-      guestAction: JSON.stringify({ type: "join", n: Date.now() })
+      guestAction: JSON.stringify({
+        type: "join",
+        n: Date.now(),
+        name: (profile == null ? void 0 : profile.name) || "Gast",
+        wappen: (profile == null ? void 0 : profile.wappen) || "\u265A",
+        color: (profile == null ? void 0 : profile.color) || "#dc2626"
+      })
     });
     startPolling(code, 2);
     setMpScreen("waiting");
@@ -1018,6 +1107,7 @@ window.FortressApp = function Fortress() {
     myRole.current = role;
     online.current = true;
     lastSeenPhase.current = null;
+    statRecorded.current = false;
     setMpScreen(null);
     if (role === 1) {
       initGrid();
@@ -1116,6 +1206,11 @@ window.FortressApp = function Fortress() {
       setResultInfo(info);
       setPhase("result");
       setScreen("result");
+      if (online.current && !statRecorded.current) {
+        statRecorded.current = true;
+        const myWin = winner === myRole.current ? true : loser === "both" ? null : false;
+        recordResult(myWin);
+      }
       if (online.current && myRole.current === 1) {
         pushState(true);
         setTimeout(() => pushState(true), 300);
@@ -1126,6 +1221,7 @@ window.FortressApp = function Fortress() {
     nextPhaseFn();
     return true;
   }
+  const statRecorded = useRef(false);
   function startBuild() {
     phase_r.current = "build";
     setPhase("build");
@@ -1989,7 +2085,37 @@ window.FortressApp = function Fortress() {
     letterSpacing: "-2px",
     lineHeight: 1,
     filter: "drop-shadow(0 4px 24px rgba(56,189,248,0.3))"
-  } }, "FORTRESS"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#475569", marginBottom: 6 } }, "Baue \xB7 Verteidige \xB7 Zerst\xF6re"), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "FORTRESS"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#475569", marginBottom: 6 } }, "Baue \xB7 Verteidige \xB7 Zerst\xF6re"), profile && /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    background: "rgba(255,255,255,0.05)",
+    border: `1px solid ${profile.color}55`,
+    borderRadius: 14,
+    padding: "12px 14px",
+    marginBottom: 16,
+    textAlign: "left"
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    flexShrink: 0,
+    background: profile.color,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+    boxShadow: `0 2px 12px ${profile.color}66`
+  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, "\u{1F3C6} ", profile.stats.wins, " S \xB7 \u{1F480} ", profile.stats.losses, " N \xB7 ", profile.stats.games, " Spiele", profile.stats.games > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: "#4ade80" } }, " \xB7 ", Math.round(profile.stats.wins / profile.stats.games * 100), "%"))), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "#cbd5e1",
+    borderRadius: 8,
+    padding: "8px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+    flexShrink: 0
+  } }, "\u270F\uFE0F")), /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
     justifyContent: "center",
     gap: 6,
@@ -2035,7 +2161,77 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 11, color: "#334155", letterSpacing: "0.05em" } }, "FORTRESS \xB7 Version 1.0.7")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(5,8,15,0.94)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1100,
+    padding: 20
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 380,
+    width: "100%",
+    textAlign: "center"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 4 } }, editWappen), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20 } }, profile ? "Profil bearbeiten" : "Willkommen, Feldherr!"), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, profile ? "\xC4ndere deinen Namen, dein Wappen und deine Farbe." : "Erstelle dein Profil, um zu starten."), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      value: editName,
+      onChange: (e) => setEditName(e.target.value.slice(0, 16)),
+      placeholder: "Dein Name",
+      style: {
+        width: "100%",
+        boxSizing: "border-box",
+        textAlign: "center",
+        fontSize: 18,
+        fontWeight: 700,
+        padding: "12px",
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.2)",
+        background: "rgba(0,0,0,0.3)",
+        color: "#fff",
+        marginBottom: 16
+      }
+    }
+  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "WAPPEN"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, justifyContent: "center" } }, WAPPEN.map((w) => /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
+    width: 40,
+    height: 40,
+    fontSize: 20,
+    borderRadius: 8,
+    cursor: "pointer",
+    background: editWappen === w ? editColor : "rgba(255,255,255,0.06)",
+    border: editWappen === w ? "2px solid #fff" : "1px solid rgba(255,255,255,0.12)"
+  } }, w))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "FARBE"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {
+    width: 34,
+    height: 34,
+    borderRadius: "50%",
+    cursor: "pointer",
+    background: c.hex,
+    border: editColor === c.hex ? "3px solid #fff" : "2px solid rgba(255,255,255,0.15)"
+  }, title: c.name }))), /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#059669,#0284c7)",
+    color: "white",
+    border: "none",
+    padding: "15px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 10,
+    cursor: "pointer",
+    marginBottom: profile ? 10 : 0
+  } }, profile ? "Speichern" : "Profil erstellen \u2694\uFE0F"), profile && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowProfileEditor(false), style: {
+    background: "transparent",
+    color: "#64748b",
+    border: "none",
+    fontSize: 13,
+    cursor: "pointer",
+    textDecoration: "underline"
+  } }, "Abbrechen"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
@@ -2292,7 +2488,7 @@ window.FortressApp = function Fortress() {
     alignItems: "center",
     gap: 8,
     boxShadow: "0 0 12px rgba(59,130,246,0.15)"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#93c5fd", fontWeight: 700, letterSpacing: "0.05em" } }, "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 900, color: "#dbeafe" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#93c5fd", fontWeight: 700, letterSpacing: "0.05em", maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, online.current ? playerInfo.current[1].name : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 900, color: "#dbeafe" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center" } }, /* @__PURE__ */ React.createElement("span", { style: {
     background: phase === "build" ? "rgba(74,222,128,0.12)" : phase === "shoot" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.14)",
     border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.3)" : phase === "shoot" ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.35)"}`,
     borderRadius: 6,
@@ -2317,7 +2513,7 @@ window.FortressApp = function Fortress() {
     alignItems: "center",
     gap: 8,
     boxShadow: "0 0 12px rgba(239,68,68,0.15)"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 900, color: "#fee2e2" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.05em" } }, "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, "\u265A"))), warn && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 900, color: "#fee2e2" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.05em", maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, online.current ? playerInfo.current[2].name : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), warn && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     top: 70,
     left: "50%",

@@ -200,6 +200,25 @@ und beschiessen danach gegenseitig ihre Festungen.
 
 -----
 
+## 11. SPIELER-PROFIL (ab v2.0)
+
+- Persistent via **localStorage** (`fortress_profile`) — funktioniert in der PWA
+- Felder: `name` (max 16 Zeichen), `wappen` (Emoji aus WAPPEN-Pool), `color`
+  (aus PROFILE_COLORS), `stats` { wins, losses, games }
+- **Erstanlage**: beim ersten Start wird der Editor automatisch gezeigt (Pflicht)
+- **Bearbeiten**: über ✏️-Button in der Profil-Karte im Hauptmenü
+- **Profil-Karte** im Menü: Wappen, Name, Statistik (Siege/Niederlagen/Spiele/Quote)
+- **Statistik-Erfassung**: nur im Online-Modus (eigene Rolle bekannt). `recordResult()`
+  wird genau einmal pro Spiel aufgerufen (`statRecorded`-Flag, reset bei Spielstart).
+  Host erfasst in checkLossOrContinue, Gast in applyState beim Empfang des Ergebnisses.
+- **Namen im Spiel**: Beim Online-Spiel werden Name + Wappen über `playerInfo` im
+  State (Host) bzw. join-Aktion (Gast→Host) ausgetauscht und im HUD angezeigt.
+  Lokal bleibt es bei “P1”/“P2”.
+- **Geplant (künftige Versionen)**: weitere Individualisierung, Ladder-/Bestenliste
+  (würde Firebase-Aggregation über alle Spieler brauchen).
+
+-----
+
 ## CHANGELOG
 
 - **v1.0**: Erste vollständige Version. Online via Firebase SDK (onValue),
@@ -226,3 +245,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   im Burg- UND Kanonen-Check nur echte Mauern (+ Burg beim Burg-Check) als Blocker.
 - **v1.0.7**: Berge sind jetzt reine Deko und bebaubar — nur noch Fluss/Wasser
   (und die gegnerische Hälfte) sperrt das Bauen.
+- **v2.0**: Spieler-Profile eingeführt — Name, Wappen, Farbe, persönliche
+  Statistik (Siege/Niederlagen/Spiele), persistent via localStorage. Erstanlage
+  beim ersten Start, Bearbeiten im Menü. Namen werden online ausgetauscht und im
+  HUD angezeigt. Versionsanzeige im Menü besser sichtbar. Fundament für künftige
+  Individualisierung + Ladder-Board.
