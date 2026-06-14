@@ -829,7 +829,11 @@ window.FortressApp = function Fortress() {
     }
     explosions.current = s.explosions || [];
     lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
-    reloadProgRef.current = s.reloadProg || { 1: 1, 2: 1 };
+    reloadProgRef.current = {
+      1: s.reloadProg ? s.reloadProg[1] : 1,
+      2: s.reloadProg ? s.reloadProg[2] : 1,
+      at: performance.now()
+    };
     frozenReady.current = s.frozenReady || { 1: [], 2: [] };
     const prevPhase = phase_r.current;
     if (s.phase !== prevPhase) {
@@ -1486,8 +1490,10 @@ window.FortressApp = function Fortress() {
     const now = performance.now();
     const isGuest = online.current && myRole.current === 2;
     if (isGuest && reloadProgRef.current) {
-      reload.current[1] = reloadProgRef.current[1];
-      reload.current[2] = reloadProgRef.current[2];
+      const rp = reloadProgRef.current;
+      const elapsed = (now - (rp.at || now)) / RELOAD_MS;
+      reload.current[1] = Math.min(1, rp[1] + elapsed);
+      reload.current[2] = Math.min(1, rp[2] + elapsed);
     } else {
       for (const p of [1, 2])
         reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
