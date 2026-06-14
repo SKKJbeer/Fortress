@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v1.0.4</title>
+  <title>FORTRESS v1.0.6</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -351,7 +351,6 @@ function isBuildable(terrainObj, r, c, player) {
 }
 function computeOutsideMap(g, player) {
   const ownWall = player === 1 ? WALL1 : WALL2;
-  const ownCannon = player === 1 ? CANNON1 : CANNON2;
   const ownCastle = player === 1 ? CASTLE1 : CASTLE2;
   const visited = new Uint8Array(ROWS * COLS);
   const stack = [];
@@ -368,7 +367,7 @@ function computeOutsideMap(g, player) {
     if (visited[idx]) continue;
     const r = Math.floor(idx / COLS), c = idx % COLS;
     const v = g[r][c];
-    if (v === ownWall || v === ownCannon || v === ownCastle) continue;
+    if (v === ownWall || v === ownCastle) continue;
     visited[idx] = 1;
     if (r > 0) stack.push(idx - COLS);
     if (r < ROWS - 1) stack.push(idx + COLS);
@@ -379,7 +378,6 @@ function computeOutsideMap(g, player) {
 }
 function computeOutsideMapForCannons(g, player) {
   const ownWall = player === 1 ? WALL1 : WALL2;
-  const ownCannon = player === 1 ? CANNON1 : CANNON2;
   const visited = new Uint8Array(ROWS * COLS);
   const stack = [];
   for (let c = 0; c < COLS; c++) {
@@ -395,7 +393,7 @@ function computeOutsideMapForCannons(g, player) {
     if (visited[idx]) continue;
     const r = Math.floor(idx / COLS), c = idx % COLS;
     const v = g[r][c];
-    if (v === ownWall || v === ownCannon) continue;
+    if (v === ownWall) continue;
     visited[idx] = 1;
     if (r > 0) stack.push(idx - COLS);
     if (r < ROWS - 1) stack.push(idx + COLS);
@@ -658,6 +656,24 @@ window.FortressApp = function Fortress() {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(code).then(done).catch(fallback);
     } else fallback();
+  }
+  const [pasteError, setPasteError] = useState("");
+  function pasteCode() {
+    setPasteError("");
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then((txt) => {
+        const clean = (txt || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
+        if (clean.length === 0) {
+          setPasteError("Keine g\xFCltigen Zeichen in der Zwischenablage.");
+          return;
+        }
+        setMpInput(clean);
+      }).catch(() => {
+        setPasteError("Einf\xFCgen nicht m\xF6glich \u2014 bitte Code manuell eintippen.");
+      });
+    } else {
+      setPasteError("Einf\xFCgen wird hier nicht unterst\xFCtzt \u2014 bitte manuell eintippen.");
+    }
   }
   const online = useRef(false);
   const myRole = useRef(0);
@@ -2019,7 +2035,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 11, color: "#334155", letterSpacing: "0.05em" } }, "FORTRESS \xB7 Version 1.0.4")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 11, color: "#334155", letterSpacing: "0.05em" } }, "FORTRESS \xB7 Version 1.0.6")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
@@ -2092,11 +2108,22 @@ window.FortressApp = function Fortress() {
         border: "1px solid rgba(255,255,255,0.2)",
         background: "rgba(0,0,0,0.3)",
         color: "#fff",
-        marginBottom: 16,
+        marginBottom: 10,
         fontFamily: "monospace"
       }
     }
-  ), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: {
+  ), /* @__PURE__ */ React.createElement("button", { onClick: pasteCode, style: {
+    width: "100%",
+    background: "rgba(255,255,255,0.08)",
+    color: "#cbd5e1",
+    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "11px",
+    fontSize: 14,
+    fontWeight: 600,
+    borderRadius: 10,
+    cursor: "pointer",
+    marginBottom: 12
+  } }, "\u{1F4CB} Code einf\xFCgen"), pasteError && /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontSize: 11, marginBottom: 10 } }, pasteError), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: {
     width: "100%",
     background: "linear-gradient(135deg,#059669,#0284c7)",
     color: "white",

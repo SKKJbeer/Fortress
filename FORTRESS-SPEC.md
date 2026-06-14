@@ -42,6 +42,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **VERLUST-BEDINGUNG**: Ist die Burg am Ende der Bauphase NICHT vollständig
   von Mauern umschlossen (Flood-Fill von aussen erreicht die Burg), verliert
   der Spieler. Geprüft wird per `isCastleClosed()` → `computeOutsideMap()`.
+  WICHTIG: Nur echte Mauern + die Burg blockieren die Flut. **Kanonen zählen
+  NICHT als Mauer** — eine Kanone darf kein Loch in der Burgmauer stopfen.
 
 -----
 
@@ -59,8 +61,9 @@ und beschiessen danach gegenseitig ihre Festungen.
   - **AUSNAHME**: Wird eine Kanone in der Runde ZERSTÖRT (HP ≤ 0), feuert sie
     sofort nicht mehr (Zerstörung wirkt sofort, Freischuss erst nächste Runde)
   - Offene Kanone = schiesst nur nicht → KEIN Verlust (nur die Burg zählt für Verlust)
-  - Kanonen-Geschlossenheit nutzt `computeOutsideMapForCannons()` (Burg blockiert
-    hier NICHT, nur Mauern + Kanonen)
+  - Kanonen-Geschlossenheit nutzt `computeOutsideMapForCannons()` — NUR echte
+    Mauern blockieren (NICHT Burg, NICHT andere Kanonen). Eine Kanone gilt nur
+    als schussbereit wenn sie von echten Mauern umschlossen ist.
 
 -----
 
@@ -119,6 +122,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Schema: `/games/{code}/` → { state (JSON), guestAction (JSON), createdAt, updatedAt }
 - 6-stelliger Beitritts-Code (Zeichen ohne verwechselbare wie I/O/0/1)
 - Host-Code kann per Button in Zwischenablage kopiert werden
+- Gast kann Code per “Einfügen”-Button aus Zwischenablage übernehmen (pasteCode,
+  filtert auf erlaubte Zeichen, max 6)
 
 ### Gast-spezifische Sync-Regeln (kritisch — häufige Bug-Quelle):
 
@@ -213,3 +218,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   bei jedem Phasenwechsel zurückgesetzt (Host in start*-Funktionen, Gast in
   applyState), plus verwaiste Slots werden in onPointerDown automatisch
   freigegeben wenn der Pointer nicht mehr existiert.
+- **v1.0.5**: Gast kann den Code per “Code einfügen”-Button direkt aus der
+  Zwischenablage übernehmen (mit Zeichenfilter + Fehlerhinweis).
+- **v1.0.6**: FIX — Kanonen galten fälschlich als Mauer und konnten Löcher in
+  der Burgmauer “stopfen” (Burg galt zu Unrecht als geschlossen). Jetzt zählen
+  im Burg- UND Kanonen-Check nur echte Mauern (+ Burg beim Burg-Check) als Blocker.
