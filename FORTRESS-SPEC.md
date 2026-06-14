@@ -28,7 +28,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Fluss** = EINE geschwungene horizontale Grenze; trennt die Baugebiete:
   - Spieler 1 (Blau, ♔) baut NUR oberhalb des Flusses
   - Spieler 2 (Rot, ♚) baut NUR unterhalb des Flusses
-- Fluss und Berge sind nicht bebaubar (harte Grenze)
+- **Nur der Fluss/das Wasser ist nicht bebaubar** (harte Grenze). Berge sind
+  reine DEKO und dürfen überbaut werden. Zusätzlich sperrt die gegnerische Hälfte.
 - Terrain wird per Seed (mulberry32 PRNG) erzeugt → deterministisch reproduzierbar
 
 -----
@@ -223,3 +224,5 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v1.0.6**: FIX — Kanonen galten fälschlich als Mauer und konnten Löcher in
   der Burgmauer “stopfen” (Burg galt zu Unrecht als geschlossen). Jetzt zählen
   im Burg- UND Kanonen-Check nur echte Mauern (+ Burg beim Burg-Check) als Blocker.
+- **v1.0.7**: Berge sind jetzt reine Deko und bebaubar — nur noch Fluss/Wasser
+  (und die gegnerische Hälfte) sperrt das Bauen.
