@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.5)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.5.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -366,3 +366,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   automatisch vergeben. Online-Screen hat 2/3-Spieler-Wahl beim Erstellen.
   Lobby wartet bei 3er auf beide Gäste. 3er-Bestenliste füllt sich jetzt.
   ⚠️ Firebase-Rules müssen guestAction2/guestAction3/numPlayers erlauben.
+- **v2.5.1**: Klarere Beschriftung — Online-Button heißt jetzt “ONLINE SPIELEN
+  (2–3 Geräte)”, Online-Screen-Text “zu zweit oder zu dritt”. Die 2/3-Spieler-
+  Wahl war schon da (im Online-Screen über “Spiel erstellen”), nur missverständlich
+  beschriftet.
