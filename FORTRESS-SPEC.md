@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.9)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -419,3 +419,16 @@ und beschiessen danach gegenseitig ihre Festungen.
   spart vertikalen Platz. (3) HUD-Namen: letterSpacing entfernt, Mittelblock auf
   28% verschmälert, Namensschrift 12px → lange Namen wie “Bierkönig” passen jetzt
   ohne Abschneiden.
+- **v3.0**: ELO-Ranking eingeführt. Jeder startet mit 1000 ELO (elo = 2-Spieler,
+  elo3 = 3-Spieler, getrennt). ECHTE ELO-Berechnung gegen die tatsächlichen
+  Mitspieler: deren ELO wird beim join übertragen + im playerInfo/State geführt,
+  recordResult rechnet gegen jeden Gegner einzeln (eloDelta, K=32, Erwartungswert
+  per Standard-Formel) und mittelt die Deltas. score: Sieg=1, Niederlage=0,
+  Remis=0.5. Bestenliste sortiert nach ELO (statt Siegen), zeigt ELO groß +
+  Siege/Niederlagen als Detail. Profil-Karte zeigt ELO + Gesamt-S/N je Modus.
+  Leaderboard speichert elo/elo3. Unentschieden (alle verbleibenden Spieler
+  scheiden gleichzeitig aus): sauberes Spielende, 🤝-Symbol, neutrale Anzeige,
+  ELO-Remis (0.5), zählt als Spiel ohne Sieg/Niederlage. P3-Königreich-Banner
+  (Grün) im Result korrigiert.
+  ⚠️ Firebase-Rules: leaderboard erlaubt zusätzliche Felder (elo/elo3) — mit der
+  bestehenden Regel (hasChildren name/wins/games) bereits abgedeckt.
