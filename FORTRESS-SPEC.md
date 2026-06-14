@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.1.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -248,6 +248,35 @@ und beschiessen danach gegenseitig ihre Festungen.
 
 -----
 
+## 13. 3-SPIELER-MODUS (ab v2.2, aktuell NUR lokal)
+
+- Wählbar im Menü: “LOKAL · 2 SPIELER” oder “LOKAL · 3 SPIELER (alle gegen alle)”.
+  2-Spieler-Modus ist UNVERÄNDERT — der gesamte 3-Spieler-Code ist über
+  `numPlayers`/`numPlayersRef` und `playersList()` gekapselt und greift nur bei 3.
+- **Feld-Geometrie**: Y-förmige Teilung in 3 Sektoren. Ein Hub in der Feldmitte,
+  drei Flussarme bei 0°/120°/240° nach außen (`generateTerrain3FromSeed`).
+  `sectorOf(r,c)` ordnet jede Zelle einem Sektor zu (1=oben, 2=unten-rechts,
+  3=unten-links). Grenzen bei 60°/180°/300°.
+- **Burgen**: je eine pro Sektor in dessen Mitte (`castle3Positions`).
+- **Zell-Typen** erweitert: WALL3=10, CANNON3=11, CASTLE3=12. Lookups
+  `WALL_OF/CANNON_OF/CASTLE_OF[player]`. Farb-Lookups ROOF_OF/FLAG_OF/ACCENT_OF
+  etc. (Spieler 3 = Grün ♜).
+- **Bauen**: `isBuildable` prüft im 3er-Modus `sectorOf === player`. Touch→Spieler
+  per Sektor unter dem Finger (lokal).
+- **Schiessen/Treffer**: `impactAt` erkennt JEDEN Gegner (nicht nur “den einen”).
+  Eine Kugel kann beide Gegner treffen — Logik sonst identisch.
+- **Verlust/Sieg**: “Letzter mit geschlossener Burg gewinnt”. Spieler mit offener
+  Burg am Bauende werden eliminiert (`eliminated`-Ref), Spiel endet bei ≤1 übrig.
+  Eliminierte bekommen kein Kanonen-Budget mehr.
+- **HUD**: 3. Spieler als eigene Zeile unter der Haupt-HUD (nur 3er-Modus),
+  ausgeschiedene ausgegraut + ☠️.
+- **Flood-Cache** generalisiert auf per-Spieler-Maps (`outside[p]`,
+  `cannonOutside[p]`, `castleClosed[p]`), Legacy-P1/P2-Felder bleiben gespiegelt.
+- **Online für 3 Spieler: NOCH NICHT implementiert** — Online ist weiterhin
+  strikt 2-Spieler (Host + 1 Gast). Kommt als eigener Schritt nach lokalem Test.
+
+-----
+
 ## CHANGELOG
 
 - **v1.0**: Erste vollständige Version. Online via Firebase SDK (onValue),
@@ -293,3 +322,7 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v2.1.1**: Bestehende Stats werden beim App-Start einmalig ins Leaderboard
   hochgeladen (vorher wurden nur Spiele AB v2.1 gezählt). So erscheinen schon
   gespielte Partien sofort in der Bestenliste.
+- **v2.2**: 3-Spieler-Modus (lokal, alle gegen alle) eingeführt — Y-förmige
+  Sektor-Teilung, 3 Burgen, Spieler 3 = Grün ♜, “letzter mit geschlossener Burg
+  gewinnt”. Komplett gekapselt: 2-Spieler-Modus völlig unverändert. Online für 3
+  Spieler folgt als nächster Schritt. Menü: separate 2-/3-Spieler-Buttons.

@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.1.1</title>
+  <title>FORTRESS v2.2</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -263,11 +263,27 @@ const SETUP_TIME = 20;
 const CANNON_HP = 10;
 const RELOAD_MS = 2500;
 const GRAV = 0.07;
-const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9;
+const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12;
+const WALL_OF = { 1: WALL1, 2: WALL2, 3: WALL3 };
+const CANNON_OF = { 1: CANNON1, 2: CANNON2, 3: CANNON3 };
+const CASTLE_OF = { 1: CASTLE1, 2: CASTLE2, 3: CASTLE3 };
 const CASTLE_P1 = { c: Math.floor(COLS / 2), r: Math.floor(ROWS_HALF * 0.5) };
 const CASTLE_P2 = { c: Math.floor(COLS / 2), r: ROWS_HALF + Math.floor(ROWS_HALF * 0.5) };
 const C1 = CASTLE_P1;
 const C2 = CASTLE_P2;
+function castle3Positions() {
+  const hubR = Math.floor(ROWS * 0.5);
+  const hubC = Math.floor(COLS * 0.5);
+  const distR = ROWS * 0.3, distC = COLS * 0.3;
+  const mk = (deg) => {
+    const rad = deg * Math.PI / 180;
+    return {
+      r: Math.max(2, Math.min(ROWS - 3, Math.round(hubR - Math.cos(rad) * distR))),
+      c: Math.max(2, Math.min(COLS - 3, Math.round(hubC + Math.sin(rad) * distC)))
+    };
+  };
+  return { 1: mk(0), 2: mk(120), 3: mk(240) };
+}
 const SHAPES = [
   [[0, 0]],
   // 1×1 Einzelstein
@@ -341,17 +357,81 @@ function generateTerrain() {
   const seed = Math.floor(Math.random() * 4294967295);
   return __spreadProps(__spreadValues({}, generateTerrainFromSeed(seed)), { seed });
 }
+const HUB_R = Math.floor(ROWS * 0.5);
+const HUB_C = Math.floor(COLS * 0.5);
+function angleFromHub(r, c) {
+  const dx = c - HUB_C;
+  const dy = r - HUB_R;
+  let a = Math.atan2(dx, -dy);
+  if (a < 0) a += Math.PI * 2;
+  return a;
+}
+function sectorOf(r, c) {
+  const a = angleFromHub(r, c) * 180 / Math.PI;
+  if (a >= 300 || a < 60) return 1;
+  if (a >= 60 && a < 180) return 2;
+  return 3;
+}
+function generateTerrain3FromSeed(seed) {
+  const rng = makeRng(seed);
+  const t = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) {
+      const n = Math.sin(r * 0.35 + c * 0.22 + seed * 1e-3) + Math.sin(c * 0.5 - r * 0.15) * 0.7;
+      t[r][c] = n > 0.8 ? 0 : n > -0.5 ? 1 : 2;
+    }
+  const armAngles = [0, 120, 240];
+  for (const baseDeg of armAngles) {
+    let wobble = 0;
+    const maxLen = Math.max(ROWS, COLS);
+    for (let step = 0; step < maxLen; step++) {
+      wobble += (rng() - 0.5) * 6;
+      wobble = Math.max(-14, Math.min(14, wobble));
+      const deg = baseDeg + wobble;
+      const rad = deg * Math.PI / 180;
+      const dist = step * 0.5;
+      const rr = Math.round(HUB_R - Math.cos(rad) * dist);
+      const cc = Math.round(HUB_C + Math.sin(rad) * dist);
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          const r = rr + dr, c = cc + dc;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) t[r][c] = 3;
+        }
+    }
+  }
+  for (let dr = -2; dr <= 2; dr++)
+    for (let dc = -2; dc <= 2; dc++) {
+      const r = HUB_R + dr, c = HUB_C + dc;
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS && dr * dr + dc * dc <= 5) t[r][c] = 3;
+    }
+  const mtnClusters = 3 + Math.floor(rng() * 3);
+  for (let m = 0; m < mtnClusters; m++) {
+    const cr = Math.floor(rng() * ROWS);
+    const cc = Math.floor(rng() * COLS);
+    const size = 2 + Math.floor(rng() * 3);
+    for (let i = 0; i < size; i++) {
+      const r = cr + Math.floor((rng() - 0.5) * 4);
+      const c = cc + Math.floor((rng() - 0.5) * 4);
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS && t[r][c] !== 3) t[r][c] = 4;
+    }
+  }
+  return { grid: t, mode3: true };
+}
 function isBuildable(terrainObj, r, c, player) {
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
   const t = terrainObj.grid;
   if (t[r][c] === 3) return false;
+  if (terrainObj.mode3) {
+    return sectorOf(r, c) === player;
+  }
   if (player === 1 && r >= terrainObj.borderRow[c]) return false;
   if (player === 2 && r <= terrainObj.borderRow[c]) return false;
   return true;
 }
 function computeOutsideMap(g, player) {
-  const ownWall = player === 1 ? WALL1 : WALL2;
-  const ownCastle = player === 1 ? CASTLE1 : CASTLE2;
+  const ownWall = WALL_OF[player];
+  const ownCastle = CASTLE_OF[player];
   const visited = new Uint8Array(ROWS * COLS);
   const stack = [];
   for (let c = 0; c < COLS; c++) {
@@ -377,7 +457,7 @@ function computeOutsideMap(g, player) {
   return visited;
 }
 function computeOutsideMapForCannons(g, player) {
-  const ownWall = player === 1 ? WALL1 : WALL2;
+  const ownWall = WALL_OF[player];
   const visited = new Uint8Array(ROWS * COLS);
   const stack = [];
   for (let c = 0; c < COLS; c++) {
@@ -459,10 +539,18 @@ function drawRubble(ctx, px, py) {
   ctx.fillRect(px + 8, py + 4, 5, 3);
   ctx.fillRect(px + 3, py + 9, 6, 4);
 }
+const ROOF_OF = { 1: "#2563eb", 2: "#dc2626", 3: "#059669" };
+const FLAG_OF = { 1: "\u2654", 2: "\u265A", 3: "\u265C" };
+const ACCENT_OF = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
+const ACCENT_RGB = { 1: "rgba(251,191,36,", 2: "rgba(167,139,250,", 3: "rgba(52,211,153," };
+const GHOST_RGB = { 1: "rgba(96,165,250,", 2: "rgba(248,113,113,", 3: "rgba(52,211,153," };
+const GHOST_HEX = { 1: "#60a5fa", 2: "#f87171", 3: "#34d399" };
+const BALL_MID = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
+const BALL_DARK = { 1: "#92400e", 2: "#4c1d95", 3: "#065f46" };
 function drawCastle(ctx, cx, cy, player, open, now) {
   const S = CELL * 1.5;
   const base = "#cbd5e1", dark = "#64748b";
-  const roof = player === 1 ? "#2563eb" : "#dc2626";
+  const roof = ROOF_OF[player] || "#2563eb";
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fillRect(cx - S + 3, cy - S + 4, S * 2, S * 2);
   ctx.fillStyle = base;
@@ -503,7 +591,7 @@ function drawCastle(ctx, cx, cy, player, open, now) {
   ctx.font = `${CELL * 0.7}px serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(player === 1 ? "\u2654" : "\u265A", cx, cy - S * 0.4);
+  ctx.fillText(FLAG_OF[player] || "\u2654", cx, cy - S * 0.4);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   if (open) {
@@ -529,6 +617,12 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   const R = CELL * 1.6;
+  const PAL = {
+    1: { b0: "#fcd34d", b1: "#b45309", b2: "#78350f", muz: "#92400e", g0: "#fde68a", g1: "#f59e0b", g2: "#92400e", stroke: "#78350f", flag: "#3b82f6", ring: "#fbbf24", glow: "rgba(251,191,36,0.35)" },
+    2: { b0: "#c4b5fd", b1: "#6d28d9", b2: "#3b0764", muz: "#4c1d95", g0: "#ede9fe", g1: "#8b5cf6", g2: "#4c1d95", stroke: "#2e1065", flag: "#ef4444", ring: "#a78bfa", glow: "rgba(167,139,250,0.35)" },
+    3: { b0: "#6ee7b7", b1: "#059669", b2: "#064e3b", muz: "#065f46", g0: "#d1fae5", g1: "#10b981", g2: "#065f46", stroke: "#064e3b", flag: "#34d399", ring: "#34d399", glow: "rgba(52,211,153,0.35)" }
+  };
+  const pal = PAL[player] || PAL[1];
   ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.beginPath();
   ctx.ellipse(cx + 2, cy + 4, R, R * 0.45, 0, 0, Math.PI * 2);
@@ -539,30 +633,24 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   ctx.translate(cx, cy);
   ctx.rotate(angle);
   const bG = ctx.createLinearGradient(0, -barrelW / 2, 0, barrelW / 2);
-  bG.addColorStop(0, player === 1 ? "#fcd34d" : "#c4b5fd");
-  bG.addColorStop(0.5, player === 1 ? "#b45309" : "#6d28d9");
-  bG.addColorStop(1, player === 1 ? "#78350f" : "#3b0764");
+  bG.addColorStop(0, pal.b0);
+  bG.addColorStop(0.5, pal.b1);
+  bG.addColorStop(1, pal.b2);
   ctx.fillStyle = bG;
   roundRectPath(ctx, 0, -barrelW / 2, barrelLen, barrelW, 3);
   ctx.fill();
-  ctx.fillStyle = player === 1 ? "#92400e" : "#4c1d95";
+  ctx.fillStyle = pal.muz;
   ctx.fillRect(barrelLen - 6, -barrelW / 2 - 2, 8, barrelW + 4);
   ctx.restore();
   const grad = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx, cy, R);
-  if (player === 1) {
-    grad.addColorStop(0, "#fde68a");
-    grad.addColorStop(0.45, "#f59e0b");
-    grad.addColorStop(1, "#92400e");
-  } else {
-    grad.addColorStop(0, "#ede9fe");
-    grad.addColorStop(0.45, "#8b5cf6");
-    grad.addColorStop(1, "#4c1d95");
-  }
+  grad.addColorStop(0, pal.g0);
+  grad.addColorStop(0.45, pal.g1);
+  grad.addColorStop(1, pal.g2);
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = player === 1 ? "#78350f" : "#2e1065";
+  ctx.strokeStyle = pal.stroke;
   ctx.lineWidth = 2.5;
   ctx.stroke();
   ctx.fillStyle = "rgba(0,0,0,0.4)";
@@ -585,7 +673,7 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   ctx.lineTo(fx, fy - flagH);
   ctx.stroke();
   const wave = Math.sin(Date.now() / 200) * 3;
-  ctx.fillStyle = player === 1 ? "#3b82f6" : "#ef4444";
+  ctx.fillStyle = pal.flag;
   ctx.beginPath();
   ctx.moveTo(fx, fy - flagH);
   ctx.quadraticCurveTo(fx + CELL * 0.8, fy - flagH + wave, fx + CELL * 1.4, fy - flagH + wave * 0.5);
@@ -595,20 +683,20 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.font = `${CELL * 0.55}px serif`;
-  ctx.fillText(player === 1 ? "\u2654" : "\u265A", fx + CELL * 0.35, fy - flagH + CELL * 0.6 + wave * 0.6);
+  ctx.fillText(FLAG_OF[player] || "\u2654", fx + CELL * 0.35, fy - flagH + CELL * 0.6 + wave * 0.6);
   if (reloadFrac < 1) {
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(cx, cy, R + 7, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = player === 1 ? "#fbbf24" : "#a78bfa";
+    ctx.strokeStyle = pal.ring;
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(cx, cy, R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * reloadFrac);
     ctx.stroke();
   } else {
-    ctx.strokeStyle = player === 1 ? "rgba(251,191,36,0.35)" : "rgba(167,139,250,0.35)";
+    ctx.strokeStyle = pal.glow;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx, cy, R + 6 + Math.sin(Date.now() / 250) * 1.5, 0, Math.PI * 2);
@@ -616,18 +704,22 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   }
 }
 window.FortressApp = function Fortress() {
+  var _a, _b;
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [screen, setScreen] = useState("menu");
   const [phase, setPhase] = useState("build");
   const [timer, setTimer] = useState(BUILD_TIME);
   const [round, setRound] = useState(1);
-  const [scores, setScores] = useState({ 1: 0, 2: 0 });
+  const [scores, setScores] = useState({ 1: 0, 2: 0, 3: 0 });
   const [resultInfo, setResultInfo] = useState(null);
   const [viewSize, setViewSize] = useState({ w: W, h: H });
   const [warn, setWarn] = useState(null);
   const warnTimer = useRef(null);
   const [, setUiTick] = useState(0);
+  const [numPlayers, setNumPlayers] = useState(2);
+  const numPlayersRef = useRef(2);
+  const playersList = () => numPlayersRef.current === 3 ? [1, 2, 3] : [1, 2];
   const WAPPEN = ["\u2654", "\u265A", "\u2694\uFE0F", "\u{1F6E1}\uFE0F", "\u{1F3F0}", "\u{1F451}", "\u{1F409}", "\u{1F985}", "\u{1F981}", "\u{1F43A}", "\u2B50", "\u{1F525}"];
   const PROFILE_COLORS = [
     { name: "Blau", hex: "#2563eb" },
@@ -640,7 +732,7 @@ window.FortressApp = function Fortress() {
     { name: "Pink", hex: "#db2777" }
   ];
   function loadProfile() {
-    var _a, _b, _c;
+    var _a2, _b2, _c;
     try {
       const raw = localStorage.getItem("fortress_profile");
       if (raw) {
@@ -650,7 +742,7 @@ window.FortressApp = function Fortress() {
           name: p.name || "",
           wappen: p.wappen || "\u2654",
           color: p.color || "#2563eb",
-          stats: { wins: ((_a = p.stats) == null ? void 0 : _a.wins) || 0, losses: ((_b = p.stats) == null ? void 0 : _b.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 }
+          stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 }
         };
       }
     } catch (e) {
@@ -807,6 +899,10 @@ window.FortressApp = function Fortress() {
   const bgDirty = useRef(true);
   const floodCache = useRef({
     gridVersion: -1,
+    outside: {},
+    cannonOutside: {},
+    castleClosed: {},
+    // Legacy-Felder (2-Spieler-Kompatibilität)
     outsideP1: null,
     outsideP2: null,
     cannonOutsideP1: null,
@@ -823,12 +919,18 @@ window.FortressApp = function Fortress() {
     const fc = floodCache.current;
     const g = grid.current;
     if (!g || fc.gridVersion === gridVersion.current) return fc;
-    fc.outsideP1 = computeOutsideMap(g, 1);
-    fc.outsideP2 = computeOutsideMap(g, 2);
-    fc.cannonOutsideP1 = computeOutsideMapForCannons(g, 1);
-    fc.cannonOutsideP2 = computeOutsideMapForCannons(g, 2);
-    fc.castleClosedP1 = castles.current[1] ? isObjectClosed(fc.outsideP1, castles.current[1]) : true;
-    fc.castleClosedP2 = castles.current[2] ? isObjectClosed(fc.outsideP2, castles.current[2]) : true;
+    const players = playersList();
+    for (const p of players) {
+      fc.outside[p] = computeOutsideMap(g, p);
+      fc.cannonOutside[p] = computeOutsideMapForCannons(g, p);
+      fc.castleClosed[p] = castles.current[p] ? isObjectClosed(fc.outside[p], castles.current[p]) : true;
+    }
+    fc.outsideP1 = fc.outside[1];
+    fc.outsideP2 = fc.outside[2];
+    fc.cannonOutsideP1 = fc.cannonOutside[1];
+    fc.cannonOutsideP2 = fc.cannonOutside[2];
+    fc.castleClosedP1 = fc.castleClosed[1];
+    fc.castleClosedP2 = fc.castleClosed[2];
     fc.gridVersion = gridVersion.current;
     return fc;
   }
@@ -1200,16 +1302,38 @@ window.FortressApp = function Fortress() {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
   function initGrid() {
-    const terObj = generateTerrain();
+    const is3 = numPlayersRef.current === 3;
+    let terObj;
+    if (is3) {
+      const seed = Math.floor(Math.random() * 4294967295);
+      terObj = __spreadProps(__spreadValues({}, generateTerrain3FromSeed(seed)), { seed });
+    } else {
+      terObj = generateTerrain();
+    }
     terrain.current = terObj;
     terrainSeed.current = terObj.seed;
     bgDirty.current = true;
     const ter = terObj.grid;
     const g = Array.from({ length: ROWS }, () => new Array(COLS).fill(EMPTY));
-    castles.current = { 1: __spreadValues({}, CASTLE_P1), 2: __spreadValues({}, CASTLE_P2) };
-    cannons.current = { 1: [], 2: [] };
     cannonSeq.current = 0;
-    for (const [castle, castleMark, wallMark] of [[CASTLE_P1, CASTLE1, WALL1], [CASTLE_P2, CASTLE2, WALL2]]) {
+    let castleSetup;
+    if (is3) {
+      const pos = castle3Positions();
+      castles.current = { 1: __spreadValues({}, pos[1]), 2: __spreadValues({}, pos[2]), 3: __spreadValues({}, pos[3]) };
+      castleSetup = [
+        [pos[1], CASTLE1, WALL1],
+        [pos[2], CASTLE2, WALL2],
+        [pos[3], CASTLE3, WALL3]
+      ];
+    } else {
+      castles.current = { 1: __spreadValues({}, CASTLE_P1), 2: __spreadValues({}, CASTLE_P2) };
+      castleSetup = [
+        [CASTLE_P1, CASTLE1, WALL1],
+        [CASTLE_P2, CASTLE2, WALL2]
+      ];
+    }
+    cannons.current = is3 ? { 1: [], 2: [], 3: [] } : { 1: [], 2: [] };
+    for (const [castle, castleMark, wallMark] of castleSetup) {
       const innerW = 5;
       const innerH = 2;
       for (let dr = -innerH - 2; dr <= innerH + 2; dr++)
@@ -1225,26 +1349,37 @@ window.FortressApp = function Fortress() {
           if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = wallMark;
         }
       for (let dr = -1; dr <= 1; dr++)
-        for (let dc = -1; dc <= 1; dc++)
-          g[castle.r + dr][castle.c + dc] = castleMark;
+        for (let dc = -1; dc <= 1; dc++) {
+          const r = castle.r + dr, c = castle.c + dc;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = castleMark;
+        }
     }
     setGrid(g);
   }
+  const eliminated = useRef({});
   function checkLossOrContinue(nextPhaseFn) {
     const g = grid.current;
-    const lost1 = !isCastleClosed(g, 1, castles.current[1]);
-    const lost2 = !isCastleClosed(g, 2, castles.current[2]);
-    if (lost1 || lost2) {
+    const players = playersList();
+    const activePlayers = players.filter((p) => !eliminated.current[p]);
+    const newlyOut = activePlayers.filter((p) => !isCastleClosed(g, p, castles.current[p]));
+    for (const p of newlyOut) eliminated.current[p] = true;
+    const stillIn = players.filter((p) => !eliminated.current[p]);
+    if (stillIn.length <= 1) {
       running.current = false;
       clearInterval(timerID.current);
-      const loser = lost1 && lost2 ? "both" : lost1 ? 1 : 2;
-      const winner = loser === "both" ? null : loser === 1 ? 2 : 1;
+      const winner = stillIn.length === 1 ? stillIn[0] : null;
+      let loser;
+      if (numPlayersRef.current === 2) {
+        loser = winner === null ? "both" : winner === 1 ? 2 : 1;
+      } else {
+        loser = newlyOut.length ? newlyOut : null;
+      }
       if (winner) {
-        const ns = __spreadProps(__spreadValues({}, scoresRef.current), { [winner]: scoresRef.current[winner] + 1 });
+        const ns = __spreadProps(__spreadValues({}, scoresRef.current), { [winner]: (scoresRef.current[winner] || 0) + 1 });
         scoresRef.current = ns;
         setScores(__spreadValues({}, ns));
       }
-      const info = { loser, winner, reason: "open" };
+      const info = { loser, winner, reason: "open", numPlayers: numPlayersRef.current };
       resultRef.current = info;
       screenRef.current = "result";
       phase_r.current = "result";
@@ -1253,7 +1388,7 @@ window.FortressApp = function Fortress() {
       setScreen("result");
       if (online.current && !statRecorded.current) {
         statRecorded.current = true;
-        const myWin = winner === myRole.current ? true : loser === "both" ? null : false;
+        const myWin = winner === myRole.current ? true : winner === null ? null : false;
         recordResult(myWin);
       }
       if (online.current && myRole.current === 1) {
@@ -1263,56 +1398,63 @@ window.FortressApp = function Fortress() {
       }
       return false;
     }
+    if (newlyOut.length && numPlayersRef.current === 3) {
+      const names = newlyOut.map((p) => {
+        var _a2;
+        return ((_a2 = playerInfo.current[p]) == null ? void 0 : _a2.name) || `Spieler ${p}`;
+      }).join(", ");
+      showWarn(`\u{1F4A5} ${names} ausgeschieden \u2014 Burg offen!`);
+    }
     nextPhaseFn();
     return true;
   }
   const statRecorded = useRef(false);
   function startBuild() {
+    const players = playersList();
+    const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "build";
     setPhase("build");
     timerVal.current = BUILD_TIME;
     setTimer(BUILD_TIME);
-    pieces.current = {
-      1: { cells: randomShape(), ghostR: null, ghostC: null },
-      2: { cells: randomShape(), ghostR: null, ghostC: null }
-    };
-    warnedOpen.current = { 1: false, 2: false };
-    activeBuild.current = { 1: null, 2: null };
-    activeDrag.current = { 1: null, 2: null };
+    pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
+    warnedOpen.current = mk(false);
+    activeBuild.current = mk(null);
+    activeDrag.current = mk(null);
     pointers.current.clear();
     setUiTick((t) => t + 1);
     startTimer();
   }
   function endBuild() {
     checkLossOrContinue(() => {
+      const players = playersList();
+      const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
       phase_r.current = "shoot";
       setPhase("shoot");
       timerVal.current = SHOOT_TIME;
       setTimer(SHOOT_TIME);
       balls.current = [];
       explosions.current = [];
-      reload.current = { 1: 1, 2: 1 };
-      lastShot.current = { 1: -99999, 2: -99999 };
-      activeDrag.current = { 1: null, 2: null };
+      reload.current = mk(1);
+      lastShot.current = mk(-99999);
+      activeDrag.current = mk(null);
       const g = grid.current;
-      frozenReady.current = {
-        1: closedCannons(g, 1, cannons.current[1]).map((c) => c.id),
-        2: closedCannons(g, 2, cannons.current[2]).map((c) => c.id)
-      };
+      frozenReady.current = players.reduce((o, p) => (o[p] = closedCannons(g, p, cannons.current[p]).map((c) => c.id), o), {});
       startTimer();
     });
   }
   const frozenReady = useRef({ 1: [], 2: [] });
   function endShoot() {
+    const players = playersList();
+    const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "cannon";
     setPhase("cannon");
     timerVal.current = CANNON_TIME;
     setTimer(CANNON_TIME);
     balls.current = [];
     explosions.current = [];
-    cannonBudget.current = { 1: 1, 2: 1 };
-    activeBuild.current = { 1: null, 2: null };
-    activeDrag.current = { 1: null, 2: null };
+    cannonBudget.current = players.reduce((o, p) => (o[p] = eliminated.current[p] ? 0 : 1, o), {});
+    activeBuild.current = mk(null);
+    activeDrag.current = mk(null);
     pointers.current.clear();
     setUiTick((t) => t + 1);
     startTimer();
@@ -1394,7 +1536,7 @@ window.FortressApp = function Fortress() {
           vy: Math.sin(a) * s,
           life: 12,
           maxLife: 12,
-          color: player === 1 ? "#fbbf24" : "#a78bfa"
+          color: ACCENT_OF[player] || "#fbbf24"
         });
       }
     });
@@ -1405,9 +1547,6 @@ window.FortressApp = function Fortress() {
     const hitC = Math.floor(ball.tx / CELL);
     const hitR = Math.floor(ball.ty / CELL);
     if (hitR < 0 || hitR >= ROWS || hitC < 0 || hitC >= COLS) return;
-    const enemyWall = ball.player === 1 ? WALL2 : WALL1;
-    const enemyCannon = ball.player === 1 ? CANNON2 : CANNON1;
-    const ep = ball.player === 1 ? 2 : 1;
     const target = g[hitR][hitC];
     explosions.current.push({ x: ball.tx, y: ball.ty, frame: 0 });
     for (let i = 0; i < 14; i++) {
@@ -1423,7 +1562,32 @@ window.FortressApp = function Fortress() {
         color: ["#9ca3af", "#6b7280", "#fbbf24"][Math.floor(Math.random() * 3)]
       });
     }
-    if (target === enemyCannon) {
+    const opponents = playersList().filter((p) => p !== ball.player);
+    let ep = null, kind = null;
+    for (const p of opponents) {
+      if (target === CANNON_OF[p]) {
+        ep = p;
+        kind = "cannon";
+        break;
+      }
+      if (target === CASTLE_OF[p]) {
+        ep = p;
+        kind = "castle";
+        break;
+      }
+      if (target === WALL_OF[p]) {
+        ep = p;
+        kind = "wall";
+        break;
+      }
+    }
+    if (ep === null) return;
+    const pname = (x) => {
+      var _a2;
+      return ((_a2 = playerInfo.current[x]) == null ? void 0 : _a2.name) || (x === 1 ? "Blau" : x === 2 ? "Rot" : "Gr\xFCn");
+    };
+    if (kind === "cannon") {
+      const enemyCannon = CANNON_OF[ep];
       const cn = cannons.current[ep].find((c) => Math.abs(hitR - c.r) <= 1 && Math.abs(hitC - c.c) <= 1);
       if (cn) {
         cn.hp -= 1;
@@ -1438,16 +1602,14 @@ window.FortressApp = function Fortress() {
           setGrid(newG2);
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
           explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
-          showWarn(ep === 1 ? "\u{1F4A5} \u2654 Blaue Kanone zerst\xF6rt!" : "\u{1F4A5} \u265A Rote Kanone zerst\xF6rt!");
+          showWarn(`\u{1F4A5} Kanone von ${pname(ep)} zerst\xF6rt!`);
           setUiTick((t) => t + 1);
         }
       }
       return;
     }
-    const enemyCastle = ball.player === 1 ? CASTLE2 : CASTLE1;
-    if (target === enemyCastle) {
-      return;
-    }
+    if (kind === "castle") return;
+    const enemyWall = WALL_OF[ep];
     const castleClosedBefore = isCastleClosed(g, ep, castles.current[ep]);
     const newG = g.map((row) => [...row]);
     if (target === enemyWall) newG[hitR][hitC] = RUBBLE;
@@ -1455,7 +1617,7 @@ window.FortressApp = function Fortress() {
     const castleClosedAfter = isCastleClosed(newG, ep, castles.current[ep]);
     if (castleClosedBefore && !castleClosedAfter && !warnedOpen.current[ep]) {
       warnedOpen.current[ep] = true;
-      showWarn(ep === 1 ? "\u26A0\uFE0F \u2654 Blaue BURG offen \u2014 bis Bauende schlie\xDFen, sonst verloren!" : "\u26A0\uFE0F \u265A Rote BURG offen \u2014 bis Bauende schlie\xDFen, sonst verloren!");
+      showWarn(`\u26A0\uFE0F BURG von ${pname(ep)} offen \u2014 bis Bauende schlie\xDFen!`);
     }
   }
   function placePiece(player, gr, gc) {
@@ -1473,12 +1635,13 @@ window.FortressApp = function Fortress() {
       if (!isBuildable(ter, r, c, player)) return;
     }
     const newG = g.map((row) => [...row]);
-    const mark = player === 1 ? WALL1 : WALL2;
+    const mark = WALL_OF[player];
     for (const [r, c] of abs) newG[r][c] = mark;
     setGrid(newG);
     pieces.current[player] = { cells: randomShape(), ghostR: gr, ghostC: gc };
   }
   function placeCannon(player, gr, gc) {
+    var _a2;
     const g = grid.current;
     if (!g) return;
     if (cannonBudget.current[player] <= 0) return;
@@ -1491,7 +1654,7 @@ window.FortressApp = function Fortress() {
         if (!isBuildable(ter, r, c, player)) return;
       }
     const newG = g.map((row) => [...row]);
-    const mark = player === 1 ? CANNON1 : CANNON2;
+    const mark = CANNON_OF[player];
     for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++)
         newG[gr + dr][gc + dc] = mark;
@@ -1501,7 +1664,8 @@ window.FortressApp = function Fortress() {
     cannonBudget.current[player] -= 1;
     setUiTick((t) => t + 1);
     const left = cannonBudget.current[player];
-    showWarn(player === 1 ? `\u2654 Blaue Kanone platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}` : `\u265A Rote Kanone platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}`);
+    const pn = ((_a2 = playerInfo.current[player]) == null ? void 0 : _a2.name) || (player === 1 ? "Blau" : player === 2 ? "Rot" : "Gr\xFCn");
+    showWarn(`${FLAG_OF[player] || "\u2654"} Kanone (${pn}) platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}`);
   }
   const rotatePiece = (player) => {
     const guest = online.current && myRole.current === 2;
@@ -1547,7 +1711,14 @@ window.FortressApp = function Fortress() {
     } catch (e2) {
     }
     const { x, y } = toCanvas(e);
-    const player = online.current ? myRole.current : y < ROWS_HALF * CELL ? 1 : 2;
+    let player;
+    if (online.current) {
+      player = myRole.current;
+    } else if (numPlayersRef.current === 3) {
+      player = sectorOf(Math.floor(y / CELL), Math.floor(x / CELL));
+    } else {
+      player = y < ROWS_HALF * CELL ? 1 : 2;
+    }
     pointers.current.set(e.pointerId, { player, x, y, startX: x, startY: y, t: performance.now() });
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
       const heldId = activeBuild.current[player];
@@ -1677,6 +1848,7 @@ window.FortressApp = function Fortress() {
     }
   }, []);
   const renderLoop = useCallback(() => {
+    var _a2;
     const canvas = canvasRef.current;
     if (!canvas || !running.current) return;
     const ctx = canvas.getContext("2d");
@@ -1690,10 +1862,10 @@ window.FortressApp = function Fortress() {
     if (isGuest && reloadProgRef.current) {
       const rp = reloadProgRef.current;
       const elapsed = (now - (rp.at || now)) / RELOAD_MS;
-      reload.current[1] = Math.min(1, rp[1] + elapsed);
-      reload.current[2] = Math.min(1, rp[2] + elapsed);
+      for (const p of playersList())
+        reload.current[p] = Math.min(1, ((_a2 = rp[p]) != null ? _a2 : 1) + elapsed);
     } else {
-      for (const p of [1, 2])
+      for (const p of playersList())
         reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
     }
     if (phase_r.current === "shoot") {
@@ -1803,11 +1975,12 @@ window.FortressApp = function Fortress() {
           }
     }
     const fc = getFloodCache();
-    for (const player of [1, 2]) {
-      const outside = player === 1 ? fc.outsideP1 : fc.outsideP2;
+    const ZONE_FILL = { 1: "rgba(56,120,230,0.28)", 2: "rgba(220,50,50,0.28)", 3: "rgba(16,150,90,0.28)" };
+    for (const player of playersList()) {
+      const outside = fc.outside[player];
       if (!outside) continue;
-      const ownWall = player === 1 ? WALL1 : WALL2;
-      ctx.fillStyle = player === 1 ? "rgba(56,120,230,0.28)" : "rgba(220,50,50,0.28)";
+      const ownWall = WALL_OF[player];
+      ctx.fillStyle = ZONE_FILL[player];
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
           if (!outside[r * COLS + c] && g[r][c] !== ownWall)
@@ -1821,17 +1994,19 @@ window.FortressApp = function Fortress() {
         const px = c * CELL, py = r * CELL;
         if (v === WALL1) drawWall(ctx, px, py, "#2563eb", "#7db4fc", "#1e3a8a", "#172a63");
         else if (v === WALL2) drawWall(ctx, px, py, "#c92a2a", "#fc9a9a", "#7f1d1d", "#5e1414");
+        else if (v === WALL3) drawWall(ctx, px, py, "#059669", "#6ee7b7", "#065f46", "#044a37");
         else if (v === RUBBLE) drawRubble(ctx, px, py);
       }
     }
-    for (const player of [1, 2]) {
+    for (const player of playersList()) {
       const ct = castles.current[player];
+      if (!ct) continue;
       const cx2 = ct.c * CELL + CELL / 2, cy2 = ct.r * CELL + CELL / 2;
-      const open2 = player === 1 ? !fc.castleClosedP1 : !fc.castleClosedP2;
+      const open2 = !fc.castleClosed[player];
       drawCastle(ctx, cx2, cy2, player, open2, now);
     }
     if (phase_r.current === "build") {
-      for (const player of [1, 2]) {
+      for (const player of playersList()) {
         const p = pieces.current[player];
         if (p.ghostR === null) continue;
         const { cells } = p;
@@ -1848,7 +2023,7 @@ window.FortressApp = function Fortress() {
           if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
           ctx.fillRect(c * CELL + 2, r * CELL + 2, CELL - 4, CELL - 4);
         }
-        const col = player === 1 ? valid ? "rgba(96,165,250," : "rgba(120,120,120," : valid ? "rgba(248,113,113," : "rgba(120,120,120,";
+        const col = valid ? GHOST_RGB[player] || GHOST_RGB[1] : "rgba(120,120,120,";
         ctx.fillStyle = col + "0.55)";
         ctx.strokeStyle = col + "0.9)";
         ctx.lineWidth = 2;
@@ -1865,14 +2040,16 @@ window.FortressApp = function Fortress() {
         ctx.lineTo(ghostCenterX, ghostCenterY + LIFT_ROWS * CELL);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = valid ? player === 1 ? "#60a5fa" : "#f87171" : "#6b7280";
+        ctx.fillStyle = valid ? GHOST_HEX[player] || GHOST_HEX[1] : "#6b7280";
         ctx.font = `bold ${CELL * 0.8}px system-ui`;
         ctx.textAlign = "center";
         ctx.fillText(valid ? "\u2713" : "\u2717", ghostCenterX, ghostCenterY + LIFT_ROWS * CELL - 2);
         ctx.textAlign = "left";
       }
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
-      for (const player of [1, 2]) {
+      const GFILL = { 1: "rgba(245,158,11,0.45)", 2: "rgba(139,92,246,0.45)", 3: "rgba(16,185,129,0.45)" };
+      const GSTROKE = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
+      for (const player of playersList()) {
         if (cannonBudget.current[player] <= 0) continue;
         const p = pieces.current[player];
         if (p.ghostR === null) continue;
@@ -1883,8 +2060,8 @@ window.FortressApp = function Fortress() {
             const r = gr0 + dr, c = gc0 + dc;
             if (r < 1 || r >= ROWS - 1 || c < 1 || c >= COLS - 1 || g[r][c] !== EMPTY || !isBuildable(terObj, r, c, player)) valid = false;
           }
-        ctx.fillStyle = valid ? player === 1 ? "rgba(245,158,11,0.45)" : "rgba(139,92,246,0.45)" : "rgba(120,120,120,0.3)";
-        ctx.strokeStyle = valid ? player === 1 ? "#fbbf24" : "#a78bfa" : "rgba(160,160,160,0.5)";
+        ctx.fillStyle = valid ? GFILL[player] : "rgba(120,120,120,0.3)";
+        ctx.strokeStyle = valid ? GSTROKE[player] : "rgba(160,160,160,0.5)";
         ctx.lineWidth = 2;
         ctx.fillRect((gc0 - 1) * CELL, (gr0 - 1) * CELL, CELL * 3, CELL * 3);
         ctx.strokeRect((gc0 - 1) * CELL + 1, (gr0 - 1) * CELL + 1, CELL * 3 - 2, CELL * 3 - 2);
@@ -1895,9 +2072,9 @@ window.FortressApp = function Fortress() {
         ctx.textAlign = "left";
       }
     }
-    for (const player of [1, 2]) {
+    for (const player of playersList()) {
       const angle = cannonAngle.current[player];
-      const outsideMap = player === 1 ? fc.cannonOutsideP1 : fc.cannonOutsideP2;
+      const outsideMap = fc.cannonOutside[player];
       const list = cannons.current[player];
       const anchor = slingAnchor(player);
       const frozen = frozenReady.current[player] || [];
@@ -1907,7 +2084,7 @@ window.FortressApp = function Fortress() {
         const pt = pointers.current.get(pid);
         if (pt) {
           const tgt = slingTarget(player, pt.x, pt.y);
-          const col = player === 1 ? "rgba(251,191,36," : "rgba(167,139,250,";
+          const col = ACCENT_RGB[player] || ACCENT_RGB[1];
           ctx.strokeStyle = col + "0.35)";
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -1961,7 +2138,7 @@ window.FortressApp = function Fortress() {
             ctx.fillStyle = "rgba(255,255,255,0.5)";
             ctx.font = `${CELL * 0.6}px sans-serif`;
             ctx.textAlign = "center";
-            ctx.fillText("weiter ziehen\u2026", anchor.x, player === 1 ? anchor.y - CELL * 3.2 : anchor.y + CELL * 3.6);
+            ctx.fillText("weiter ziehen\u2026", anchor.x, anchor.y < H / 2 ? anchor.y + CELL * 3.6 : anchor.y - CELL * 3.2);
             ctx.textAlign = "left";
           }
         }
@@ -2011,8 +2188,8 @@ window.FortressApp = function Fortress() {
       const drawY = by - h * 0.55;
       const bg2 = ctx.createRadialGradient(bx - 2, drawY - 2, 0, bx, drawY, ballR);
       bg2.addColorStop(0, "#ffffff");
-      bg2.addColorStop(0.4, ball.player === 1 ? "#fbbf24" : "#a78bfa");
-      bg2.addColorStop(1, ball.player === 1 ? "#92400e" : "#4c1d95");
+      bg2.addColorStop(0.4, BALL_MID[ball.player] || BALL_MID[1]);
+      bg2.addColorStop(1, BALL_DARK[ball.player] || BALL_DARK[1]);
       ctx.fillStyle = bg2;
       ctx.beginPath();
       ctx.arc(bx, drawY, ballR, 0, Math.PI * 2);
@@ -2093,20 +2270,25 @@ window.FortressApp = function Fortress() {
     }
   }, []);
   function beginSetup() {
-    pieces.current = {
-      1: { cells: randomShape(), ghostR: null, ghostC: null },
-      2: { cells: randomShape(), ghostR: null, ghostC: null }
-    };
+    const players = playersList();
+    eliminated.current = {};
+    const mk = (val) => players.reduce((o, p) => (o[p] = val, o), {});
+    pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
     balls.current = [];
     explosions.current = [];
     particles.current = [];
-    reload.current = { 1: 1, 2: 1 };
-    lastShot.current = { 1: -99999, 2: -99999 };
+    reload.current = mk(1);
+    lastShot.current = mk(-99999);
     pointers.current.clear();
-    activeDrag.current = { 1: null, 2: null };
-    warnedOpen.current = { 1: false, 2: false };
-    cannonBudget.current = { 1: 2, 2: 2 };
-    cannonAngle.current = { 1: Math.PI / 2, 2: -Math.PI / 2 };
+    activeDrag.current = mk(null);
+    activeBuild.current = mk(null);
+    warnedOpen.current = mk(false);
+    cannonBudget.current = mk(2);
+    if (numPlayersRef.current === 3) {
+      cannonAngle.current = { 1: Math.PI, 2: Math.PI * 1.67, 3: Math.PI * 0.33 };
+    } else {
+      cannonAngle.current = { 1: Math.PI / 2, 2: -Math.PI / 2 };
+    }
     phase_r.current = "setup";
     setPhase("setup");
     timerVal.current = SETUP_TIME;
@@ -2120,8 +2302,10 @@ window.FortressApp = function Fortress() {
     beginSetup();
   }
   function fullReset() {
-    scoresRef.current = { 1: 0, 2: 0 };
-    setScores({ 1: 0, 2: 0 });
+    const players = playersList();
+    const z = players.reduce((o, p) => (o[p] = 0, o), {});
+    scoresRef.current = __spreadValues({}, z);
+    setScores(__spreadValues({}, z));
     startGame();
   }
   function nextRound() {
@@ -2207,20 +2391,42 @@ window.FortressApp = function Fortress() {
     textDecoration: "underline"
   } }, showHelp ? "\u25B2 Anleitung ausblenden" : "\u25BE Wie spielt man?"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
     fullReset();
   }, style: {
     width: "100%",
     background: "linear-gradient(135deg,#059669,#0284c7)",
     color: "white",
     border: "none",
-    padding: "17px",
-    fontSize: 17,
+    padding: "16px",
+    fontSize: 16,
     fontWeight: 800,
     borderRadius: 12,
     cursor: "pointer",
     letterSpacing: "0.04em",
     boxShadow: "0 0 36px rgba(5,150,105,0.35)"
-  } }, "\u25B6 LOKAL SPIELEN (1 Ger\xE4t)"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  } }, "\u25B6 LOKAL \xB7 2 SPIELER (1 Ger\xE4t)"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    online.current = false;
+    numPlayersRef.current = 3;
+    setNumPlayers(3);
+    fullReset();
+  }, style: {
+    width: "100%",
+    marginTop: 10,
+    background: "linear-gradient(135deg,#7c3aed,#059669)",
+    color: "white",
+    border: "none",
+    padding: "16px",
+    fontSize: 16,
+    fontWeight: 800,
+    borderRadius: 12,
+    cursor: "pointer",
+    letterSpacing: "0.04em",
+    boxShadow: "0 0 36px rgba(124,58,237,0.3)"
+  } }, "\u{1F451} LOKAL \xB7 3 SPIELER (alle gegen alle)"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
     setMpError("");
     setMpScreen("online");
   }, style: {
@@ -2245,7 +2451,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.1.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -2559,18 +2765,26 @@ window.FortressApp = function Fortress() {
       fontSize: "clamp(20px,5vw,28px)",
       fontWeight: 800,
       marginBottom: 6,
-      color: isWin ? info.winner === 1 ? "#60a5fa" : "#f87171" : "#ef4444"
-    } }, isWin ? online.current ? iWon ? "Du gewinnst! \u{1F389}" : "Du verlierst." : `${info.winner === 1 ? "\u2654 Blaues K\xF6nigreich" : "\u265A Rotes K\xF6nigreich"} siegt!` : info.loser === "both" ? "Unentschieden!" : `Spieler ${info.loser} verliert!`), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 20 } }, info.reason === "breach" ? "Burg durchbrochen \u{1F4A5}" : "Burg war nicht geschlossen"), /* @__PURE__ */ React.createElement("div", { style: {
+      color: isWin ? ROOF_OF[info.winner] || "#60a5fa" : "#ef4444"
+    } }, (() => {
+      const wname = (p) => {
+        var _a2;
+        return online.current ? ((_a2 = playerInfo.current[p]) == null ? void 0 : _a2.name) || `Spieler ${p}` : `${FLAG_OF[p] || ""} ${p === 1 ? "Blau" : p === 2 ? "Rot" : "Gr\xFCn"}`;
+      };
+      if (!isWin) return "Unentschieden!";
+      if (online.current) return iWon ? "Du gewinnst! \u{1F389}" : "Du verlierst.";
+      return `${wname(info.winner)} siegt!`;
+    })()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 20 } }, info.numPlayers === 3 || numPlayers === 3 ? "Letzte geschlossene Burg gewinnt" : info.reason === "breach" ? "Burg durchbrochen \u{1F4A5}" : "Burg war nicht geschlossen"), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
-      gap: 20,
-      fontSize: 24,
+      gap: 16,
+      fontSize: 22,
       fontWeight: 800,
       marginBottom: 28,
       background: "rgba(255,255,255,0.05)",
       borderRadius: 12,
       padding: "12px 26px",
       border: "1px solid rgba(255,255,255,0.08)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#60a5fa" } }, "\u2654 ", scores[1]), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#f87171" } }, scores[2], " \u265A")), online.current && !isHost ? (
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#60a5fa" } }, "\u2654 ", scores[1]), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#f87171" } }, scores[2], " \u265A"), (info.numPlayers === 3 || numPlayers === 3) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#34d399" } }, scores[3] || 0, " \u265C"))), online.current && !isHost ? (
       // Gast: wartet auf Host, kann aber selbst ins Hauptmenü
       /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 280, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 14, fontStyle: "italic" } }, "\u23F3 Warte auf Host f\xFCr n\xE4chste Runde\u2026"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
         scoresRef.current = { 1: 0, 2: 0 };
@@ -2678,7 +2892,17 @@ window.FortressApp = function Fortress() {
     gap: 6,
     boxShadow: "0 0 12px rgba(239,68,68,0.15)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fee2e2", flexShrink: 0 } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), warn && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fee2e2", flexShrink: 0 } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#fca5a5", fontWeight: 700, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(135deg, rgba(5,150,105,0.25), rgba(6,95,70,0.15))",
+    border: "1px solid rgba(52,211,153,0.4)",
+    borderRadius: 10,
+    padding: "4px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "0 0 12px rgba(16,185,129,0.15)",
+    opacity: eliminated.current[3] ? 0.4 : 1
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, online.current ? ((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "\u265C" : "\u265C"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700 } }, online.current ? ((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3" : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#d1fae5" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     top: 70,
     left: "50%",
