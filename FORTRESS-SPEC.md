@@ -102,6 +102,9 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Beim Loslassen wird an der **exakt angezeigten Ghost-Position** platziert
   (NICHT neu aus dem pointerup-Event berechnen → kein Versatz)
 - Teile sind Tetrominos inkl. 1×1-Einzelstein (zufällig aus Pool)
+- **Bausteinvorschau**: In der Bau-Leiste (Mitte) wird das aktuelle Teil als
+  Mini-Grid dauerhaft angezeigt (“nächster”), auch ohne Bildschirmberührung.
+  Aktualisiert bei Drehen (setUiTick) und neuem Teil. Online: zeigt eigenes Teil.
 
 -----
 
@@ -121,6 +124,11 @@ und beschiessen danach gegenseitig ihre Festungen.
 
 - **Bauteile**: Host schickt `piece1`/`piece2` Formen; Gast übernimmt Form,
   steuert aber Ghost-Position lokal
+- **Drehen**: Host-autoritativ. Gast sendet `{type:"rotate"}`-Aktion, der Host
+  dreht via rotateCW und pusht zurück. Gast dreht NICHT lokal (würde vom
+  nächsten Push überschrieben).
+- **Multitouch**: pro Spieler nur EIN aktiver Bau-Pointer (`activeBuild`-Ref).
+  Zweiter Finger während des Bauens wird ignoriert → kein Ghost-Konflikt.
 - **Kugeln**: Gast interpoliert Flugbahn LOKAL (flüssige Animation), übernimmt
   nur NEUE Salven vom Host; Einschlag bleibt Host-autoritativ
 - **Reload**: Host schickt Fortschritt als 0..1-Wert (`reloadProg`), NICHT als
@@ -195,3 +203,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   jedem Push zu springen — flüssige Nachladeanimation auch für Host-Kanonen.
   Phasenwechsel-Banner beim Gast über eigenen lastSeenPhase-Ref zuverlässig.
   Versionsanzeige im Hauptmenü.
+- **v1.0.2**: Drehen im Online-Modus host-autoritativ (Gast sendet rotate-Aktion).
+  Multitouch-Fix: nur ein Bau-Pointer pro Spieler (activeBuild) → kein
+  Ghost-Konflikt bei zwei Fingern.
+- **v1.0.3**: Bausteinvorschau in der Bau-Leiste wieder eingebaut — zeigt das
+  aktuelle Teil dauerhaft als Mini-Grid (Host & Gast), aktualisiert beim Drehen.

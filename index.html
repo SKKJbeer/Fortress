@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v1.0.1</title>
+  <title>FORTRESS v1.0.3</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -242,7 +242,7 @@ function sanitizeAction(raw) {
     return null;
   }
   if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join"];
+  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate"];
   if (!validTypes.includes(a.type)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
@@ -726,6 +726,7 @@ window.FortressApp = function Fortress() {
   const lastShot = useRef({ 1: -99999, 2: -99999 });
   const pointers = useRef(/* @__PURE__ */ new Map());
   const activeDrag = useRef({ 1: null, 2: null });
+  const activeBuild = useRef({ 1: null, 2: null });
   useEffect(() => {
     function fit() {
       const vw = window.innerWidth - 8;
@@ -905,6 +906,7 @@ window.FortressApp = function Fortress() {
     else if (a.type === "cannon") placeCannon(2, a.r, a.c);
     else if (a.type === "fire") fireMortar(2, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[2] = a.angle;
+    else if (a.type === "rotate") pieces.current[2].cells = rotateCW(pieces.current[2].cells);
     pushState(true);
   }
   function startPolling(code, role) {
@@ -1336,7 +1338,14 @@ window.FortressApp = function Fortress() {
     showWarn(player === 1 ? `\u2654 Blaue Kanone platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}` : `\u265A Rote Kanone platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}`);
   }
   const rotatePiece = (player) => {
+    const guest = online.current && myRole.current === 2;
+    if (guest) {
+      sendAction({ type: "rotate" });
+      return;
+    }
     pieces.current[player].cells = rotateCW(pieces.current[player].cells);
+    setUiTick((t) => t + 1);
+    if (online.current) pushState(true);
   };
   const canvasRect = useRef(null);
   function refreshRect() {
@@ -1375,6 +1384,11 @@ window.FortressApp = function Fortress() {
     const player = online.current ? myRole.current : y < ROWS_HALF * CELL ? 1 : 2;
     pointers.current.set(e.pointerId, { player, x, y, startX: x, startY: y, t: performance.now() });
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
+      if (activeBuild.current[player] !== null) {
+        pointers.current.delete(e.pointerId);
+        return;
+      }
+      activeBuild.current[player] = e.pointerId;
       const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
@@ -1397,6 +1411,7 @@ window.FortressApp = function Fortress() {
     pt.y = y;
     const player = pt.player;
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
+      if (activeBuild.current[player] !== e.pointerId) return;
       const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
@@ -1438,6 +1453,8 @@ window.FortressApp = function Fortress() {
     const player = pt.player;
     const guest = online.current && myRole.current === 2;
     if (phase_r.current === "build") {
+      if (activeBuild.current[player] !== e.pointerId) return;
+      activeBuild.current[player] = null;
       const gr = pieces.current[player].ghostR;
       const gc = pieces.current[player].ghostC;
       if (gr !== null && gc !== null) {
@@ -1450,6 +1467,8 @@ window.FortressApp = function Fortress() {
       pieces.current[player].ghostR = null;
       pieces.current[player].ghostC = null;
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
+      if (activeBuild.current[player] !== e.pointerId) return;
+      activeBuild.current[player] = null;
       const gr = pieces.current[player].ghostR;
       const gc = pieces.current[player].ghostC;
       if (gr !== null && gc !== null) {
@@ -1478,8 +1497,14 @@ window.FortressApp = function Fortress() {
   const onPointerCancel = useCallback((e) => {
     const pt = pointers.current.get(e.pointerId);
     pointers.current.delete(e.pointerId);
-    if (pt && activeDrag.current[pt.player] === e.pointerId)
-      activeDrag.current[pt.player] = null;
+    if (pt) {
+      if (activeDrag.current[pt.player] === e.pointerId) activeDrag.current[pt.player] = null;
+      if (activeBuild.current[pt.player] === e.pointerId) {
+        activeBuild.current[pt.player] = null;
+        pieces.current[pt.player].ghostR = null;
+        pieces.current[pt.player].ghostC = null;
+      }
+    }
   }, []);
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1981,7 +2006,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 11, color: "#334155", letterSpacing: "0.05em" } }, "FORTRESS \xB7 Version 1.0.1")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F310} ONLINE SPIELEN (2 Ger\xE4te)"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 22, fontSize: 11, color: "#334155", letterSpacing: "0.05em" } }, "FORTRESS \xB7 Version 1.0.3")), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.92)",
@@ -2329,14 +2354,35 @@ window.FortressApp = function Fortress() {
     online.current ? "Drehen" : "Blau drehen"
   ), /* @__PURE__ */ React.createElement("div", { style: {
     flex: 0.7,
-    fontSize: 10,
-    color: "#334155",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    textAlign: "center",
-    lineHeight: 1.3
-  } }, "Tippen =", /* @__PURE__ */ React.createElement("br", null), "platzieren"), (!online.current || myRole.current === 2) && /* @__PURE__ */ React.createElement(
+    gap: 3
+  } }, (() => {
+    const pp = online.current ? myRole.current : 1;
+    const cells = pieces.current[pp] && pieces.current[pp].cells;
+    if (!cells) return null;
+    const maxR = Math.max(...cells.map(([r]) => r));
+    const maxC = Math.max(...cells.map(([, c]) => c));
+    const dot = 7, gap2 = 1;
+    const col = pp === 1 ? "#60a5fa" : "#f87171";
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      display: "grid",
+      gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`,
+      gridTemplateRows: `repeat(${maxR + 1}, ${dot}px)`,
+      gap: gap2
+    } }, Array.from({ length: (maxR + 1) * (maxC + 1) }).map((_, i) => {
+      const r = Math.floor(i / (maxC + 1)), c = i % (maxC + 1);
+      const on = cells.some(([cr, cc]) => cr === r && cc === c);
+      return /* @__PURE__ */ React.createElement("div", { key: i, style: {
+        width: dot,
+        height: dot,
+        borderRadius: 1,
+        background: on ? col : "transparent"
+      } });
+    }));
+  })(), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, "n\xE4chster")), (!online.current || myRole.current === 2) && /* @__PURE__ */ React.createElement(
     "button",
     {
       onPointerDown: (e) => {
