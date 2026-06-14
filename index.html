@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.2</title>
+  <title>FORTRESS v2.2.1</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -274,12 +274,12 @@ const C2 = CASTLE_P2;
 function castle3Positions() {
   const hubR = Math.floor(ROWS * 0.5);
   const hubC = Math.floor(COLS * 0.5);
-  const distR = ROWS * 0.3, distC = COLS * 0.3;
+  const distR = ROWS * 0.34, distC = COLS * 0.34;
   const mk = (deg) => {
     const rad = deg * Math.PI / 180;
     return {
-      r: Math.max(2, Math.min(ROWS - 3, Math.round(hubR - Math.cos(rad) * distR))),
-      c: Math.max(2, Math.min(COLS - 3, Math.round(hubC + Math.sin(rad) * distC)))
+      r: Math.max(4, Math.min(ROWS - 5, Math.round(hubR - Math.cos(rad) * distR))),
+      c: Math.max(7, Math.min(COLS - 8, Math.round(hubC + Math.sin(rad) * distC)))
     };
   };
   return { 1: mk(0), 2: mk(120), 3: mk(240) };
@@ -737,13 +737,26 @@ window.FortressApp = function Fortress() {
       const raw = localStorage.getItem("fortress_profile");
       if (raw) {
         const p = JSON.parse(raw);
-        return {
-          id: p.id || "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
+        let id = p.id;
+        let needsSave = false;
+        if (!id) {
+          id = "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          needsSave = true;
+        }
+        const prof = {
+          id,
           name: p.name || "",
           wappen: p.wappen || "\u2654",
           color: p.color || "#2563eb",
           stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 }
         };
+        if (needsSave) {
+          try {
+            localStorage.setItem("fortress_profile", JSON.stringify(prof));
+          } catch (e) {
+          }
+        }
+        return prof;
       }
     } catch (e) {
     }
@@ -1483,6 +1496,7 @@ window.FortressApp = function Fortress() {
     }, 1e3);
   }
   function fireMortar(player, targetX, targetY) {
+    if (eliminated.current[player]) return false;
     const now = performance.now();
     if (now - lastShot.current[player] < RELOAD_MS) return false;
     const g = grid.current;
@@ -1623,6 +1637,7 @@ window.FortressApp = function Fortress() {
   function placePiece(player, gr, gc) {
     const g = grid.current;
     if (!g) return;
+    if (eliminated.current[player]) return;
     const ter = terrain.current;
     const p = pieces.current[player];
     const { cells } = p;
@@ -1644,6 +1659,7 @@ window.FortressApp = function Fortress() {
     var _a2;
     const g = grid.current;
     if (!g) return;
+    if (eliminated.current[player]) return;
     if (cannonBudget.current[player] <= 0) return;
     const ter = terrain.current;
     for (let dr = -1; dr <= 1; dr++)
@@ -1698,7 +1714,8 @@ window.FortressApp = function Fortress() {
   const LIFT_ROWS = 6;
   function liftedGhost(player, x, y) {
     const gc = Math.floor(x / CELL);
-    const gr = Math.floor(y / CELL) - LIFT_ROWS;
+    let gr = Math.floor(y / CELL) - LIFT_ROWS;
+    if (gr < 1) gr = 1;
     return { gr, gc };
   }
   const onPointerDown = useCallback((e) => {
@@ -2451,7 +2468,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.2.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",

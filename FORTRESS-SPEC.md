@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.2.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -326,3 +326,12 @@ und beschiessen danach gegenseitig ihre Festungen.
   Sektor-Teilung, 3 Burgen, Spieler 3 = Grün ♜, “letzter mit geschlossener Burg
   gewinnt”. Komplett gekapselt: 2-Spieler-Modus völlig unverändert. Online für 3
   Spieler folgt als nächster Schritt. Menü: separate 2-/3-Spieler-Buttons.
+- **v2.2.1**: Fixes nach erstem 3-Spieler-Test:
+  • Ghost-Position wird nach oben geklemmt (gr>=1) → oberer Spieler (P1) konnte
+  nahe seiner Burg nichts setzen, weil der Ghost über den Rand rutschte.
+  • Leaderboard: neu erzeugte Profil-id wird sofort in localStorage persistiert
+  (vorher bei jedem Laden neue id → doppelte Einträge). Bestehende Doppel-
+  Einträge müssen einmalig manuell in der Firebase-Konsole gelöscht werden.
+  • 3-Spieler: Burgen weiter nach außen gerückt (dist 0.34) → nicht mehr im Fluss.
+  • 3-Spieler: ausgeschiedene Spieler (offene Burg) können nicht mehr bauen,
+  Kanonen setzen oder feuern (Checks in placePiece/placeCannon/fireMortar).
