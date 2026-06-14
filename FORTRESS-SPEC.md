@@ -208,3 +208,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   Ghost-Konflikt bei zwei Fingern.
 - **v1.0.3**: Bausteinvorschau in der Bau-Leiste wieder eingebaut — zeigt das
   aktuelle Teil dauerhaft als Mini-Grid (Host & Gast), aktualisiert beim Drehen.
+- **v1.0.4**: KRITISCHER FIX — nach der Schiessphase konnte man nichts mehr
+  platzieren (hängender activeBuild/activeDrag-Pointer-Slot). Slots werden jetzt
+  bei jedem Phasenwechsel zurückgesetzt (Host in start*-Funktionen, Gast in
+  applyState), plus verwaiste Slots werden in onPointerDown automatisch
+  freigegeben wenn der Pointer nicht mehr existiert.
