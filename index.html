@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.2.1</title>
+  <title>FORTRESS v2.2.2</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -272,17 +272,23 @@ const CASTLE_P2 = { c: Math.floor(COLS / 2), r: ROWS_HALF + Math.floor(ROWS_HALF
 const C1 = CASTLE_P1;
 const C2 = CASTLE_P2;
 function castle3Positions() {
-  const hubR = Math.floor(ROWS * 0.5);
+  const hubR = Math.floor(ROWS * 0.4);
   const hubC = Math.floor(COLS * 0.5);
-  const distR = ROWS * 0.34, distC = COLS * 0.34;
-  const mk = (deg) => {
+  const mk = (deg, dr, dc) => {
     const rad = deg * Math.PI / 180;
     return {
-      r: Math.max(4, Math.min(ROWS - 5, Math.round(hubR - Math.cos(rad) * distR))),
-      c: Math.max(7, Math.min(COLS - 8, Math.round(hubC + Math.sin(rad) * distC)))
+      r: Math.max(4, Math.min(ROWS - 5, Math.round(hubR - Math.cos(rad) * dr))),
+      c: Math.max(7, Math.min(COLS - 8, Math.round(hubC + Math.sin(rad) * dc)))
     };
   };
-  return { 1: mk(0), 2: mk(120), 3: mk(240) };
+  return {
+    1: mk(0, ROWS * 0.3, 0),
+    // oben mittig
+    2: mk(125, ROWS * 0.34, COLS * 0.32),
+    // unten-rechts
+    3: mk(235, ROWS * 0.34, COLS * 0.32)
+    // unten-links
+  };
 }
 const SHAPES = [
   [[0, 0]],
@@ -357,7 +363,7 @@ function generateTerrain() {
   const seed = Math.floor(Math.random() * 4294967295);
   return __spreadProps(__spreadValues({}, generateTerrainFromSeed(seed)), { seed });
 }
-const HUB_R = Math.floor(ROWS * 0.5);
+const HUB_R = Math.floor(ROWS * 0.4);
 const HUB_C = Math.floor(COLS * 0.5);
 function angleFromHub(r, c) {
   const dx = c - HUB_C;
@@ -368,8 +374,8 @@ function angleFromHub(r, c) {
 }
 function sectorOf(r, c) {
   const a = angleFromHub(r, c) * 180 / Math.PI;
-  if (a >= 300 || a < 60) return 1;
-  if (a >= 60 && a < 180) return 2;
+  if (a >= 290 || a < 70) return 1;
+  if (a >= 70 && a < 180) return 2;
   return 3;
 }
 function generateTerrain3FromSeed(seed) {
@@ -380,19 +386,19 @@ function generateTerrain3FromSeed(seed) {
       const n = Math.sin(r * 0.35 + c * 0.22 + seed * 1e-3) + Math.sin(c * 0.5 - r * 0.15) * 0.7;
       t[r][c] = n > 0.8 ? 0 : n > -0.5 ? 1 : 2;
     }
-  const armAngles = [0, 120, 240];
+  const armAngles = [70, 180, 290];
   for (const baseDeg of armAngles) {
     let wobble = 0;
-    const maxLen = Math.max(ROWS, COLS);
+    const maxLen = Math.max(ROWS, COLS) * 2;
     for (let step = 0; step < maxLen; step++) {
-      wobble += (rng() - 0.5) * 6;
-      wobble = Math.max(-14, Math.min(14, wobble));
+      wobble += (rng() - 0.5) * 4;
+      wobble = Math.max(-10, Math.min(10, wobble));
       const deg = baseDeg + wobble;
       const rad = deg * Math.PI / 180;
       const dist = step * 0.5;
       const rr = Math.round(HUB_R - Math.cos(rad) * dist);
       const cc = Math.round(HUB_C + Math.sin(rad) * dist);
-      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+      if (rr < -2 || rr >= ROWS + 2 || cc < -2 || cc >= COLS + 2) break;
       for (let dr = -1; dr <= 1; dr++)
         for (let dc = -1; dc <= 1; dc++) {
           const r = rr + dr, c = cc + dc;
@@ -2468,7 +2474,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.2.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.2.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",

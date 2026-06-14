@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.2.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.2.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -335,3 +335,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   • 3-Spieler: Burgen weiter nach außen gerückt (dist 0.34) → nicht mehr im Fluss.
   • 3-Spieler: ausgeschiedene Spieler (offene Burg) können nicht mehr bauen,
   Kanonen setzen oder feuern (Checks in placePiece/placeCannon/fireMortar).
+- **v2.2.2**: 3-Spieler-Sektoren ausbalanciert fürs Hochformat. Hub auf 40% Höhe
+  nach oben verschoben, Sektor 1 (oben) auf ±70° verbreitert. Flussarme laufen
+  jetzt entlang der Sektor-GRENZEN (70°/180°/290°) und trennen sichtbar. Burgen
+  an die neuen Sektor-Mitten gesetzt. Ergebnis: P1 34% / P2 31% / P3 35% Fläche,
+  alle Burgen sauber im eigenen Sektor.
