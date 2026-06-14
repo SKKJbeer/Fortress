@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.4)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.5)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -273,8 +273,17 @@ und beschiessen danach gegenseitig ihre Festungen.
   ausgeschiedene ausgegraut + ☠️.
 - **Flood-Cache** generalisiert auf per-Spieler-Maps (`outside[p]`,
   `cannonOutside[p]`, `castleClosed[p]`), Legacy-P1/P2-Felder bleiben gespiegelt.
-- **Online für 3 Spieler: NOCH NICHT implementiert** — Online ist weiterhin
-  strikt 2-Spieler (Host + 1 Gast). Kommt als eigener Schritt nach lokalem Test.
+- **Online für 3 Spieler (ab v2.5)**: Host verwaltet ZWEI Gäste (P2+P3).
+  - Schema: `/games/{code}/` → state, guestAction2, guestAction3, numPlayers, createdAt, updatedAt
+  - Jeder Gast schreibt in seinen eigenen Slot (`guestAction{role}`) → kein
+    Überschreiben. Host abonniert beide Slots (mpChannel + mpChannel2).
+  - Rolle des Gasts: P2 wenn Slot frei, sonst P3 (nur bei numPlayers=3). Gast
+    liest numPlayers aus dem Spiel und übernimmt den Modus.
+  - Spielstart: 2er → 1 Gast reicht; 3er → beide Gäste müssen beigetreten sein
+    (joinedGuests-Tracking). Lobby zeigt “x/2 beigetreten”.
+  - State enthält numPlayers, piece3, reloadProg[3], eliminated. Gast regeneriert
+    bei numPlayers=3 das Y-Terrain aus dem Seed + baut sectorMap neu.
+  - Guest-Checks im Code: `myRole.current !== 1` (statt ===2) = “bin ich Gast”.
 
 -----
 
@@ -352,3 +361,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   (`buildSectorMap`) statt Winkel-Sektor → man kann exakt bis ans Wasser bauen,
   keine toten 2-3-Zellen-Streifen mehr an den Grenzen. (2) Spielfeld vergrößert
   auf 44×68 (CELL 14) für mehr Baufläche in allen Modi.
+- **v2.5**: 3-Spieler-ONLINE-Modus. Host koordiniert zwei Gäste über getrennte
+  Action-Slots (guestAction2/3), beide Gäste über Code beitreten, Rolle wird
+  automatisch vergeben. Online-Screen hat 2/3-Spieler-Wahl beim Erstellen.
+  Lobby wartet bei 3er auf beide Gäste. 3er-Bestenliste füllt sich jetzt.
+  ⚠️ Firebase-Rules müssen guestAction2/guestAction3/numPlayers erlauben.

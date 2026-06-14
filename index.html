@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.4</title>
+  <title>FORTRESS v2.5</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1057,17 +1057,21 @@ window.FortressApp = function Fortress() {
     };
   }, []);
   function serializeState() {
+    var _a2;
+    const players = playersList();
+    const rp = {};
+    for (const p of players) rp[p] = Math.min(1, (performance.now() - ((_a2 = lastShot.current[p]) != null ? _a2 : -99999)) / RELOAD_MS);
     return {
       grid: grid.current,
       terrainSeed: terrainSeed.current,
-      // nur der Seed (kleiner Integer)
+      numPlayers: numPlayersRef.current,
       castles: castles.current,
       cannons: cannons.current,
       cannonBudget: cannonBudget.current,
-      piece1: pieces.current[1].cells,
-      piece2: pieces.current[2].cells,
+      piece1: pieces.current[1] && pieces.current[1].cells,
+      piece2: pieces.current[2] && pieces.current[2].cells,
+      piece3: pieces.current[3] && pieces.current[3].cells,
       balls: balls.current.map((b) => ({
-        // nur das Nötigste
         sx: b.sx,
         sy: b.sy,
         tx: b.tx,
@@ -1086,12 +1090,9 @@ window.FortressApp = function Fortress() {
       screen: screenRef.current,
       resultInfo: resultRef.current,
       lastShot: lastShot.current,
-      // Reload-Fortschritt als 0..1 Wert (uhrunabhängig — Gast hat andere Zeit)
-      reloadProg: {
-        1: Math.min(1, (performance.now() - lastShot.current[1]) / RELOAD_MS),
-        2: Math.min(1, (performance.now() - lastShot.current[2]) / RELOAD_MS)
-      },
+      reloadProg: rp,
       frozenReady: frozenReady.current,
+      eliminated: eliminated.current,
       hostSession: SESSION_ID,
       playerInfo: playerInfo.current,
       t: Date.now()
@@ -1119,17 +1120,26 @@ window.FortressApp = function Fortress() {
       hostSessionRef.current = s.hostSession;
     }
     lastStateAt.current = Date.now();
+    if (s.numPlayers && s.numPlayers !== numPlayersRef.current) {
+      numPlayersRef.current = s.numPlayers;
+      setNumPlayers(s.numPlayers);
+    }
     setGrid(s.grid);
     if (s.terrainSeed && s.terrainSeed !== terrainSeed.current) {
       terrainSeed.current = s.terrainSeed;
-      terrain.current = generateTerrainFromSeed(s.terrainSeed);
+      terrain.current = s.numPlayers === 3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
+      if (s.numPlayers === 3 && s.castles) {
+        terrain.current.sectorMap = buildSectorMap(terrain.current, s.castles);
+      }
       bgDirty.current = true;
     }
     castles.current = s.castles || castles.current;
     cannons.current = s.cannons || cannons.current;
-    cannonBudget.current = s.cannonBudget || { 1: 0, 2: 0 };
-    if (s.piece1) pieces.current[1].cells = s.piece1;
-    if (s.piece2) pieces.current[2].cells = s.piece2;
+    cannonBudget.current = s.cannonBudget || cannonBudget.current;
+    if (s.eliminated) eliminated.current = s.eliminated;
+    if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
+    if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
+    if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
     const incoming = s.balls || [];
     const localBalls = balls.current || [];
     if (incoming.length === 0) {
@@ -1148,7 +1158,7 @@ window.FortressApp = function Fortress() {
     };
     frozenReady.current = s.frozenReady || { 1: [], 2: [] };
     if (s.playerInfo) playerInfo.current = s.playerInfo;
-    if (online.current && myRole.current === 2 && s.phase !== lastSeenPhase.current) {
+    if (online.current && myRole.current !== 1 && s.phase !== lastSeenPhase.current) {
       lastSeenPhase.current = s.phase;
       activeBuild.current = { 1: null, 2: null };
       activeDrag.current = { 1: null, 2: null };
@@ -1168,11 +1178,10 @@ window.FortressApp = function Fortress() {
     setScores(__spreadValues({}, s.scores));
     resultRef.current = s.resultInfo || null;
     setResultInfo(s.resultInfo || null);
-    if (s.resultInfo && online.current && myRole.current === 2 && !statRecorded.current) {
+    if (s.resultInfo && online.current && myRole.current !== 1 && !statRecorded.current) {
       statRecorded.current = true;
       const w = s.resultInfo.winner;
-      const l = s.resultInfo.loser;
-      const myWin = w === 2 ? true : l === "both" ? null : false;
+      const myWin = w === myRole.current ? true : w === null ? null : false;
       recordResult(myWin, s.resultInfo.numPlayers || 2);
     }
     const newScreen = s.screen || "game";
@@ -1205,48 +1214,62 @@ window.FortressApp = function Fortress() {
     fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s), updatedAt: now });
   }
   async function sendAction(action) {
-    if (!online.current || myRole.current !== 2) return;
+    if (!online.current || myRole.current === 1) return;
+    const slot = "guestAction" + myRole.current;
     fb.patch(`games/${mpCodeRef.current}`, {
-      guestAction: JSON.stringify(__spreadProps(__spreadValues({}, action), { n: Date.now() }))
+      [slot]: JSON.stringify(__spreadProps(__spreadValues({}, action), { n: Date.now() }))
     });
   }
-  function handleGuestAction(raw) {
+  function handleGuestAction(raw, actingPlayer) {
     const a = sanitizeAction(raw);
     if (!a || myRole.current !== 1) return;
     if (a.type === "join") {
-      if (!gameStarted.current) {
+      const p2 = actingPlayer;
+      playerInfo.current[p2] = {
+        name: a.name || "Gast " + p2,
+        wappen: a.wappen || (p2 === 2 ? "\u265A" : "\u265C"),
+        color: a.color || (p2 === 2 ? "#dc2626" : "#059669")
+      };
+      playerInfo.current[1] = {
+        name: (profile == null ? void 0 : profile.name) || "Host",
+        wappen: (profile == null ? void 0 : profile.wappen) || "\u2654",
+        color: (profile == null ? void 0 : profile.color) || "#2563eb"
+      };
+      joinedGuests.current[p2] = true;
+      const need = numPlayersRef.current === 3 ? 2 : 1;
+      const have = (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0);
+      if (!gameStarted.current && have >= need) {
         gameStarted.current = true;
-        playerInfo.current[2] = {
-          name: a.name || "Gast",
-          wappen: a.wappen || "\u265A",
-          color: a.color || "#dc2626"
-        };
-        playerInfo.current[1] = {
-          name: (profile == null ? void 0 : profile.name) || "Host",
-          wappen: (profile == null ? void 0 : profile.wappen) || "\u2654",
-          color: (profile == null ? void 0 : profile.color) || "#2563eb"
-        };
         startOnlineGame(1);
+      } else if (!gameStarted.current) {
+        setUiTick((t) => t + 1);
       }
       return;
     }
     if (!gameStarted.current) return;
-    if (a.n && a.n <= guestStateApplied.current) return;
-    guestStateApplied.current = a.n || 0;
-    if (a.type === "place") placePiece(2, a.r, a.c);
-    else if (a.type === "cannon") placeCannon(2, a.r, a.c);
-    else if (a.type === "fire") fireMortar(2, a.tx, a.ty);
-    else if (a.type === "aim") cannonAngle.current[2] = a.angle;
-    else if (a.type === "rotate") pieces.current[2].cells = rotateCW(pieces.current[2].cells);
+    if (a.n && a.n <= (guestActionApplied.current[actingPlayer] || 0)) return;
+    guestActionApplied.current[actingPlayer] = a.n || 0;
+    const p = actingPlayer;
+    if (a.type === "place") placePiece(p, a.r, a.c);
+    else if (a.type === "cannon") placeCannon(p, a.r, a.c);
+    else if (a.type === "fire") fireMortar(p, a.tx, a.ty);
+    else if (a.type === "aim") cannonAngle.current[p] = a.angle;
+    else if (a.type === "rotate") pieces.current[p].cells = rotateCW(pieces.current[p].cells);
     pushState(true);
   }
+  const joinedGuests = useRef({ 2: false, 3: false });
+  const guestActionApplied = useRef({ 2: 0, 3: 0 });
   function startPolling(code, role) {
     if (mpChannel.current) {
       mpChannel.current.stop();
       mpChannel.current = null;
     }
+    if (mpChannel2.current) {
+      mpChannel2.current.stop();
+      mpChannel2.current = null;
+    }
     lastStateAt.current = Date.now();
-    if (role === 2) {
+    if (role !== 1) {
       mpChannel.current = fb.subscribe(`games/${code}/state`, (stateStr) => {
         lastStateAt.current = Date.now();
         try {
@@ -1268,11 +1291,15 @@ window.FortressApp = function Fortress() {
         origStop();
       };
     } else {
-      mpChannel.current = fb.subscribe(`games/${code}/guestAction`, (actionStr) => {
-        handleGuestAction(actionStr);
+      mpChannel.current = fb.subscribe(`games/${code}/guestAction2`, (actionStr) => {
+        handleGuestAction(actionStr, 2);
+      });
+      mpChannel2.current = fb.subscribe(`games/${code}/guestAction3`, (actionStr) => {
+        handleGuestAction(actionStr, 3);
       });
     }
   }
+  const mpChannel2 = useRef(null);
   async function hostCreateGame() {
     setMpError("");
     const client = await getFirebase();
@@ -1284,7 +1311,10 @@ window.FortressApp = function Fortress() {
     const ok = await fb.set(`games/${code}`, {
       createdAt: Date.now(),
       state: null,
-      guestAction: null
+      guestAction2: null,
+      guestAction3: null,
+      numPlayers: numPlayersRef.current
+      // 2 oder 3 → Gäste lesen das aus
     });
     if (!ok) {
       setMpError("Konnte Spiel nicht anlegen: " + _fbError);
@@ -1294,6 +1324,8 @@ window.FortressApp = function Fortress() {
     myRole.current = 1;
     online.current = true;
     gameStarted.current = false;
+    joinedGuests.current = { 2: false, 3: false };
+    guestActionApplied.current = { 2: 0, 3: 0 };
     setMpCode(code);
     setMpScreen("waiting");
     startPolling(code, 1);
@@ -1316,20 +1348,34 @@ window.FortressApp = function Fortress() {
       setMpError("Spiel nicht gefunden \u2014 Code pr\xFCfen.");
       return;
     }
+    const np = data.numPlayers || 2;
+    numPlayersRef.current = np;
+    setNumPlayers(np);
+    let role = 2;
+    if (data.guestAction2 != null && np === 3) role = 3;
+    if (data.guestAction2 != null && np === 2) {
+      setMpError("Dieses Spiel ist bereits voll.");
+      return;
+    }
+    if (np === 3 && data.guestAction2 != null && data.guestAction3 != null) {
+      setMpError("Dieses Spiel ist bereits voll (3 Spieler).");
+      return;
+    }
     mpCodeRef.current = code;
-    myRole.current = 2;
+    myRole.current = role;
     online.current = true;
     setMpCode(code);
+    const slot = "guestAction" + role;
     await fb.patch(`games/${code}`, {
-      guestAction: JSON.stringify({
+      [slot]: JSON.stringify({
         type: "join",
         n: Date.now(),
-        name: (profile == null ? void 0 : profile.name) || "Gast",
-        wappen: (profile == null ? void 0 : profile.wappen) || "\u265A",
-        color: (profile == null ? void 0 : profile.color) || "#dc2626"
+        name: (profile == null ? void 0 : profile.name) || "Gast " + role,
+        wappen: (profile == null ? void 0 : profile.wappen) || (role === 2 ? "\u265A" : "\u265C"),
+        color: (profile == null ? void 0 : profile.color) || (role === 2 ? "#dc2626" : "#059669")
       })
     });
-    startPolling(code, 2);
+    startPolling(code, role);
     setMpScreen("waiting");
   }
   function startOnlineGame(role) {
@@ -1346,6 +1392,9 @@ window.FortressApp = function Fortress() {
       screenRef.current = "game";
       setTimeout(() => pushState(true), 300);
     } else {
+      const players = playersList();
+      pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
+      eliminated.current = {};
       screenRef.current = "game";
       setScreen("game");
     }
@@ -1356,10 +1405,16 @@ window.FortressApp = function Fortress() {
       mpChannel.current.stop();
       mpChannel.current = null;
     }
+    if (mpChannel2.current) {
+      mpChannel2.current.stop();
+      mpChannel2.current = null;
+    }
     if (joinPollRef.current) {
       clearInterval(joinPollRef.current);
       joinPollRef.current = null;
     }
+    joinedGuests.current = { 2: false, 3: false };
+    guestActionApplied.current = { 2: 0, 3: 0 };
   }
   function leaveOnline() {
     const code = mpCodeRef.current;
@@ -1554,7 +1609,7 @@ window.FortressApp = function Fortress() {
   }
   function startTimer() {
     clearInterval(timerID.current);
-    if (online.current && myRole.current === 2) return;
+    if (online.current && myRole.current !== 1) return;
     timerID.current = setInterval(() => {
       timerVal.current -= 1;
       setTimer(timerVal.current);
@@ -1756,7 +1811,7 @@ window.FortressApp = function Fortress() {
     showWarn(`${FLAG_OF[player] || "\u2654"} Kanone (${pn}) platziert${left > 0 ? ` \u2014 noch ${left}` : "!"}`);
   }
   const rotatePiece = (player) => {
-    const guest = online.current && myRole.current === 2;
+    const guest = online.current && myRole.current !== 1;
     if (guest) {
       sendAction({ type: "rotate" });
       return;
@@ -1881,7 +1936,7 @@ window.FortressApp = function Fortress() {
     pointers.current.delete(e.pointerId);
     if (!pt) return;
     const player = pt.player;
-    const guest = online.current && myRole.current === 2;
+    const guest = online.current && myRole.current !== 1;
     if (phase_r.current === "build") {
       if (activeBuild.current[player] !== e.pointerId) return;
       activeBuild.current[player] = null;
@@ -1947,7 +2002,7 @@ window.FortressApp = function Fortress() {
       return;
     }
     const now = performance.now();
-    const isGuest = online.current && myRole.current === 2;
+    const isGuest = online.current && myRole.current !== 1;
     if (isGuest && reloadProgRef.current) {
       const rp = reloadProgRef.current;
       const elapsed = (now - (rp.at || now)) / RELOAD_MS;
@@ -2540,7 +2595,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -2707,7 +2762,20 @@ window.FortressApp = function Fortress() {
     color: "#fbbf24",
     marginBottom: 16,
     lineHeight: 1.5
-  } }, "\u26A0\uFE0F Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit ", /* @__PURE__ */ React.createElement("b", null, "FB_URL"), ")."), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
+  } }, "\u26A0\uFE0F Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit ", /* @__PURE__ */ React.createElement("b", null, "FB_URL"), ")."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "SPIELER-ANZAHL (zum Erstellen)"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
+    numPlayersRef.current = m;
+    setNumPlayers(m);
+  }, style: {
+    flex: 1,
+    padding: "11px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 700,
+    background: numPlayers === m ? "rgba(2,132,199,0.3)" : "rgba(255,255,255,0.05)",
+    color: numPlayers === m ? "#7dd3fc" : "#94a3b8",
+    border: numPlayers === m ? "1px solid rgba(2,132,199,0.6)" : "1px solid rgba(255,255,255,0.1)"
+  } }, m === 2 ? "\u2694\uFE0F 2 Spieler" : "\u{1F451} 3 Spieler"))), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
     width: "100%",
     background: "linear-gradient(135deg,#059669,#0284c7)",
     color: "white",
@@ -2718,7 +2786,7 @@ window.FortressApp = function Fortress() {
     borderRadius: 10,
     cursor: "pointer",
     marginBottom: 10
-  } }, "\u2795 Spiel erstellen"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: {
+  } }, "\u2795 Spiel erstellen (", numPlayers, " Spieler)"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: {
     width: "100%",
     background: "rgba(255,255,255,0.08)",
     color: "#e2e8f0",
@@ -2819,7 +2887,7 @@ window.FortressApp = function Fortress() {
     fontSize: 15,
     fontWeight: 700,
     transition: "all 0.2s"
-  } }, codeCopied ? "\u2713 Code kopiert!" : "\u{1F4CB} Code kopieren"), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, "Spiel startet automatisch wenn Mitspieler beitritt")), myRole.current === 2 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, "Warte auf den ersten Spielzustand vom Host\u2026", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, "(Spiel startet automatisch)")), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  } }, codeCopied ? "\u2713 Code kopiert!" : "\u{1F4CB} Code kopieren"), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? `Warte auf 2 Mitspieler \u2014 ${(joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0)}/2 beigetreten` : "Spiel startet automatisch wenn Mitspieler beitritt")), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, "Du bist ", myRole.current === 2 ? "Spieler 2 \u265A" : "Spieler 3 \u265C", ".", /* @__PURE__ */ React.createElement("br", null), "Warte auf den ersten Spielzustand vom Host\u2026", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, "(Spiel startet automatisch)")), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
     color: "#64748b",
     border: "none",
