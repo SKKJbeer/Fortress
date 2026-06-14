@@ -127,7 +127,9 @@ und beschiessen danach gegenseitig ihre Festungen.
   Zeitstempel (verschiedene Uhren!). Gast merkt sich Wert + lokalen Empfangs-
   zeitpunkt (`at`) und **interpoliert lokal mit 60fps weiter** (sonst springt
   der Balken bei jedem Push). Erst der nächste Host-Wert korrigiert.
-- **Phasen-Meldungen**: Gast erkennt Phasenwechsel selbst und zeigt Hinweise lokal
+- **Phasen-Meldungen**: Gast erkennt Phasenwechsel über eigenen `lastSeenPhase`-Ref
+  (NICHT phase_r, sonst Race) und zeigt Banner lokal: Setup/Bauphase/Feuer/Kanone.
+  Wird bei startOnlineGame zurückgesetzt.
 - **Terrain**: nur Seed übertragen, Gast regeneriert + setzt `bgDirty`
 
 ### Sicherheit:
@@ -191,3 +193,5 @@ und beschiessen danach gegenseitig ihre Festungen.
   Code-Kopierfunktion, alle Gast-Sync-Bugs behoben.
 - **v1.0.1**: Reload-Balken beim Gast wird lokal interpoliert (60fps) statt bei
   jedem Push zu springen — flüssige Nachladeanimation auch für Host-Kanonen.
+  Phasenwechsel-Banner beim Gast über eigenen lastSeenPhase-Ref zuverlässig.
+  Versionsanzeige im Hauptmenü.
