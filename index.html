@@ -755,6 +755,8 @@ window.FortressApp = function Fortress() {
       castles: castles.current,
       cannons: cannons.current,
       cannonBudget: cannonBudget.current,
+      piece1: pieces.current[1].cells,
+      piece2: pieces.current[2].cells,
       balls: balls.current.map((b) => ({
         // nur das Nötigste
         sx: b.sx,
@@ -775,6 +777,11 @@ window.FortressApp = function Fortress() {
       screen: screenRef.current,
       resultInfo: resultRef.current,
       lastShot: lastShot.current,
+      // Reload-Fortschritt als 0..1 Wert (uhrunabhängig — Gast hat andere Zeit)
+      reloadProg: {
+        1: Math.min(1, (performance.now() - lastShot.current[1]) / RELOAD_MS),
+        2: Math.min(1, (performance.now() - lastShot.current[2]) / RELOAD_MS)
+      },
       frozenReady: frozenReady.current,
       hostSession: SESSION_ID,
       t: Date.now()
@@ -784,6 +791,7 @@ window.FortressApp = function Fortress() {
   const screenRef = useRef("menu");
   const resultRef = useRef(null);
   const terrainSeed = useRef(0);
+  const reloadProgRef = useRef(null);
   const lastStateAt = useRef(0);
   function applyState(raw) {
     let s;
@@ -808,6 +816,8 @@ window.FortressApp = function Fortress() {
     castles.current = s.castles || castles.current;
     cannons.current = s.cannons || cannons.current;
     cannonBudget.current = s.cannonBudget || { 1: 0, 2: 0 };
+    if (s.piece1) pieces.current[1].cells = s.piece1;
+    if (s.piece2) pieces.current[2].cells = s.piece2;
     const incoming = s.balls || [];
     const localBalls = balls.current || [];
     if (incoming.length === 0) {
@@ -819,7 +829,14 @@ window.FortressApp = function Fortress() {
     }
     explosions.current = s.explosions || [];
     lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
+    reloadProgRef.current = s.reloadProg || { 1: 1, 2: 1 };
     frozenReady.current = s.frozenReady || { 1: [], 2: [] };
+    const prevPhase = phase_r.current;
+    if (s.phase !== prevPhase) {
+      if (s.phase === "build") showWarn("\u{1F9F1} Bauphase \u2014 schlie\xDFe deine Mauern!");
+      else if (s.phase === "shoot") showWarn("\u{1F3AF} Feuer frei \u2014 zieh zum Zielen!");
+      else if (s.phase === "cannon") showWarn("\u{1F3F0} Neue Kanone setzen!");
+    }
     phase_r.current = s.phase;
     timerVal.current = s.timer;
     roundRefVal.current = s.round;
@@ -1467,9 +1484,14 @@ window.FortressApp = function Fortress() {
       return;
     }
     const now = performance.now();
-    for (const p of [1, 2])
-      reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
     const isGuest = online.current && myRole.current === 2;
+    if (isGuest && reloadProgRef.current) {
+      reload.current[1] = reloadProgRef.current[1];
+      reload.current[2] = reloadProgRef.current[2];
+    } else {
+      for (const p of [1, 2])
+        reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
+    }
     if (phase_r.current === "shoot") {
       if (!isGuest) {
         for (const ball of balls.current) {
