@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.2.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v2.3)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -213,8 +213,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 
 - Persistent via **localStorage** (`fortress_profile`) — funktioniert in der PWA
 - Felder: `id` (stabil, für Leaderboard-Identität), `name` (max 16 Zeichen),
-  `wappen` (Emoji aus WAPPEN-Pool), `color` (aus PROFILE_COLORS),
-  `stats` { wins, losses, games }
+  `wappen`, `color`, `stats` { wins, losses, games } = 2-Spieler-Statistik,
+  `stats3` { wins, losses, games } = 3-Spieler-Statistik (getrennt)
 - **Erstanlage**: beim ersten Start wird der Editor automatisch gezeigt (Pflicht)
 - **Bearbeiten**: über ✏️-Button in der Profil-Karte im Hauptmenü
 - **Profil-Karte** im Menü: Wappen, Name, Statistik (Siege/Niederlagen/Spiele/Quote)
@@ -340,3 +340,10 @@ und beschiessen danach gegenseitig ihre Festungen.
   jetzt entlang der Sektor-GRENZEN (70°/180°/290°) und trennen sichtbar. Burgen
   an die neuen Sektor-Mitten gesetzt. Ergebnis: P1 34% / P2 31% / P3 35% Fläche,
   alle Burgen sauber im eigenen Sektor.
+- **v2.3**: Bestenliste & Statistik nach Modus getrennt. Profil hat jetzt `stats`
+  (2-Spieler) UND `stats3` (3-Spieler). Leaderboard speichert beide
+  (wins/games + wins3/games3 unter /leaderboard/{id}) und hat einen 2er/3er-
+  Tab-Umschalter. Profil-Karte zeigt beide Statistiken (⚔️ 2P / 👑 3P).
+  recordResult(won, mode) bucht in den richtigen Topf. Lokale Spiele zählen
+  weiterhin GAR NICHT (nur online). 3-Spieler-Liste füllt sich erst mit dem
+  künftigen 3-Spieler-Online-Modus.

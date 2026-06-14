@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v2.2.2</title>
+  <title>FORTRESS v2.3</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -738,7 +738,7 @@ window.FortressApp = function Fortress() {
     { name: "Pink", hex: "#db2777" }
   ];
   function loadProfile() {
-    var _a2, _b2, _c;
+    var _a2, _b2, _c, _d, _e, _f;
     try {
       const raw = localStorage.getItem("fortress_profile");
       if (raw) {
@@ -754,7 +754,9 @@ window.FortressApp = function Fortress() {
           name: p.name || "",
           wappen: p.wappen || "\u2654",
           color: p.color || "#2563eb",
-          stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 }
+          // stats = 2-Spieler-Statistik (Bestand), stats3 = 3-Spieler-Statistik
+          stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 },
+          stats3: { wins: ((_d = p.stats3) == null ? void 0 : _d.wins) || 0, losses: ((_e = p.stats3) == null ? void 0 : _e.losses) || 0, games: ((_f = p.stats3) == null ? void 0 : _f.games) || 0 }
         };
         if (needsSave) {
           try {
@@ -776,12 +778,15 @@ window.FortressApp = function Fortress() {
     }
     setProfile(p);
   }
-  function recordResult(won) {
+  function recordResult(won, mode) {
     if (!profile) return;
-    const stats = __spreadProps(__spreadValues({}, profile.stats), { games: profile.stats.games + 1 });
-    if (won === true) stats.wins += 1;
-    else if (won === false) stats.losses += 1;
-    const updated = __spreadProps(__spreadValues({}, profile), { stats });
+    const m3 = mode === 3;
+    const key = m3 ? "stats3" : "stats";
+    const cur = profile[key] || { wins: 0, losses: 0, games: 0 };
+    const bucket = __spreadProps(__spreadValues({}, cur), { games: cur.games + 1 });
+    if (won === true) bucket.wins += 1;
+    else if (won === false) bucket.losses += 1;
+    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket });
     saveProfile(updated);
     pushLeaderboard(updated);
   }
@@ -804,7 +809,8 @@ window.FortressApp = function Fortress() {
       name,
       wappen: editWappen,
       color: editColor,
-      stats: (profile == null ? void 0 : profile.stats) || { wins: 0, losses: 0, games: 0 }
+      stats: (profile == null ? void 0 : profile.stats) || { wins: 0, losses: 0, games: 0 },
+      stats3: (profile == null ? void 0 : profile.stats3) || { wins: 0, losses: 0, games: 0 }
     };
     saveProfile(p);
     setShowProfileEditor(false);
@@ -819,33 +825,63 @@ window.FortressApp = function Fortress() {
       if (!s) {
         await getFirebase();
       }
+      const s2 = p.stats || { wins: 0, losses: 0, games: 0 };
+      const s3 = p.stats3 || { wins: 0, losses: 0, games: 0 };
       await fb.set(`leaderboard/${p.id}`, {
         name: p.name,
         wappen: p.wappen,
         color: p.color,
-        wins: p.stats.wins,
-        losses: p.stats.losses,
-        games: p.stats.games,
+        // 2-Spieler-Werte (Bestand, oberste Ebene für Kompatibilität)
+        wins: s2.wins,
+        losses: s2.losses,
+        games: s2.games,
+        // 3-Spieler-Werte
+        wins3: s3.wins,
+        losses3: s3.losses,
+        games3: s3.games,
         updatedAt: Date.now()
       });
     } catch (e) {
     }
   }
+  const [lbRaw, setLbRaw] = useState(null);
+  const [lbMode, setLbMode] = useState(2);
   async function openLeaderboard() {
     setShowLeaderboard(true);
     setLeaderboard(null);
+    setLbMode(2);
     if (!MP_CONFIGURED) {
       setLeaderboard([]);
+      setLbRaw([]);
       return;
     }
     if (!sdk()) await getFirebase();
     const data = await fb.get("leaderboard");
     if (!data) {
       setLeaderboard([]);
+      setLbRaw([]);
       return;
     }
-    const list = Object.entries(data).filter(([id]) => id !== "ping").map(([id, v]) => __spreadValues({ id }, v)).filter((e) => e.games > 0).sort((a, b) => b.wins - a.wins || b.games - a.games);
+    const raw = Object.entries(data).filter(([id]) => id !== "ping").map(([id, v]) => __spreadValues({ id }, v));
+    setLbRaw(raw);
+    applyLbMode(raw, 2);
+  }
+  function applyLbMode(raw, mode) {
+    const m3 = mode === 3;
+    const list = raw.map((e) => ({
+      id: e.id,
+      name: e.name,
+      wappen: e.wappen,
+      color: e.color,
+      wins: m3 ? e.wins3 || 0 : e.wins || 0,
+      losses: m3 ? e.losses3 || 0 : e.losses || 0,
+      games: m3 ? e.games3 || 0 : e.games || 0
+    })).filter((e) => e.games > 0).sort((a, b) => b.wins - a.wins || b.games - a.games);
     setLeaderboard(list);
+  }
+  function switchLbMode(mode) {
+    setLbMode(mode);
+    if (lbRaw) applyLbMode(lbRaw, mode);
   }
   const [mpScreen, setMpScreen] = useState(null);
   const [mpCode, setMpCode] = useState("");
@@ -1110,7 +1146,7 @@ window.FortressApp = function Fortress() {
       const w = s.resultInfo.winner;
       const l = s.resultInfo.loser;
       const myWin = w === 2 ? true : l === "both" ? null : false;
-      recordResult(myWin);
+      recordResult(myWin, s.resultInfo.numPlayers || 2);
     }
     const newScreen = s.screen || "game";
     if (newScreen !== screenRef.current) {
@@ -1408,7 +1444,7 @@ window.FortressApp = function Fortress() {
       if (online.current && !statRecorded.current) {
         statRecorded.current = true;
         const myWin = winner === myRole.current ? true : winner === null ? null : false;
-        recordResult(myWin);
+        recordResult(myWin, numPlayersRef.current);
       }
       if (online.current && myRole.current === 1) {
         pushState(true);
@@ -2378,7 +2414,7 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, "\u{1F3C6} ", profile.stats.wins, " S \xB7 \u{1F480} ", profile.stats.losses, " N \xB7 ", profile.stats.games, " Spiele", profile.stats.games > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: "#4ade80" } }, " \xB7 ", Math.round(profile.stats.wins / profile.stats.games * 100), "%"))), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, "\u2694\uFE0F ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", profile.stats.games, " Sp.", profile.stats.games > 0 && /* @__PURE__ */ React.createElement("span", { style: { color: "#4ade80" } }, " \xB7 ", Math.round(profile.stats.wins / profile.stats.games * 100), "%")), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 1 } }, "\u{1F451} ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N \xB7 ", profile.stats3.games, " Sp.", /* @__PURE__ */ React.createElement("span", { style: { color: "#34d399" } }, " \xB7 ", Math.round(profile.stats3.wins / profile.stats3.games * 100), "%"))), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.15)",
     color: "#cbd5e1",
@@ -2474,7 +2510,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.2.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 2.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -2571,7 +2607,17 @@ window.FortressApp = function Fortress() {
     padding: "6px 12px",
     fontSize: 14,
     cursor: "pointer"
-  } }, "\u2715")), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 12, margin: "0 0 14px" } }, "Sortiert nach Siegen \xB7 weltweit"), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, "L\xE4dt\u2026"), leaderboard && leaderboard.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, "Noch keine Eintr\xE4ge \u2014 spiele ein Online-Spiel, um dich zu platzieren!"), leaderboard && leaderboard.map((e, i) => {
+  } }, "\u2715")), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 12, margin: "0 0 10px" } }, "Sortiert nach Siegen \xB7 weltweit"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => switchLbMode(m), style: {
+    flex: 1,
+    padding: "8px",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 700,
+    background: lbMode === m ? "rgba(202,138,4,0.25)" : "rgba(255,255,255,0.05)",
+    color: lbMode === m ? "#fde68a" : "#94a3b8",
+    border: lbMode === m ? "1px solid rgba(202,138,4,0.5)" : "1px solid rgba(255,255,255,0.1)"
+  } }, m === 2 ? "\u2694\uFE0F 2 Spieler" : "\u{1F451} 3 Spieler"))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, "L\xE4dt\u2026"), leaderboard && leaderboard.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? "Noch keine 3-Spieler-Partien \u2014 der 3-Spieler-Online-Modus kommt bald!" : "Noch keine Eintr\xE4ge \u2014 spiele ein Online-Spiel, um dich zu platzieren!"), leaderboard && leaderboard.map((e, i) => {
     const isMe = profile && e.id === profile.id;
     const quote = e.games > 0 ? Math.round(e.wins / e.games * 100) : 0;
     const medal = i === 0 ? "\u{1F947}" : i === 1 ? "\u{1F948}" : i === 2 ? "\u{1F949}" : `${i + 1}.`;
