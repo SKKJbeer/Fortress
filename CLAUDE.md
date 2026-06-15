@@ -166,6 +166,7 @@ node test_fortress.js
 ```
 
 - Test-Datei: `test_fortress.js` (Playwright, Chromium headless)
+- Prüft zuerst: Version in `index.html` auf Disk == Version vom Server (Mismatch → Abbruch)
 - React-CDN wird lokal gemockt aus `/tmp/react.min.js` + `/tmp/react-dom.min.js`
 - Firebase/gstatic werden abgeblockt
 - Alle Button-Clicks via `page.evaluate(() => btn.click())` — Overlay-Workaround

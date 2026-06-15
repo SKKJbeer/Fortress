@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.7)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.9)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -477,3 +477,14 @@ und beschiessen danach gegenseitig ihre Festungen.
   EIGENEN try/catch — ein Fehler dort kann die Phasen-Synchronisation nicht mehr
   blockieren und wird sichtbar als `applyObjects:`-Fehler im Diagnose-Overlay
   protokolliert (statt still die Phase einzufrieren).
+- **v3.0.8**: Diagnose-Overlay für Endnutzer deaktiviert (`showDbg` startet
+  jetzt auf `false`). Overlay bleibt im Code und kann bei Bedarf reaktiviert
+  werden, ist aber standardmäßig unsichtbar.
+- **v3.0.9**: (1) Drehen-Button für Spieler 3 ergänzt — fehlte sowohl im
+  3-Spieler-Online (P3-Gast sah keinen Button) als auch im lokalen 3er-Modus
+  (P3 konnte sein Teil nicht drehen). Grüner Button erscheint für P3-Gäste
+  online und für alle Spieler offline wenn numPlayers=3. Mini-Grid-Vorschau
+  zeigt P3-Teile jetzt in Grün (#34d399). (2) ELO-Änderung im Ergebnis-Screen:
+  nach jedem Online-Spiel wird "ELO: alt → neu (±delta)" angezeigt (grün/rot
+  je nach Richtung). `eloChangeRef` speichert die Änderung in `recordResult`
+  und wird beim Spielstart zurückgesetzt.

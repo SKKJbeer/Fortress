@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.0.7</title>
+  <title>FORTRESS v3.0.9</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -851,6 +851,7 @@ window.FortressApp = function Fortress() {
       const avgDelta = opponents.reduce((sum, opp) => sum + eloDelta(myElo, opp, score), 0) / opponents.length;
       newElo = Math.round(myElo + avgDelta);
     }
+    eloChangeRef.current = { oldElo: myElo, newElo, delta: newElo - myElo };
     const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo });
     saveProfile(updated);
     pushLeaderboard(updated);
@@ -1041,7 +1042,7 @@ window.FortressApp = function Fortress() {
   const [mpInput, setMpInput] = useState("");
   const [mpError, setMpError] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
-  const [showDbg, setShowDbg] = useState(true);
+  const [showDbg, setShowDbg] = useState(false);
   const dbg = useRef({ statesRecv: 0, statesPush: 0, actSent: 0, actRecv: 0, lastErr: "", lastInfo: "" });
   function dbgBump(field, info) {
     dbg.current[field] = (dbg.current[field] || 0) + 1;
@@ -1613,6 +1614,7 @@ window.FortressApp = function Fortress() {
     online.current = true;
     lastSeenPhase.current = null;
     statRecorded.current = false;
+    eloChangeRef.current = null;
     setMpScreen(null);
     if (role === 1) {
       initGrid();
@@ -1786,6 +1788,7 @@ window.FortressApp = function Fortress() {
     return true;
   }
   const statRecorded = useRef(false);
+  const eloChangeRef = useRef(null);
   function startBuild() {
     const players = playersList();
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
@@ -2816,7 +2819,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.9")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3218,7 +3221,15 @@ window.FortressApp = function Fortress() {
       borderRadius: 12,
       padding: "12px 26px",
       border: "1px solid rgba(255,255,255,0.08)"
-    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#60a5fa" } }, "\u2654 ", scores[1]), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#f87171" } }, scores[2], " \u265A"), (info.numPlayers === 3 || numPlayers === 3) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#34d399" } }, scores[3] || 0, " \u265C"))), online.current && !isHost ? (
+    } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#60a5fa" } }, "\u2654 ", scores[1]), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#f87171" } }, scores[2], " \u265A"), (info.numPlayers === 3 || numPlayers === 3) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#34d399" } }, scores[3] || 0, " \u265C"))), online.current && eloChangeRef.current && /* @__PURE__ */ React.createElement("div", { style: {
+  marginTop: 16,
+  marginBottom: 4,
+  background: eloChangeRef.current.delta >= 0 ? "rgba(74,222,128,0.1)" : "rgba(239,68,68,0.1)",
+  border: "1px solid " + (eloChangeRef.current.delta >= 0 ? "rgba(74,222,128,0.3)" : "rgba(239,68,68,0.3)"),
+  borderRadius: 10,
+  padding: "10px 20px",
+  textAlign: "center"
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, "ELO-\u00C4NDERUNG"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, eloChangeRef.current.oldElo), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.newElo), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.delta >= 0 ? "+" : "", eloChangeRef.current.delta))), online.current && !isHost ? (
       // Gast: wartet auf Host, kann aber selbst ins Hauptmenü
       /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 280, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 14, fontStyle: "italic" } }, "\u23F3 Warte auf Host f\xFCr n\xE4chste Runde\u2026"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
         scoresRef.current = { 1: 0, 2: 0 };
@@ -3467,7 +3478,7 @@ window.FortressApp = function Fortress() {
     const maxR = Math.max(...cells.map(([r]) => r));
     const maxC = Math.max(...cells.map(([, c]) => c));
     const dot = 7, gap2 = 1;
-    const col = pp === 1 ? "#60a5fa" : "#f87171";
+    const col = pp === 1 ? "#60a5fa" : pp === 3 ? "#34d399" : "#f87171";
     return /* @__PURE__ */ React.createElement("div", { style: {
       display: "grid",
       gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`,
@@ -3506,6 +3517,29 @@ window.FortressApp = function Fortress() {
     },
     "\u21BB ",
     online.current ? "Drehen" : "Rot drehen"
+  ), (!online.current && numPlayers === 3 || online.current && myRole.current === 3) && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        rotatePiece(3);
+      },
+      style: {
+        flex: 1,
+        background: "rgba(52,211,153,0.18)",
+        border: "1px solid rgba(52,211,153,0.35)",
+        color: "#6ee7b7",
+        padding: "13px 4px",
+        fontSize: 14,
+        fontWeight: 700,
+        borderRadius: 10,
+        cursor: "pointer",
+        touchAction: "manipulation"
+      }
+    },
+    "\u21BB ",
+    online.current ? "Drehen" : "Gr\xFCn drehen"
   )) : phase === "cannon" ? /* @__PURE__ */ React.createElement("div", { style: {
     flex: 1,
     textAlign: "center",
