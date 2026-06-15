@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.2.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.3.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -576,3 +576,10 @@ und beschiessen danach gegenseitig ihre Festungen.
   Panel-Tap-Rotation, Drag-Platzierung.
 - **v3.2.2**: Audio-Workaround für iOS wieder entfernt (kein Audio gewünscht).
   `navigator.vibrate(30)` bleibt für Android. iOS ohne Haptik — plattformlimitierung.
+- **v3.3.0**: PWA-Grundlage für Android Store (TWA) implementiert.
+  Neue Dateien: `manifest.json` (name/icons/display:standalone/start_url:/Fortress/),
+  `sw.js` (Network-first Service Worker — online immer neueste Version, offline Cache),
+  `icon-512.png`, `icon-192.png`, `icon-96.png` (aus bestehendem SVG generiert).
+  `index.html`: `<link rel="manifest">` + SW-Registrierung hinzugefügt.
+  GitHub Pages bleibt immer aktuell (Network-first überschreibt Cache bei jedem Deploy).
+  Noch fehlend für Store: Privacy Policy, `.well-known/assetlinks.json`, Bubblewrap-Setup.
