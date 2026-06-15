@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.0.2</title>
+  <title>FORTRESS v3.0.3</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1041,6 +1041,12 @@ window.FortressApp = function Fortress() {
   const [mpInput, setMpInput] = useState("");
   const [mpError, setMpError] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [showDbg, setShowDbg] = useState(true);
+  const dbg = useRef({ statesRecv: 0, statesPush: 0, actSent: 0, actRecv: 0, lastErr: "", lastInfo: "" });
+  function dbgBump(field, info) {
+    dbg.current[field] = (dbg.current[field] || 0) + 1;
+    if (info) dbg.current.lastInfo = info;
+  }
   function copyCode() {
     const code = mpCode;
     const done = () => {
@@ -1328,7 +1334,8 @@ window.FortressApp = function Fortress() {
     if (force) {
       lastPush.current = now;
       const s2 = serializeState();
-      fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s2), updatedAt: now });
+      const ok2 = await fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s2), updatedAt: now });
+      dbgBump("statesPush", ok2 === false ? "PUSH FEHLER: " + _fbError : "push ok (force)");
       return;
     }
     if (document.hidden) return;
@@ -1341,14 +1348,16 @@ window.FortressApp = function Fortress() {
     _pushCount++;
     lastPush.current = now;
     const s = serializeState();
-    fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s), updatedAt: now });
+    const ok = await fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s), updatedAt: now });
+    dbgBump("statesPush", ok === false ? "PUSH FEHLER: " + _fbError : "push ok");
   }
   async function sendAction(action) {
     if (!online.current || myRole.current === 1) return;
     const slot = "guestAction" + myRole.current;
-    fb.patch(`games/${mpCodeRef.current}`, {
+    const ok = await fb.patch(`games/${mpCodeRef.current}`, {
       [slot]: JSON.stringify(__spreadProps(__spreadValues({}, action), { n: Date.now() }))
     });
+    dbgBump("actSent", ok === false ? "SEND FEHLER: " + _fbError : "gesendet: " + action.type);
   }
   function handleGuestAction(raw, actingPlayer) {
     const a = sanitizeAction(raw);
@@ -1467,9 +1476,11 @@ window.FortressApp = function Fortress() {
     if (role !== 1) {
       mpChannel.current = fb.subscribe(`games/${code}/state`, (stateStr) => {
         lastStateAt.current = Date.now();
+        dbgBump("statesRecv", "state empfangen (" + (typeof stateStr === "string" ? stateStr.length : "?") + "B)");
         try {
           applyState(JSON.parse(stateStr));
         } catch (e) {
+          dbg.current.lastErr = "applyState: " + e.message;
         }
       });
       const timeoutCheck = setInterval(() => {
@@ -1487,9 +1498,11 @@ window.FortressApp = function Fortress() {
       };
     } else {
       mpChannel.current = fb.subscribe(`games/${code}/guestAction2`, (actionStr) => {
+        dbgBump("actRecv", "Aktion P2");
         handleGuestAction(actionStr, 2);
       });
       mpChannel2.current = fb.subscribe(`games/${code}/guestAction3`, (actionStr) => {
+        dbgBump("actRecv", "Aktion P3");
         handleGuestAction(actionStr, 3);
       });
     }
@@ -2598,6 +2611,12 @@ window.FortressApp = function Fortress() {
     return () => window.removeEventListener("keydown", h);
   }, []);
   useEffect(() => {
+    const iv = setInterval(() => {
+      if (online.current && showDbg) setUiTick((t) => t + 1);
+    }, 500);
+    return () => clearInterval(iv);
+  }, [showDbg]);
+  useEffect(() => {
     if (!profile || !profile.id) return;
     let done = false;
     const sync = () => {
@@ -2777,7 +2796,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.3 (Diagnose)")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3258,7 +3277,22 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     padding: 0,
     lineHeight: 1
-  } }, "\u2715"), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u2715"), online.current && showDbg && /* @__PURE__ */ React.createElement("div", { onClick: () => setShowDbg(false), style: {
+    position: "absolute",
+    top: 42,
+    right: 6,
+    zIndex: 60,
+    background: "rgba(2,6,12,0.9)",
+    border: "1px solid rgba(96,165,250,0.4)",
+    color: "#93c5fd",
+    borderRadius: 8,
+    padding: "6px 9px",
+    fontSize: 9,
+    fontFamily: "monospace",
+    lineHeight: 1.5,
+    maxWidth: 180,
+    textAlign: "left"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontWeight: 700 } }, "SYNC \xB7 Rolle ", myRole.current === 1 ? "Host" : "Gast " + myRole.current), /* @__PURE__ */ React.createElement("div", null, "State empf.: ", dbg.current.statesRecv), /* @__PURE__ */ React.createElement("div", null, "State push: ", dbg.current.statesPush), /* @__PURE__ */ React.createElement("div", null, "Akt. gesendet: ", dbg.current.actSent), /* @__PURE__ */ React.createElement("div", null, "Akt. empf.: ", dbg.current.actRecv), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     display: "flex",
     alignItems: "center",
