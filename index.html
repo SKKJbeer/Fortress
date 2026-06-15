@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.1.5</title>
+  <title>FORTRESS v3.1.6</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1308,10 +1308,7 @@ window.FortressApp = function Fortress() {
         activeBuild.current = pl.reduce((o, p) => (o[p] = null, o), {});
         activeDrag.current = pl.reduce((o, p) => (o[p] = null, o), {});
         pointers.current.clear();
-        if (s.phase === "build") showPhaseBanner("build");
-        else if (s.phase === "shoot") showPhaseBanner("shoot");
-        else if (s.phase === "cannon") showPhaseBanner("cannon");
-        else if (s.phase === "setup") showPhaseBanner("setup");
+        if (PHASE_BANNERS[s.phase]) showPhaseBanner(s.phase);
       }
       phase_r.current = s.phase;
       timerVal.current = s.timer;
@@ -1839,7 +1836,7 @@ window.FortressApp = function Fortress() {
     activeDrag.current = mk(null);
     pointers.current.clear();
     setUiTick((t) => t + 1);
-    showPhaseBanner("build", () => startTimer());
+    showPhaseBanner("build", startTimer);
   }
   function endBuild() {
     checkLossOrContinue(() => {
@@ -1856,7 +1853,7 @@ window.FortressApp = function Fortress() {
       activeDrag.current = mk(null);
       const g = grid.current;
       frozenReady.current = players.reduce((o, p) => (o[p] = closedCannons(g, p, cannons.current[p]).map((c) => c.id), o), {});
-      showPhaseBanner("shoot", () => startTimer());
+      showPhaseBanner("shoot", startTimer);
     });
   }
   const frozenReady = useRef({ 1: [], 2: [] });
@@ -1874,7 +1871,7 @@ window.FortressApp = function Fortress() {
     activeDrag.current = mk(null);
     pointers.current.clear();
     setUiTick((t) => t + 1);
-    showPhaseBanner("cannon", () => startTimer());
+    showPhaseBanner("cannon", startTimer);
   }
   function endCannon() {
     setRound((r) => r + 1);
@@ -2285,14 +2282,15 @@ window.FortressApp = function Fortress() {
       return;
     }
     const now = performance.now();
+    const players = playersList();
     const isGuest = online.current && myRole.current !== 1;
     if (isGuest && reloadProgRef.current) {
       const rp = reloadProgRef.current;
       const elapsed = (now - (rp.at || now)) / RELOAD_MS;
-      for (const p of playersList())
+      for (const p of players)
         reload.current[p] = Math.min(1, ((_a2 = rp[p]) != null ? _a2 : 1) + elapsed);
     } else {
-      for (const p of playersList())
+      for (const p of players)
         reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
     }
     if (phase_r.current === "shoot") {
@@ -2403,7 +2401,7 @@ window.FortressApp = function Fortress() {
     }
     const fc = getFloodCache();
     const ZONE_FILL = { 1: "rgba(56,120,230,0.28)", 2: "rgba(220,50,50,0.28)", 3: "rgba(16,150,90,0.28)" };
-    for (const player of playersList()) {
+    for (const player of players) {
       const outside = fc.outside[player];
       if (!outside) continue;
       const ownWall = WALL_OF[player];
@@ -2425,7 +2423,7 @@ window.FortressApp = function Fortress() {
         else if (v === RUBBLE) drawRubble(ctx, px, py);
       }
     }
-    for (const player of playersList()) {
+    for (const player of players) {
       const ct = castles.current[player];
       if (!ct) continue;
       const cx2 = ct.c * CELL + CELL / 2, cy2 = ct.r * CELL + CELL / 2;
@@ -2433,7 +2431,7 @@ window.FortressApp = function Fortress() {
       drawCastle(ctx, cx2, cy2, player, open2, now);
     }
     if (phase_r.current === "build") {
-      for (const player of playersList()) {
+      for (const player of players) {
         const p = pieces.current[player];
         if (p.ghostR === null) continue;
         const { cells } = p;
@@ -2476,7 +2474,7 @@ window.FortressApp = function Fortress() {
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
       const GFILL = { 1: "rgba(245,158,11,0.45)", 2: "rgba(139,92,246,0.45)", 3: "rgba(16,185,129,0.45)" };
       const GSTROKE = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
-      for (const player of playersList()) {
+      for (const player of players) {
         if (cannonBudget.current[player] <= 0) continue;
         const p = pieces.current[player];
         if (p.ghostR === null) continue;
@@ -2499,7 +2497,7 @@ window.FortressApp = function Fortress() {
         ctx.textAlign = "left";
       }
     }
-    for (const player of playersList()) {
+    for (const player of players) {
       const angle = cannonAngle.current[player];
       const outsideMap = fc.cannonOutside[player];
       const list = cannons.current[player];
@@ -2656,6 +2654,9 @@ window.FortressApp = function Fortress() {
       running.current = false;
       clearInterval(timerID.current);
       cancelAnimationFrame(animId.current);
+      clearTimeout(phaseBannerTimer.current);
+      bannerActive.current = false;
+      setPhaseBanner(null);
       return;
     }
     running.current = true;
@@ -2664,6 +2665,8 @@ window.FortressApp = function Fortress() {
       running.current = false;
       clearInterval(timerID.current);
       cancelAnimationFrame(animId.current);
+      clearTimeout(phaseBannerTimer.current);
+      bannerActive.current = false;
     };
   }, [screen]);
   useEffect(() => {
@@ -2727,7 +2730,7 @@ window.FortressApp = function Fortress() {
     setTimer(SETUP_TIME);
     setResultInfo(null);
     setScreen("game");
-    showPhaseBanner("setup", () => startTimer());
+    showPhaseBanner("setup", startTimer);
   }
   function startGame() {
     initGrid();
@@ -2862,7 +2865,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3459,7 +3462,7 @@ window.FortressApp = function Fortress() {
     maxWidth: "92vw",
     overflow: "hidden",
     textOverflow: "ellipsis"
-  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner] || PHASE_BANNERS.build; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(8px)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, lineHeight: 1, marginBottom: 8 } }, pb.emoji), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, pb.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, pb.sub)); })(), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(8px)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, lineHeight: 1, marginBottom: 8 } }, pb.emoji), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, pb.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, pb.sub)); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: "1px solid rgba(255,255,255,0.07)",

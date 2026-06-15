@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.5)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.6)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -528,3 +528,16 @@ und beschiessen danach gegenseitig ihre Festungen.
   `showPhaseBanner()` übergeben und direkt im selben `setTimeout`-Callback
   aufgerufen. Dadurch ist der Übergang von Banner→Timer→Spielbar atomar ohne Lücke.
   Alle vier Phasenfunktionen nutzen jetzt `showPhaseBanner("phase", () => startTimer())`.
+- **v3.1.6**: Code-Review und Wartbarkeits-Optimierungen (Software-Architekt-Pass).
+  BUG: `phaseBannerTimer.current` wurde beim Verlassen des Spiels (screen → menu)
+  nicht gecancelt → `onDone()` feuerte 2.5s nach Spielende und startete einen neuen
+  Timer-Intervall im Menü, der Phasenfunktionen auf einem beendeten Spiel aufrief.
+  Fix: `clearTimeout(phaseBannerTimer.current)` + `bannerActive.current = false` im
+  useEffect([screen]) Cleanup (beide Pfade: screen !== "game" und Cleanup-Return).
+  SIMPLIFICATION: `() => startTimer()` Wrapper-Lambdas durch direkte Funktions-
+  referenz `startTimer` ersetzt (4 Stellen). 4-branch if/else in `applyState` für
+  Phasen-Banner vereinfacht zu `if (PHASE_BANNERS[s.phase]) showPhaseBanner(s.phase)`
+  — neue Phasen werden automatisch unterstützt. Tote Fallback `|| PHASE_BANNERS.build`
+  im Banner-Render entfernt. EFFICIENCY: `playersList()` im renderLoop von 7 Aufrufen
+  pro Frame (7 Array-Allokationen á 60fps = 420/s) auf einen einzigen Cache `const
+  players = playersList()` am Frame-Anfang reduziert.
