@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.1.0</title>
+  <title>FORTRESS v3.1.1</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -19,6 +19,7 @@
     #splash-bar{width:48px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:28px;overflow:hidden}
     #splash-bar span{display:block;height:100%;width:35%;background:#4ade80;border-radius:2px;animation:sl 1s ease-in-out infinite}
     @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
+    @keyframes phasebanner{0%{opacity:0;transform:translate(-50%,-50%) scale(0.75)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}20%{transform:translate(-50%,-50%) scale(1)}76%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.93)}}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(20px)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
     #ios-hint p b{color:#4ade80}
@@ -280,6 +281,12 @@ const BUILD_TIME = 25;
 const SHOOT_TIME = 30;
 const CANNON_TIME = 12;
 const SETUP_TIME = 20;
+const PHASE_BANNERS = {
+  setup:  { emoji: "\u{1F3F0}", title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
+  build:  { emoji: "\u{1F9F1}", title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
+  shoot:  { emoji: "\u{1F4A5}", title: "FEUER FREI!", sub: "Zieh von deiner Kanone weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
+  cannon: { emoji: "\u{1F3AF}", title: "NEUE KANONE", sub: "Tippe auf eine freie 3\xD73-Fl\xE4che",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
+};
 const CANNON_HP = 10;
 const RELOAD_MS = 2500;
 const GRAV = 0.07;
@@ -769,6 +776,8 @@ window.FortressApp = function Fortress() {
   const [viewSize, setViewSize] = useState({ w: W, h: H });
   const [warn, setWarn] = useState(null);
   const warnTimer = useRef(null);
+  const [phaseBanner, setPhaseBanner] = useState(null);
+  const phaseBannerTimer = useRef(null);
   const [, setUiTick] = useState(0);
   const [numPlayers, setNumPlayers] = useState(2);
   const numPlayersRef = useRef(2);
@@ -1116,6 +1125,11 @@ window.FortressApp = function Fortress() {
     clearTimeout(warnTimer.current);
     warnTimer.current = setTimeout(() => setWarn(null), 3e3);
   }
+  function showPhaseBanner(ph) {
+    setPhaseBanner(ph);
+    clearTimeout(phaseBannerTimer.current);
+    phaseBannerTimer.current = setTimeout(() => setPhaseBanner(null), 2500);
+  }
   const grid = useRef(null);
   const phase_r = useRef("build");
   const running = useRef(false);
@@ -1286,10 +1300,10 @@ window.FortressApp = function Fortress() {
         activeBuild.current = pl.reduce((o, p) => (o[p] = null, o), {});
         activeDrag.current = pl.reduce((o, p) => (o[p] = null, o), {});
         pointers.current.clear();
-        if (s.phase === "build") showWarn("\u{1F9F1} Bauphase \u2014 schlie\xDFe deine Mauern!");
-        else if (s.phase === "shoot") showWarn("\u{1F3AF} Feuer frei \u2014 zieh zum Zielen!");
-        else if (s.phase === "cannon") showWarn("\u{1F3F0} Neue Kanone setzen \u2014 dann ummauern!");
-        else if (s.phase === "setup") showWarn("\u2699\uFE0F Setup \u2014 platziere deine 2 Kanonen");
+        if (s.phase === "build") showPhaseBanner("build");
+        else if (s.phase === "shoot") showPhaseBanner("shoot");
+        else if (s.phase === "cannon") showPhaseBanner("cannon");
+        else if (s.phase === "setup") showPhaseBanner("setup");
       }
       phase_r.current = s.phase;
       timerVal.current = s.timer;
@@ -1809,6 +1823,7 @@ window.FortressApp = function Fortress() {
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "build";
     setPhase("build");
+    showPhaseBanner("build");
     timerVal.current = BUILD_TIME;
     setTimer(BUILD_TIME);
     pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
@@ -1825,6 +1840,7 @@ window.FortressApp = function Fortress() {
       const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
       phase_r.current = "shoot";
       setPhase("shoot");
+      showPhaseBanner("shoot");
       timerVal.current = SHOOT_TIME;
       setTimer(SHOOT_TIME);
       balls.current = [];
@@ -1843,6 +1859,7 @@ window.FortressApp = function Fortress() {
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "cannon";
     setPhase("cannon");
+    showPhaseBanner("cannon");
     timerVal.current = CANNON_TIME;
     setTimer(CANNON_TIME);
     balls.current = [];
@@ -2696,6 +2713,7 @@ window.FortressApp = function Fortress() {
     }
     phase_r.current = "setup";
     setPhase("setup");
+    showPhaseBanner("setup");
     timerVal.current = SETUP_TIME;
     setTimer(SETUP_TIME);
     setResultInfo(null);
@@ -2834,7 +2852,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3431,7 +3449,7 @@ window.FortressApp = function Fortress() {
     maxWidth: "92vw",
     overflow: "hidden",
     textOverflow: "ellipsis"
-  } }, warn), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner] || PHASE_BANNERS.build; return /* @__PURE__ */ React.createElement("div", { key: phaseBanner + Date.now(), style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(8px)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, lineHeight: 1, marginBottom: 8 } }, pb.emoji), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, pb.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, pb.sub)); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: "1px solid rgba(255,255,255,0.07)",

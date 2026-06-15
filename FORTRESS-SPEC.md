@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -499,3 +499,9 @@ und beschiessen danach gegenseitig ihre Festungen.
   Sicherheit: Berechnung erfolgt clientseitig (wie ELO), Host-autoritativ — kein
   serverseitiger Code benötigt. `goldChangeRef` speichert die Änderung in
   `recordResult` und wird beim Spielstart zurückgesetzt.
+- **v3.1.1**: Prominente Phasen-Ankündigungen für alle Modi (lokal + online, Host + Gäste).
+  Zentrierter Overlay-Banner mit Animation (fade-in, scale, fade-out, 2.5s) erscheint
+  bei jedem Phasenwechsel: 🏰 SPIELSTART (blau), 🧱 BAUPHASE (grün), 💥 FEUER FREI!
+  (rot), 🎯 NEUE KANONE (orange). Jede Phase hat eigene Farbe, Emoji, Kurz-Anleitung
+  und Glow-Effekt. Ersetzt die alten showWarn()-Aufrufe für Gäste online; für lokale
+  Spiele und den Host gab es vorher gar keine Ankündigung.
