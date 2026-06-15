@@ -28,6 +28,21 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 - **GitHub Pages** für Hosting
 - **localStorage** für Spieler-Profile
 
+### ⚠️ Kostenpolitik: ZERO laufende Kosten (harte Regel)
+Alle Features müssen kostenlos bleiben. Nur erlaubt:
+- **GitHub Pages** — kostenlos, unbegrenzt für Public Repos
+- **Firebase Spark Plan (kostenlos)**: Realtime Database (1 GB, 100 simultane Verbindungen, 10 GB/Monat Download), keine Cloud Functions, kein Firebase Hosting
+- **CDNs** für React/Firebase SDK (unpkg, gstatic) — kostenlos
+
+**Verboten** weil kostenpflichtig:
+- Firebase Blaze Plan / Cloud Functions (würde Geld kosten)
+- Eigener Server / VPS
+- Firebase Hosting (nicht nötig, GitHub Pages reicht)
+- Firebase Authentication mit SMS/Phone
+- Jeder externe paid Service (Sentry, Mixpanel, etc.)
+
+Wenn ein neues Feature einen kostenpflichtigen Service bräuchte → alternativen Weg finden oder Feature weglassen.
+
 ### Build-Workflow
 ```
 index.html direkt editieren
