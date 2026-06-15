@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.9)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.2.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -561,3 +561,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   `startShoot()` als eigene Funktion extrahiert (wurde zuvor inline in `endBuild`
   dupliziert); `endSetup()` ruft jetzt `startShoot()` statt `startBuild()` auf.
   Tests (45 Assertions) auf neuen Startphasen-Flow angepasst — alle grün.
+- **v3.2.0**: Diagonale Lücken zählen als offene Mauer. Flood-Fill für Burgschluss-Prüfung
+  (`computeOutsideMap` + `computeOutsideMapForCannons`) von 4-Wege auf 8-Wege erweitert.
+  Wird eine Ecke der Mauer weggeschossen, kann der Außenraum diagonal hindurchsickern
+  → Burg gilt als offen. Gleiches gilt für die Kanonen-Abschirmprüfung (`closedCannons`).
