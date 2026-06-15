@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.4)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.5)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -518,3 +518,13 @@ und beschiessen danach gegenseitig ihre Festungen.
   zurückgesetzt. `onPointerDown`, `onPointerMove`, `onPointerUp` prüfen am Anfang
   `bannerActive.current` und kehren sofort zurück. Pointer-State wird in
   `onPointerUp` trotzdem immer bereinigt (verhindert stale Pointer-Einträge).
+
+- **v3.1.5**: Race-Condition zwischen Banner-Ende und Timer-Start behoben. Vorher
+  liefen zwei separate `setTimeout(fn, 2500)` unabhängig voneinander: einer in
+  `showPhaseBanner()` (Banner ausblenden + `bannerActive=false`) und einer in
+  `startTimer(2500)` — mit minimalem Zeitversatz, sodass kurz nach Bannerablauf
+  weder Timer lief noch Interaktionen möglich waren. Fix: `startTimer()` hat kein
+  `delayMs`-Argument mehr. Stattdessen wird `startTimer` als `onDone`-Callback an
+  `showPhaseBanner()` übergeben und direkt im selben `setTimeout`-Callback
+  aufgerufen. Dadurch ist der Übergang von Banner→Timer→Spielbar atomar ohne Lücke.
+  Alle vier Phasenfunktionen nutzen jetzt `showPhaseBanner("phase", () => startTimer())`.

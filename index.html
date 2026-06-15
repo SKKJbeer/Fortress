@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.1.4</title>
+  <title>FORTRESS v3.1.5</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1127,12 +1127,16 @@ window.FortressApp = function Fortress() {
     clearTimeout(warnTimer.current);
     warnTimer.current = setTimeout(() => setWarn(null), 3e3);
   }
-  function showPhaseBanner(ph) {
+  function showPhaseBanner(ph, onDone) {
     phaseBannerKey.current += 1;
     bannerActive.current = true;
     setPhaseBanner(ph);
     clearTimeout(phaseBannerTimer.current);
-    phaseBannerTimer.current = setTimeout(() => { bannerActive.current = false; setPhaseBanner(null); }, 2500);
+    phaseBannerTimer.current = setTimeout(() => {
+      bannerActive.current = false;
+      setPhaseBanner(null);
+      if (onDone) onDone();
+    }, 2500);
   }
   const grid = useRef(null);
   const phase_r = useRef("build");
@@ -1827,7 +1831,6 @@ window.FortressApp = function Fortress() {
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "build";
     setPhase("build");
-    showPhaseBanner("build");
     timerVal.current = BUILD_TIME;
     setTimer(BUILD_TIME);
     pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
@@ -1836,7 +1839,7 @@ window.FortressApp = function Fortress() {
     activeDrag.current = mk(null);
     pointers.current.clear();
     setUiTick((t) => t + 1);
-    startTimer(2500);
+    showPhaseBanner("build", () => startTimer());
   }
   function endBuild() {
     checkLossOrContinue(() => {
@@ -1844,7 +1847,6 @@ window.FortressApp = function Fortress() {
       const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
       phase_r.current = "shoot";
       setPhase("shoot");
-      showPhaseBanner("shoot");
       timerVal.current = SHOOT_TIME;
       setTimer(SHOOT_TIME);
       balls.current = [];
@@ -1854,7 +1856,7 @@ window.FortressApp = function Fortress() {
       activeDrag.current = mk(null);
       const g = grid.current;
       frozenReady.current = players.reduce((o, p) => (o[p] = closedCannons(g, p, cannons.current[p]).map((c) => c.id), o), {});
-      startTimer(2500);
+      showPhaseBanner("shoot", () => startTimer());
     });
   }
   const frozenReady = useRef({ 1: [], 2: [] });
@@ -1863,7 +1865,6 @@ window.FortressApp = function Fortress() {
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "cannon";
     setPhase("cannon");
-    showPhaseBanner("cannon");
     timerVal.current = CANNON_TIME;
     setTimer(CANNON_TIME);
     balls.current = [];
@@ -1873,7 +1874,7 @@ window.FortressApp = function Fortress() {
     activeDrag.current = mk(null);
     pointers.current.clear();
     setUiTick((t) => t + 1);
-    startTimer(2500);
+    showPhaseBanner("cannon", () => startTimer());
   }
   function endCannon() {
     setRound((r) => r + 1);
@@ -1883,26 +1884,20 @@ window.FortressApp = function Fortress() {
     setRound(1);
     startBuild();
   }
-  const timerDelayId = useRef(null);
-  function startTimer(delayMs) {
+  function startTimer() {
     clearInterval(timerID.current);
-    clearTimeout(timerDelayId.current);
     if (online.current && myRole.current !== 1) return;
-    const run = () => {
-      timerID.current = setInterval(() => {
-        timerVal.current -= 1;
-        setTimer(timerVal.current);
-        if (timerVal.current <= 0) {
-          clearInterval(timerID.current);
-          if (phase_r.current === "setup") endSetup();
-          else if (phase_r.current === "build") endBuild();
-          else if (phase_r.current === "shoot") endShoot();
-          else if (phase_r.current === "cannon") endCannon();
-        }
-      }, 1e3);
-    };
-    if (delayMs > 0) timerDelayId.current = setTimeout(run, delayMs);
-    else run();
+    timerID.current = setInterval(() => {
+      timerVal.current -= 1;
+      setTimer(timerVal.current);
+      if (timerVal.current <= 0) {
+        clearInterval(timerID.current);
+        if (phase_r.current === "setup") endSetup();
+        else if (phase_r.current === "build") endBuild();
+        else if (phase_r.current === "shoot") endShoot();
+        else if (phase_r.current === "cannon") endCannon();
+      }
+    }, 1e3);
   }
   function fireMortar(player, targetX, targetY) {
     if (eliminated.current[player]) return false;
@@ -2665,7 +2660,6 @@ window.FortressApp = function Fortress() {
     }
     running.current = true;
     animId.current = requestAnimationFrame(renderLoop);
-    startTimer(2500);
     return () => {
       running.current = false;
       clearInterval(timerID.current);
@@ -2729,11 +2723,11 @@ window.FortressApp = function Fortress() {
     }
     phase_r.current = "setup";
     setPhase("setup");
-    showPhaseBanner("setup");
     timerVal.current = SETUP_TIME;
     setTimer(SETUP_TIME);
     setResultInfo(null);
     setScreen("game");
+    showPhaseBanner("setup", () => startTimer());
   }
   function startGame() {
     initGrid();
@@ -2868,7 +2862,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
