@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.0.9</title>
+  <title>FORTRESS v3.1.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -805,7 +805,8 @@ window.FortressApp = function Fortress() {
           elo: typeof p.elo === "number" ? p.elo : 1e3,
           elo3: typeof p.elo3 === "number" ? p.elo3 : 1e3,
           stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 },
-          stats3: { wins: ((_d = p.stats3) == null ? void 0 : _d.wins) || 0, losses: ((_e = p.stats3) == null ? void 0 : _e.losses) || 0, games: ((_f = p.stats3) == null ? void 0 : _f.games) || 0 }
+          stats3: { wins: ((_d = p.stats3) == null ? void 0 : _d.wins) || 0, losses: ((_e = p.stats3) == null ? void 0 : _e.losses) || 0, games: ((_f = p.stats3) == null ? void 0 : _f.games) || 0 },
+          gold: typeof p.gold === "number" ? p.gold : 100
         };
         if (needsSave) {
           try {
@@ -831,6 +832,10 @@ window.FortressApp = function Fortress() {
     const expected = 1 / (1 + Math.pow(10, (opponent - current) / 400));
     return 32 * (score - expected);
   }
+  function goldDelta(myElo, opponentElo) {
+    const eloDiff = opponentElo - myElo;
+    return Math.min(50, Math.max(5, Math.round(10 * (1 + Math.max(0, eloDiff) / 100))));
+  }
   function recordResult(won, mode) {
     if (!profile) return;
     const m3 = mode === 3;
@@ -852,7 +857,13 @@ window.FortressApp = function Fortress() {
       newElo = Math.round(myElo + avgDelta);
     }
     eloChangeRef.current = { oldElo: myElo, newElo, delta: newElo - myElo };
-    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo });
+    const oldGold = typeof profile.gold === "number" ? profile.gold : 100;
+    const goldEarned = won === true && opponents.length
+      ? Math.round(opponents.reduce((sum, opp) => sum + goldDelta(myElo, opp), 0) / opponents.length)
+      : 0;
+    const newGold = oldGold + goldEarned;
+    goldChangeRef.current = { oldGold, newGold, delta: goldEarned };
+    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, gold: newGold });
     saveProfile(updated);
     pushLeaderboard(updated);
   }
@@ -878,7 +889,8 @@ window.FortressApp = function Fortress() {
       elo: typeof (profile == null ? void 0 : profile.elo) === "number" ? profile.elo : 1e3,
       elo3: typeof (profile == null ? void 0 : profile.elo3) === "number" ? profile.elo3 : 1e3,
       stats: (profile == null ? void 0 : profile.stats) || { wins: 0, losses: 0, games: 0 },
-      stats3: (profile == null ? void 0 : profile.stats3) || { wins: 0, losses: 0, games: 0 }
+      stats3: (profile == null ? void 0 : profile.stats3) || { wins: 0, losses: 0, games: 0 },
+      gold: typeof (profile == null ? void 0 : profile.gold) === "number" ? profile.gold : 100
     };
     saveProfile(p);
     setShowProfileEditor(false);
@@ -947,6 +959,7 @@ window.FortressApp = function Fortress() {
         // ELO-Wertungen (Start 1000)
         elo: typeof p.elo === "number" ? p.elo : 1e3,
         elo3: typeof p.elo3 === "number" ? p.elo3 : 1e3,
+        gold: typeof p.gold === "number" ? p.gold : 100,
         updatedAt: Date.now()
       });
     } catch (e) {
@@ -1615,6 +1628,7 @@ window.FortressApp = function Fortress() {
     lastSeenPhase.current = null;
     statRecorded.current = false;
     eloChangeRef.current = null;
+    goldChangeRef.current = null;
     setMpScreen(null);
     if (role === 1) {
       initGrid();
@@ -1789,6 +1803,7 @@ window.FortressApp = function Fortress() {
   }
   const statRecorded = useRef(false);
   const eloChangeRef = useRef(null);
+  const goldChangeRef = useRef(null);
   function startBuild() {
     const players = playersList();
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
@@ -2745,7 +2760,7 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, "\u2694\uFE0F ", /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 1 } }, "\u{1F451} ", /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N")), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, "\u2694\uFE0F ", /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 1 } }, "\u{1F451} ", /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 3 } }, "\uD83D\uDCB0 ", typeof profile.gold === "number" ? profile.gold : 100, " Gold")), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.15)",
     color: "#cbd5e1",
@@ -2819,7 +2834,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.9")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.1.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3229,7 +3244,15 @@ window.FortressApp = function Fortress() {
   borderRadius: 10,
   padding: "10px 20px",
   textAlign: "center"
-} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, "ELO-\u00C4NDERUNG"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, eloChangeRef.current.oldElo), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.newElo), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.delta >= 0 ? "+" : "", eloChangeRef.current.delta))), online.current && !isHost ? (
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, "ELO-\u00C4NDERUNG"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, eloChangeRef.current.oldElo), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.newElo), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.delta >= 0 ? "+" : "", eloChangeRef.current.delta))), online.current && goldChangeRef.current && goldChangeRef.current.delta > 0 && /* @__PURE__ */ React.createElement("div", { style: {
+  marginTop: 10,
+  marginBottom: 4,
+  background: "rgba(245,158,11,0.12)",
+  border: "1px solid rgba(245,158,11,0.35)",
+  borderRadius: 10,
+  padding: "10px 20px",
+  textAlign: "center"
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, "GOLD"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, " \uD83D\uDCB0"))), online.current && !isHost ? (
       // Gast: wartet auf Host, kann aber selbst ins Hauptmenü
       /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 280, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 14, fontStyle: "italic" } }, "\u23F3 Warte auf Host f\xFCr n\xE4chste Runde\u2026"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
         scoresRef.current = { 1: 0, 2: 0 };

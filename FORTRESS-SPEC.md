@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.9)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -487,4 +487,15 @@ und beschiessen danach gegenseitig ihre Festungen.
   zeigt P3-Teile jetzt in Grün (#34d399). (2) ELO-Änderung im Ergebnis-Screen:
   nach jedem Online-Spiel wird "ELO: alt → neu (±delta)" angezeigt (grün/rot
   je nach Richtung). `eloChangeRef` speichert die Änderung in `recordResult`
-  und wird beim Spielstart zurückgesetzt.
+  und wird beim Spielstart zurückgesetzt.- **v3.1.0**: Goldsystem eingeführt. Jeder Spieler startet mit 100 Goldmünzen
+  (gespeichert in `profile.gold`, localStorage). Gold wird ausschließlich in
+  Online-Spielen verdient — nur der Gewinner erhält Gold, kein Goldabzug bei
+  Niederlage. Formel: `goldEarned = clamp(5, 50, round(10 * (1 + max(0, gegnerELO - meineELO) / 100)))`.
+  Niedrigere ELO gegen höhere ELO → mehr Gold (Anreiz, gegen Stärkere zu spielen
+  und verhindert Farm-Abuse). Bei 3 Spielern wird der Schnitt über beide Gegner
+  gebildet. Gold wird im Menü-Profilbereich angezeigt (💰 X Gold). Nach Online-
+  Siegen erscheint auf dem Ergebnis-Screen eine goldene Box "alt → neu +delta 💰"
+  (analog zur ELO-Box). Gold wird mit dem Leaderboard auf Firebase synchronisiert.
+  Sicherheit: Berechnung erfolgt clientseitig (wie ELO), Host-autoritativ — kein
+  serverseitiger Code benötigt. `goldChangeRef` speichert die Änderung in
+  `recordResult` und wird beim Spielstart zurückgesetzt.
