@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.0.3</title>
+  <title>FORTRESS v3.0.5</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1243,89 +1243,101 @@ window.FortressApp = function Fortress() {
     try {
       s = typeof raw === "string" ? JSON.parse(raw) : raw;
     } catch (e) {
+      dbg.current.lastErr = "JSON parse";
       return;
     }
+    const s0 = s;
     s = sanitizeState(s);
-    if (!s) return;
+    if (!s) {
+      dbg.current.lastErr = "sanitize FAIL grid=" + (Array.isArray(s0 == null ? void 0 : s0.grid) ? s0.grid.length : typeof (s0 == null ? void 0 : s0.grid)) + " phase=" + (s0 == null ? void 0 : s0.phase) + " timer=" + typeof (s0 == null ? void 0 : s0.timer);
+      return;
+    }
     if (s.hostSession && s.hostSession !== hostSessionRef.current) {
-      if (hostSessionRef.current) return;
+      if (hostSessionRef.current) {
+        dbg.current.lastErr = "session mismatch";
+        return;
+      }
       hostSessionRef.current = s.hostSession;
     }
     lastStateAt.current = Date.now();
-    if (s.numPlayers && s.numPlayers !== numPlayersRef.current) {
-      numPlayersRef.current = s.numPlayers;
-      setNumPlayers(s.numPlayers);
+    try {
+      if (s.numPlayers && s.numPlayers !== numPlayersRef.current) {
+        numPlayersRef.current = s.numPlayers;
+        setNumPlayers(s.numPlayers);
+      }
+      setGrid(s.grid);
+      const need3 = s.numPlayers === 3;
+      const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
+      if (s.terrainSeed && (s.terrainSeed !== terrainSeed.current || haveWrongTerrain)) {
+        terrainSeed.current = s.terrainSeed;
+        terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
+        bgDirty.current = true;
+      }
+      castles.current = s.castles || castles.current;
+      if (need3 && terrain.current && terrain.current.mode3 && castles.current && !terrain.current.sectorMap) {
+        terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
+      }
+      cannons.current = s.cannons || cannons.current;
+      cannonBudget.current = s.cannonBudget || cannonBudget.current;
+      if (s.eliminated) eliminated.current = s.eliminated;
+      if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
+      if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
+      if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
+      const incoming = s.balls || [];
+      const localBalls = balls.current || [];
+      if (incoming.length === 0) {
+        balls.current = [];
+      } else if (localBalls.length === 0) {
+        balls.current = incoming;
+      } else {
+        if (incoming.length > localBalls.length) balls.current = incoming;
+      }
+      explosions.current = s.explosions || [];
+      lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
+      reloadProgRef.current = {
+        1: s.reloadProg ? s.reloadProg[1] : 1,
+        2: s.reloadProg ? s.reloadProg[2] : 1,
+        at: performance.now()
+      };
+      frozenReady.current = s.frozenReady || { 1: [], 2: [] };
+      if (s.playerInfo) playerInfo.current = s.playerInfo;
+      if (online.current && myRole.current !== 1 && s.phase !== lastSeenPhase.current) {
+        lastSeenPhase.current = s.phase;
+        const np = s.numPlayers || numPlayersRef.current || 2;
+        const pl = np === 3 ? [1, 2, 3] : [1, 2];
+        activeBuild.current = pl.reduce((o, p) => (o[p] = null, o), {});
+        activeDrag.current = pl.reduce((o, p) => (o[p] = null, o), {});
+        pointers.current.clear();
+        if (s.phase === "build") showWarn("\u{1F9F1} Bauphase \u2014 schlie\xDFe deine Mauern!");
+        else if (s.phase === "shoot") showWarn("\u{1F3AF} Feuer frei \u2014 zieh zum Zielen!");
+        else if (s.phase === "cannon") showWarn("\u{1F3F0} Neue Kanone setzen \u2014 dann ummauern!");
+        else if (s.phase === "setup") showWarn("\u2699\uFE0F Setup \u2014 platziere deine 2 Kanonen");
+      }
+      phase_r.current = s.phase;
+      timerVal.current = s.timer;
+      roundRefVal.current = s.round;
+      scoresRef.current = s.scores;
+      setPhase(s.phase);
+      setTimer(s.timer);
+      setRound(s.round);
+      setScores(__spreadValues({}, s.scores));
+      resultRef.current = s.resultInfo || null;
+      setResultInfo(s.resultInfo || null);
+      if (s.resultInfo && online.current && myRole.current !== 1 && !statRecorded.current) {
+        statRecorded.current = true;
+        const w = s.resultInfo.winner;
+        const myWin = w === myRole.current ? true : w === null ? null : false;
+        recordResult(myWin, s.resultInfo.numPlayers || 2);
+      }
+      const newScreen = s.screen || "game";
+      if (newScreen !== screenRef.current) {
+        screenRef.current = newScreen;
+        setScreen(newScreen);
+      }
+      setUiTick((t) => t + 1);
+    } catch (e) {
+      dbg.current.lastErr = "apply: " + e.message;
     }
-    setGrid(s.grid);
-    const need3 = s.numPlayers === 3;
-    const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
-    if (s.terrainSeed && (s.terrainSeed !== terrainSeed.current || haveWrongTerrain)) {
-      terrainSeed.current = s.terrainSeed;
-      terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
-      bgDirty.current = true;
-    }
-    castles.current = s.castles || castles.current;
-    if (need3 && terrain.current && terrain.current.mode3 && castles.current && !terrain.current.sectorMap) {
-      terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
-    }
-    cannons.current = s.cannons || cannons.current;
-    cannonBudget.current = s.cannonBudget || cannonBudget.current;
-    if (s.eliminated) eliminated.current = s.eliminated;
-    if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
-    if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
-    if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
-    const incoming = s.balls || [];
-    const localBalls = balls.current || [];
-    if (incoming.length === 0) {
-      balls.current = [];
-    } else if (localBalls.length === 0) {
-      balls.current = incoming;
-    } else {
-      if (incoming.length > localBalls.length) balls.current = incoming;
-    }
-    explosions.current = s.explosions || [];
-    lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
-    reloadProgRef.current = {
-      1: s.reloadProg ? s.reloadProg[1] : 1,
-      2: s.reloadProg ? s.reloadProg[2] : 1,
-      at: performance.now()
-    };
-    frozenReady.current = s.frozenReady || { 1: [], 2: [] };
-    if (s.playerInfo) playerInfo.current = s.playerInfo;
-    if (online.current && myRole.current !== 1 && s.phase !== lastSeenPhase.current) {
-      lastSeenPhase.current = s.phase;
-      const np = s.numPlayers || numPlayersRef.current || 2;
-      const pl = np === 3 ? [1, 2, 3] : [1, 2];
-      activeBuild.current = pl.reduce((o, p) => (o[p] = null, o), {});
-      activeDrag.current = pl.reduce((o, p) => (o[p] = null, o), {});
-      pointers.current.clear();
-      if (s.phase === "build") showWarn("\u{1F9F1} Bauphase \u2014 schlie\xDFe deine Mauern!");
-      else if (s.phase === "shoot") showWarn("\u{1F3AF} Feuer frei \u2014 zieh zum Zielen!");
-      else if (s.phase === "cannon") showWarn("\u{1F3F0} Neue Kanone setzen \u2014 dann ummauern!");
-      else if (s.phase === "setup") showWarn("\u2699\uFE0F Setup \u2014 platziere deine 2 Kanonen");
-    }
-    phase_r.current = s.phase;
-    timerVal.current = s.timer;
-    roundRefVal.current = s.round;
-    scoresRef.current = s.scores;
-    setPhase(s.phase);
-    setTimer(s.timer);
-    setRound(s.round);
-    setScores(__spreadValues({}, s.scores));
-    resultRef.current = s.resultInfo || null;
-    setResultInfo(s.resultInfo || null);
-    if (s.resultInfo && online.current && myRole.current !== 1 && !statRecorded.current) {
-      statRecorded.current = true;
-      const w = s.resultInfo.winner;
-      const myWin = w === myRole.current ? true : w === null ? null : false;
-      recordResult(myWin, s.resultInfo.numPlayers || 2);
-    }
-    const newScreen = s.screen || "game";
-    if (newScreen !== screenRef.current) {
-      screenRef.current = newScreen;
-      setScreen(newScreen);
-    }
-    setUiTick((t) => t + 1);
   }
   const hostSessionRef = useRef("");
   async function pushState(force) {
@@ -2796,7 +2808,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.3 (Diagnose)")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.5 (Diagnose)")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3292,7 +3304,13 @@ window.FortressApp = function Fortress() {
     lineHeight: 1.5,
     maxWidth: 180,
     textAlign: "left"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontWeight: 700 } }, "SYNC \xB7 Rolle ", myRole.current === 1 ? "Host" : "Gast " + myRole.current), /* @__PURE__ */ React.createElement("div", null, "State empf.: ", dbg.current.statesRecv), /* @__PURE__ */ React.createElement("div", null, "State push: ", dbg.current.statesPush), /* @__PURE__ */ React.createElement("div", null, "Akt. gesendet: ", dbg.current.actSent), /* @__PURE__ */ React.createElement("div", null, "Akt. empf.: ", dbg.current.actRecv), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontWeight: 700 } }, "SYNC \xB7 Rolle ", myRole.current === 1 ? "Host" : "Gast " + myRole.current), /* @__PURE__ */ React.createElement("div", null, "State empf.: ", dbg.current.statesRecv), /* @__PURE__ */ React.createElement("div", null, "State push: ", dbg.current.statesPush), /* @__PURE__ */ React.createElement("div", null, "Akt. gesendet: ", dbg.current.actSent), /* @__PURE__ */ React.createElement("div", null, "Akt. empf.: ", dbg.current.actRecv), /* @__PURE__ */ React.createElement("div", { style: { color: "#fde68a" } }, "Grid-Bauten: ", (() => {
+    const g = grid.current;
+    if (!g) return "?";
+    let n = 0;
+    for (let r = 0; r < g.length; r++) for (let c = 0; c < g[r].length; c++) if (g[r][c] !== 0) n++;
+    return n;
+  })()), /* @__PURE__ */ React.createElement("div", { style: { color: "#fde68a" } }, "screen=", screenRef.current, " phase=", phase_r.current), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     display: "flex",
     alignItems: "center",
