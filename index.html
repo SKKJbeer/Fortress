@@ -1265,6 +1265,9 @@ window.FortressApp = function Fortress() {
         numPlayersRef.current = s.numPlayers;
         setNumPlayers(s.numPlayers);
       }
+      for (const p of playersList()) {
+        if (!pieces.current[p]) pieces.current[p] = { cells: randomShape(), ghostR: null, ghostC: null };
+      }
       setGrid(s.grid);
       const need3 = s.numPlayers === 3;
       const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
@@ -1293,13 +1296,14 @@ window.FortressApp = function Fortress() {
         if (incoming.length > localBalls.length) balls.current = incoming;
       }
       explosions.current = s.explosions || [];
-      lastShot.current = s.lastShot || { 1: -99999, 2: -99999 };
+      lastShot.current = s.lastShot || { 1: -99999, 2: -99999, 3: -99999 };
       reloadProgRef.current = {
         1: s.reloadProg ? s.reloadProg[1] : 1,
         2: s.reloadProg ? s.reloadProg[2] : 1,
+        3: s.reloadProg ? s.reloadProg[3] : 1,
         at: performance.now()
       };
-      frozenReady.current = s.frozenReady || { 1: [], 2: [] };
+      frozenReady.current = s.frozenReady || { 1: [], 2: [], 3: [] };
       if (s.playerInfo) playerInfo.current = s.playerInfo;
       if (online.current && myRole.current !== 1 && s.phase !== lastSeenPhase.current) {
         lastSeenPhase.current = s.phase;
