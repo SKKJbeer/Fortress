@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.3)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -509,3 +509,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   gesetzt haben und der Timer noch über 3s steht. Verhindert unnötiges Warten
   wenn alle fertig sind. Check in `placeCannon()` nach Budget-Dekrement:
   `phase === "setup" && alle cannonBudget <= 0 && timer > 3 → timer = 3`.
+- **v3.1.3**: Timer pausiert während Phasen-Banner (2.5s). `startTimer()` akzeptiert
+  jetzt optionales `delayMs`-Argument. Bei allen Phasenwechseln mit Banner wird
+  `startTimer(2500)` aufgerufen — Timer startet erst wenn der Banner verschwunden
+  ist. Gilt für Setup, Bau, Schuss und Kanonen-Phase.
