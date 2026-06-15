@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.3.0</title>
+  <title>FORTRESS v3.4.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -581,6 +581,20 @@ function drawWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.fillStyle = g;
   roundRectPath(ctx, px + m, py + m, CELL - 2 * m, CELL - 2 * m, 4);
   ctx.fill();
+  // brick mortar lines (horizontal + offset vertical)
+  const row = Math.round(py / CELL);
+  ctx.strokeStyle = mortar || "rgba(0,0,0,0.32)";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(px + m, py + CELL / 2);
+  ctx.lineTo(px + CELL - m, py + CELL / 2);
+  const voff = (row % 2 === 0) ? CELL * 0.28 : CELL * 0.72;
+  ctx.moveTo(px + voff, py + m);
+  ctx.lineTo(px + voff, py + CELL / 2 - 1);
+  ctx.moveTo(px + voff, py + CELL / 2 + 1);
+  ctx.lineTo(px + voff, py + CELL - m);
+  ctx.stroke();
+  // top shine highlight
   ctx.fillStyle = "rgba(255,255,255,0.18)";
   roundRectPath(ctx, px + m + 1, py + m + 1, CELL - 2 * m - 2, 3, 2);
   ctx.fill();
@@ -1207,6 +1221,7 @@ window.FortressApp = function Fortress() {
   const balls = useRef([]);
   const explosions = useRef([]);
   const particles = useRef([]);
+  const shakeRef = useRef(0);
   const reload = useRef({ 1: 1, 2: 1 });
   const lastShot = useRef({ 1: -99999, 2: -99999 });
   const pointers = useRef(/* @__PURE__ */ new Map());
@@ -1948,20 +1963,25 @@ window.FortressApp = function Fortress() {
         arcH: 24 + dist * 0.22,
         player,
         alive: true,
-        cannonIndex: index
+        cannonIndex: index,
+        trail: []
       });
       const angle = Math.atan2(ty - sy, tx - sx);
-      for (let i = 0; i < 6; i++) {
-        const a = angle + (Math.random() - 0.5) * 0.6;
-        const s = 2 + Math.random() * 3;
+      for (let i = 0; i < 10; i++) {
+        const a = angle + (Math.random() - 0.5) * 0.9;
+        const s = 1.5 + Math.random() * 3.5;
+        const smoke = i >= 6;
         particles.current.push({
-          x: sx + Math.cos(angle) * CELL * 2.4,
-          y: sy + Math.sin(angle) * CELL * 2.4,
+          x: sx + Math.cos(angle) * CELL * 2.2,
+          y: sy + Math.sin(angle) * CELL * 2.2,
           vx: Math.cos(a) * s,
           vy: Math.sin(a) * s,
-          life: 12,
-          maxLife: 12,
-          color: ACCENT_OF[player] || "#fbbf24"
+          life: smoke ? 22 : 10,
+          maxLife: smoke ? 22 : 10,
+          color: smoke ? ["#94a3b8", "#cbd5e1", "#78716c"][Math.floor(Math.random() * 3)] : (ACCENT_OF[player] || "#fbbf24"),
+          size: smoke ? 3 + Math.random() * 2.5 : 1.5 + Math.random() * 2,
+          round: true,
+          gravity: smoke ? -0.05 : 0.06
         });
       }
     });
@@ -1974,17 +1994,24 @@ window.FortressApp = function Fortress() {
     if (hitR < 0 || hitR >= ROWS || hitC < 0 || hitC >= COLS) return;
     const target = g[hitR][hitC];
     explosions.current.push({ x: ball.tx, y: ball.ty, frame: 0 });
-    for (let i = 0; i < 14; i++) {
+    shakeRef.current = Math.max(shakeRef.current, 7);
+    for (let i = 0; i < 20; i++) {
       const a = Math.random() * Math.PI * 2;
-      const s = 1 + Math.random() * 3.5;
+      const s = 1.5 + Math.random() * 4.5;
+      const fire = Math.random() < 0.6;
       particles.current.push({
         x: hitC * CELL + CELL / 2,
         y: hitR * CELL + CELL / 2,
         vx: Math.cos(a) * s,
-        vy: Math.sin(a) * s,
-        life: 22,
-        maxLife: 22,
-        color: ["#9ca3af", "#6b7280", "#fbbf24"][Math.floor(Math.random() * 3)]
+        vy: Math.sin(a) * s - 1.2,
+        life: fire ? 16 : 30,
+        maxLife: fire ? 16 : 30,
+        color: fire
+          ? ["#fff9c4", "#fbbf24", "#f97316", "#ef4444"][Math.floor(Math.random() * 4)]
+          : ["#9ca3af", "#6b7280", "#78716c"][Math.floor(Math.random() * 3)],
+        size: fire ? 2 + Math.random() * 3 : 1.5 + Math.random() * 2,
+        round: fire,
+        gravity: fire ? 0.10 : 0.05
       });
     }
     const opponents = playersList().filter((p) => p !== ball.player);
@@ -2027,6 +2054,23 @@ window.FortressApp = function Fortress() {
           setGrid(newG2);
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
           explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
+          shakeRef.current = Math.max(shakeRef.current, 14);
+          for (let i = 0; i < 26; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const s = 2.5 + Math.random() * 5.5;
+            const fire = Math.random() < 0.65;
+            particles.current.push({
+              x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2,
+              vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2.5,
+              life: fire ? 26 : 38, maxLife: fire ? 26 : 38,
+              color: fire
+                ? ["#fff9c4", "#fbbf24", "#f97316", "#ef4444", "#b45309"][Math.floor(Math.random() * 5)]
+                : ["#9ca3af", "#6b7280", "#78716c", "#a8a29e"][Math.floor(Math.random() * 4)],
+              size: fire ? 3 + Math.random() * 4.5 : 2 + Math.random() * 3,
+              round: fire,
+              gravity: fire ? 0.14 : 0.08
+            });
+          }
           showWarn(`\u{1F4A5} Kanone von ${pname(ep)} zerst\xF6rt!`);
           setUiTick((t) => t + 1);
         }
@@ -2336,11 +2380,17 @@ window.FortressApp = function Fortress() {
       p.x += p.vx;
       p.y += p.vy;
       p.vx *= 0.92;
-      p.vy *= 0.92;
+      p.vy = p.vy * 0.92 + (p.gravity || 0.08);
       p.life--;
     }
     particles.current = particles.current.filter((p) => p.life > 0);
     ctx.clearRect(0, 0, W, H);
+    const didShake = shakeRef.current > 0.3;
+    if (didShake) {
+      ctx.save();
+      ctx.translate((Math.random() - 0.5) * shakeRef.current, (Math.random() - 0.5) * shakeRef.current);
+      shakeRef.current *= 0.72;
+    }
     const terObj = terrain.current;
     const ter = terObj ? terObj.grid : null;
     if (!bgCanvas.current) {
@@ -2353,9 +2403,9 @@ window.FortressApp = function Fortress() {
       bgDirty.current = false;
       const bc = bgCanvas.current.getContext("2d");
       const mg2 = bc.createLinearGradient(0, 0, 0, H);
-      mg2.addColorStop(0, "#4a8f3c");
-      mg2.addColorStop(0.5, "#3d7d31");
-      mg2.addColorStop(1, "#356e2b");
+      mg2.addColorStop(0, "#2e5a22");
+      mg2.addColorStop(0.45, "#254d1c");
+      mg2.addColorStop(1, "#172e10");
       bc.fillStyle = mg2;
       bc.fillRect(0, 0, W, H);
       for (let r = 0; r < ROWS; r += 2)
@@ -2369,9 +2419,9 @@ window.FortressApp = function Fortress() {
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
           if (ter[r][c] !== 3) continue;
-          bc.fillStyle = "#2563a8";
+          bc.fillStyle = "#1a3d70";
           bc.fillRect(c * CELL, r * CELL, CELL, CELL);
-          bc.fillStyle = "rgba(100,140,75,0.35)";
+          bc.fillStyle = "rgba(80,160,220,0.20)";
           bc.fillRect(c * CELL - 1, r * CELL, CELL + 2, 2);
         }
       for (let r = 0; r < ROWS; r++)
@@ -2403,6 +2453,12 @@ window.FortressApp = function Fortress() {
         bc.fillStyle = "#facc15";
         bc.fillRect(fx3 - 1, fy3 - 1, 2, 2);
       }
+      // cinematic vignette
+      const vig = bc.createRadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.85);
+      vig.addColorStop(0, "rgba(0,0,0,0)");
+      vig.addColorStop(1, "rgba(0,0,0,0.55)");
+      bc.fillStyle = vig;
+      bc.fillRect(0, 0, W, H);
     }
     if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
     if (ter) {
@@ -2624,12 +2680,26 @@ window.FortressApp = function Fortress() {
       const by = ball.sy + (ball.ty - ball.sy) * p2;
       const h = Math.sin(Math.PI * p2) * ball.arcH;
       const shScale = 1 - h / (ball.arcH + 40) * 0.6;
+      const drawY = by - h * 0.55;
+      // projectile trail
+      if (ball.trail) {
+        ball.trail.push({ x: bx, y: drawY });
+        if (ball.trail.length > 9) ball.trail.shift();
+        for (let ti = 0; ti < ball.trail.length - 1; ti++) {
+          const tp = ball.trail[ti];
+          ctx.globalAlpha = (ti / ball.trail.length) * 0.4;
+          ctx.fillStyle = BALL_MID[ball.player] || BALL_MID[1];
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, 1.5 + ti * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = "rgba(0,0,0,0.35)";
       ctx.beginPath();
       ctx.ellipse(bx, by, 6 * shScale, 4 * shScale, 0, 0, Math.PI * 2);
       ctx.fill();
       const ballR = 5 + h / (ball.arcH + 1) * 5;
-      const drawY = by - h * 0.55;
       const bg2 = ctx.createRadialGradient(bx - 2, drawY - 2, 0, bx, drawY, ballR);
       bg2.addColorStop(0, "#ffffff");
       bg2.addColorStop(0.4, BALL_MID[ball.player] || BALL_MID[1]);
@@ -2646,7 +2716,14 @@ window.FortressApp = function Fortress() {
       const a = p.life / p.maxLife;
       ctx.globalAlpha = a;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      const ps = p.size || 2;
+      if (p.round) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, ps, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(p.x - ps, p.y - ps, ps * 2, ps * 2);
+      }
     }
     ctx.globalAlpha = 1;
     explosions.current = explosions.current.filter((e2) => e2.frame < 22);
@@ -2665,6 +2742,11 @@ window.FortressApp = function Fortress() {
       ctx.fill();
       ex.frame++;
     }
+    // decorative gold battlefield border
+    ctx.strokeStyle = "rgba(170,140,55,0.35)";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
+    if (didShake) ctx.restore();
     if (online.current && myRole.current === 1) pushState(false);
     animId.current = requestAnimationFrame(renderLoop);
   }, []);
@@ -2884,7 +2966,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.3.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.4.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3394,18 +3476,19 @@ window.FortressApp = function Fortress() {
   } }, /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
-    background: "linear-gradient(135deg, rgba(37,99,235,0.25), rgba(30,58,138,0.15))",
-    border: "1px solid rgba(96,165,250,0.4)",
+    background: "linear-gradient(160deg, rgba(25,55,130,0.88), rgba(12,28,80,0.92))",
+    border: "1px solid rgba(160,140,70,0.65)",
     borderRadius: 10,
     padding: "5px 8px",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    boxShadow: "0 0 12px rgba(59,130,246,0.15)",
+    boxShadow: "0 2px 14px rgba(30,70,200,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#dbeafe", flexShrink: 0 } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {
-    background: phase === "build" ? "rgba(74,222,128,0.12)" : phase === "shoot" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.14)",
-    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.3)" : phase === "shoot" ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.35)"}`,
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {
+    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",
+    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
+    boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
     padding: "1px 6px",
     fontSize: 9,
@@ -3417,33 +3500,33 @@ window.FortressApp = function Fortress() {
     fontSize: 28,
     fontWeight: 900,
     color: timerColor,
-    textShadow: timer <= 5 ? `0 0 14px ${timerColor}` : "none",
+    textShadow: timer <= 5 ? `0 0 18px ${timerColor}` : "0 0 5px rgba(200,180,100,0.25)",
     fontVariantNumeric: "tabular-nums",
     lineHeight: 1
-  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, "R", round)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { marginTop: 5, background: "rgba(15,23,42,0.7)", border: "1px solid rgba(100,116,139,0.22)", color: "#4a5568", borderRadius: 8, padding: "5px 0 6px", fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: "0.09em", textTransform: "uppercase", lineHeight: 1, display: "block", width: "100%", textAlign: "center" } }, "✕ beenden")), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#64748b" } }, "R", round)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { marginTop: 5, background: "rgba(15,23,42,0.7)", border: "1px solid rgba(100,116,139,0.22)", color: "#4a5568", borderRadius: 8, padding: "5px 0 6px", fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: "0.09em", textTransform: "uppercase", lineHeight: 1, display: "block", width: "100%", textAlign: "center" } }, "✕ beenden")), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
-    background: "linear-gradient(135deg, rgba(220,38,38,0.25), rgba(127,29,29,0.15))",
-    border: "1px solid rgba(248,113,113,0.4)",
+    background: "linear-gradient(160deg, rgba(110,18,18,0.88), rgba(70,10,10,0.92))",
+    border: "1px solid rgba(160,140,70,0.65)",
     borderRadius: 10,
     padding: "5px 8px",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    boxShadow: "0 0 12px rgba(239,68,68,0.15)",
+    boxShadow: "0 2px 14px rgba(200,30,30,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fee2e2", flexShrink: 0 } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(135deg, rgba(5,150,105,0.25), rgba(6,95,70,0.15))",
-    border: "1px solid rgba(52,211,153,0.4)",
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(160deg, rgba(5,80,50,0.88), rgba(3,50,30,0.92))",
+    border: "1px solid rgba(160,140,70,0.65)",
     borderRadius: 10,
     padding: "4px 14px",
     display: "flex",
     alignItems: "center",
     gap: 8,
-    boxShadow: "0 0 12px rgba(16,185,129,0.15)",
+    boxShadow: "0 2px 14px rgba(16,140,80,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
     maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? ((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "\u265C" : "\u265C"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? " (Du)" : "") : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#d1fae5", flexShrink: 0 } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? ((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "\u265C" : "\u265C"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? " (Du)" : "") : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     top: 70,
     left: "50%",

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.3.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.4.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -583,3 +583,29 @@ und beschiessen danach gegenseitig ihre Festungen.
   `index.html`: `<link rel="manifest">` + SW-Registrierung hinzugefügt.
   GitHub Pages bleibt immer aktuell (Network-first überschreibt Cache bei jedem Deploy).
   Noch fehlend für Store: Privacy Policy, `.well-known/assetlinks.json`, Bubblewrap-Setup.
+- **v3.4.0**: Visuelles & Gameplay-Upgrade — modernes mittelalterliches Mobile-Game-Feel.
+  **Canvas-Effekte:**
+  1. **Mauerstein-Textur**: `drawWall` zeichnet jetzt horizontale Fugen + versetzte Senkrechtfugen
+     auf jeder Mauerzelle (Backsteinmuster). Farbe via `mortar`-Parameter.
+  2. **Bildschirm-Shake**: `shakeRef = useRef(0)`. Bei Wandtreffer: +7, bei Kanonentreffer: +14.
+     Zerfällt mit Faktor 0.72/Frame. `ctx.save/translate/restore` um gesamtes Frame.
+  3. **Feuerpartikel**: `impactAt` erzeugt 20 Partikel (60% Feuer: gold/orange/rot, 40% Trümmer).
+     Kanonentreffer: 26 Partikel. Alle mit `size`, `round`, `gravity`-Feldern.
+  4. **Partikelphysik**: Alle Partikel haben `gravity`-Feld (Standard 0.08 px/Frame²) statt
+     linearer Dämpfung: `p.vy = p.vy * 0.92 + gravity`. Feuerpartikel steigen initial auf,
+     Trümmer fallen nach. Schmauch (smoke) der Kanone hat `gravity: -0.05` (schwebt auf).
+  5. **Geschossschweif**: Jedes `ball`-Objekt hat `trail: []`. Im Render-Loop werden bis zu
+     9 Positionspunkte gesammelt; jeder wird als abnehmend-transparenter Kreis gezeichnet.
+  6. **Kanonenmündung Smoke**: Schuss erzeugt jetzt 10 Partikel (6 Blitz-Flash + 4 Schmauch),
+     Schmauch hat `gravity: -0.05` und `round: true`.
+  7. **Partikelrender**: Unterstützt jetzt `p.size` (Radius/Halbseite) und `p.round` (Kreis vs. Quadrat).
+  **Hintergrund & Atmo:**
+  8. **Dunkleres Battlefield**: Grundgradient nun #2e5a22 → #172e10 (satter, mittelalterlicher Ton).
+  9. **Vignette**: Radial-Gradient-Overlay am Ende des bgCanvas (Dunkelrand ~55% Alpha außen).
+  10. **Dunkleres Wasser**: #1a3d70 statt #2563a8, mehr Kontrast.
+  11. **Goldener Feldrand**: 2.5px Strich `rgba(170,140,55,0.35)` um das gesamte Spielfeld.
+  **HUD-Redesign:**
+  12. **Spielerkarten**: Tieferer Hintergrund (Blau/Rot/Grün mit 0.88 Alpha), Goldrand
+      `rgba(160,140,70,0.65)`, Innen-Glow. Punkte in Goldfarbe `#fde68a` mit Text-Glow.
+  13. **Phasenbadge**: Erhöhte Sättigung + `boxShadow`-Glow je nach Phase (Grün/Rot/Gold).
+  14. **Timer**: Immer leichter Glow (`0 0 5px rgba(200,180,100,0.25)`), bei ≤5s intensiv.
