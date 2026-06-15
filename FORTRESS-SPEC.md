@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.2.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.2.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -571,5 +571,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   2. **Stück-Vorschau-Panel** ersetzt die Text-Buttons: zeigt die aktuelle Tetromino-Form
      als farbige Punkte (11px/Zelle). Antippen dreht. Alle 3 Spieler haben eigenes Panel.
   3. **Haptic Feedback**: `navigator.vibrate(30)` bei jeder Drehung (Android/Chrome).
+     iOS Safari unterstützt Vibration API nicht — kein Audio-Workaround gewünscht.
   Tests auf 47 Assertions erweitert: Canvas-Tap-Rotation, Vorschau-Panel-Sichtbarkeit,
   Panel-Tap-Rotation, Drag-Platzierung.
+- **v3.2.2**: Audio-Workaround für iOS wieder entfernt (kein Audio gewünscht).
+  `navigator.vibrate(30)` bleibt für Android. iOS ohne Haptik — plattformlimitierung.
