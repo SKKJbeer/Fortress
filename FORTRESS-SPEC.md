@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -441,3 +441,12 @@ und beschiessen danach gegenseitig ihre Festungen.
   Terrain als mode3 regeneriert ist und (b) die sectorMap aus Seed+castles gebaut
   ist (deterministisch identisch zum Host). Damit stimmen Gast-Ghost und Host-
   Validierung überein.
+- **v3.0.2**: 3-Spieler-Online — Gäste sahen keine Host-Updates (P2-Aktionen
+  erschienen beim Host, aber Gäste sahen nichts; P3 ging gar nichts). Zwei
+  Ursachen: (1) Stale Session-Check: hostSessionRef wurde beim Beitreten/Erstellen
+  nicht zurückgesetzt — bei mehreren Spielen hintereinander (ohne Reload) verwarf
+  applyState alle States des neuen Hosts (Session-ID-Mismatch → return). Fix:
+  hostSessionRef beim guestJoinGame auf “” und beim hostCreateGame auf SESSION_ID
+  setzen. (2) Nach einem join während das Spiel schon läuft (P3 tritt nach P2 bei)
+  pushte der Host keinen State → späte Gäste warteten ewig. Fix: Host pusht nach
+  jedem join (mehrfach) den aktuellen Zustand.
