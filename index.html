@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.0.6</title>
+  <title>FORTRESS v3.0.7</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1265,46 +1265,6 @@ window.FortressApp = function Fortress() {
         numPlayersRef.current = s.numPlayers;
         setNumPlayers(s.numPlayers);
       }
-      for (const p of playersList()) {
-        if (!pieces.current[p]) pieces.current[p] = { cells: randomShape(), ghostR: null, ghostC: null };
-      }
-      setGrid(s.grid);
-      const need3 = s.numPlayers === 3;
-      const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
-      if (s.terrainSeed && (s.terrainSeed !== terrainSeed.current || haveWrongTerrain)) {
-        terrainSeed.current = s.terrainSeed;
-        terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
-        bgDirty.current = true;
-      }
-      castles.current = s.castles || castles.current;
-      if (need3 && terrain.current && terrain.current.mode3 && castles.current && !terrain.current.sectorMap) {
-        terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
-      }
-      cannons.current = s.cannons || cannons.current;
-      cannonBudget.current = s.cannonBudget || cannonBudget.current;
-      if (s.eliminated) eliminated.current = s.eliminated;
-      if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
-      if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
-      if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
-      const incoming = s.balls || [];
-      const localBalls = balls.current || [];
-      if (incoming.length === 0) {
-        balls.current = [];
-      } else if (localBalls.length === 0) {
-        balls.current = incoming;
-      } else {
-        if (incoming.length > localBalls.length) balls.current = incoming;
-      }
-      explosions.current = s.explosions || [];
-      lastShot.current = s.lastShot || { 1: -99999, 2: -99999, 3: -99999 };
-      reloadProgRef.current = {
-        1: s.reloadProg ? s.reloadProg[1] : 1,
-        2: s.reloadProg ? s.reloadProg[2] : 1,
-        3: s.reloadProg ? s.reloadProg[3] : 1,
-        at: performance.now()
-      };
-      frozenReady.current = s.frozenReady || { 1: [], 2: [], 3: [] };
-      if (s.playerInfo) playerInfo.current = s.playerInfo;
       if (online.current && myRole.current !== 1 && s.phase !== lastSeenPhase.current) {
         lastSeenPhase.current = s.phase;
         const np = s.numPlayers || numPlayersRef.current || 2;
@@ -1337,6 +1297,50 @@ window.FortressApp = function Fortress() {
       if (newScreen !== screenRef.current) {
         screenRef.current = newScreen;
         setScreen(newScreen);
+      }
+      try {
+        for (const p of playersList()) {
+          if (!pieces.current[p]) pieces.current[p] = { cells: randomShape(), ghostR: null, ghostC: null };
+        }
+        setGrid(s.grid);
+        const need3 = s.numPlayers === 3;
+        const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
+        if (s.terrainSeed && (s.terrainSeed !== terrainSeed.current || haveWrongTerrain)) {
+          terrainSeed.current = s.terrainSeed;
+          terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
+          bgDirty.current = true;
+        }
+        castles.current = s.castles || castles.current;
+        if (need3 && terrain.current && terrain.current.mode3 && castles.current && !terrain.current.sectorMap) {
+          terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
+        }
+        cannons.current = s.cannons || cannons.current;
+        cannonBudget.current = s.cannonBudget || cannonBudget.current;
+        if (s.eliminated) eliminated.current = s.eliminated;
+        if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
+        if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
+        if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
+        const incoming = s.balls || [];
+        const localBalls = balls.current || [];
+        if (incoming.length === 0) {
+          balls.current = [];
+        } else if (localBalls.length === 0) {
+          balls.current = incoming;
+        } else {
+          if (incoming.length > localBalls.length) balls.current = incoming;
+        }
+        explosions.current = s.explosions || [];
+        lastShot.current = s.lastShot || { 1: -99999, 2: -99999, 3: -99999 };
+        reloadProgRef.current = {
+          1: s.reloadProg ? s.reloadProg[1] : 1,
+          2: s.reloadProg ? s.reloadProg[2] : 1,
+          3: s.reloadProg ? s.reloadProg[3] : 1,
+          at: performance.now()
+        };
+        frozenReady.current = s.frozenReady || { 1: [], 2: [], 3: [] };
+        if (s.playerInfo) playerInfo.current = s.playerInfo;
+      } catch (e2) {
+        dbg.current.lastErr = "applyObjects: " + e2.message;
       }
       setUiTick((t) => t + 1);
     } catch (e) {
@@ -2812,7 +2816,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.6)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.7)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -464,3 +464,16 @@ und beschiessen danach gegenseitig ihre Festungen.
   ergänzt. Versionsanzeige: “(Diagnose)”-Label entfernt.
   Deployment: Automatisches GitHub Pages Deployment via GitHub Actions eingeführt
   (push auf main → Pages automatisch aktualisiert, Release wird erstellt).
+- **v3.0.7**: KRITISCHER FIX 3-Spieler-Online — Gäste hingen in der alten Phase
+  fest (z. B. Host in Schießphase, Gäste weiter in Bauphase mit „Drehen"-Button),
+  obwohl States ankamen und das Grid synchron blieb. Ursache: In `applyState` wurde
+  die Phase/Timer/Runde erst GANZ AM ENDE eines großen try-Blocks gesetzt — nach
+  `setGrid` und der kompletten Terrain-/Sector-/Objekt-Verarbeitung. Wirft irgend-
+  eine dieser nachgelagerten Operationen, wird der Phasenwechsel nie angewendet,
+  während das Grid (weiter oben) schon aktualisiert ist → Gast friert in der alten
+  Phase ein. Fix: `applyState` synchronisiert jetzt Phase/Timer/Runde/Scores/Screen
+  + den Phasen-Banner-/Pointer-Reset ZUERST (direkt nach den Session-/Sanitize-
+  Checks). Die schwere Grid-/Terrain-/Objekt-Verarbeitung läuft danach in einem
+  EIGENEN try/catch — ein Fehler dort kann die Phasen-Synchronisation nicht mehr
+  blockieren und wird sichtbar als `applyObjects:`-Fehler im Diagnose-Overlay
+  protokolliert (statt still die Phase einzufrieren).
