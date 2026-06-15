@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.3)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.4)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -513,3 +513,8 @@ und beschiessen danach gegenseitig ihre Festungen.
   jetzt optionales `delayMs`-Argument. Bei allen Phasenwechseln mit Banner wird
   `startTimer(2500)` aufgerufen — Timer startet erst wenn der Banner verschwunden
   ist. Gilt für Setup, Bau, Schuss und Kanonen-Phase.
+- **v3.1.4**: Alle Spieler-Interaktionen gesperrt während Phasen-Banner läuft (2.5s).
+  `bannerActive` Ref wird in `showPhaseBanner()` auf true gesetzt und nach 2.5s
+  zurückgesetzt. `onPointerDown`, `onPointerMove`, `onPointerUp` prüfen am Anfang
+  `bannerActive.current` und kehren sofort zurück. Pointer-State wird in
+  `onPointerUp` trotzdem immer bereinigt (verhindert stale Pointer-Einträge).
