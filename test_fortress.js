@@ -367,26 +367,55 @@ async function navigateToGame(page, playerCount) {
 
     // ── Warte auf BAUPHASE (erste echte Bauphase) ─────────────────
     console.log('⏳ Warte auf Bauphase (nach Kanone-Phase)...');
-    const buildBtn = await waitForBuild(page, 20);
-    if (!buildBtn) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
+    const buildPhase = await waitForPhase(page, ['BAUEN'], 20);
+    if (!buildPhase) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
     ok('Bauphase nach Kanonen-Phase erreicht ✓');
     await page.screenshot({ path: '/tmp/s2_build_start.png' });
 
-    // Bauphase: Tetrominos platzieren
-    console.log('🧱 Bauphase: Teile platzieren...');
-    for (let i = 0; i < 4; i++) {
-      const px = cb.x + cb.w * (0.3 + i * 0.1);
-      const py1 = cb.y + cb.h * (0.2 + (i % 2) * 0.05);
-      const py2 = cb.y + cb.h * (0.8 - (i % 2) * 0.05);
-      await page.mouse.move(px, py1); await page.mouse.down();
-      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(120);
-      await page.mouse.move(px, py2); await page.mouse.down();
-      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(120);
+    // Canvas-Tap (kurz, keine Bewegung) → dreht Stück (neue Mechanik)
+    console.log('🔄 Canvas-Tap-Rotation testen...');
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.click(cb.x + cb.w * (0.3 + i * 0.1), cb.y + cb.h * 0.2);
+      await page.waitForTimeout(180);
     }
-    ok('Bau-Gesten ohne Crash ✓');
+    const tapRotOk = await page.evaluate(() => !!document.querySelector('canvas'));
+    tapRotOk ? ok('Canvas-Tap dreht Stück in Bauphase ✓') : fail('Canvas nach Tap-Rotation verschwunden');
 
-    const rotClicked = await jsClick(page, ['Blau drehen']);
-    rotClicked ? ok('Drehen in Bauphase klickbar ✓') : fail('Drehen in Bauphase fehlgeschlagen');
+    // Stück-Vorschau-Panel sichtbar
+    const previewOk = await page.evaluate(() => {
+      const spans = Array.from(document.querySelectorAll('span'));
+      return spans.some(s => (s.textContent || '').includes('DREHEN'));
+    });
+    previewOk ? ok('Stück-Vorschau-Panel mit ↻ DREHEN sichtbar ✓') : fail('Stück-Vorschau-Panel nicht gefunden');
+
+    // Stück-Vorschau-Panel antippen → dreht
+    const prevTapOk = await page.evaluate(() => {
+      const spans = Array.from(document.querySelectorAll('span'));
+      const label = spans.find(s => (s.textContent || '').includes('DREHEN'));
+      if (!label) return false;
+      const panel = label.parentElement;
+      if (!panel) return false;
+      panel.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, isPrimary: true, pointerId: 99 }));
+      return true;
+    });
+    prevTapOk ? ok('Stück-Vorschau-Panel dreht Stück ✓') : fail('Stück-Vorschau-Panel nicht gefunden');
+
+    // Bauphase: Tetrominos platzieren (Drag-Geste: mit Bewegung, nicht Tap)
+    console.log('🧱 Bauphase: Teile per Drag platzieren...');
+    for (let i = 0; i < 3; i++) {
+      const startX = cb.x + cb.w * (0.28 + i * 0.12);
+      // P1 (obere Hälfte): drag mit deutlicher Bewegung (> 1.5 Zellen)
+      await page.mouse.move(startX, cb.y + cb.h * 0.22);
+      await page.mouse.down(); await page.waitForTimeout(50);
+      await page.mouse.move(startX + 32, cb.y + cb.h * 0.22 + 20);
+      await page.waitForTimeout(60); await page.mouse.up(); await page.waitForTimeout(180);
+      // P2 (untere Hälfte): drag
+      await page.mouse.move(startX, cb.y + cb.h * 0.78);
+      await page.mouse.down(); await page.waitForTimeout(50);
+      await page.mouse.move(startX + 32, cb.y + cb.h * 0.78 - 20);
+      await page.waitForTimeout(60); await page.mouse.up(); await page.waitForTimeout(180);
+    }
+    ok('Bau-Gesten (Drag) ohne Crash ✓');
 
     // ── Warte auf zweite SCHUSS-PHASE ─────────────────────────────
     console.log('⏳ Warte auf zweite Schussphase (~25s)...');

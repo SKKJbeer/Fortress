@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.2.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.2.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -565,3 +565,11 @@ und beschiessen danach gegenseitig ihre Festungen.
   (`computeOutsideMap` + `computeOutsideMapForCannons`) von 4-Wege auf 8-Wege erweitert.
   Wird eine Ecke der Mauer weggeschossen, kann der Außenraum diagonal hindurchsickern
   → Burg gilt als offen. Gleiches gilt für die Kanonen-Abschirmprüfung (`closedCannons`).
+- **v3.2.1**: Drehmechanik komplett überarbeitet.
+  1. **Canvas-Tap dreht**: Kurzer Tap auf Canvas (< 1.5 Zellen Bewegung, < 450ms) dreht das
+     aktuelle Stück — kein Wechsel zum Drehen-Button nötig. Drag (> 1.5 Zellen) platziert.
+  2. **Stück-Vorschau-Panel** ersetzt die Text-Buttons: zeigt die aktuelle Tetromino-Form
+     als farbige Punkte (11px/Zelle). Antippen dreht. Alle 3 Spieler haben eigenes Panel.
+  3. **Haptic Feedback**: `navigator.vibrate(30)` bei jeder Drehung (Android/Chrome).
+  Tests auf 47 Assertions erweitert: Canvas-Tap-Rotation, Vorschau-Panel-Sichtbarkeit,
+  Panel-Tap-Rotation, Drag-Platzierung.
