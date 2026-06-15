@@ -1,8 +1,30 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
+const http = require('http');
 
 const REACT_JS = fs.readFileSync('/tmp/react.min.js', 'utf8');
 const REACT_DOM_JS = fs.readFileSync('/tmp/react-dom.min.js', 'utf8');
+
+// Liest die erwartete Version direkt aus index.html auf Disk
+function getExpectedVersion() {
+  const html = fs.readFileSync('/home/user/Fortress/index.html', 'utf8');
+  const m = html.match(/FORTRESS v(\d+\.\d+\.\d+)/);
+  return m ? m[1] : null;
+}
+
+// Holt den HTML-Quelltext vom lokalen Server und prüft die Version darin
+function getServerVersion() {
+  return new Promise((resolve, reject) => {
+    http.get('http://localhost:8765/', (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        const m = data.match(/FORTRESS v(\d+\.\d+\.\d+)/);
+        resolve(m ? m[1] : null);
+      });
+    }).on('error', reject);
+  });
+}
 
 // JS click bypasses the overlay div that intercepts pointer events
 async function jsClick(page, textParts) {
@@ -34,6 +56,32 @@ async function allButtonTexts(page) {
 }
 
 (async () => {
+  // ── Versions-Validierung vor dem Test ─────────────────────────────────────
+  console.log('🔍 Versions-Validierung...');
+  const expectedVersion = getExpectedVersion();
+  if (!expectedVersion) {
+    console.error('❌ ABBRUCH: Konnte Version nicht aus index.html lesen');
+    process.exit(1);
+  }
+  console.log(`   Erwartet (index.html auf Disk): v${expectedVersion}`);
+
+  let serverVersion;
+  try {
+    serverVersion = await getServerVersion();
+  } catch (e) {
+    console.error(`❌ ABBRUCH: Server nicht erreichbar auf localhost:8765 — ${e.message}`);
+    process.exit(1);
+  }
+  console.log(`   Server liefert:                 v${serverVersion}`);
+
+  if (serverVersion !== expectedVersion) {
+    console.error(`❌ ABBRUCH: Versions-Mismatch! Server hat v${serverVersion}, Disk hat v${expectedVersion}.`);
+    console.error('   → Server neu starten: python3 -m http.server 8765');
+    process.exit(1);
+  }
+  console.log(`✅ Versions-Match: v${expectedVersion} — Test läuft gegen aktuelle Version\n`);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const browser = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors'] });
   const errors = [];
   const results = [];
