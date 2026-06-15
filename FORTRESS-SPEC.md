@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.8)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.9)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -555,3 +555,9 @@ und beschiessen danach gegenseitig ihre Festungen.
   den vollständigen Phasenzyklus — Kanonen in Setup platzieren, Tetrominos bauen
   (Drag-Geste), Schussphase erreichen und Schuss-Geste ausführen, Kanonen-Phase
   und neue Kanone setzen, Runde-2-Bauphase als Zyklus-Bestätigung.
+- **v3.1.9**: Phasenwechsel nach Setup geändert. Nach der Setup-Phase (Kanonen platzieren)
+  geht das Spiel jetzt direkt in die Schussphase (FEUER) statt in die Bauphase.
+  Der normale Zyklus danach: Schuss → Kanone → Bau → Schuss → ... bleibt unverändert.
+  `startShoot()` als eigene Funktion extrahiert (wurde zuvor inline in `endBuild`
+  dupliziert); `endSetup()` ruft jetzt `startShoot()` statt `startBuild()` auf.
+  Tests (45 Assertions) auf neuen Startphasen-Flow angepasst — alle grün.

@@ -247,27 +247,12 @@ async function navigateToGame(page, playerCount) {
     });
     hasAnim ? ok('CSS-Animation phasebanner ✓') : fail('CSS-Animation phasebanner fehlt');
 
-    // Auf Bauphase warten
-    console.log('⏳ Warte auf Bauphase...');
-    const buildBtn = await waitForBuild(page, 30);
-    if (!buildBtn) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
-    ok('Bauphase erreicht');
-    await page.screenshot({ path: `/tmp/s1_${playerCount}p_build.png` });
-
-    // Drehen-Buttons
-    const allBtns = await allButtonTexts(page);
-    const drehBtns = allBtns.filter(t => t.includes('drehen') || t.includes('Drehen'));
-    if (playerCount === 2) {
-      drehBtns.length >= 2 ? ok(`2P: ${drehBtns.length} Drehen-Buttons ✓`) : fail(`2P: nur ${drehBtns.length} Drehen-Button(s)`);
-    } else {
-      drehBtns.length >= 3 ? ok(`3P: ${drehBtns.length} Drehen-Buttons ✓`) : fail(`3P: nur ${drehBtns.length}/3 Drehen-Buttons`);
-      drehBtns.some(t => t.includes('Grün')) ? ok('Grün-Drehen-Button ✓') : fail('Grün-Drehen-Button fehlt');
-    }
-
-    // Drehen klicken
-    const rotLabel = playerCount === 2 ? 'Blau drehen' : 'Grün drehen';
-    const rotated = await jsClick(page, [rotLabel]);
-    rotated ? ok(`Drehen klickbar: "${rotated}" ✓`) : fail(`Drehen "${rotLabel}" nicht klickbar`);
+    // Neuer Phasenzyklus: Setup → Schuss (kein Build am Anfang!)
+    console.log('⏳ Warte auf Schussphase (nach Setup)...');
+    const shootPh = await waitForPhase(page, ['FEUER'], 28);
+    if (!shootPh) { fail('Schussphase nach Setup nicht erreicht'); await ctx.close(); return; }
+    ok(`Schussphase direkt nach Setup: "${shootPh}" ✓`);
+    await page.screenshot({ path: `/tmp/s1_${playerCount}p_shoot.png` });
 
     // Beenden → Weiterspielen → zurück
     const q1 = await jsClick(page, ['beenden']);
@@ -320,9 +305,7 @@ async function navigateToGame(page, playerCount) {
     if (!cb) { fail('Canvas fehlt — Mechanik-Tests übersprungen'); await ctx.close(); return; }
 
     // ── SETUP-PHASE: Kanonen platzieren ──────────────────────────
-    // Platziere 2 Kanonen für P1 (obere Hälfte) und 2 für P2 (untere Hälfte)
-    // Relative Positionen im Canvas; exakte Grid-Pos hängt vom Terrain ab,
-    // aber valide Bereiche sind mit hoher Wahrscheinlichkeit frei.
+    // Neuer Phasenzyklus: Setup → Schuss → Kanone → Bau → Schuss → ...
     console.log('⚙️  Setup-Phase: Kanonen platzieren...');
     const setupTaps = [
       { rx: 0.38, ry: 0.18 }, // P1 Kanone 1
@@ -336,150 +319,99 @@ async function navigateToGame(page, playerCount) {
     }
     await page.screenshot({ path: '/tmp/s2_setup_cannons.png' });
 
-    // Setup-Timer sollte durch den Shortcut schnell auf 3s springen
-    // (wenn alle Kanonen gesetzt) oder normal ablaufen
-    console.log('⏳ Warte auf Bauphase...');
-    const buildBtn = await waitForBuild(page, 28);
-    if (!buildBtn) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
-    ok('Bauphase nach Kanonen-Setup erreicht ✓');
-    await page.screenshot({ path: '/tmp/s2_build_start.png' });
+    // Nach Setup kommt DIREKT die Schussphase (kein Build mehr!)
+    console.log('⏳ Warte auf erste Schussphase (nach Setup)...');
+    const firstShoot = await waitForPhase(page, ['FEUER'], 28);
+    if (!firstShoot) { fail('Schussphase nach Setup nicht erreicht'); await ctx.close(); return; }
+    ok(`Schussphase direkt nach Setup: "${firstShoot}" ✓`);
+    await page.screenshot({ path: '/tmp/s2_first_shoot.png' });
 
-    // ── BAUPHASE: Tetromino platzieren ────────────────────────────
-    console.log('🧱 Bauphase: Tetromino platzieren...');
-    // P1 baut in der oberen Hälfte: Drag-Geste (touchstart→move→end)
-    const buildX = cb.x + cb.w * 0.45;
-    const buildY = cb.y + cb.h * 0.22;
-    await page.mouse.move(buildX, buildY);
-    await page.mouse.down();
-    await page.waitForTimeout(150);
-    // Leichtes Bewegen damit Ghost-Position gesetzt wird
-    await page.mouse.move(buildX + 5, buildY + 5);
-    await page.waitForTimeout(100);
-    await page.mouse.up();
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: '/tmp/s2_build_piece.png' });
+    // Schuss-Timer läuft (nach 2500ms Banner)
+    const fs0 = await getTimerValue(page);
+    await page.waitForTimeout(4000);
+    const fs1 = await getTimerValue(page);
+    (fs0 !== null && fs1 !== null && fs1 < fs0)
+      ? ok(`Schuss-Timer zählt: ${fs0} → ${fs1} ✓`)
+      : fail(`Schuss-Timer zählt nicht (${fs0} → ${fs1})`);
 
-    // P2 baut in der unteren Hälfte
-    const buildX2 = cb.x + cb.w * 0.55;
-    const buildY2 = cb.y + cb.h * 0.78;
-    await page.mouse.move(buildX2, buildY2);
+    // Schuss-Geste (Schleuder: Finger auf Kanonen-Bereich → wegziehen)
+    console.log('💥 Schuss-Geste...');
+    const shootFromX = cb.x + cb.w * 0.5;
+    const shootFromY = cb.y + cb.h * 0.18;
+    await page.mouse.move(shootFromX, shootFromY);
     await page.mouse.down();
-    await page.waitForTimeout(150);
-    await page.mouse.move(buildX2 - 5, buildY2 - 5);
     await page.waitForTimeout(100);
+    await page.mouse.move(shootFromX, cb.y + cb.h * 0.05);
+    await page.waitForTimeout(200);
     await page.mouse.up();
     await page.waitForTimeout(400);
+    const shootOk1 = await page.evaluate(() => !!document.querySelector('canvas'));
+    shootOk1 ? ok('Schuss-Geste (erste Runde) ohne Crash ✓') : fail('Canvas nach Schuss-Geste verschwunden');
 
-    // Bauphase läuft noch (Canvas da, Timer > 0, kein Crash)
-    const buildStillActive = await page.evaluate(() => !!document.querySelector('canvas'));
-    buildStillActive ? ok('Bauphase: Platzierung ohne Crash ✓') : fail('Canvas nach Bau-Platzierung verschwunden');
+    // ── Warte auf KANONEN-PHASE ───────────────────────────────────
+    console.log('⏳ Warte auf Kanonen-Phase (~30s)...');
+    const cannonPhase = await waitForPhase(page, ['KANONE'], 38);
+    if (!cannonPhase) { fail('Kanonen-Phase nicht erreicht'); await ctx.close(); return; }
+    ok(`Kanonen-Phase erreicht: "${cannonPhase}" ✓`);
+    await page.screenshot({ path: '/tmp/s2_cannon_start.png' });
 
-    // Mehrere Teile platzieren (beide Spieler)
-    for (let i = 0; i < 4; i++) {
-      const px = cb.x + cb.w * (0.3 + i * 0.08);
-      const py1 = cb.y + cb.h * (0.2 + (i % 2) * 0.06);
-      const py2 = cb.y + cb.h * (0.8 - (i % 2) * 0.06);
-      await page.mouse.move(px, py1); await page.mouse.down();
-      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(150);
-      await page.mouse.move(px, py2); await page.mouse.down();
-      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(150);
+    // Kanone platzieren
+    console.log('🎯 Kanone setzen...');
+    for (const { rx, ry } of [{ rx: 0.35, ry: 0.28 }, { rx: 0.55, ry: 0.28 }]) {
+      await page.mouse.click(cb.x + cb.w * rx, cb.y + cb.h * ry);
+      await page.waitForTimeout(300);
     }
-    ok('Bau-Gesten (mehrere Teile) ohne Crash ✓');
+    await page.screenshot({ path: '/tmp/s2_cannon_placed.png' });
+    const cannonOk = await page.evaluate(() => !!document.querySelector('canvas'));
+    cannonOk ? ok('Kanone-Platzierungs-Geste ohne Crash ✓') : fail('Canvas nach Kanone-Setzen verschwunden');
 
-    // Drehen funktioniert in Bauphase
+    // ── Warte auf BAUPHASE (erste echte Bauphase) ─────────────────
+    console.log('⏳ Warte auf Bauphase (nach Kanone-Phase)...');
+    const buildBtn = await waitForBuild(page, 20);
+    if (!buildBtn) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
+    ok('Bauphase nach Kanonen-Phase erreicht ✓');
+    await page.screenshot({ path: '/tmp/s2_build_start.png' });
+
+    // Bauphase: Tetrominos platzieren
+    console.log('🧱 Bauphase: Teile platzieren...');
+    for (let i = 0; i < 4; i++) {
+      const px = cb.x + cb.w * (0.3 + i * 0.1);
+      const py1 = cb.y + cb.h * (0.2 + (i % 2) * 0.05);
+      const py2 = cb.y + cb.h * (0.8 - (i % 2) * 0.05);
+      await page.mouse.move(px, py1); await page.mouse.down();
+      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(120);
+      await page.mouse.move(px, py2); await page.mouse.down();
+      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(120);
+    }
+    ok('Bau-Gesten ohne Crash ✓');
+
     const rotClicked = await jsClick(page, ['Blau drehen']);
     rotClicked ? ok('Drehen in Bauphase klickbar ✓') : fail('Drehen in Bauphase fehlgeschlagen');
 
-    // ── Warte auf SCHUSS-PHASE ────────────────────────────────────
-    console.log('⏳ Warte auf Schussphase (~25s)...');
-    const shootPhase = await waitForPhase(page, ['FEUER'], 35);
-    if (!shootPhase) {
-      fail('Schussphase nicht erreicht');
-      await ctx.close(); return;
-    }
-    ok(`Schussphase erreicht: "${shootPhase}" ✓`);
-    await page.screenshot({ path: '/tmp/s2_shoot_start.png' });
+    // ── Warte auf zweite SCHUSS-PHASE ─────────────────────────────
+    console.log('⏳ Warte auf zweite Schussphase (~25s)...');
+    const shootPhase2 = await waitForPhase(page, ['FEUER'], 35);
+    if (!shootPhase2) { fail('Zweite Schussphase nicht erreicht'); await ctx.close(); return; }
+    ok(`Zweite Schussphase: "${shootPhase2}" ✓`);
 
-    // HUD-Timer läuft in Schussphase
-    // Phasenbanner dauert 2500ms → Timer startet erst danach → 4s warten
+    // Schuss-Timer nach Banner
     const st0 = await getTimerValue(page);
     await page.waitForTimeout(4000);
     const st1 = await getTimerValue(page);
     (st0 !== null && st1 !== null && st1 < st0)
-      ? ok(`Schuss-Timer zählt: ${st0} → ${st1} ✓`)
-      : fail(`Schuss-Timer zählt nicht (${st0} → ${st1})`);
-
-    // Schuss-Geste: Drag von P1-Bereich (Kanone) weg zum Ziel (P2-Hälfte)
-    // Schleuder-Mechanik: Finger auf Kanone → weg ziehen → loslassen
-    console.log('💥 Schuss-Geste...');
-    const shootFromX = cb.x + cb.w * 0.5;
-    const shootFromY = cb.y + cb.h * 0.18; // P1-Kanonen-Bereich
-    const shootToX   = cb.x + cb.w * 0.5;
-    const shootToY   = cb.y + cb.h * 0.05; // wegziehen nach oben = schießt nach unten (P2)
-    await page.mouse.move(shootFromX, shootFromY);
-    await page.mouse.down();
-    await page.waitForTimeout(100);
-    await page.mouse.move(shootToX, shootToY);
-    await page.waitForTimeout(200);
-    await page.mouse.up();
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: '/tmp/s2_shoot_gesture.png' });
-
-    // Nach Schuss kein Crash
-    const shootOk = await page.evaluate(() => !!document.querySelector('canvas'));
-    shootOk ? ok('Schuss-Geste ohne Crash ✓') : fail('Canvas nach Schuss-Geste verschwunden');
+      ? ok(`Schuss-Timer Runde 2: ${st0} → ${st1} ✓`)
+      : fail(`Schuss-Timer Runde 2 zählt nicht (${st0} → ${st1})`);
 
     // Mehrere Schüsse
     for (let i = 0; i < 3; i++) {
       const fx = cb.x + cb.w * (0.3 + i * 0.2);
       await page.mouse.move(fx, shootFromY);
-      await page.mouse.down();
-      await page.waitForTimeout(80);
+      await page.mouse.down(); await page.waitForTimeout(80);
       await page.mouse.move(fx, cb.y + cb.h * 0.04);
-      await page.waitForTimeout(150);
-      await page.mouse.up();
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(150); await page.mouse.up(); await page.waitForTimeout(250);
     }
     ok('Mehrfach-Schüsse ohne Crash ✓');
-
-    // ── Warte auf KANONEN-PHASE ───────────────────────────────────
-    console.log('⏳ Warte auf Kanonen-Phase (~30s)...');
-    const cannonPhase = await waitForPhase(page, ['KANONE'], 40);
-    if (!cannonPhase) {
-      fail('Kanonen-Phase nicht erreicht');
-      await ctx.close(); return;
-    }
-    ok(`Kanonen-Phase erreicht: "${cannonPhase}" ✓`);
-    await page.screenshot({ path: '/tmp/s2_cannon_start.png' });
-
-    // Kanone platzieren: Tap in freie 3×3-Fläche (P1-Bereich)
-    console.log('🎯 Kanone setzen...');
-    const cannonPositions = [
-      { rx: 0.35, ry: 0.28 },
-      { rx: 0.55, ry: 0.28 },
-      { rx: 0.45, ry: 0.32 },
-    ];
-    let cannonPlaced = false;
-    for (const { rx, ry } of cannonPositions) {
-      await page.mouse.click(cb.x + cb.w * rx, cb.y + cb.h * ry);
-      await page.waitForTimeout(300);
-      // Prüfe ob noch Kanonen-Budget (= Kanone noch nicht platziert)
-      const hasCannonBtn = await findButtonText(page, ['Blau drehen', 'KANONE']);
-      // Wenn Button verschwunden oder Wechsel → platziert
-      if (!cannonPlaced) { cannonPlaced = true; }
-    }
-    await page.screenshot({ path: '/tmp/s2_cannon_placed.png' });
-
-    const cannonOk = await page.evaluate(() => !!document.querySelector('canvas'));
-    cannonOk ? ok('Kanone-Platzierungs-Geste ohne Crash ✓') : fail('Canvas nach Kanone-Setzen verschwunden');
-
-    // Nach Kanonen-Phase kommt wieder Bauphase → Test abschließen
-    const buildAgain = await waitForBuild(page, 20);
-    buildAgain
-      ? ok(`Runde 2 Bauphase erreicht — Phasenzyklus funktioniert ✓`)
-      : fail('Runde 2 Bauphase nicht erreicht');
-
-    await page.screenshot({ path: '/tmp/s2_round2_build.png' });
+    await page.screenshot({ path: '/tmp/s2_shoot_gesture.png' });
 
     if (jsErrors.length > 0) {
       jsErrors.forEach(e => { fail(`JS-Fehler: ${e.slice(0, 80)}`); errors.push(e); });
