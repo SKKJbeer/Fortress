@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -505,3 +505,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   (rot), 🎯 NEUE KANONE (orange). Jede Phase hat eigene Farbe, Emoji, Kurz-Anleitung
   und Glow-Effekt. Ersetzt die alten showWarn()-Aufrufe für Gäste online; für lokale
   Spiele und den Host gab es vorher gar keine Ankündigung.
+- **v3.1.2**: Setup-Timer springt auf 3s wenn alle Spieler ihre 2 Start-Kanonen
+  gesetzt haben und der Timer noch über 3s steht. Verhindert unnötiges Warten
+  wenn alle fertig sind. Check in `placeCannon()` nach Budget-Dekrement:
+  `phase === "setup" && alle cannonBudget <= 0 && timer > 3 → timer = 3`.
