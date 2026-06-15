@@ -778,6 +778,7 @@ window.FortressApp = function Fortress() {
   const warnTimer = useRef(null);
   const [phaseBanner, setPhaseBanner] = useState(null);
   const phaseBannerTimer = useRef(null);
+  const phaseBannerKey = useRef(0);
   const [, setUiTick] = useState(0);
   const [numPlayers, setNumPlayers] = useState(2);
   const numPlayersRef = useRef(2);
@@ -1126,6 +1127,7 @@ window.FortressApp = function Fortress() {
     warnTimer.current = setTimeout(() => setWarn(null), 3e3);
   }
   function showPhaseBanner(ph) {
+    phaseBannerKey.current += 1;
     setPhaseBanner(ph);
     clearTimeout(phaseBannerTimer.current);
     phaseBannerTimer.current = setTimeout(() => setPhaseBanner(null), 2500);
@@ -3449,7 +3451,7 @@ window.FortressApp = function Fortress() {
     maxWidth: "92vw",
     overflow: "hidden",
     textOverflow: "ellipsis"
-  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner] || PHASE_BANNERS.build; return /* @__PURE__ */ React.createElement("div", { key: phaseBanner + Date.now(), style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(8px)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, lineHeight: 1, marginBottom: 8 } }, pb.emoji), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, pb.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, pb.sub)); })(), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner] || PHASE_BANNERS.build; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(8px)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, lineHeight: 1, marginBottom: 8 } }, pb.emoji), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, pb.title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, pb.sub)); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: "1px solid rgba(255,255,255,0.07)",
