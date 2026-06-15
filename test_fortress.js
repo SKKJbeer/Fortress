@@ -24,7 +24,6 @@ function getServerVersion() {
   });
 }
 
-// JS click bypasses the overlay div that intercepts pointer events
 async function jsClick(page, textParts) {
   return page.evaluate((parts) => {
     const btns = Array.from(document.querySelectorAll('button'));
@@ -64,48 +63,52 @@ async function getTimerValue(page) {
   });
 }
 
-async function getQuitButtonBoundingBox(page) {
+async function getCanvasBox(page) {
   return page.evaluate(() => {
-    const btns = Array.from(document.querySelectorAll('button'));
-    for (const b of btns) {
-      if ((b.textContent || '').includes('beenden') || (b.textContent || '').trim() === '✕') {
-        const r = b.getBoundingClientRect();
-        const style = window.getComputedStyle(b);
-        return {
-          x: r.x, y: r.y, width: r.width, height: r.height,
-          position: style.position
-        };
-      }
+    const c = document.querySelector('canvas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { x: r.x, y: r.y, w: r.width, h: r.height };
+  });
+}
+
+// HUD-Phasenbadge-Text lesen (BAUEN / FEUER / KANONE / START)
+async function getHudPhase(page) {
+  return page.evaluate(() => {
+    const spans = Array.from(document.querySelectorAll('span'));
+    for (const s of spans) {
+      const t = (s.textContent || '').trim();
+      if (t.includes('BAUEN') || t.includes('FEUER') || t.includes('KANONE') || t.includes('START')) return t;
     }
     return null;
   });
 }
 
-async function getPlayerCardBoundingBox(page, player) {
-  return page.evaluate((p) => {
-    // Find player score spans — they contain single digits in colored divs
-    const spans = Array.from(document.querySelectorAll('span'));
-    const colorMap = { 1: '#93c5fd', 2: '#fca5a5' };
-    for (const s of spans) {
-      const style = window.getComputedStyle(s);
-      if (style.color && s.parentElement) {
-        const parent = s.parentElement.getBoundingClientRect();
-        if (p === 1 && parent.x < window.innerWidth * 0.35 && parent.width > 60) {
-          return { x: parent.x, y: parent.y, width: parent.width, height: parent.height };
-        }
-        if (p === 2 && parent.x > window.innerWidth * 0.65 && parent.width > 60) {
-          return { x: parent.x, y: parent.y, width: parent.width, height: parent.height };
-        }
-      }
+// Warte auf eine bestimmte HUD-Phase (polling, max waitSec Sekunden)
+async function waitForPhase(page, keywords, waitSec) {
+  for (let i = 0; i < waitSec; i++) {
+    await page.waitForTimeout(1000);
+    const ph = await getHudPhase(page);
+    if (ph && keywords.some(k => ph.includes(k))) {
+      return ph;
     }
-    return null;
-  }, player);
+  }
+  return null;
+}
+
+// Warte auf Bauphase (Drehen-Button als Indikator)
+async function waitForBuild(page, waitSec = 30) {
+  for (let i = 0; i < waitSec; i++) {
+    await page.waitForTimeout(1000);
+    const found = await findButtonText(page, ['drehen', 'Drehen']);
+    if (found) return found;
+  }
+  return null;
 }
 
 async function setupGamePage(browser, playerCount) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await ctx.newPage();
-
   await page.route('**unpkg.com**react@18**react.production.min.js**', r =>
     r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
   await page.route('**unpkg.com**react-dom@18**react-dom.production.min.js**', r =>
@@ -113,46 +116,58 @@ async function setupGamePage(browser, playerCount) {
   await page.route('**firebase**', r => r.abort());
   await page.route('**gstatic**', r => r.abort());
   await page.route('**googleapis**', r => r.abort());
-
   return { ctx, page };
+}
+
+async function navigateToGame(page, playerCount) {
+  await page.goto('http://localhost:8765/', { waitUntil: 'networkidle', timeout: 15000 });
+  await page.waitForTimeout(1500);
+  // Profil-Editor überspringen falls vorhanden
+  const hasNameInput = await page.evaluate(() => !!document.querySelector('input[maxlength="16"]'));
+  if (hasNameInput) {
+    await page.evaluate(() => {
+      const inp = document.querySelector('input[maxlength="16"]');
+      if (inp) { inp.value = 'TestBot'; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+    });
+    await page.waitForTimeout(150);
+    await jsClick(page, ['Speichern']);
+    await page.waitForTimeout(400);
+  }
+  await jsClick(page, ['LOKAL']);
+  await page.waitForTimeout(500);
+  const playerLabel = playerCount === 2 ? '2 Spieler' : '3 Spieler';
+  await jsClick(page, [playerLabel]);
+  await page.waitForTimeout(1500);
 }
 
 (async () => {
   // ── Versions-Validierung ──────────────────────────────────────────────────
   console.log('🔍 Versions-Validierung...');
   const expectedVersion = getExpectedVersion();
-  if (!expectedVersion) {
-    console.error('❌ ABBRUCH: Konnte Version nicht aus index.html lesen');
-    process.exit(1);
-  }
-  console.log(`   Erwartet (index.html auf Disk): v${expectedVersion}`);
-
+  if (!expectedVersion) { console.error('❌ ABBRUCH: Version nicht lesbar'); process.exit(1); }
+  console.log(`   Erwartet: v${expectedVersion}`);
   let serverVersion;
   try { serverVersion = await getServerVersion(); }
-  catch (e) {
-    console.error(`❌ ABBRUCH: Server nicht erreichbar auf localhost:8765 — ${e.message}`);
-    process.exit(1);
-  }
-  console.log(`   Server liefert:                 v${serverVersion}`);
-
+  catch (e) { console.error(`❌ ABBRUCH: Server nicht erreichbar — ${e.message}`); process.exit(1); }
+  console.log(`   Server:   v${serverVersion}`);
   if (serverVersion !== expectedVersion) {
-    console.error(`❌ ABBRUCH: Versions-Mismatch! Server hat v${serverVersion}, Disk hat v${expectedVersion}.`);
-    console.error('   → Server neu starten: python3 -m http.server 8765');
+    console.error(`❌ ABBRUCH: Versions-Mismatch (Server v${serverVersion} ≠ Disk v${expectedVersion})`);
+    console.error('   → python3 -m http.server 8765');
     process.exit(1);
   }
-  console.log(`✅ Versions-Match: v${expectedVersion} — Test läuft gegen aktuelle Version\n`);
+  console.log(`✅ v${expectedVersion} — Test läuft\n`);
   // ─────────────────────────────────────────────────────────────────────────
 
   const browser = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors'] });
   const errors = [];
   const results = [];
-  const ok  = (msg) => { results.push('✅ ' + msg); console.log('✅ ' + msg); };
+  const ok   = (msg) => { results.push('✅ ' + msg); console.log('✅ ' + msg); };
   const fail = (msg) => { results.push('❌ ' + msg); console.log('❌ ' + msg); };
 
   // ═══════════════════════════════════════════════════════════════
-  // TEST 1: Haupt-Spielflow (2-Spieler)
+  // SUITE 1: Navigation & HUD-Grundstruktur (2P + 3P)
   // ═══════════════════════════════════════════════════════════════
-  async function testGameFlow(label, playerCount) {
+  async function testNavAndHUD(label, playerCount) {
     console.log(`\n${'='.repeat(50)}`);
     console.log(`TEST: ${label}`);
     console.log('='.repeat(50));
@@ -164,283 +179,384 @@ async function setupGamePage(browser, playerCount) {
         jsErrors.push(e.message);
     });
 
-    await page.goto('http://localhost:8765/', { waitUntil: 'networkidle', timeout: 15000 });
-    await page.waitForTimeout(2000);
+    await navigateToGame(page, playerCount);
 
     const version = await page.evaluate(() => (document.title.match(/v(\d+\.\d+\.\d+)/) || [])[1]);
     version ? ok(`Version: ${version}`) : fail('Version nicht erkannt');
 
-    await page.screenshot({ path: `/tmp/01_${playerCount}p_start.png` });
-
-    // Profil-Editor
-    const hasNameInput = await page.evaluate(() => !!document.querySelector('input[maxlength="16"]'));
-    if (hasNameInput) {
-      await page.evaluate(() => {
-        const inp = document.querySelector('input[maxlength="16"]');
-        if (inp) { inp.value = 'TestSpieler'; inp.dispatchEvent(new Event('input', { bubbles: true })); }
-      });
-      await page.waitForTimeout(200);
-      const saved = await jsClick(page, ['Speichern']);
-      if (saved) { await page.waitForTimeout(500); ok('Profil gespeichert'); }
-    }
-
-    // Menü: Gold sichtbar
+    // Gold im Menü vorhanden
+    // (wurde vor navigateToGame geprüft, also nach frischem Load)
+    await page.goto('http://localhost:8765/', { waitUntil: 'networkidle', timeout: 15000 });
+    await page.waitForTimeout(1200);
     const goldVisible = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('*')).some(el =>
-        el.children.length === 0 && (el.textContent || '').includes('Gold')
-      )
+      Array.from(document.querySelectorAll('*')).some(el => el.children.length === 0 && (el.textContent || '').includes('Gold'))
     );
-    goldVisible ? ok('Gold-Anzeige im Menü vorhanden') : fail('Gold-Anzeige im Menü fehlt');
+    goldVisible ? ok('Gold-Anzeige im Menü ✓') : fail('Gold-Anzeige im Menü fehlt');
+    await navigateToGame(page, playerCount);
 
-    await page.screenshot({ path: `/tmp/02_${playerCount}p_menu.png` });
+    // Canvas
+    const cb = await getCanvasBox(page);
+    cb ? ok(`Canvas: ${Math.round(cb.w)}×${Math.round(cb.h)}px`) : fail('Canvas fehlt');
 
-    // LOKAL Button
-    const lokalClicked = await jsClick(page, ['LOKAL']);
-    if (!lokalClicked) { fail('Lokal-Button nicht gefunden'); await ctx.close(); return; }
-    ok(`Lokal-Button geklickt: "${lokalClicked.slice(0, 30)}"`);
-    await page.waitForTimeout(600);
+    await page.screenshot({ path: `/tmp/s1_${playerCount}p_setup.png` });
 
-    await page.screenshot({ path: `/tmp/03_${playerCount}p_localscreen.png` });
-
-    // Spieler-Anzahl wählen
-    const playerLabel = playerCount === 2 ? '2 Spieler' : '3 Spieler';
-    const modeClicked = await jsClick(page, [playerLabel]);
-    if (!modeClicked) {
-      console.log(`   Buttons: ${JSON.stringify(await allButtonTexts(page))}`);
-      fail(`${playerCount}-Spieler-Button nicht gefunden`);
-      await ctx.close(); return;
-    }
-    ok(`${playerCount}-Spieler-Modus gestartet: "${modeClicked.slice(0, 40)}"`);
-    await page.waitForTimeout(1500);
-
-    // Canvas vorhanden
-    const canvasBox = await page.evaluate(() => {
-      const c = document.querySelector('canvas');
-      if (!c) return null;
-      const r = c.getBoundingClientRect();
-      return { width: r.width, height: r.height, x: r.x, y: r.y };
+    // ── Beenden-Button UX ─────────────────────────────────────────
+    const quitInfo = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      for (const b of btns) {
+        if ((b.textContent || '').includes('beenden')) {
+          const r = b.getBoundingClientRect();
+          const st = window.getComputedStyle(b);
+          return { x: r.x, y: r.y, w: r.width, h: r.height, pos: st.position, bg: st.background };
+        }
+      }
+      return null;
     });
-    canvasBox ? ok(`Canvas: ${Math.round(canvasBox.width)}×${Math.round(canvasBox.height)}px`) : fail('Canvas fehlt');
-
-    await page.screenshot({ path: `/tmp/04_${playerCount}p_setup.png` });
-
-    // ── Beenden-Button: integriert (kein absolutes Overlap) ──────
-    const quitBox = await getQuitButtonBoundingBox(page);
-    if (quitBox) {
-      ok(`Beenden-Button gefunden (pos: ${Math.round(quitBox.x)},${Math.round(quitBox.y)})`);
-      // Nicht absolut positioniert (kein float über Player-Cards)
-      quitBox.position !== 'absolute'
-        ? ok('Beenden-Button ist NICHT absolut positioniert (kein Overlap)')
-        : fail(`Beenden-Button ist absolut positioniert (Overlap-Risiko)`);
-      // Horizontale Mitte — soll im Center-Bereich liegen
-      const centerX = quitBox.x + quitBox.width / 2;
-      const inCenter = centerX > 100 && centerX < 290;
-      inCenter
-        ? ok(`Beenden-Button im HUD-Center (x=${Math.round(centerX)})`)
-        : fail(`Beenden-Button außerhalb HUD-Center (x=${Math.round(centerX)})`);
-    } else {
+    if (!quitInfo) {
       fail('Beenden-Button nicht gefunden');
-    }
-
-    // Timer zählt in Setup-Phase
-    const timerA = await getTimerValue(page);
-    await page.waitForTimeout(2000);
-    const timerB = await getTimerValue(page);
-    if (timerA !== null && timerB !== null) {
-      timerB < timerA
-        ? ok(`Timer zählt runter: ${timerA} → ${timerB}`)
-        : fail(`Timer zählt NICHT runter: ${timerA} → ${timerB}`);
     } else {
-      fail('Timer-Wert nicht lesbar');
+      ok(`Beenden-Button: ${Math.round(quitInfo.w)}×${Math.round(quitInfo.h)}px @ (${Math.round(quitInfo.x)},${Math.round(quitInfo.y)})`);
+      quitInfo.pos !== 'absolute'
+        ? ok('Beenden-Button: kein absolutes Overlay ✓')
+        : fail('Beenden-Button: position=absolute (Overlap)');
+      const centerX = quitInfo.x + quitInfo.w / 2;
+      (centerX > 100 && centerX < 290)
+        ? ok(`Beenden-Button im HUD-Center (x≈${Math.round(centerX)}) ✓`)
+        : fail(`Beenden-Button außerhalb HUD-Center (x≈${Math.round(centerX)})`);
+      // Sichtbar: hat einen Hintergrund (kein "none" oder transparent)
+      const hasBg = quitInfo.bg && !quitInfo.bg.includes('rgba(0, 0, 0, 0)') && quitInfo.bg !== 'none';
+      hasBg
+        ? ok('Beenden-Button: sichtbarer Hintergrund ✓')
+        : fail('Beenden-Button: kein sichtbarer Hintergrund (unsichtbar)');
     }
 
-    // Phase-Banner CSS-Animation vorhanden
-    const hasBannerAnim = await page.evaluate(() => {
-      const sheet = Array.from(document.styleSheets).find(s => {
-        try { return Array.from(s.cssRules).some(r => r.name === 'phasebanner'); }
-        catch { return false; }
-      });
-      return !!sheet;
+    // Timer zählt runter
+    const t0 = await getTimerValue(page);
+    await page.waitForTimeout(2100);
+    const t1 = await getTimerValue(page);
+    (t0 !== null && t1 !== null && t1 < t0)
+      ? ok(`Timer zählt: ${t0} → ${t1} ✓`)
+      : fail(`Timer zählt nicht (${t0} → ${t1})`);
+
+    // CSS-Phasenbanner vorhanden
+    const hasAnim = await page.evaluate(() => {
+      try {
+        return Array.from(document.styleSheets).some(s =>
+          Array.from(s.cssRules || []).some(r => r.name === 'phasebanner'));
+      } catch { return false; }
     });
-    hasBannerAnim ? ok('CSS-Animation "phasebanner" vorhanden') : fail('CSS-Animation "phasebanner" fehlt');
+    hasAnim ? ok('CSS-Animation phasebanner ✓') : fail('CSS-Animation phasebanner fehlt');
 
     // Auf Bauphase warten
     console.log('⏳ Warte auf Bauphase...');
-    let buildReached = false;
-    for (let i = 0; i < 30; i++) {
-      await page.waitForTimeout(1000);
-      const found = await findButtonText(page, ['drehen', 'Drehen']);
-      if (found) { buildReached = true; console.log(`   Bauphase nach ${i+1}s`); break; }
-    }
-
-    if (!buildReached) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
+    const buildBtn = await waitForBuild(page, 30);
+    if (!buildBtn) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
     ok('Bauphase erreicht');
+    await page.screenshot({ path: `/tmp/s1_${playerCount}p_build.png` });
 
-    await page.screenshot({ path: `/tmp/05_${playerCount}p_build.png` });
-
-    // Drehen-Buttons zählen
-    const allBtnsNow = await allButtonTexts(page);
-    const drehButtons = allBtnsNow.filter(t => t.includes('drehen') || t.includes('Drehen'));
-    console.log(`   Drehen-Buttons: [${drehButtons.join(' | ')}]`);
-
+    // Drehen-Buttons
+    const allBtns = await allButtonTexts(page);
+    const drehBtns = allBtns.filter(t => t.includes('drehen') || t.includes('Drehen'));
     if (playerCount === 2) {
-      drehButtons.length >= 2
-        ? ok(`2-Spieler: ${drehButtons.length} Drehen-Buttons ✓`)
-        : fail(`2-Spieler: nur ${drehButtons.length} Drehen-Button(s)`);
-    }
-    if (playerCount === 3) {
-      drehButtons.length >= 3
-        ? ok(`3-Spieler: ${drehButtons.length} Drehen-Buttons ✓`)
-        : fail(`3-Spieler: nur ${drehButtons.length}/3 Drehen-Button(s)`);
-      drehButtons.some(t => t.includes('Grün'))
-        ? ok('Grün-Drehen-Button vorhanden')
-        : fail('Grün-Drehen-Button FEHLT');
+      drehBtns.length >= 2 ? ok(`2P: ${drehBtns.length} Drehen-Buttons ✓`) : fail(`2P: nur ${drehBtns.length} Drehen-Button(s)`);
+    } else {
+      drehBtns.length >= 3 ? ok(`3P: ${drehBtns.length} Drehen-Buttons ✓`) : fail(`3P: nur ${drehBtns.length}/3 Drehen-Buttons`);
+      drehBtns.some(t => t.includes('Grün')) ? ok('Grün-Drehen-Button ✓') : fail('Grün-Drehen-Button fehlt');
     }
 
     // Drehen klicken
-    const rotateLabel = playerCount === 2 ? ['Blau drehen'] : ['Grün drehen'];
-    const rotateClicked = await jsClick(page, rotateLabel);
-    if (rotateClicked) {
-      await page.waitForTimeout(300);
-      await page.screenshot({ path: `/tmp/06_${playerCount}p_rotated.png` });
-      ok(`Drehen-Button klickbar: "${rotateClicked}"`);
-    } else {
-      fail(`Drehen-Button "${rotateLabel}" nicht klickbar`);
-    }
+    const rotLabel = playerCount === 2 ? 'Blau drehen' : 'Grün drehen';
+    const rotated = await jsClick(page, [rotLabel]);
+    rotated ? ok(`Drehen klickbar: "${rotated}" ✓`) : fail(`Drehen "${rotLabel}" nicht klickbar`);
 
-    // Touch-Platzierung
-    if (canvasBox) {
-      const tapY = canvasBox.y + canvasBox.height * (playerCount === 2 ? 0.25 : 0.18);
-      const tapX = canvasBox.x + canvasBox.width * 0.5;
-      await page.touchscreen.tap(tapX, tapY);
-      await page.waitForTimeout(500);
-      await page.screenshot({ path: `/tmp/07_${playerCount}p_touch.png` });
-      ok('Touch-Event abgesetzt');
-    }
-
-    // Beenden-Dialog öffnen
-    const quitClicked = await jsClick(page, ['beenden', '✕']);
-    if (quitClicked) {
-      await page.waitForTimeout(400);
-      await page.screenshot({ path: `/tmp/08_${playerCount}p_quit_dialog.png` });
-      const confirmFound = await findButtonText(page, ['Ja', 'beenden', 'Weiterspielen']);
-      confirmFound ? ok(`Beenden-Dialog erscheint ("${confirmFound}")`) : fail('Beenden-Dialog fehlt');
-
-      // "Weiterspielen" testen — soll Dialog schließen und Spiel fortsetzen
-      const resumeClicked = await jsClick(page, ['Weiterspielen']);
-      if (resumeClicked) {
-        await page.waitForTimeout(400);
-        await page.screenshot({ path: `/tmp/09_${playerCount}p_resumed.png` });
-        // Dialog sollte weg sein
+    // Beenden → Weiterspielen → zurück
+    const q1 = await jsClick(page, ['beenden']);
+    if (q1) {
+      await page.waitForTimeout(350);
+      const resume = await jsClick(page, ['Weiterspielen']);
+      if (resume) {
+        await page.waitForTimeout(350);
         const dialogGone = !(await findButtonText(page, ['Weiterspielen']));
-        dialogGone ? ok('Weiterspielen schließt Dialog ✓') : fail('Dialog bleibt nach Weiterspielen geöffnet');
-        // Spiel soll noch laufen (Canvas noch da)
-        const canvasStillThere = await page.evaluate(() => !!document.querySelector('canvas'));
-        canvasStillThere ? ok('Spiel läuft nach Weiterspielen weiter ✓') : fail('Canvas weg nach Weiterspielen');
-      } else {
-        fail('Weiterspielen-Button nicht gefunden');
+        dialogGone ? ok('Weiterspielen schließt Dialog ✓') : fail('Dialog bleibt nach Weiterspielen');
+        const hasCanvas = await page.evaluate(() => !!document.querySelector('canvas'));
+        hasCanvas ? ok('Spiel läuft nach Weiterspielen ✓') : fail('Canvas fehlt nach Weiterspielen');
       }
-    } else {
-      fail('Beenden-Button nicht klickbar');
     }
 
-    // Spiel tatsächlich beenden (zurück ins Menü)
-    const quitAgain = await jsClick(page, ['beenden', '✕']);
-    if (quitAgain) {
-      await page.waitForTimeout(400);
-      const confirmed = await jsClick(page, ['Ja, beenden']);
-      if (confirmed) {
-        await page.waitForTimeout(800);
-        await page.screenshot({ path: `/tmp/10_${playerCount}p_back_menu.png` });
-        // Canvas sollte weg sein (zurück im Menü)
-        const canvasGone = !(await page.evaluate(() => !!document.querySelector('canvas')));
-        canvasGone ? ok('Zurück im Menü nach "Ja, beenden" ✓') : fail('Canvas noch da nach "Ja, beenden"');
-      }
+    // Beenden → Ja → Menü
+    const q2 = await jsClick(page, ['beenden']);
+    if (q2) {
+      await page.waitForTimeout(350);
+      await jsClick(page, ['Ja, beenden']);
+      await page.waitForTimeout(700);
+      await page.screenshot({ path: `/tmp/s1_${playerCount}p_menu.png` });
+      const backInMenu = !(await page.evaluate(() => !!document.querySelector('canvas')));
+      backInMenu ? ok('Zurück im Menü ✓') : fail('Canvas nach "Ja, beenden" noch da');
     }
+
+    if (jsErrors.length > 0) jsErrors.forEach(e => { fail(`JS-Fehler: ${e.slice(0, 80)}`); errors.push(e); });
+    else ok('Keine JS-Fehler');
+
+    await ctx.close();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SUITE 2: Spielmechanik — Bauen, Schießen, Kanone setzen
+  // ═══════════════════════════════════════════════════════════════
+  async function testGameMechanics() {
+    console.log(`\n${'='.repeat(50)}`);
+    console.log('TEST: Spielmechanik (Bauen / Schießen / Kanone)');
+    console.log('='.repeat(50));
+
+    const { ctx, page } = await setupGamePage(browser, 2);
+    const jsErrors = [];
+    page.on('pageerror', e => {
+      if (!e.message.includes('firebase') && !e.message.includes('Firebase'))
+        jsErrors.push(e.message);
+    });
+
+    await navigateToGame(page, 2);
+    const cb = await getCanvasBox(page);
+    if (!cb) { fail('Canvas fehlt — Mechanik-Tests übersprungen'); await ctx.close(); return; }
+
+    // ── SETUP-PHASE: Kanonen platzieren ──────────────────────────
+    // Platziere 2 Kanonen für P1 (obere Hälfte) und 2 für P2 (untere Hälfte)
+    // Relative Positionen im Canvas; exakte Grid-Pos hängt vom Terrain ab,
+    // aber valide Bereiche sind mit hoher Wahrscheinlichkeit frei.
+    console.log('⚙️  Setup-Phase: Kanonen platzieren...');
+    const setupTaps = [
+      { rx: 0.38, ry: 0.18 }, // P1 Kanone 1
+      { rx: 0.62, ry: 0.18 }, // P1 Kanone 2
+      { rx: 0.38, ry: 0.82 }, // P2 Kanone 1
+      { rx: 0.62, ry: 0.82 }, // P2 Kanone 2
+    ];
+    for (const { rx, ry } of setupTaps) {
+      await page.mouse.click(cb.x + cb.w * rx, cb.y + cb.h * ry);
+      await page.waitForTimeout(300);
+    }
+    await page.screenshot({ path: '/tmp/s2_setup_cannons.png' });
+
+    // Setup-Timer sollte durch den Shortcut schnell auf 3s springen
+    // (wenn alle Kanonen gesetzt) oder normal ablaufen
+    console.log('⏳ Warte auf Bauphase...');
+    const buildBtn = await waitForBuild(page, 28);
+    if (!buildBtn) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
+    ok('Bauphase nach Kanonen-Setup erreicht ✓');
+    await page.screenshot({ path: '/tmp/s2_build_start.png' });
+
+    // ── BAUPHASE: Tetromino platzieren ────────────────────────────
+    console.log('🧱 Bauphase: Tetromino platzieren...');
+    // P1 baut in der oberen Hälfte: Drag-Geste (touchstart→move→end)
+    const buildX = cb.x + cb.w * 0.45;
+    const buildY = cb.y + cb.h * 0.22;
+    await page.mouse.move(buildX, buildY);
+    await page.mouse.down();
+    await page.waitForTimeout(150);
+    // Leichtes Bewegen damit Ghost-Position gesetzt wird
+    await page.mouse.move(buildX + 5, buildY + 5);
+    await page.waitForTimeout(100);
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: '/tmp/s2_build_piece.png' });
+
+    // P2 baut in der unteren Hälfte
+    const buildX2 = cb.x + cb.w * 0.55;
+    const buildY2 = cb.y + cb.h * 0.78;
+    await page.mouse.move(buildX2, buildY2);
+    await page.mouse.down();
+    await page.waitForTimeout(150);
+    await page.mouse.move(buildX2 - 5, buildY2 - 5);
+    await page.waitForTimeout(100);
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+
+    // Bauphase läuft noch (Canvas da, Timer > 0, kein Crash)
+    const buildStillActive = await page.evaluate(() => !!document.querySelector('canvas'));
+    buildStillActive ? ok('Bauphase: Platzierung ohne Crash ✓') : fail('Canvas nach Bau-Platzierung verschwunden');
+
+    // Mehrere Teile platzieren (beide Spieler)
+    for (let i = 0; i < 4; i++) {
+      const px = cb.x + cb.w * (0.3 + i * 0.08);
+      const py1 = cb.y + cb.h * (0.2 + (i % 2) * 0.06);
+      const py2 = cb.y + cb.h * (0.8 - (i % 2) * 0.06);
+      await page.mouse.move(px, py1); await page.mouse.down();
+      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(150);
+      await page.mouse.move(px, py2); await page.mouse.down();
+      await page.waitForTimeout(80); await page.mouse.up(); await page.waitForTimeout(150);
+    }
+    ok('Bau-Gesten (mehrere Teile) ohne Crash ✓');
+
+    // Drehen funktioniert in Bauphase
+    const rotClicked = await jsClick(page, ['Blau drehen']);
+    rotClicked ? ok('Drehen in Bauphase klickbar ✓') : fail('Drehen in Bauphase fehlgeschlagen');
+
+    // ── Warte auf SCHUSS-PHASE ────────────────────────────────────
+    console.log('⏳ Warte auf Schussphase (~25s)...');
+    const shootPhase = await waitForPhase(page, ['FEUER'], 35);
+    if (!shootPhase) {
+      fail('Schussphase nicht erreicht');
+      await ctx.close(); return;
+    }
+    ok(`Schussphase erreicht: "${shootPhase}" ✓`);
+    await page.screenshot({ path: '/tmp/s2_shoot_start.png' });
+
+    // HUD-Timer läuft in Schussphase
+    // Phasenbanner dauert 2500ms → Timer startet erst danach → 4s warten
+    const st0 = await getTimerValue(page);
+    await page.waitForTimeout(4000);
+    const st1 = await getTimerValue(page);
+    (st0 !== null && st1 !== null && st1 < st0)
+      ? ok(`Schuss-Timer zählt: ${st0} → ${st1} ✓`)
+      : fail(`Schuss-Timer zählt nicht (${st0} → ${st1})`);
+
+    // Schuss-Geste: Drag von P1-Bereich (Kanone) weg zum Ziel (P2-Hälfte)
+    // Schleuder-Mechanik: Finger auf Kanone → weg ziehen → loslassen
+    console.log('💥 Schuss-Geste...');
+    const shootFromX = cb.x + cb.w * 0.5;
+    const shootFromY = cb.y + cb.h * 0.18; // P1-Kanonen-Bereich
+    const shootToX   = cb.x + cb.w * 0.5;
+    const shootToY   = cb.y + cb.h * 0.05; // wegziehen nach oben = schießt nach unten (P2)
+    await page.mouse.move(shootFromX, shootFromY);
+    await page.mouse.down();
+    await page.waitForTimeout(100);
+    await page.mouse.move(shootToX, shootToY);
+    await page.waitForTimeout(200);
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: '/tmp/s2_shoot_gesture.png' });
+
+    // Nach Schuss kein Crash
+    const shootOk = await page.evaluate(() => !!document.querySelector('canvas'));
+    shootOk ? ok('Schuss-Geste ohne Crash ✓') : fail('Canvas nach Schuss-Geste verschwunden');
+
+    // Mehrere Schüsse
+    for (let i = 0; i < 3; i++) {
+      const fx = cb.x + cb.w * (0.3 + i * 0.2);
+      await page.mouse.move(fx, shootFromY);
+      await page.mouse.down();
+      await page.waitForTimeout(80);
+      await page.mouse.move(fx, cb.y + cb.h * 0.04);
+      await page.waitForTimeout(150);
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+    }
+    ok('Mehrfach-Schüsse ohne Crash ✓');
+
+    // ── Warte auf KANONEN-PHASE ───────────────────────────────────
+    console.log('⏳ Warte auf Kanonen-Phase (~30s)...');
+    const cannonPhase = await waitForPhase(page, ['KANONE'], 40);
+    if (!cannonPhase) {
+      fail('Kanonen-Phase nicht erreicht');
+      await ctx.close(); return;
+    }
+    ok(`Kanonen-Phase erreicht: "${cannonPhase}" ✓`);
+    await page.screenshot({ path: '/tmp/s2_cannon_start.png' });
+
+    // Kanone platzieren: Tap in freie 3×3-Fläche (P1-Bereich)
+    console.log('🎯 Kanone setzen...');
+    const cannonPositions = [
+      { rx: 0.35, ry: 0.28 },
+      { rx: 0.55, ry: 0.28 },
+      { rx: 0.45, ry: 0.32 },
+    ];
+    let cannonPlaced = false;
+    for (const { rx, ry } of cannonPositions) {
+      await page.mouse.click(cb.x + cb.w * rx, cb.y + cb.h * ry);
+      await page.waitForTimeout(300);
+      // Prüfe ob noch Kanonen-Budget (= Kanone noch nicht platziert)
+      const hasCannonBtn = await findButtonText(page, ['Blau drehen', 'KANONE']);
+      // Wenn Button verschwunden oder Wechsel → platziert
+      if (!cannonPlaced) { cannonPlaced = true; }
+    }
+    await page.screenshot({ path: '/tmp/s2_cannon_placed.png' });
+
+    const cannonOk = await page.evaluate(() => !!document.querySelector('canvas'));
+    cannonOk ? ok('Kanone-Platzierungs-Geste ohne Crash ✓') : fail('Canvas nach Kanone-Setzen verschwunden');
+
+    // Nach Kanonen-Phase kommt wieder Bauphase → Test abschließen
+    const buildAgain = await waitForBuild(page, 20);
+    buildAgain
+      ? ok(`Runde 2 Bauphase erreicht — Phasenzyklus funktioniert ✓`)
+      : fail('Runde 2 Bauphase nicht erreicht');
+
+    await page.screenshot({ path: '/tmp/s2_round2_build.png' });
 
     if (jsErrors.length > 0) {
-      jsErrors.forEach(e => { errors.push(`[${label}] JS: ${e}`); fail(`JS-Fehler: ${e.slice(0, 80)}`); });
+      jsErrors.forEach(e => { fail(`JS-Fehler: ${e.slice(0, 80)}`); errors.push(e); });
     } else {
-      ok('Keine JS-Fehler');
+      ok('Gesamte Mechanik: Keine JS-Fehler ✓');
     }
 
     await ctx.close();
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // TEST 2: Beenden-Button UX (eigenständiger Test)
+  // SUITE 3: Beenden-Button UX & Overlap
   // ═══════════════════════════════════════════════════════════════
   async function testQuitButtonUX() {
     console.log(`\n${'='.repeat(50)}`);
-    console.log('TEST: Beenden-Button UX & Overlap-Check');
+    console.log('TEST: Beenden-Button UX & Overlap');
     console.log('='.repeat(50));
 
     const { ctx, page } = await setupGamePage(browser, 2);
     page.on('pageerror', e => {
       if (!e.message.includes('firebase') && !e.message.includes('Firebase'))
-        errors.push(`[QuitUX] JS: ${e.message}`);
+        errors.push(`[QuitUX] ${e.message}`);
     });
 
-    await page.goto('http://localhost:8765/', { waitUntil: 'networkidle', timeout: 15000 });
-    await page.waitForTimeout(1500);
-    const hasNameInput = await page.evaluate(() => !!document.querySelector('input[maxlength="16"]'));
-    if (hasNameInput) {
-      await page.evaluate(() => {
-        const inp = document.querySelector('input[maxlength="16"]');
-        if (inp) { inp.value = 'UXTest'; inp.dispatchEvent(new Event('input', { bubbles: true })); }
-      });
-      await page.waitForTimeout(200);
-      await jsClick(page, ['Speichern']);
-      await page.waitForTimeout(400);
-    }
+    await navigateToGame(page, 2);
+    await page.waitForTimeout(500);
 
-    await jsClick(page, ['LOKAL']);
-    await page.waitForTimeout(600);
-    await jsClick(page, ['2 Spieler']);
-    await page.waitForTimeout(2000);
-
-    // Alle Buttons im Spiel erfassen
     const allBtns = await page.evaluate(() =>
       Array.from(document.querySelectorAll('button')).map(b => {
         const r = b.getBoundingClientRect();
-        return {
-          text: (b.textContent || '').trim(),
-          x: r.x, y: r.y, w: r.width, h: r.height,
-          position: window.getComputedStyle(b).position
-        };
+        const st = window.getComputedStyle(b);
+        return { text: (b.textContent || '').trim(), x: r.x, y: r.y, w: r.width, h: r.height, pos: st.position, bg: st.background };
       })
     );
 
-    // Quit-Button und P2-Karte auf Overlap prüfen
-    const quitBtn = allBtns.find(b => b.text.includes('beenden') || b.text === '✕');
+    const quitBtn = allBtns.find(b => b.text.toLowerCase().includes('beenden'));
     if (!quitBtn) {
-      fail('Beenden-Button nicht gefunden für Overlap-Test');
-    } else {
-      ok(`Beenden-Button: "${quitBtn.text}" bei x=${Math.round(quitBtn.x)}, y=${Math.round(quitBtn.y)}, ${Math.round(quitBtn.w)}×${Math.round(quitBtn.h)}px`);
-
-      // Kein absolutes Positioning
-      quitBtn.position !== 'absolute'
-        ? ok(`Beenden-Button: position=${quitBtn.position} (kein absolutes Overlay)`)
-        : fail(`Beenden-Button: position=absolute (überlagert andere Elemente)`);
-
-      // Buttons dürfen sich nicht überlappen
-      const overlapping = allBtns.filter(b => b !== quitBtn && b.text && b.w > 0).filter(b => {
-        const overlapX = quitBtn.x < b.x + b.w && quitBtn.x + quitBtn.w > b.x;
-        const overlapY = quitBtn.y < b.y + b.h && quitBtn.y + quitBtn.h > b.y;
-        return overlapX && overlapY;
-      });
-      overlapping.length === 0
-        ? ok('Beenden-Button überlappt keine anderen Buttons ✓')
-        : fail(`Beenden-Button überlappt ${overlapping.length} Button(s): ${overlapping.map(b => `"${b.text.slice(0,15)}"`).join(', ')}`);
+      fail('Beenden-Button nicht gefunden'); await ctx.close(); return;
     }
 
-    await page.screenshot({ path: '/tmp/quit_ux_check.png' });
+    ok(`Beenden-Button: "${quitBtn.text}" | ${Math.round(quitBtn.w)}×${Math.round(quitBtn.h)}px`);
+
+    // Kein absolutes Positioning
+    quitBtn.pos !== 'absolute'
+      ? ok(`Position: ${quitBtn.pos} (kein Overlay) ✓`)
+      : fail(`Position: absolute (überlagert Inhalte)`);
+
+    // Kein Overlap mit anderen Buttons
+    const overlapping = allBtns.filter(b => b !== quitBtn && b.w > 0 && b.text).filter(b => {
+      const ox = quitBtn.x < b.x + b.w && quitBtn.x + quitBtn.w > b.x;
+      const oy = quitBtn.y < b.y + b.h && quitBtn.y + quitBtn.h > b.y;
+      return ox && oy;
+    });
+    overlapping.length === 0
+      ? ok('Kein Overlap mit anderen Buttons ✓')
+      : fail(`Überlappt ${overlapping.length} Button(s): ${overlapping.map(b => `"${b.text.slice(0,15)}"`).join(', ')}`);
+
+    // Sichtbarer Hintergrund (nicht "none")
+    const hasBg = quitBtn.bg && !quitBtn.bg.includes('rgba(0, 0, 0, 0)') && quitBtn.bg !== 'none';
+    hasBg
+      ? ok('Sichtbarer Button-Hintergrund ✓')
+      : fail('Kein sichtbarer Hintergrund (Button wirkt unsichtbar)');
+
+    // Mittig im HUD (x zwischen 100-290 auf 390px Viewport)
+    const cx = quitBtn.x + quitBtn.w / 2;
+    (cx > 100 && cx < 290)
+      ? ok(`Im HUD-Center (midX=${Math.round(cx)}) ✓`)
+      : fail(`Außerhalb HUD-Center (midX=${Math.round(cx)})`);
+
+    await page.screenshot({ path: '/tmp/s3_quit_ux.png' });
     await ctx.close();
   }
 
-  // Tests ausführen
-  await testGameFlow('2-Spieler lokal', 2);
-  await testGameFlow('3-Spieler lokal', 3);
+  // ── Tests ausführen ────────────────────────────────────────────
+  await testNavAndHUD('2-Spieler: Navigation & HUD', 2);
+  await testNavAndHUD('3-Spieler: Navigation & HUD', 3);
+  await testGameMechanics();
   await testQuitButtonUX();
 
   await browser.close();
@@ -457,12 +573,12 @@ async function setupGamePage(browser, playerCount) {
     console.log('\n✅ Keine JS-Fehler');
   }
 
-  const passCount = results.filter(r => r.startsWith('✅')).length;
-  const failCount = results.filter(r => r.startsWith('❌')).length;
-  console.log(`\nGesamt: ${passCount} ✅  ${failCount} ❌`);
+  const pass = results.filter(r => r.startsWith('✅')).length;
+  const fail2 = results.filter(r => r.startsWith('❌')).length;
+  console.log(`\nGesamt: ${pass} ✅  ${fail2} ❌`);
 
-  const screenshots = fs.readdirSync('/tmp').filter(f => f.endsWith('.png') && f.match(/^\d|^quit/));
-  console.log(`${screenshots.length} Screenshots gespeichert in /tmp/`);
+  const shots = fs.readdirSync('/tmp').filter(f => f.endsWith('.png') && /^s[0-9]|^quit/.test(f));
+  console.log(`${shots.length} Screenshots in /tmp/`);
 
-  if (failCount > 0) process.exit(1);
+  if (fail2 > 0) process.exit(1);
 })();

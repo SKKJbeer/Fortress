@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.7)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.8)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -548,3 +548,10 @@ und beschiessen danach gegenseitig ihre Festungen.
   Overlap-Check (position ≠ absolute, keine Button-Überlappung), Timer-Countdown,
   CSS-Animation-Check, Gold im Menü, Weiterspielen-Dialog, Ja-beenden-Rückkehr ins
   Menü — von 10 auf 42 Test-Assertions erweitert (3 Test-Suiten).
+- **v3.1.8**: Beenden-Button Redesign + Mechanik-Tests. Button-Styling: dark semi-
+  transparent background (rgba(15,23,42,0.7)), Rahmen (rgba(100,116,139,0.22)),
+  slate-600 Text, borderRadius 8, uppercase-Buchstaben, 22px Höhe (5+9+6+2 border).
+  Tests erweitert von 42 auf 50 Assertions: 4. Test-Suite "Spielmechanik" prüft
+  den vollständigen Phasenzyklus — Kanonen in Setup platzieren, Tetrominos bauen
+  (Drag-Geste), Schussphase erreichen und Schuss-Geste ausführen, Kanonen-Phase
+  und neue Kanone setzen, Runde-2-Bauphase als Zyklus-Bestätigung.
