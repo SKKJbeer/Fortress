@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#050d05"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.0</title>
+  <title>FORTRESS v3.0.1</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -1251,15 +1251,17 @@ window.FortressApp = function Fortress() {
       setNumPlayers(s.numPlayers);
     }
     setGrid(s.grid);
-    if (s.terrainSeed && s.terrainSeed !== terrainSeed.current) {
+    const need3 = s.numPlayers === 3;
+    const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
+    if (s.terrainSeed && (s.terrainSeed !== terrainSeed.current || haveWrongTerrain)) {
       terrainSeed.current = s.terrainSeed;
-      terrain.current = s.numPlayers === 3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
-      if (s.numPlayers === 3 && s.castles) {
-        terrain.current.sectorMap = buildSectorMap(terrain.current, s.castles);
-      }
+      terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
       bgDirty.current = true;
     }
     castles.current = s.castles || castles.current;
+    if (need3 && terrain.current && terrain.current.mode3 && castles.current && !terrain.current.sectorMap) {
+      terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
+    }
     cannons.current = s.cannons || cannons.current;
     cannonBudget.current = s.cannonBudget || cannonBudget.current;
     if (s.eliminated) eliminated.current = s.eliminated;
@@ -2768,7 +2770,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u{1F3C6} Bestenliste"), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.0.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -432,3 +432,12 @@ und beschiessen danach gegenseitig ihre Festungen.
   (Grün) im Result korrigiert.
   ⚠️ Firebase-Rules: leaderboard erlaubt zusätzliche Felder (elo/elo3) — mit der
   bestehenden Regel (hasChildren name/wins/games) bereits abgedeckt.
+- **v3.0.1**: 3-Spieler-Online Platzieren ging nicht (2-Spieler ok). Ursache: die
+  Gast-sectorMap wurde nur im Seed-Änderungs-Block von applyState berechnet —
+  war der Seed schon gesetzt oder das Terrain nicht als mode3 vorliegend, blieb
+  sectorMap undefined → Gast-Ghost nutzte Winkel-sectorOf (andere Zonen als die
+  Host-Land-Flood-sectorMap) → Host lehnte die gesendete Bauposition ab, nichts
+  passierte. Fix: applyState stellt bei numPlayers=3 IMMER sicher, dass (a) das
+  Terrain als mode3 regeneriert ist und (b) die sectorMap aus Seed+castles gebaut
+  ist (deterministisch identisch zum Host). Damit stimmen Gast-Ghost und Host-
+  Validierung überein.
