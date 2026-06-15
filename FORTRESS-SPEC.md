@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.7)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.8)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -477,3 +477,6 @@ und beschiessen danach gegenseitig ihre Festungen.
   EIGENEN try/catch — ein Fehler dort kann die Phasen-Synchronisation nicht mehr
   blockieren und wird sichtbar als `applyObjects:`-Fehler im Diagnose-Overlay
   protokolliert (statt still die Phase einzufrieren).
+- **v3.0.8**: Diagnose-Overlay für Endnutzer deaktiviert (`showDbg` startet
+  jetzt auf `false`). Overlay bleibt im Code und kann bei Bedarf reaktiviert
+  werden, ist aber standardmäßig unsichtbar.
