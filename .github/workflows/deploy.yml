@@ -1,0 +1,74 @@
+name: Deploy to GitHub Pages & Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Versionsnummer aus index.html lesen
+        id: version
+        run: |
+          VERSION=$(grep -oP '(?<=FORTRESS v)[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Gefundene Version: $VERSION"
+
+      - name: GitHub Pages konfigurieren
+        uses: actions/configure-pages@v5
+
+      - name: Dateien hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Auf GitHub Pages deployen
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Git Tag setzen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG existiert bereits, überspringe."
+          else
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: GitHub Release erstellen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: FORTRESS v${{ steps.version.outputs.version }}
+          body: |
+            ## FORTRESS v${{ steps.version.outputs.version }}
+
+            Automatisch deployt auf [GitHub Pages](https://skkjbeer.github.io/Fortress/).
+
+            Changelog siehe [FORTRESS-SPEC.md](https://github.com/SKKJbeer/Fortress/blob/main/FORTRESS-SPEC.md).
+          files: index.html
+          make_latest: true
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
