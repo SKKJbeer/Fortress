@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.6)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.7)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -541,3 +541,10 @@ und beschiessen danach gegenseitig ihre Festungen.
   im Banner-Render entfernt. EFFICIENCY: `playersList()` im renderLoop von 7 Aufrufen
   pro Frame (7 Array-Allokationen á 60fps = 420/s) auf einen einzigen Cache `const
   players = playersList()` am Frame-Anfang reduziert.
+- **v3.1.7**: Beenden-Button UX überarbeitet. Vorher: absolut positionierter 30×30px
+  Button (position:absolute, top:6, right:6) überlagerte den P2-Score-Bereich im HUD.
+  Jetzt: "✕ beenden" als statisch positionierter Text-Button im HUD-Center (unter
+  Timer+Runde), passend zum visuellen Stil. Kein Overlap mehr möglich. Tests erweitert:
+  Overlap-Check (position ≠ absolute, keine Button-Überlappung), Timer-Countdown,
+  CSS-Animation-Check, Gold im Menü, Weiterspielen-Dialog, Ja-beenden-Rückkehr ins
+  Menü — von 10 auf 42 Test-Assertions erweitert (3 Test-Suiten).
