@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.4.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -609,3 +609,10 @@ und beschiessen danach gegenseitig ihre Festungen.
       `rgba(160,140,70,0.65)`, Innen-Glow. Punkte in Goldfarbe `#fde68a` mit Text-Glow.
   13. **Phasenbadge**: Erhöhte Sättigung + `boxShadow`-Glow je nach Phase (Grün/Rot/Gold).
   14. **Timer**: Immer leichter Glow (`0 0 5px rgba(200,180,100,0.25)`), bei ≤5s intensiv.
+- **v3.5.0**: Zweisprachigkeit DE/EN — vollständige UI-Übersetzung.
+  - **LANGS-Objekt** mit ~100 Schlüsseln (DE + EN) vor der App-Funktion definiert.
+  - **`lang`-State** in React, persistiert in `localStorage('fortress_lang')`, Standard: 'de'.
+  - **`t(key, vars)`-Funktion** für alle UI-Strings; `{variable}`-Ersetzung per Regex.
+  - **Sprachschalter** im Menü: 🇩🇪 DE / 🇬🇧 EN als Pill-Buttons.
+  - Alle UI-Strings ersetzt: Menü, HUD, Phasenbanner, Tipps, Beenden-Dialog, Profil,
+    Online-Lobby, Wartescreen, Ergebnis-Screen, Leaderboard, Hilfekarten.
