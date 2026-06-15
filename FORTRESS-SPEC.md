@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.1.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.4.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -499,3 +499,113 @@ und beschiessen danach gegenseitig ihre Festungen.
   Sicherheit: Berechnung erfolgt clientseitig (wie ELO), Host-autoritativ — kein
   serverseitiger Code benötigt. `goldChangeRef` speichert die Änderung in
   `recordResult` und wird beim Spielstart zurückgesetzt.
+- **v3.1.1**: Prominente Phasen-Ankündigungen für alle Modi (lokal + online, Host + Gäste).
+  Zentrierter Overlay-Banner mit Animation (fade-in, scale, fade-out, 2.5s) erscheint
+  bei jedem Phasenwechsel: 🏰 SPIELSTART (blau), 🧱 BAUPHASE (grün), 💥 FEUER FREI!
+  (rot), 🎯 NEUE KANONE (orange). Jede Phase hat eigene Farbe, Emoji, Kurz-Anleitung
+  und Glow-Effekt. Ersetzt die alten showWarn()-Aufrufe für Gäste online; für lokale
+  Spiele und den Host gab es vorher gar keine Ankündigung.
+- **v3.1.2**: Setup-Timer springt auf 3s wenn alle Spieler ihre 2 Start-Kanonen
+  gesetzt haben und der Timer noch über 3s steht. Verhindert unnötiges Warten
+  wenn alle fertig sind. Check in `placeCannon()` nach Budget-Dekrement:
+  `phase === "setup" && alle cannonBudget <= 0 && timer > 3 → timer = 3`.
+- **v3.1.3**: Timer pausiert während Phasen-Banner (2.5s). `startTimer()` akzeptiert
+  jetzt optionales `delayMs`-Argument. Bei allen Phasenwechseln mit Banner wird
+  `startTimer(2500)` aufgerufen — Timer startet erst wenn der Banner verschwunden
+  ist. Gilt für Setup, Bau, Schuss und Kanonen-Phase.
+- **v3.1.4**: Alle Spieler-Interaktionen gesperrt während Phasen-Banner läuft (2.5s).
+  `bannerActive` Ref wird in `showPhaseBanner()` auf true gesetzt und nach 2.5s
+  zurückgesetzt. `onPointerDown`, `onPointerMove`, `onPointerUp` prüfen am Anfang
+  `bannerActive.current` und kehren sofort zurück. Pointer-State wird in
+  `onPointerUp` trotzdem immer bereinigt (verhindert stale Pointer-Einträge).
+
+- **v3.1.5**: Race-Condition zwischen Banner-Ende und Timer-Start behoben. Vorher
+  liefen zwei separate `setTimeout(fn, 2500)` unabhängig voneinander: einer in
+  `showPhaseBanner()` (Banner ausblenden + `bannerActive=false`) und einer in
+  `startTimer(2500)` — mit minimalem Zeitversatz, sodass kurz nach Bannerablauf
+  weder Timer lief noch Interaktionen möglich waren. Fix: `startTimer()` hat kein
+  `delayMs`-Argument mehr. Stattdessen wird `startTimer` als `onDone`-Callback an
+  `showPhaseBanner()` übergeben und direkt im selben `setTimeout`-Callback
+  aufgerufen. Dadurch ist der Übergang von Banner→Timer→Spielbar atomar ohne Lücke.
+  Alle vier Phasenfunktionen nutzen jetzt `showPhaseBanner("phase", () => startTimer())`.
+- **v3.1.6**: Code-Review und Wartbarkeits-Optimierungen (Software-Architekt-Pass).
+  BUG: `phaseBannerTimer.current` wurde beim Verlassen des Spiels (screen → menu)
+  nicht gecancelt → `onDone()` feuerte 2.5s nach Spielende und startete einen neuen
+  Timer-Intervall im Menü, der Phasenfunktionen auf einem beendeten Spiel aufrief.
+  Fix: `clearTimeout(phaseBannerTimer.current)` + `bannerActive.current = false` im
+  useEffect([screen]) Cleanup (beide Pfade: screen !== "game" und Cleanup-Return).
+  SIMPLIFICATION: `() => startTimer()` Wrapper-Lambdas durch direkte Funktions-
+  referenz `startTimer` ersetzt (4 Stellen). 4-branch if/else in `applyState` für
+  Phasen-Banner vereinfacht zu `if (PHASE_BANNERS[s.phase]) showPhaseBanner(s.phase)`
+  — neue Phasen werden automatisch unterstützt. Tote Fallback `|| PHASE_BANNERS.build`
+  im Banner-Render entfernt. EFFICIENCY: `playersList()` im renderLoop von 7 Aufrufen
+  pro Frame (7 Array-Allokationen á 60fps = 420/s) auf einen einzigen Cache `const
+  players = playersList()` am Frame-Anfang reduziert.
+- **v3.1.7**: Beenden-Button UX überarbeitet. Vorher: absolut positionierter 30×30px
+  Button (position:absolute, top:6, right:6) überlagerte den P2-Score-Bereich im HUD.
+  Jetzt: "✕ beenden" als statisch positionierter Text-Button im HUD-Center (unter
+  Timer+Runde), passend zum visuellen Stil. Kein Overlap mehr möglich. Tests erweitert:
+  Overlap-Check (position ≠ absolute, keine Button-Überlappung), Timer-Countdown,
+  CSS-Animation-Check, Gold im Menü, Weiterspielen-Dialog, Ja-beenden-Rückkehr ins
+  Menü — von 10 auf 42 Test-Assertions erweitert (3 Test-Suiten).
+- **v3.1.8**: Beenden-Button Redesign + Mechanik-Tests. Button-Styling: dark semi-
+  transparent background (rgba(15,23,42,0.7)), Rahmen (rgba(100,116,139,0.22)),
+  slate-600 Text, borderRadius 8, uppercase-Buchstaben, 22px Höhe (5+9+6+2 border).
+  Tests erweitert von 42 auf 50 Assertions: 4. Test-Suite "Spielmechanik" prüft
+  den vollständigen Phasenzyklus — Kanonen in Setup platzieren, Tetrominos bauen
+  (Drag-Geste), Schussphase erreichen und Schuss-Geste ausführen, Kanonen-Phase
+  und neue Kanone setzen, Runde-2-Bauphase als Zyklus-Bestätigung.
+- **v3.1.9**: Phasenwechsel nach Setup geändert. Nach der Setup-Phase (Kanonen platzieren)
+  geht das Spiel jetzt direkt in die Schussphase (FEUER) statt in die Bauphase.
+  Der normale Zyklus danach: Schuss → Kanone → Bau → Schuss → ... bleibt unverändert.
+  `startShoot()` als eigene Funktion extrahiert (wurde zuvor inline in `endBuild`
+  dupliziert); `endSetup()` ruft jetzt `startShoot()` statt `startBuild()` auf.
+  Tests (45 Assertions) auf neuen Startphasen-Flow angepasst — alle grün.
+- **v3.2.0**: Diagonale Lücken zählen als offene Mauer. Flood-Fill für Burgschluss-Prüfung
+  (`computeOutsideMap` + `computeOutsideMapForCannons`) von 4-Wege auf 8-Wege erweitert.
+  Wird eine Ecke der Mauer weggeschossen, kann der Außenraum diagonal hindurchsickern
+  → Burg gilt als offen. Gleiches gilt für die Kanonen-Abschirmprüfung (`closedCannons`).
+- **v3.2.1**: Drehmechanik komplett überarbeitet.
+  1. **Canvas-Tap dreht**: Kurzer Tap auf Canvas (< 1.5 Zellen Bewegung, < 450ms) dreht das
+     aktuelle Stück — kein Wechsel zum Drehen-Button nötig. Drag (> 1.5 Zellen) platziert.
+  2. **Stück-Vorschau-Panel** ersetzt die Text-Buttons: zeigt die aktuelle Tetromino-Form
+     als farbige Punkte (11px/Zelle). Antippen dreht. Alle 3 Spieler haben eigenes Panel.
+  3. **Haptic Feedback**: `navigator.vibrate(30)` bei jeder Drehung (Android/Chrome).
+     iOS Safari unterstützt Vibration API nicht — kein Audio-Workaround gewünscht.
+  Tests auf 47 Assertions erweitert: Canvas-Tap-Rotation, Vorschau-Panel-Sichtbarkeit,
+  Panel-Tap-Rotation, Drag-Platzierung.
+- **v3.2.2**: Audio-Workaround für iOS wieder entfernt (kein Audio gewünscht).
+  `navigator.vibrate(30)` bleibt für Android. iOS ohne Haptik — plattformlimitierung.
+- **v3.3.0**: PWA-Grundlage für Android Store (TWA) implementiert.
+  Neue Dateien: `manifest.json` (name/icons/display:standalone/start_url:/Fortress/),
+  `sw.js` (Network-first Service Worker — online immer neueste Version, offline Cache),
+  `icon-512.png`, `icon-192.png`, `icon-96.png` (aus bestehendem SVG generiert).
+  `index.html`: `<link rel="manifest">` + SW-Registrierung hinzugefügt.
+  GitHub Pages bleibt immer aktuell (Network-first überschreibt Cache bei jedem Deploy).
+  Noch fehlend für Store: Privacy Policy, `.well-known/assetlinks.json`, Bubblewrap-Setup.
+- **v3.4.0**: Visuelles & Gameplay-Upgrade — modernes mittelalterliches Mobile-Game-Feel.
+  **Canvas-Effekte:**
+  1. **Mauerstein-Textur**: `drawWall` zeichnet jetzt horizontale Fugen + versetzte Senkrechtfugen
+     auf jeder Mauerzelle (Backsteinmuster). Farbe via `mortar`-Parameter.
+  2. **Bildschirm-Shake**: `shakeRef = useRef(0)`. Bei Wandtreffer: +7, bei Kanonentreffer: +14.
+     Zerfällt mit Faktor 0.72/Frame. `ctx.save/translate/restore` um gesamtes Frame.
+  3. **Feuerpartikel**: `impactAt` erzeugt 20 Partikel (60% Feuer: gold/orange/rot, 40% Trümmer).
+     Kanonentreffer: 26 Partikel. Alle mit `size`, `round`, `gravity`-Feldern.
+  4. **Partikelphysik**: Alle Partikel haben `gravity`-Feld (Standard 0.08 px/Frame²) statt
+     linearer Dämpfung: `p.vy = p.vy * 0.92 + gravity`. Feuerpartikel steigen initial auf,
+     Trümmer fallen nach. Schmauch (smoke) der Kanone hat `gravity: -0.05` (schwebt auf).
+  5. **Geschossschweif**: Jedes `ball`-Objekt hat `trail: []`. Im Render-Loop werden bis zu
+     9 Positionspunkte gesammelt; jeder wird als abnehmend-transparenter Kreis gezeichnet.
+  6. **Kanonenmündung Smoke**: Schuss erzeugt jetzt 10 Partikel (6 Blitz-Flash + 4 Schmauch),
+     Schmauch hat `gravity: -0.05` und `round: true`.
+  7. **Partikelrender**: Unterstützt jetzt `p.size` (Radius/Halbseite) und `p.round` (Kreis vs. Quadrat).
+  **Hintergrund & Atmo:**
+  8. **Dunkleres Battlefield**: Grundgradient nun #2e5a22 → #172e10 (satter, mittelalterlicher Ton).
+  9. **Vignette**: Radial-Gradient-Overlay am Ende des bgCanvas (Dunkelrand ~55% Alpha außen).
+  10. **Dunkleres Wasser**: #1a3d70 statt #2563a8, mehr Kontrast.
+  11. **Goldener Feldrand**: 2.5px Strich `rgba(170,140,55,0.35)` um das gesamte Spielfeld.
+  **HUD-Redesign:**
+  12. **Spielerkarten**: Tieferer Hintergrund (Blau/Rot/Grün mit 0.88 Alpha), Goldrand
+      `rgba(160,140,70,0.65)`, Innen-Glow. Punkte in Goldfarbe `#fde68a` mit Text-Glow.
+  13. **Phasenbadge**: Erhöhte Sättigung + `boxShadow`-Glow je nach Phase (Grün/Rot/Gold).
+  14. **Timer**: Immer leichter Glow (`0 0 5px rgba(200,180,100,0.25)`), bei ≤5s intensiv.

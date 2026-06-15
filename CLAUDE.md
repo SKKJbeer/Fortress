@@ -28,6 +28,23 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 - **GitHub Pages** für Hosting
 - **localStorage** für Spieler-Profile
 
+### ⚠️ Kostenpolitik: ZERO laufende Kosten (aktuelle Phase)
+Solange das Spiel noch kein Einkommen generiert, bleiben alle Kosten bei null.
+Wenn das Spiel wächst und Mehrwert entsteht (App Store, Monetarisierung), können
+bezahlte Services eingeführt werden — aber erst dann.
+
+**Aktuell erlaubt (kostenlos):**
+- **GitHub Pages** — Hosting, kostenlos für Public Repos
+- **Firebase Spark Plan**: Realtime Database (1 GB, 100 simultane Verbindungen, 10 GB/Monat)
+- **CDNs** für React/Firebase SDK (unpkg, gstatic)
+
+**Aktuell nicht verwenden (kostenpflichtig):**
+- Firebase Blaze / Cloud Functions
+- Eigener Server / VPS
+- Firebase Authentication mit SMS/Phone
+
+**Wenn das Spiel monetarisiert wird:** dann Firebase Blaze (Cloud Functions für serverseitige Logik, echte Stat-Sicherheit) und ggf. eigenes Backend evaluieren. Das wäre auch der richtige Zeitpunkt für vollständige Firebase Security Rules mit Auth.
+
 ### Build-Workflow
 ```
 index.html direkt editieren
@@ -175,10 +192,45 @@ node test_fortress.js
 
 ---
 
+## Langfristiges Ziel: App Store (Android zuerst)
+
+Das Spiel soll in den **Google Play Store** und danach weitere Stores. Das beeinflusst alle zukünftigen Entwicklungsentscheidungen.
+
+### Geplanter Weg: TWA (Trusted Web Activity)
+- Google Play erlaubt PWAs als native Apps via TWA — kein React Native oder Flutter nötig
+- Tool: **Bubblewrap** (Google) konvertiert PWA → Android APK/AAB
+- Voraussetzungen für TWA:
+  - `manifest.json` mit korrekten Icons, `start_url`, `display: standalone`
+  - Service Worker (Offline-Unterstützung)
+  - HTTPS (✅ GitHub Pages)
+  - Digital Asset Links (`.well-known/assetlinks.json`) verknüpft Domain mit App
+- localStorage funktioniert in TWA (Chrome WebView teilt Storage) → Firebase & Profil bleiben
+
+### Was bei der Entwicklung zu beachten ist
+- **Kein `window.open()`** für wichtige Flows — funktioniert in TWA nicht zuverlässig
+- **Kein Clipboard-API** ohne User-Gesture — bereits korrekt (Copy-Button vorhanden)
+- **Safe-Area-Insets** bereits eingebaut (`env(safe-area-inset-*)`) ✅
+- **Touch-only-Controls** bereits optimiert ✅
+- **Kein externes Login-Popup** — Firebase Auth via Popup würde in TWA brechen; falls Auth nötig, Redirect-Flow nutzen
+- **Viewport** `user-scalable=no` bereits gesetzt ✅
+- **Icons**: aktuell nur inline SVG — für Play Store werden PNG-Icons (512×512, 192×192) benötigt
+- **Privacy Policy** wird für Play Store Pflicht (Firebase = Datenspeicherung)
+- **Content Rating** muss bei Google Play eingereicht werden
+- **Goldsystem** / ELO: kein echtes Geld → vereinfacht Store-Zulassung (kein IAP-Review)
+
+### Noch nicht implementiert (für Store-Readiness)
+- [ ] `manifest.json` (PWA Manifest als separate Datei, nicht nur inline)
+- [ ] Service Worker für Offline-Fähigkeit
+- [ ] PNG App-Icons (512×512, 192×192, 96×96)
+- [ ] Privacy Policy Seite
+- [ ] `.well-known/assetlinks.json` (nach Bubblewrap-Setup)
+
+---
+
 ## Was als nächstes geplant / offen ist
 
 - 3-Spieler-Online läuft jetzt grundsätzlich (v3.0.7 hat Phasen-Freeze gefixt)
-- ELO wird korrekt berechnet und angezeigt (v3.0.9)
+- ELO + Gold werden korrekt berechnet und angezeigt (v3.0.9/v3.1.0)
 - Drehen-Button für P3 vorhanden (v3.0.9)
 - **Noch zu testen**: Ob nach v3.0.7-Fix alle Phasen bei 3 Spielern online sauber durchlaufen
-- **Potenzielle nächste Features**: Heartbeat für Verbindungsabbrüche, Sound-Effekte, weitere Wappen/Farben
+- **Potenzielle nächste Features**: Heartbeat für Verbindungsabbrüche, Sound-Effekte, weitere Wappen/Farben, Store-Readiness
