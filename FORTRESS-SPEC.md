@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.0.6)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -450,3 +450,17 @@ und beschiessen danach gegenseitig ihre Festungen.
   setzen. (2) Nach einem join während das Spiel schon läuft (P3 tritt nach P2 bei)
   pushte der Host keinen State → späte Gäste warteten ewig. Fix: Host pusht nach
   jedem join (mehrfach) den aktuellen Zustand.
+- **v3.0.3**: *(im Chat entwickelt — Details nachzutragen)*
+- **v3.0.4**: *(im Chat entwickelt — Details nachzutragen)*
+- **v3.0.5**: *(im Chat entwickelt — Details nachzutragen; enthielt “(Diagnose)”-Label in der Versionsanzeige)*
+- **v3.0.6**: KRITISCHER FIX 3-Spieler-Online — P3-Gäste konnten keine Bauteile
+  platzieren. Ursache: `pieces.current[3]` wurde für Gäste nie initialisiert, da
+  `startOnlineGame()` für Gäste nicht aufgerufen wird (nur für Host). In
+  `applyState` prüfte der Guard `pieces.current[3]` vor dem Setzen — war undefined,
+  wurde das Stück nie übernommen → P3 hatte kein Bauteil. Fix: applyState
+  initialisiert jetzt alle Spieler-Einträge in `pieces.current` sobald numPlayers
+  bekannt ist. Zusätzlich: `reloadProgRef` um Spieler-3-Eintrag ergänzt (P3-Kanonen
+  zeigten immer vollen Reload), `frozenReady`- und `lastShot`-Fallbacks um P3
+  ergänzt. Versionsanzeige: “(Diagnose)”-Label entfernt.
+  Deployment: Automatisches GitHub Pages Deployment via GitHub Actions eingeführt
+  (push auf main → Pages automatisch aktualisiert, Release wird erstellt).
