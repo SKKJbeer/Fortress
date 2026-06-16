@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.3)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -157,41 +157,54 @@ und beschiessen danach gegenseitig ihre Festungen.
   diese schon beim App-Wechsel → würde Spiel killen). Nur bei bewusstem Verlassen
 - Verlust-Zustand wird mehrfach gepusht (sofort, +300ms, +800ms) zur Sicherheit
 
-### Matchmaking ("Schnellspiel", seit v3.6.0, nur 2 Spieler):
+### Matchmaking ("Schnellspiel", seit v3.6.0; 2 + 3 Spieler seit v3.7.0):
 
 - **Kein aktives Koppeln per Code** — Spieler tritt einer Warteschlange bei
   statt einen Code zu teilen/einzugeben. Code-basiertes Erstellen/Beitreten
   bleibt parallel verfügbar (für Spiele mit Freunden).
-- **Schema**: `/queue2/{SESSION_ID}` → `{ name, wappen, color, elo, ts, hb,
+- **Getrennte Queues je Spieleranzahl**: 2-Spieler → `/queue2`, 3-Spieler →
+  `/queue3`. So vermischen sich 2er- und 3er-Suchende nie. Der "Schnellspiel"-
+  Button respektiert die Spieleranzahl-Auswahl im Online-Menü. ELO-Quelle:
+  `profile.elo` (2p) bzw. `profile.elo3` (3p).
+- **Schema**: `/queueN/{SESSION_ID}` → `{ name, wappen, color, elo, ts, hb,
   status, claimBy, claimTs, code, role }`. `ts` = Eintrittszeit (fest, treibt
   den Such-Radius), `hb` = Heartbeat (alle 2s aktualisiert, Stale-Erkennung).
 - **Kein Server/Cloud Function nötig** (bleibt im Spark-Plan):
-  - Jeder wartende Client abonniert `/queue2` per `onValue()` (echtes
+  - Jeder wartende Client abonniert seine Queue per `onValue()` (echtes
     Realtime, kein Polling) und sucht bei jedem Snapshot + alle 2s
-    (`MM_TICK_MS`) selbst nach einem Kandidaten.
+    (`MM_TICK_MS`) selbst nach Kandidaten.
   - **ELO-Suchradius wächst mit Wartezeit**: `radius = MM_BASE_RADIUS (60) +
     wartezeit_s * MM_GROWTH_PER_SEC (18)`. Damit niemand ewig wartet, gilt
     der **größere** der beiden Radien (eigener vs. Kandidat).
+  - **Initiator-Auswahl (genau ein Host pro Gruppe)**: Der Suchende sammelt
+    die `np-1` ELO-nächsten Kandidaten innerhalb des Radius und initiiert nur,
+    wenn seine eigene `SESSION_ID` kleiner ist als die **aller** gewählten
+    Kandidaten. Bei 2 Spielern ist das genau ein Gegner, bei 3 Spielern zwei.
   - **Atomares Claiming per Firebase-Transaktion** (`fb.transact`) verhindert,
     dass zwei Matcher gleichzeitig denselben Kandidaten claimen — exakt das
-    gleiche Muster wie die bestehende Gast-Slot-Reservierung.
+    gleiche Muster wie die bestehende Gast-Slot-Reservierung. Bei 3 Spielern
+    werden beide Kandidaten nacheinander geclaimt; schlägt einer fehl, werden
+    bereits geclaimte Tickets wieder auf `"waiting"` zurückgerollt.
   - Der **Claimer wird automatisch Host (P1)**, erstellt `/games/{code}` und
-    schreibt `status:"matched"` + `code`/`role` in beide Queue-Tickets. Der
-    gematchte Gegner erkennt das über seinen eigenen Ticket-Snapshot und
-    tritt dem Spiel bei (`reserve` auf `guestAction2`, wie beim normalen
-    Code-Beitritt).
+    schreibt `status:"matched"` + `code`/`role` in alle beteiligten Tickets
+    (Kandidaten erhalten Rolle 2 und 3). Jeder gematchte Gegner erkennt das
+    über seinen eigenen Ticket-Snapshot und tritt seinem Slot bei (`reserve`
+    auf `guestAction2`/`guestAction3`, wie beim normalen Code-Beitritt). Der
+    Host startet das Spiel erst, wenn **alle** Gäste beigetreten sind.
   - **Selbstheilung ohne Cron**: Ticket bleibt durch `onDisconnect().remove()`
     serverseitig konsistent (Tab-Schluss/Crash → sofort gelöscht, kein Cloud
     Function nötig). Zusätzlich: veraltete Tickets (`hb` älter als
     `MM_HEARTBEAT_STALE_MS` = 35s) werden bei jedem Scan best-effort gelöscht;
     ein hängender `"claiming"`-Status (Matcher abgestürzt) heilt nach
     `MM_CLAIM_HEAL_MS` = 6s zurück auf `"waiting"`; ein Host, dessen
-    gematchter Gegner nicht binnen `MM_GUEST_JOIN_TIMEOUT_MS` = 15s tatsächlich
-    beitritt (verwaistes Ticket erwischt), bricht ab und sucht automatisch
-    neu.
-  - **Aufräumen**: Beide Queue-Tickets werden `MM_CLEANUP_DELAY_MS` = 8s nach
-    dem Match gelöscht — lang genug, damit der gematchte Client den
-    `"matched"`-Snapshot sicher gelesen hat.
+    gematchte Gegner nicht binnen `MM_GUEST_JOIN_TIMEOUT_MS` = 15s tatsächlich
+    beitreten (verwaiste Tickets erwischt), bricht ab und sucht automatisch
+    neu (mit gleicher Spieleranzahl).
+  - **Aufräumen (ereignisgesteuert, seit v3.6.3)**: Der Host löscht sein
+    eigenes Ticket sofort; jedes Kandidaten-Ticket wird erst gelöscht, wenn
+    der zugehörige Gast tatsächlich beigetreten ist (`mmPendingCandidates`
+    hält pro Rolle den vollständigen Ticket-Pfad). Kein zeitbasiertes Löschen
+    mehr — das war ein Race, der Gäste in der Suche hängen ließ.
 
 -----
 
@@ -767,3 +780,27 @@ und beschiessen danach gegenseitig ihre Festungen.
       Fallback: tritt der Gast nie bei (z. B. Ticket war ohnehin eine
       Karteileiche), wird das Kandidat-Ticket gelöscht und der Host kehrt
       automatisch in die Warteschlange zurück.
+- **v3.7.0**: Feature — Matchmaking jetzt auch für **3 Spieler**.
+  - Der "⚡ Schnellspiel"-Button respektiert nun die Spieleranzahl-Auswahl
+    (2 oder 3) im Online-Menü; der Button-Text zeigt die gewählte Anzahl.
+  - **Getrennte Queues**: 2-Spieler nutzt `/queue2`, 3-Spieler `/queue3` —
+    so vermischen sich 2er- und 3er-Suchende nie. Die ELO-Werte stammen
+    aus `profile.elo` (2p) bzw. `profile.elo3` (3p).
+  - **Mehrfach-Claiming**: Bei 3 Spielern sammelt der Initiator `np-1 = 2`
+    Gegner. `mmTryFindMatch()` wählt die zwei ELO-nächsten Kandidaten und
+    initiiert nur, wenn die eigene `SESSION_ID` kleiner ist als die **aller**
+    gewählten Kandidaten (genau ein Host pro kompatibler Gruppe).
+  - **Atomares Claiming mit Rollback**: `mmClaimAndMatch()` claimt die
+    Kandidaten nacheinander per Transaktion; schlägt ein Claim fehl (jemand
+    war schneller), werden alle bereits geclaimten Tickets wieder auf
+    `waiting` zurückgesetzt — kein hängender Halbzustand.
+  - Rollen 2 und 3 werden den Kandidaten zugewiesen; jeder Gast tritt seinem
+    Slot (`guestAction2`/`guestAction3`) bei. Der Host startet das Spiel erst,
+    wenn **beide** Gäste beigetreten sind (bestehende `need`-Logik).
+  - Ereignisgesteuerte Ticket-Aufräumung (aus v3.6.3) verallgemeinert:
+    `mmPendingCandidates` hält jetzt pro Rolle den vollständigen Ticket-Pfad;
+    jeder wird gelöscht, sobald der zugehörige Gast beigetreten ist. Der
+    15s-Watchdog räumt verbliebene Tickets auf und re-queued mit gleicher
+    Spieleranzahl.
+  - Firebase Security Rules um `queue3`-Knoten ergänzt (identisches Schema
+    wie `queue2`, inkl. Listen-`.read` für die Kandidatensuche).

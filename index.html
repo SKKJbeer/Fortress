@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.6.3</title>
+  <title>FORTRESS v3.7.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -858,7 +858,7 @@ const LANGS = {
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Zusammen spielen mit 2 oder 3 Spielern, jeder auf seinem eigenen Handy.",
     fbMissing: "⚠️ Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit FB_URL).",
-    quickMatchBtn: "⚡ Schnellspiel (2 Spieler)",
+    quickMatchBtn: "⚡ Schnellspiel ({n} Spieler)",
     quickMatchSub: "Du wirst automatisch mit einem passenden Gegner verbunden — kein Code n\xF6tig",
     orDivider: "ODER MIT CODE",
     searchingOpponent: "Suche Gegner…",
@@ -990,7 +990,7 @@ const LANGS = {
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Play together with 2 or 3 players, each on their own phone.",
     fbMissing: "⚠️ Firebase URL missing. Add your database URL in the code (line with FB_URL).",
-    quickMatchBtn: "⚡ Quick Match (2 Players)",
+    quickMatchBtn: "⚡ Quick Match ({n} Players)",
     quickMatchSub: "You'll be matched with a suitable opponent automatically — no code needed",
     orDivider: "OR WITH CODE",
     searchingOpponent: "Searching for opponent…",
@@ -1424,7 +1424,8 @@ window.FortressApp = function Fortress() {
   const mmBusy = useRef(false);
   const mmActive = useRef(false);
   const mmHealFor = useRef(null);
-  const mmPendingCandidateId = useRef(null);
+  const mmNp = useRef(2);
+  const mmPendingCandidates = useRef({});
   const [showDbg, setShowDbg] = useState(false);
   const dbg = useRef({ statesRecv: 0, statesPush: 0, actSent: 0, actRecv: 0, lastErr: "", lastInfo: "" });
   function dbgBump(field, info) {
@@ -1798,13 +1799,16 @@ window.FortressApp = function Fortress() {
         elo: typeof (m3 ? profile == null ? void 0 : profile.elo3 : profile == null ? void 0 : profile.elo) === "number" ? m3 ? profile.elo3 : profile.elo : 1e3
       };
       joinedGuests.current[p2] = true;
-      if (p2 === 2 && mmPendingCandidateId.current) {
-        if (mmWatchdog.current) {
+      // Matchmaking: das Kandidat-Ticket dieses Gastes erst jetzt löschen, wo
+      // der echte Beitritt bestätigt ist. Sind alle Kandidaten beigetreten,
+      // wird der Watchdog gestoppt.
+      if (mmPendingCandidates.current && mmPendingCandidates.current[p2]) {
+        fb.delete(mmPendingCandidates.current[p2]);
+        delete mmPendingCandidates.current[p2];
+        if (Object.keys(mmPendingCandidates.current).length === 0 && mmWatchdog.current) {
           clearTimeout(mmWatchdog.current);
           mmWatchdog.current = null;
         }
-        fb.delete(`queue2/${mmPendingCandidateId.current}`);
-        mmPendingCandidateId.current = null;
       }
       const need = numPlayersRef.current === 3 ? 2 : 1;
       const have = (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0);
@@ -1962,6 +1966,7 @@ window.FortressApp = function Fortress() {
     gameStarted.current = false;
     joinedGuests.current = { 2: false, 3: false };
     guestActionApplied.current = { 2: 0, 3: 0 };
+    mmPendingCandidates.current = {};
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
     setMpCode(code);
@@ -2016,13 +2021,21 @@ window.FortressApp = function Fortress() {
     startPolling(code, role);
     setMpScreen("waiting");
   }
-  // ───────────────── Matchmaking (Schnellspiel, nur 2 Spieler) ─────────────────
-  // Statt aktiv einen Code zu teilen, trägt sich der Spieler in /queue2/{SESSION_ID}
-  // ein. Jeder wartende Client sucht selbst per onValue-Snapshot nach einem
-  // passenden Gegner (ELO-Differenz innerhalb eines mit der Wartezeit wachsenden
-  // Radius) und claimt ihn atomar per Transaktion (kein Cloud Functions nötig,
-  // bleibt im kostenlosen Spark-Plan). Der Claimer wird automatisch Host.
-  function myEloFor2p() {
+  // ───────────────── Matchmaking (Schnellspiel, 2 oder 3 Spieler) ─────────────────
+  // Statt aktiv einen Code zu teilen, trägt sich der Spieler in
+  // /queue2/{SESSION_ID} (2-Spieler) bzw. /queue3/{SESSION_ID} (3-Spieler) ein.
+  // Getrennte Queues, damit 2er- und 3er-Suchende sich nie vermischen.
+  // Jeder wartende Client sucht selbst per onValue-Snapshot nach passenden
+  // Gegnern (ELO-Differenz innerhalb eines mit der Wartezeit wachsenden Radius)
+  // und claimt sie atomar per Transaktion (kein Cloud Functions nötig, bleibt im
+  // kostenlosen Spark-Plan). Bei 3 Spielern sammelt der Initiator zwei Gegner
+  // und wird Host; bei einem Teil-Claim werden bereits geclaimte Tickets wieder
+  // freigegeben. Der Claimer wird automatisch Host.
+  function mmQueueName() {
+    return mmNp.current === 3 ? "queue3" : "queue2";
+  }
+  function myEloForMode(np) {
+    if (np === 3) return typeof (profile == null ? void 0 : profile.elo3) === "number" ? profile.elo3 : 1e3;
     return typeof (profile == null ? void 0 : profile.elo) === "number" ? profile.elo : 1e3;
   }
   function stopMatchmakingListeners(deleteTicket) {
@@ -2042,7 +2055,7 @@ window.FortressApp = function Fortress() {
       mmCancelDisconnect.current();
       mmCancelDisconnect.current = null;
     }
-    if (deleteTicket) fb.delete(`queue2/${SESSION_ID}`);
+    if (deleteTicket) fb.delete(`${mmQueueName()}/${SESSION_ID}`);
   }
   function mmScheduleClaimHeal(claimTs) {
     if (mmHealTimer.current && mmHealFor.current === claimTs) return;
@@ -2054,37 +2067,40 @@ window.FortressApp = function Fortress() {
     mmHealTimer.current = setTimeout(async () => {
       mmHealTimer.current = null;
       if (!mmActive.current) return;
-      const cur = await fb.get(`queue2/${SESSION_ID}`);
+      const qn = mmQueueName();
+      const cur = await fb.get(`${qn}/${SESSION_ID}`);
       if (cur && cur.status === "claiming" && cur.claimTs === claimTs) {
-        await fb.patch(`queue2/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null });
+        await fb.patch(`${qn}/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null });
       }
     }, MM_CLAIM_HEAL_MS);
   }
-  async function mmJoinMatchedGame(code) {
+  async function mmJoinMatchedGame(code, role, np) {
+    role = role === 3 ? 3 : 2;
+    np = np === 3 ? 3 : 2;
     stopMatchmakingListeners(false);
-    fb.delete(`queue2/${SESSION_ID}`);
-    numPlayersRef.current = 2;
-    setNumPlayers(2);
+    fb.delete(`${np === 3 ? "queue3" : "queue2"}/${SESSION_ID}`);
+    numPlayersRef.current = np;
+    setNumPlayers(np);
     const joinPayload = JSON.stringify({
       type: "join",
       n: Date.now(),
-      name: (profile == null ? void 0 : profile.name) || "Gast 2",
-      wappen: (profile == null ? void 0 : profile.wappen) || "♚",
-      color: (profile == null ? void 0 : profile.color) || "#dc2626",
-      elo: myEloFor2p()
+      name: (profile == null ? void 0 : profile.name) || ("Gast " + role),
+      wappen: (profile == null ? void 0 : profile.wappen) || (role === 2 ? "♚" : "♜"),
+      color: (profile == null ? void 0 : profile.color) || (role === 2 ? "#dc2626" : "#059669"),
+      elo: myEloForMode(np)
     });
-    const got = await fb.reserve(`games/${code}/guestAction2`, joinPayload);
+    const got = await fb.reserve(`games/${code}/guestAction${role}`, joinPayload);
     if (!got) {
       setMpError(t('warnSpielVoll'));
-      startMatchmaking();
+      startMatchmaking(np);
       return;
     }
     mpCodeRef.current = code;
-    myRole.current = 2;
+    myRole.current = role;
     online.current = true;
     hostSessionRef.current = "";
     setMpCode(code);
-    startPolling(code, 2);
+    startPolling(code, role);
     setMpScreen("waiting");
   }
   function mmAbandonHostGame(code) {
@@ -2094,12 +2110,14 @@ window.FortressApp = function Fortress() {
     cleanupGame(code, false);
     mpCodeRef.current = "";
   }
-  function mmBecomeHost(code, candidateId) {
+  function mmBecomeHost(code, pendingPaths) {
     mmActive.current = false;
     stopMatchmakingListeners(false);
     mpCodeRef.current = code;
     myRole.current = 1;
     online.current = true;
+    numPlayersRef.current = mmNp.current;
+    setNumPlayers(mmNp.current);
     gameStarted.current = false;
     joinedGuests.current = { 2: false, 3: false };
     guestActionApplied.current = { 2: 0, 3: 0 };
@@ -2109,77 +2127,108 @@ window.FortressApp = function Fortress() {
     setMpScreen("waiting");
     startPolling(code, 1);
     // Eigenes Ticket wird nicht mehr gebraucht (wir wissen bereits, dass wir
-    // gematcht sind). Das Kandidat-Ticket bleibt aber bestehen, bis der Gast
-    // tatsächlich beigetreten ist (siehe handleGuestAction "join") — eine
-    // fixe Lösch-Verzögerung wäre ein Race: wenn der Gast seinen
+    // gematcht sind). Die Kandidaten-Tickets bleiben aber bestehen, bis der
+    // jeweilige Gast tatsächlich beigetreten ist (siehe handleGuestAction
+    // "join") — eine fixe Lösch-Verzögerung wäre ein Race: wenn ein Gast seinen
     // "matched"-Status erst nach Ablauf der Verzögerung liest, verliert er
     // sein Ticket, bevor er je davon erfahren hat, und hängt für immer in
     // der Suche fest.
-    fb.delete(`queue2/${SESSION_ID}`);
-    mmPendingCandidateId.current = candidateId;
+    fb.delete(`${mmQueueName()}/${SESSION_ID}`);
+    mmPendingCandidates.current = { ...pendingPaths };
     if (mmWatchdog.current) clearTimeout(mmWatchdog.current);
     mmWatchdog.current = setTimeout(() => {
       mmWatchdog.current = null;
       if (gameStarted.current) return;
-      fb.delete(`queue2/${candidateId}`);
-      mmPendingCandidateId.current = null;
+      for (const k of Object.keys(mmPendingCandidates.current)) {
+        fb.delete(mmPendingCandidates.current[k]);
+      }
+      mmPendingCandidates.current = {};
+      const reNp = mmNp.current;
       mmAbandonHostGame(code);
-      startMatchmaking();
+      startMatchmaking(reNp);
     }, MM_GUEST_JOIN_TIMEOUT_MS);
   }
-  async function mmClaimAndMatch(candidateId) {
-    const { committed, value } = await fb.transact(`queue2/${candidateId}`, (current) => {
-      if (!current || current.status !== "waiting") return;
-      return { ...current, status: "claiming", claimBy: SESSION_ID, claimTs: Date.now() };
-    });
-    if (!committed || !value || value.claimBy !== SESSION_ID) return;
+  async function mmClaimAndMatch(candidateIds) {
+    const qn = mmQueueName();
+    const np = mmNp.current;
+    const claimTs = Date.now();
+    const claimed = [];
+    const releaseAll = async () => {
+      for (const rid of claimed) {
+        await fb.patch(`${qn}/${rid}`, { status: "waiting", claimBy: null, claimTs: null });
+      }
+    };
+    // Alle (np-1) Kandidaten nacheinander atomar claimen. Schlägt einer fehl
+    // (jemand anderes war schneller), werden die bereits geclaimten freigegeben.
+    for (const cid of candidateIds) {
+      const { committed, value } = await fb.transact(`${qn}/${cid}`, (current) => {
+        if (!current || current.status !== "waiting") return;
+        return { ...current, status: "claiming", claimBy: SESSION_ID, claimTs };
+      });
+      if (!committed || !value || value.claimBy !== SESSION_ID) {
+        await releaseAll();
+        return;
+      }
+      claimed.push(cid);
+    }
     const code = makeCode();
     const ok = await fb.set(`games/${code}`, {
       createdAt: Date.now(),
       state: null,
       guestAction2: null,
       guestAction3: null,
-      numPlayers: 2
+      numPlayers: np
     });
     if (!ok) {
-      await fb.patch(`queue2/${candidateId}`, { status: "waiting", claimBy: null, claimTs: null });
+      await releaseAll();
       return;
     }
-    await fb.patch(`queue2/${candidateId}`, { status: "matched", code, role: 2 });
-    await fb.patch(`queue2/${SESSION_ID}`, { status: "matched", code, role: 1 });
-    mmBecomeHost(code, candidateId);
+    // Rollen vergeben: Kandidaten bekommen Rolle 2, 3, …; ich selbst Rolle 1.
+    const pendingPaths = {};
+    let role = 2;
+    for (const cid of claimed) {
+      await fb.patch(`${qn}/${cid}`, { status: "matched", code, role });
+      pendingPaths[role] = `${qn}/${cid}`;
+      role++;
+    }
+    await fb.patch(`${qn}/${SESSION_ID}`, { status: "matched", code, role: 1 });
+    mmBecomeHost(code, pendingPaths);
   }
   async function mmTryFindMatch() {
     if (mmBusy.current) return;
     const data = mmQueueSnapshot.current;
     const my = data[SESSION_ID];
     if (!my || my.status !== "waiting") return;
+    const np = mmNp.current;
+    const need = np - 1;
+    const qn = mmQueueName();
     const now = Date.now();
     const myRad = mmRadius((now - my.ts) / 1e3);
-    let best = null, bestDiff = Infinity;
+    const cands = [];
     for (const [id, tk] of Object.entries(data)) {
       if (id === SESSION_ID || !tk) continue;
       if (tk.status !== "waiting") continue;
       if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
-        fb.delete(`queue2/${id}`);
+        fb.delete(`${qn}/${id}`);
         continue;
       }
       const allowedRad = Math.max(myRad, mmRadius((now - tk.ts) / 1e3));
       const diff = Math.abs(my.elo - tk.elo);
-      if (diff <= allowedRad && diff < bestDiff) {
-        best = id;
-        bestDiff = diff;
-      }
+      if (diff <= allowedRad) cands.push({ id, diff });
     }
-    if (!best) return;
-    // Nur die Seite mit der lexikographisch kleineren SESSION_ID darf claimen.
-    // Sonst claimen beide Seiten gleichzeitig gegenseitig (zwei parallele
-    // Transaktionen auf unterschiedlichen Pfaden, beide "erfolgreich") und
-    // erzeugen zwei verschiedene Spiele -> Host/Gast-Verwechslung.
-    if (SESSION_ID > best) return;
+    if (cands.length < need) return;
+    // Die (np-1) nächstgelegenen Kandidaten (kleinste ELO-Differenz) wählen.
+    cands.sort((a, b) => a.diff - b.diff);
+    const chosen = cands.slice(0, need).map((c) => c.id);
+    // Nur die Seite mit der lexikographisch kleinsten SESSION_ID innerhalb der
+    // gewählten Gruppe darf claimen (= genau ein Host pro kompatibler Gruppe).
+    // Sonst würden mehrere Seiten gleichzeitig dieselben Kandidaten claimen.
+    for (const cid of chosen) {
+      if (SESSION_ID > cid) return;
+    }
     mmBusy.current = true;
     try {
-      await mmClaimAndMatch(best);
+      await mmClaimAndMatch(chosen);
     } finally {
       mmBusy.current = false;
     }
@@ -2190,7 +2239,7 @@ window.FortressApp = function Fortress() {
     if (!my) return;
     if (my.status === "matched" && my.code) {
       mmActive.current = false;
-      mmJoinMatchedGame(my.code);
+      mmJoinMatchedGame(my.code, my.role || 2, mmNp.current);
       return;
     }
     if (my.status === "claiming") {
@@ -2202,30 +2251,34 @@ window.FortressApp = function Fortress() {
   function mmTick() {
     if (!mmActive.current) return;
     setMmElapsed(Math.round((Date.now() - mmStartedAt.current) / 1e3));
-    fb.patch(`queue2/${SESSION_ID}`, { hb: Date.now() });
+    fb.patch(`${mmQueueName()}/${SESSION_ID}`, { hb: Date.now() });
     mmOnQueueUpdate();
   }
   function cancelMatchmaking() {
     mmActive.current = false;
+    mmPendingCandidates.current = {};
     stopMatchmakingListeners(true);
     setMpScreen("online");
     setMmElapsed(0);
   }
-  async function startMatchmaking() {
+  async function startMatchmaking(np) {
+    np = np === 3 ? 3 : 2;
     setMpError("");
     const client = await getFirebase();
     if (!client) {
       setMpError(MP_CONFIGURED ? t('warnVerbindung') + " " + _fbError : t('fbMissing'));
       return;
     }
-    numPlayersRef.current = 2;
-    setNumPlayers(2);
+    mmNp.current = np;
+    numPlayersRef.current = np;
+    setNumPlayers(np);
+    const qn = np === 3 ? "queue3" : "queue2";
     const now = Date.now();
     const ticket = {
       name: (profile == null ? void 0 : profile.name) || "Spieler",
       wappen: (profile == null ? void 0 : profile.wappen) || "♔",
       color: (profile == null ? void 0 : profile.color) || "#2563eb",
-      elo: myEloFor2p(),
+      elo: myEloForMode(np),
       ts: now,
       hb: now,
       status: "waiting",
@@ -2234,7 +2287,7 @@ window.FortressApp = function Fortress() {
       code: null,
       role: null
     };
-    const ok = await fb.set(`queue2/${SESSION_ID}`, ticket);
+    const ok = await fb.set(`${qn}/${SESSION_ID}`, ticket);
     if (!ok) {
       setMpError("Konnte nicht in die Warteschlange eintragen: " + _fbError);
       return;
@@ -2242,12 +2295,13 @@ window.FortressApp = function Fortress() {
     mmStartedAt.current = now;
     mmQueueSnapshot.current = { [SESSION_ID]: ticket };
     mmActive.current = true;
+    mmPendingCandidates.current = {};
     if (mmCancelDisconnect.current) mmCancelDisconnect.current();
-    mmCancelDisconnect.current = fb.onDisconnectRemove(`queue2/${SESSION_ID}`);
+    mmCancelDisconnect.current = fb.onDisconnectRemove(`${qn}/${SESSION_ID}`);
     setMmElapsed(0);
     setMpScreen("matchmaking");
     if (mmChannel.current) mmChannel.current.stop();
-    mmChannel.current = fb.subscribe("queue2", (data) => {
+    mmChannel.current = fb.subscribe(qn, (data) => {
       mmQueueSnapshot.current = data || {};
       mmOnQueueUpdate();
     });
@@ -3559,7 +3613,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.6.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3770,19 +3824,7 @@ window.FortressApp = function Fortress() {
     color: "#fbbf24",
     marginBottom: 16,
     lineHeight: 1.5
-  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("button", { onClick: startMatchmaking, style: {
-    width: "100%",
-    background: "linear-gradient(135deg,#f59e0b,#dc2626)",
-    color: "white",
-    border: "none",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: 12,
-    cursor: "pointer",
-    marginBottom: 8,
-    letterSpacing: "0.03em"
-  } }, t('quickMatchBtn')), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#475569" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
+  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
     numPlayersRef.current = m;
     setNumPlayers(m);
   }, style: {
@@ -3795,7 +3837,19 @@ window.FortressApp = function Fortress() {
     background: numPlayers === m ? "rgba(2,132,199,0.3)" : "rgba(255,255,255,0.05)",
     color: numPlayers === m ? "#7dd3fc" : "#94a3b8",
     border: numPlayers === m ? "1px solid rgba(2,132,199,0.6)" : "1px solid rgba(255,255,255,0.1)"
-  } }, m === 2 ? t('local2p') : "\u{1F451} 3 Spieler"))), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
+  } }, m === 2 ? t('local2p') : "\u{1F451} 3 Spieler"))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#f59e0b,#dc2626)",
+    color: "white",
+    border: "none",
+    padding: "16px",
+    fontSize: 16,
+    fontWeight: 800,
+    borderRadius: 12,
+    cursor: "pointer",
+    marginBottom: 8,
+    letterSpacing: "0.03em"
+  } }, t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#475569" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
     width: "100%",
     background: "linear-gradient(135deg,#059669,#0284c7)",
     color: "white",
