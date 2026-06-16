@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.4)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.5)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -645,3 +645,16 @@ und beschiessen danach gegenseitig ihre Festungen.
     Stück-Vorschau erschien erst beim nächsten zufälligen Re-Render (z. B. Timer-Tick,
     bis zu ~1s Verzögerung). Jetzt ruft `placePiece()` nach dem Platzieren ebenfalls
     `setUiTick()` auf — die nächste Vorschau erscheint sofort, lokal wie online.
+- **v3.5.5**: Fix — wahre Ursache des Vorschau-"Delays" beim Drop gefunden.
+  - **Drag-vs-Tap-Schwelle skalierte fälschlich mit der Canvas-Anzeigegröße**:
+    `onPointerUp` klassifizierte Gesten als Tap (→ Drehen) statt Platzieren,
+    wenn die Bewegung `< CELL * 1.5` in **internen Grid-Pixeln** war. Da diese
+    aus den CSS-Pixeln über `toCanvas()` (Skalierung `viewSize.w / W`) berechnet
+    werden, musste man bei größerer Canvas-Anzeige (z. B. nach der UX-Vergrößerung
+    in v3.5.2) physisch deutlich weiter ziehen, damit ein Drop überhaupt als
+    Platzierung erkannt wurde — sonst drehte sich nur das Stück, ohne Fehlermeldung,
+    und der Spieler musste erneut ziehen → gefühltes "Delay".
+  - **Fix**: Die Klassifizierung nutzt jetzt die tatsächliche Bildschirmbewegung
+    (`e.clientX/clientY` ggü. `startCX/startCY`, feste Schwelle `14px`), unabhängig
+    von Canvas-Auflösung oder Zoom. Platzieren reagiert dadurch beim ersten
+    Loslassen zuverlässig und ohne gefühlte Verzögerung.
