@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.3)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -746,3 +746,24 @@ und beschiessen danach gegenseitig ihre Festungen.
     übertragen wurde und der Fallback-Name ("Spieler 1"/"Spieler 2") stehen
     blieb. Fix: deterministischer Tie-Breaker in `mmTryFindMatch()` — nur
     die Seite mit der lexikographisch kleineren `SESSION_ID` darf claimen.
+- **v3.6.3**: Fix — Gast hing nach erfolgreichem Match dauerhaft in der
+  Suche fest (Race-Condition bei der Ticket-Aufräumung).
+  - `mmBecomeHost()` löschte bisher **beide** Queue2-Tickets (eigenes +
+    Kandidat) nach einer fixen `MM_CLEANUP_DELAY_MS`-Verzögerung (8s),
+    unabhängig davon, ob der Gast seinen "matched"-Status überhaupt schon
+    gelesen hatte. Bei Netzwerklatenz konnte das Kandidat-Ticket gelöscht
+    werden, bevor der Gast (via `queue2`-Subscription) je davon erfuhr —
+    er sah dann nie `status: "matched"`, blieb in `mmActive` stecken und
+    hatte kein Ticket mehr, über das ein erneuter Versuch möglich gewesen
+    wäre.
+  - Fix: Aufräumung ist jetzt ereignisgesteuert statt zeitbasiert.
+    - Der Host löscht sein **eigenes** Ticket sofort in `mmBecomeHost()`
+      (unkritisch, der Host braucht es nicht mehr).
+    - Das **Kandidat-Ticket** (= Gast) wird erst gelöscht, wenn der Host
+      den echten Beitritt über `guestAction2` bestätigt bekommt
+      (`handleGuestAction`, Fall `type === "join"`, neuer Ref
+      `mmPendingCandidateId`).
+    - Der bestehende 15s-Watchdog (`MM_GUEST_JOIN_TIMEOUT_MS`) bleibt als
+      Fallback: tritt der Gast nie bei (z. B. Ticket war ohnehin eine
+      Karteileiche), wird das Kandidat-Ticket gelöscht und der Host kehrt
+      automatisch in die Warteschlange zurück.
