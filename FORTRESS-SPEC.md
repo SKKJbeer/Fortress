@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -727,3 +727,22 @@ und beschiessen danach gegenseitig ihre Festungen.
     ein Emoji über den ganzen Bildschirm.
   - Neue `jesterdance`-Keyframe-Animation (Hoch-Tief-Wippen + Rotation in
     Schleife) + Hofnarr-Emoji (🤡) ersetzt die Lupe als Warte-Symbol.
+- **v3.6.2**: Fix — Matchmaking matchte nicht zuverlässig (zwei Bugs).
+  - Bug 1 (Firebase-Regeln): `.read: true` für `queue2` war nur auf
+    Ticket-Ebene (`/queue2/{ticketId}`) gesetzt, nicht auf der Listen-Ebene
+    selbst. `mmTryFindMatch()` muss aber die **ganze Liste** lesen
+    (`onValue("queue2")`), um Kandidaten zu finden — das wurde von Firebase
+    mit `permission_denied` abgelehnt, da keine Regel auf Listenebene
+    existierte. Fix: `.read: true` jetzt zusätzlich auf `queue2`-Root-Ebene.
+  - Bug 2 (Race-Condition beim Claiming): Wenn zwei wartende Clients sich
+    gegenseitig als Match fanden, versuchten **beide gleichzeitig** den
+    anderen zu claimen (`mmClaimAndMatch` transagiert nur das fremde
+    Ticket, nicht das eigene). Beide Transaktionen liefen auf
+    unterschiedlichen Pfaden und konnten beide erfolgreich committen —
+    dadurch erstellten beide Seiten ein eigenes Spiel und überschrieben sich
+    gegenseitig die `matched`-Markierung. Resultat: beide Clients wurden
+    Host (gleicher Spieler/gleiche Rolle) und der jeweilige Gast trat dem
+    falschen/keinem Spiel bei, wodurch `playerInfo` nie korrekt vom Host
+    übertragen wurde und der Fallback-Name ("Spieler 1"/"Spieler 2") stehen
+    blieb. Fix: deterministischer Tie-Breaker in `mmTryFindMatch()` — nur
+    die Seite mit der lexikographisch kleineren `SESSION_ID` darf claimen.
