@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.3)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.4)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -638,3 +638,10 @@ und beschiessen danach gegenseitig ihre Festungen.
     Stück-Vorschau erscheint ohne Round-Trip-Delay. Der autoritative Host-State
     überschreibt anschließend wie gewohnt (`applyState`), Diskrepanzen korrigieren
     sich selbst.
+- **v3.5.4**: Fix — Vorschau-Delay auch lokal behoben.
+  - **`placePiece()` löste keinen Re-Render aus**: `setGrid()` aktualisiert nur Refs
+    (`grid.current`, `gridVersion.current`), kein React-State. `placeCannon()` rief
+    danach bereits `setUiTick()` auf, `placePiece()` jedoch nicht — die neue
+    Stück-Vorschau erschien erst beim nächsten zufälligen Re-Render (z. B. Timer-Tick,
+    bis zu ~1s Verzögerung). Jetzt ruft `placePiece()` nach dem Platzieren ebenfalls
+    `setUiTick()` auf — die nächste Vorschau erscheint sofort, lokal wie online.
