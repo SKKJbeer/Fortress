@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -616,3 +616,6 @@ und beschiessen danach gegenseitig ihre Festungen.
   - **Sprachschalter** im Menü: 🇩🇪 DE / 🇬🇧 EN als Pill-Buttons.
   - Alle UI-Strings ersetzt: Menü, HUD, Phasenbanner, Tipps, Beenden-Dialog, Profil,
     Online-Lobby, Wartescreen, Ergebnis-Screen, Leaderboard, Hilfekarten.
+- **v3.5.1**: Fix — verbliebene hartcodierte deutsche Strings im Spiel übersetzt.
+  Letzte-Kanone-platziert-Meldung, Warte-/Verbinde-Bildschirm, Code-teilen-Hinweis,
+  Fallback-Spielernamen (`Spieler N`) und Profil-Editor-Default nutzen jetzt `t()`.
