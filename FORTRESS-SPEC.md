@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -619,3 +619,11 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v3.5.1**: Fix — verbliebene hartcodierte deutsche Strings im Spiel übersetzt.
   Letzte-Kanone-platziert-Meldung, Warte-/Verbinde-Bildschirm, Code-teilen-Hinweis,
   Fallback-Spielernamen (`Spieler N`) und Profil-Editor-Default nutzen jetzt `t()`.
+- **v3.5.2**: UX — mehr Spielfläche während der Bauphase.
+  - **Stück-Vorschau-Panel verkleinert**: Padding, Mindesthöhe (64→42px), Punktgröße
+    (11→8px) und Beschriftung kompakter, ohne die Drehen-Funktion einzuschränken.
+  - **Dynamische Höhenmessung statt fixem Abzug**: `fit()` misst jetzt die tatsächliche
+    Höhe von Score-Leiste, 3-Spieler-Zeile und Vorschau-Panel per Ref/`ResizeObserver`
+    statt einen festen Wert (150px) vom Viewport abzuziehen. Dadurch passt sich das
+    Spielfeld korrekt an — auch bei 3 Spielern oder wenn sich die Panel-Höhe durch
+    Phasenwechsel ändert — ohne dass das Layout über den Bildschirmrand hinausragt.
