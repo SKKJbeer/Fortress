@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.3)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -627,3 +627,14 @@ und beschiessen danach gegenseitig ihre Festungen.
     statt einen festen Wert (150px) vom Viewport abzuziehen. Dadurch passt sich das
     Spielfeld korrekt an — auch bei 3 Spielern oder wenn sich die Panel-Höhe durch
     Phasenwechsel ändert — ohne dass das Layout über den Bildschirmrand hinausragt.
+- **v3.5.3**: Fix — Layout-Sprünge & Online-Verzögerung beim Bauen.
+  - **Stück-Vorschau fixe Box-Größe**: Vorschau-Raster sitzt jetzt in einer festen
+    32×32px-Box (Dot-Größe passt sich pro Stück an: `Math.floor(BOX / max(Zeilen,
+    Spalten)) - 1`). Lange Teile (z. B. I-Stück) ändern dadurch nicht mehr die Höhe
+    des Panels, also kein Aufblähen von Bauleiste/Spielfeld mehr bei länglichen Teilen.
+  - **Client-seitige Vorhersage für Gäste (Online)**: Platzieren, Kanone setzen und
+    Drehen werden beim Gast jetzt sofort lokal angewendet (`placePiece`/`placeCannon`/
+    `rotatePiece`) statt auf die Host-Bestätigung über Firebase zu warten — die nächste
+    Stück-Vorschau erscheint ohne Round-Trip-Delay. Der autoritative Host-State
+    überschreibt anschließend wie gewohnt (`applyState`), Diskrepanzen korrigieren
+    sich selbst.
