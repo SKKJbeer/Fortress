@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.6)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -156,6 +156,42 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Spieldaten werden NICHT bei pagehide/visibilitychange gelöscht (iOS feuert
   diese schon beim App-Wechsel → würde Spiel killen). Nur bei bewusstem Verlassen
 - Verlust-Zustand wird mehrfach gepusht (sofort, +300ms, +800ms) zur Sicherheit
+
+### Matchmaking ("Schnellspiel", seit v3.6.0, nur 2 Spieler):
+
+- **Kein aktives Koppeln per Code** — Spieler tritt einer Warteschlange bei
+  statt einen Code zu teilen/einzugeben. Code-basiertes Erstellen/Beitreten
+  bleibt parallel verfügbar (für Spiele mit Freunden).
+- **Schema**: `/queue2/{SESSION_ID}` → `{ name, wappen, color, elo, ts, hb,
+  status, claimBy, claimTs, code, role }`. `ts` = Eintrittszeit (fest, treibt
+  den Such-Radius), `hb` = Heartbeat (alle 2s aktualisiert, Stale-Erkennung).
+- **Kein Server/Cloud Function nötig** (bleibt im Spark-Plan):
+  - Jeder wartende Client abonniert `/queue2` per `onValue()` (echtes
+    Realtime, kein Polling) und sucht bei jedem Snapshot + alle 2s
+    (`MM_TICK_MS`) selbst nach einem Kandidaten.
+  - **ELO-Suchradius wächst mit Wartezeit**: `radius = MM_BASE_RADIUS (60) +
+    wartezeit_s * MM_GROWTH_PER_SEC (18)`. Damit niemand ewig wartet, gilt
+    der **größere** der beiden Radien (eigener vs. Kandidat).
+  - **Atomares Claiming per Firebase-Transaktion** (`fb.transact`) verhindert,
+    dass zwei Matcher gleichzeitig denselben Kandidaten claimen — exakt das
+    gleiche Muster wie die bestehende Gast-Slot-Reservierung.
+  - Der **Claimer wird automatisch Host (P1)**, erstellt `/games/{code}` und
+    schreibt `status:"matched"` + `code`/`role` in beide Queue-Tickets. Der
+    gematchte Gegner erkennt das über seinen eigenen Ticket-Snapshot und
+    tritt dem Spiel bei (`reserve` auf `guestAction2`, wie beim normalen
+    Code-Beitritt).
+  - **Selbstheilung ohne Cron**: Ticket bleibt durch `onDisconnect().remove()`
+    serverseitig konsistent (Tab-Schluss/Crash → sofort gelöscht, kein Cloud
+    Function nötig). Zusätzlich: veraltete Tickets (`hb` älter als
+    `MM_HEARTBEAT_STALE_MS` = 35s) werden bei jedem Scan best-effort gelöscht;
+    ein hängender `"claiming"`-Status (Matcher abgestürzt) heilt nach
+    `MM_CLAIM_HEAL_MS` = 6s zurück auf `"waiting"`; ein Host, dessen
+    gematchter Gegner nicht binnen `MM_GUEST_JOIN_TIMEOUT_MS` = 15s tatsächlich
+    beitritt (verwaistes Ticket erwischt), bricht ab und sucht automatisch
+    neu.
+  - **Aufräumen**: Beide Queue-Tickets werden `MM_CLEANUP_DELAY_MS` = 8s nach
+    dem Match gelöscht — lang genug, damit der gematchte Client den
+    `"matched"`-Snapshot sicher gelesen hat.
 
 -----
 
@@ -667,3 +703,18 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Fix: Die Bedingung in `placeCannon()` prüft jetzt zusätzlich auf
     `phase_r.current === "cannon"`, sodass auch dort der Timer auf 3s springt,
     sobald `cannonBudget` aller Spieler aufgebraucht ist.
+- **v3.6.0**: Feature — Matchmaking ("Schnellspiel") für 2-Spieler-Online.
+  - Neuer Button "⚡ Schnellspiel" im Online-Menü, neben den bestehenden
+    Optionen Code erstellen/beitreten (bleiben erhalten). Spieler tritt einer
+    Warteschlange bei (`/queue2/{SESSION_ID}`) statt aktiv einen Code zu
+    teilen.
+  - Matching erfolgt **ELO-nah mit wachsendem Suchradius** (Basis ±60,
+    +18/Sekunde Wartezeit) — kurze Wartezeit garantiert, ohne grobe
+    ELO-Fehlpaarungen am Anfang.
+  - Komplett ohne Cloud Functions (Spark-Plan-konform): atomares Claiming per
+    Firebase-Transaktion, `onDisconnect().remove()` für sofortige Aufräumung
+    bei Verbindungsabbruch, Heartbeat-basierte Stale-Erkennung und
+    Selbstheilung bei abgebrochenem Matching-Versuch. Details siehe Abschnitt
+    8 ("Matchmaking").
+  - Siehe `index.html`: `startMatchmaking()`, `mmTryFindMatch()`,
+    `mmClaimAndMatch()`, `mmBecomeHost()`, `mmJoinMatchedGame()`.

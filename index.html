@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.5.6</title>
+  <title>FORTRESS v3.6.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -30,7 +30,7 @@
   <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction }
+    import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     try {
       const app = initializeApp({
@@ -38,7 +38,7 @@
         projectId: "fortress-cbe30",
       });
       const db = getDatabase(app);
-      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction };
+      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect };
       window.dispatchEvent(new Event("fb-ready"));
     } catch (e) {
       console.error("Firebase init failed:", e);
@@ -213,6 +213,43 @@ const fb = {
       _fbError = e.message;
       return false;
     }
+  },
+  // Generische Transaktion. mutateFn(current) gibt den neuen Wert zurück,
+  // oder undefined um abzubrechen. Gibt { committed, value } zurück.
+  async transact(path, mutateFn) {
+    const s = sdk();
+    if (!s || !s.runTransaction) {
+      _fbError = "Transaktion nicht verf\xFCgbar";
+      return { committed: false, value: null };
+    }
+    try {
+      const res = await s.runTransaction(s.ref(s.db, path), mutateFn);
+      return { committed: !!(res && res.committed), value: res ? res.snapshot.val() : null };
+    } catch (e) {
+      _fbError = e.message;
+      return { committed: false, value: null };
+    }
+  },
+  // Registriert serverseitiges Auto-Löschen falls die Verbindung abbricht
+  // (Tab geschlossen, Crash, Netzwerkausfall) — ohne Cloud Functions.
+  // Gibt eine Cancel-Funktion zurück.
+  onDisconnectRemove(path) {
+    const s = sdk();
+    if (!s || !s.onDisconnect) return () => {
+    };
+    try {
+      const dc = s.onDisconnect(s.ref(s.db, path));
+      dc.remove();
+      return () => {
+        try {
+          dc.cancel();
+        } catch (e) {
+        }
+      };
+    } catch (e) {
+      return () => {
+      };
+    }
   }
 };
 async function getFirebase() {
@@ -247,6 +284,18 @@ function makeCode() {
   for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }
+// Matchmaking: ELO-naher Suchradius, der mit der Wartezeit wächst, damit
+// niemand ewig wartet. Nach ~50s ist der Radius praktisch unbegrenzt.
+const MM_BASE_RADIUS = 60;
+const MM_GROWTH_PER_SEC = 18;
+function mmRadius(waitSec) {
+  return MM_BASE_RADIUS + Math.max(0, waitSec) * MM_GROWTH_PER_SEC;
+}
+const MM_TICK_MS = 2000;
+const MM_HEARTBEAT_STALE_MS = 35e3;
+const MM_CLAIM_HEAL_MS = 6e3;
+const MM_GUEST_JOIN_TIMEOUT_MS = 15e3;
+const MM_CLEANUP_DELAY_MS = 8e3;
 function sanitizeState(s) {
   if (!s || typeof s !== "object") return null;
   if (!Array.isArray(s.grid) || !s.phase || typeof s.timer !== "number") return null;
@@ -809,6 +858,13 @@ const LANGS = {
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Zusammen spielen mit 2 oder 3 Spielern, jeder auf seinem eigenen Handy.",
     fbMissing: "⚠️ Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit FB_URL).",
+    quickMatchBtn: "⚡ Schnellspiel (2 Spieler)",
+    quickMatchSub: "Du wirst automatisch mit einem passenden Gegner verbunden — kein Code n\xF6tig",
+    orDivider: "ODER MIT CODE",
+    searchingOpponent: "Suche Gegner…",
+    searchingSince: "Seit {s}s in der Warteschlange",
+    searchingRadius: "Such-ELO-Radius: \xB1{r}",
+    cancelSearch: "Suche abbrechen",
     playerCount: "SPIELERANZAHL (zum Erstellen)",
     createGame: "➕ Spiel erstellen ({n} Spieler)",
     joinGameBtn: "\u{1F511} Spiel beitreten",
@@ -934,6 +990,13 @@ const LANGS = {
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Play together with 2 or 3 players, each on their own phone.",
     fbMissing: "⚠️ Firebase URL missing. Add your database URL in the code (line with FB_URL).",
+    quickMatchBtn: "⚡ Quick Match (2 Players)",
+    quickMatchSub: "You'll be matched with a suitable opponent automatically — no code needed",
+    orDivider: "OR WITH CODE",
+    searchingOpponent: "Searching for opponent…",
+    searchingSince: "Waiting {s}s in queue",
+    searchingRadius: "Search ELO radius: \xB1{r}",
+    cancelSearch: "Cancel search",
     playerCount: "PLAYER COUNT (to create)",
     createGame: "➕ Create game ({n} players)",
     joinGameBtn: "\u{1F511} Join game",
@@ -1350,6 +1413,17 @@ window.FortressApp = function Fortress() {
   const [mpInput, setMpInput] = useState("");
   const [mpError, setMpError] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [mmElapsed, setMmElapsed] = useState(0);
+  const mmChannel = useRef(null);
+  const mmTickTimer = useRef(null);
+  const mmHealTimer = useRef(null);
+  const mmWatchdog = useRef(null);
+  const mmCancelDisconnect = useRef(null);
+  const mmQueueSnapshot = useRef({});
+  const mmStartedAt = useRef(0);
+  const mmBusy = useRef(false);
+  const mmActive = useRef(false);
+  const mmHealFor = useRef(null);
   const [showDbg, setShowDbg] = useState(false);
   const dbg = useRef({ statesRecv: 0, statesPush: 0, actSent: 0, actRecv: 0, lastErr: "", lastInfo: "" });
   function dbgBump(field, info) {
@@ -1932,6 +2006,233 @@ window.FortressApp = function Fortress() {
     setMpCode(code);
     startPolling(code, role);
     setMpScreen("waiting");
+  }
+  // ───────────────── Matchmaking (Schnellspiel, nur 2 Spieler) ─────────────────
+  // Statt aktiv einen Code zu teilen, trägt sich der Spieler in /queue2/{SESSION_ID}
+  // ein. Jeder wartende Client sucht selbst per onValue-Snapshot nach einem
+  // passenden Gegner (ELO-Differenz innerhalb eines mit der Wartezeit wachsenden
+  // Radius) und claimt ihn atomar per Transaktion (kein Cloud Functions nötig,
+  // bleibt im kostenlosen Spark-Plan). Der Claimer wird automatisch Host.
+  function myEloFor2p() {
+    return typeof (profile == null ? void 0 : profile.elo) === "number" ? profile.elo : 1e3;
+  }
+  function stopMatchmakingListeners(deleteTicket) {
+    if (mmChannel.current) {
+      mmChannel.current.stop();
+      mmChannel.current = null;
+    }
+    if (mmTickTimer.current) {
+      clearInterval(mmTickTimer.current);
+      mmTickTimer.current = null;
+    }
+    if (mmHealTimer.current) {
+      clearTimeout(mmHealTimer.current);
+      mmHealTimer.current = null;
+    }
+    if (mmCancelDisconnect.current) {
+      mmCancelDisconnect.current();
+      mmCancelDisconnect.current = null;
+    }
+    if (deleteTicket) fb.delete(`queue2/${SESSION_ID}`);
+  }
+  function mmScheduleClaimHeal(claimTs) {
+    if (mmHealTimer.current && mmHealFor.current === claimTs) return;
+    if (mmHealTimer.current) {
+      clearTimeout(mmHealTimer.current);
+      mmHealTimer.current = null;
+    }
+    mmHealFor.current = claimTs;
+    mmHealTimer.current = setTimeout(async () => {
+      mmHealTimer.current = null;
+      if (!mmActive.current) return;
+      const cur = await fb.get(`queue2/${SESSION_ID}`);
+      if (cur && cur.status === "claiming" && cur.claimTs === claimTs) {
+        await fb.patch(`queue2/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null });
+      }
+    }, MM_CLAIM_HEAL_MS);
+  }
+  async function mmJoinMatchedGame(code) {
+    stopMatchmakingListeners(false);
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
+    const joinPayload = JSON.stringify({
+      type: "join",
+      n: Date.now(),
+      name: (profile == null ? void 0 : profile.name) || "Gast 2",
+      wappen: (profile == null ? void 0 : profile.wappen) || "♚",
+      color: (profile == null ? void 0 : profile.color) || "#dc2626",
+      elo: myEloFor2p()
+    });
+    const got = await fb.reserve(`games/${code}/guestAction2`, joinPayload);
+    if (!got) {
+      setMpError(t('warnSpielVoll'));
+      startMatchmaking();
+      return;
+    }
+    mpCodeRef.current = code;
+    myRole.current = 2;
+    online.current = true;
+    hostSessionRef.current = "";
+    setMpCode(code);
+    startPolling(code, 2);
+    setMpScreen("waiting");
+  }
+  function mmAbandonHostGame(code) {
+    online.current = false;
+    myRole.current = 0;
+    hostSessionRef.current = "";
+    cleanupGame(code, false);
+    mpCodeRef.current = "";
+  }
+  function mmBecomeHost(code, candidateId) {
+    mmActive.current = false;
+    stopMatchmakingListeners(false);
+    mpCodeRef.current = code;
+    myRole.current = 1;
+    online.current = true;
+    gameStarted.current = false;
+    joinedGuests.current = { 2: false, 3: false };
+    guestActionApplied.current = { 2: 0, 3: 0 };
+    hostSessionRef.current = SESSION_ID;
+    statRecorded.current = false;
+    setMpCode(code);
+    setMpScreen("waiting");
+    startPolling(code, 1);
+    if (mmWatchdog.current) clearTimeout(mmWatchdog.current);
+    mmWatchdog.current = setTimeout(() => {
+      mmWatchdog.current = null;
+      if (gameStarted.current) return;
+      fb.delete(`queue2/${candidateId}`);
+      fb.delete(`queue2/${SESSION_ID}`);
+      mmAbandonHostGame(code);
+      startMatchmaking();
+    }, MM_GUEST_JOIN_TIMEOUT_MS);
+    setTimeout(() => {
+      fb.delete(`queue2/${candidateId}`);
+      fb.delete(`queue2/${SESSION_ID}`);
+    }, MM_CLEANUP_DELAY_MS);
+  }
+  async function mmClaimAndMatch(candidateId) {
+    const { committed, value } = await fb.transact(`queue2/${candidateId}`, (current) => {
+      if (!current || current.status !== "waiting") return;
+      return { ...current, status: "claiming", claimBy: SESSION_ID, claimTs: Date.now() };
+    });
+    if (!committed || !value || value.claimBy !== SESSION_ID) return;
+    const code = makeCode();
+    const ok = await fb.set(`games/${code}`, {
+      createdAt: Date.now(),
+      state: null,
+      guestAction2: null,
+      guestAction3: null,
+      numPlayers: 2
+    });
+    if (!ok) {
+      await fb.patch(`queue2/${candidateId}`, { status: "waiting", claimBy: null, claimTs: null });
+      return;
+    }
+    await fb.patch(`queue2/${candidateId}`, { status: "matched", code, role: 2 });
+    await fb.patch(`queue2/${SESSION_ID}`, { status: "matched", code, role: 1 });
+    mmBecomeHost(code, candidateId);
+  }
+  async function mmTryFindMatch() {
+    if (mmBusy.current) return;
+    const data = mmQueueSnapshot.current;
+    const my = data[SESSION_ID];
+    if (!my || my.status !== "waiting") return;
+    const now = Date.now();
+    const myRad = mmRadius((now - my.ts) / 1e3);
+    let best = null, bestDiff = Infinity;
+    for (const [id, tk] of Object.entries(data)) {
+      if (id === SESSION_ID || !tk) continue;
+      if (tk.status !== "waiting") continue;
+      if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
+        fb.delete(`queue2/${id}`);
+        continue;
+      }
+      const allowedRad = Math.max(myRad, mmRadius((now - tk.ts) / 1e3));
+      const diff = Math.abs(my.elo - tk.elo);
+      if (diff <= allowedRad && diff < bestDiff) {
+        best = id;
+        bestDiff = diff;
+      }
+    }
+    if (!best) return;
+    mmBusy.current = true;
+    try {
+      await mmClaimAndMatch(best);
+    } finally {
+      mmBusy.current = false;
+    }
+  }
+  function mmOnQueueUpdate() {
+    if (!mmActive.current) return;
+    const my = mmQueueSnapshot.current[SESSION_ID];
+    if (!my) return;
+    if (my.status === "matched" && my.code) {
+      mmActive.current = false;
+      mmJoinMatchedGame(my.code);
+      return;
+    }
+    if (my.status === "claiming") {
+      mmScheduleClaimHeal(my.claimTs);
+      return;
+    }
+    mmTryFindMatch();
+  }
+  function mmTick() {
+    if (!mmActive.current) return;
+    setMmElapsed(Math.round((Date.now() - mmStartedAt.current) / 1e3));
+    fb.patch(`queue2/${SESSION_ID}`, { hb: Date.now() });
+    mmOnQueueUpdate();
+  }
+  function cancelMatchmaking() {
+    mmActive.current = false;
+    stopMatchmakingListeners(true);
+    setMpScreen("online");
+    setMmElapsed(0);
+  }
+  async function startMatchmaking() {
+    setMpError("");
+    const client = await getFirebase();
+    if (!client) {
+      setMpError(MP_CONFIGURED ? t('warnVerbindung') + " " + _fbError : t('fbMissing'));
+      return;
+    }
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
+    const now = Date.now();
+    const ticket = {
+      name: (profile == null ? void 0 : profile.name) || "Spieler",
+      wappen: (profile == null ? void 0 : profile.wappen) || "♔",
+      color: (profile == null ? void 0 : profile.color) || "#2563eb",
+      elo: myEloFor2p(),
+      ts: now,
+      hb: now,
+      status: "waiting",
+      claimBy: null,
+      claimTs: null,
+      code: null,
+      role: null
+    };
+    const ok = await fb.set(`queue2/${SESSION_ID}`, ticket);
+    if (!ok) {
+      setMpError("Konnte nicht in die Warteschlange eintragen: " + _fbError);
+      return;
+    }
+    mmStartedAt.current = now;
+    mmQueueSnapshot.current = { [SESSION_ID]: ticket };
+    mmActive.current = true;
+    if (mmCancelDisconnect.current) mmCancelDisconnect.current();
+    mmCancelDisconnect.current = fb.onDisconnectRemove(`queue2/${SESSION_ID}`);
+    setMmElapsed(0);
+    setMpScreen("matchmaking");
+    if (mmChannel.current) mmChannel.current.stop();
+    mmChannel.current = fb.subscribe("queue2", (data) => {
+      mmQueueSnapshot.current = data || {};
+      mmOnQueueUpdate();
+    });
+    if (mmTickTimer.current) clearInterval(mmTickTimer.current);
+    mmTickTimer.current = setInterval(mmTick, MM_TICK_MS);
   }
   function startOnlineGame(role) {
     myRole.current = role;
@@ -3238,7 +3539,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.5.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.6.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3449,7 +3750,19 @@ window.FortressApp = function Fortress() {
     color: "#fbbf24",
     marginBottom: 16,
     lineHeight: 1.5
-  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
+  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("button", { onClick: startMatchmaking, style: {
+    width: "100%",
+    background: "linear-gradient(135deg,#f59e0b,#dc2626)",
+    color: "white",
+    border: "none",
+    padding: "16px",
+    fontSize: 16,
+    fontWeight: 800,
+    borderRadius: 12,
+    cursor: "pointer",
+    marginBottom: 8,
+    letterSpacing: "0.03em"
+  } }, t('quickMatchBtn')), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#475569" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
     numPlayersRef.current = m;
     setNumPlayers(m);
   }, style: {
@@ -3491,7 +3804,21 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, t('back'))), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 14px", fontSize: 20 } }, t('enterCode')), /* @__PURE__ */ React.createElement(
+  } }, t('back'))), mpScreen === "matchmaking" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: {
+    fontSize: 30,
+    marginBottom: 6,
+    animation: "sl 1.4s ease-in-out infinite"
+  } }, "\u{1F50D}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 22 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: cancelMatchmaking, style: {
+    width: "100%",
+    background: "rgba(255,255,255,0.08)",
+    color: "#e2e8f0",
+    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "14px",
+    fontSize: 15,
+    fontWeight: 700,
+    borderRadius: 10,
+    cursor: "pointer"
+  } }, t('cancelSearch'))), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 14px", fontSize: 20 } }, t('enterCode')), /* @__PURE__ */ React.createElement(
     "input",
     {
       value: mpInput,
