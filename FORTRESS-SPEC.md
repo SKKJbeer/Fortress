@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.6.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -718,3 +718,12 @@ und beschiessen danach gegenseitig ihre Festungen.
     8 ("Matchmaking").
   - Siehe `index.html`: `startMatchmaking()`, `mmTryFindMatch()`,
     `mmClaimAndMatch()`, `mmBecomeHost()`, `mmJoinMatchedGame()`.
+  - Firebase Security Rules um `queue2`-Knoten ergänzt (gleiches offenes
+    Schema wie `games`, mit Feld-Validierung für `ts`/`status`/`elo` etc.).
+- **v3.6.1**: Fix — Warte-Icon im Matchmaking-Screen.
+  - Das Lupen-Emoji nutzte versehentlich die `sl`-Keyframe-Animation der
+    Splash-Screen-Ladebalken (`translateX(-100%) → translateX(390%)`) — dafür
+    gedacht, einen schmalen Balken über seine eigene Breite zu bewegen, nicht
+    ein Emoji über den ganzen Bildschirm.
+  - Neue `jesterdance`-Keyframe-Animation (Hoch-Tief-Wippen + Rotation in
+    Schleife) + Hofnarr-Emoji (🤡) ersetzt die Lupe als Warte-Symbol.
