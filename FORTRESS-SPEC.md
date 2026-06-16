@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.5)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.5.6)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -658,3 +658,12 @@ und beschiessen danach gegenseitig ihre Festungen.
     (`e.clientX/clientY` ggü. `startCX/startCY`, feste Schwelle `14px`), unabhängig
     von Canvas-Auflösung oder Zoom. Platzieren reagiert dadurch beim ersten
     Loslassen zuverlässig und ohne gefühlte Verzögerung.
+- **v3.5.6**: Feature — Timer-Verkürzung jetzt auch in der Kanonen-Setzphase.
+  - Beim initialen Kanonen-Setup (Setup-Phase) wurde der Timer schon bisher auf
+    3s verkürzt, sobald alle Spieler ihr Budget verbraucht hatten (`placeCannon()`).
+    Diese Logik galt aber nicht für die spätere **Kanone-setzen-Phase** (`cannon`,
+    +1 Kanone pro Runde) — dort musste der volle 12s-Timer ablaufen, selbst wenn
+    alle bereits fertig platziert hatten.
+  - Fix: Die Bedingung in `placeCannon()` prüft jetzt zusätzlich auf
+    `phase_r.current === "cannon"`, sodass auch dort der Timer auf 3s springt,
+    sobald `cannonBudget` aller Spieler aufgebraucht ist.
