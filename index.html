@@ -904,6 +904,11 @@ const LANGS = {
     bluePlayer: "Blau",
     redPlayer: "Rot",
     greenPlayer: "Gr\xFCn",
+    playerFallback: "Spieler {n}",
+    warnLastCannon: "{flag} Kanone ({name}) platziert!",
+    waitingHost: "Warte auf Mitspieler…",
+    waitingGuest: "Verbinde mit Host…",
+    shareCode: "Teile diesen Code mit deinem Mitspieler:",
     localTitle: "Lokal spielen",
     localSub: "Alle auf einem Ger\xE4t. Wie viele Spieler?",
   },
@@ -1024,6 +1029,11 @@ const LANGS = {
     bluePlayer: "Blue",
     redPlayer: "Red",
     greenPlayer: "Green",
+    playerFallback: "Player {n}",
+    warnLastCannon: "{flag} Cannon ({name}) placed!",
+    waitingHost: "Waiting for players…",
+    waitingGuest: "Connecting to host…",
+    shareCode: "Share this code with your co-player:",
     localTitle: "Play Local",
     localSub: "All on one device. How many players?",
   }
@@ -1161,7 +1171,7 @@ window.FortressApp = function Fortress() {
     setShowProfileEditor(true);
   }
   function saveProfileEditor() {
-    const name = editName.trim().slice(0, 16) || "Spieler";
+    const name = editName.trim().slice(0, 16) || t('playerDefault');
     const id = (profile == null ? void 0 : profile.id) || "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const p = {
       id,
@@ -1544,7 +1554,7 @@ window.FortressApp = function Fortress() {
   const terrainSeed = useRef(0);
   const reloadProgRef = useRef(null);
   const lastSeenPhase = useRef(null);
-  const playerInfo = useRef({ 1: { name: "Spieler 1", wappen: "\u2654", color: "#2563eb" }, 2: { name: "Spieler 2", wappen: "\u265A", color: "#dc2626" } });
+  const playerInfo = useRef({ 1: { name: t('playerFallback', {n: 1}), wappen: "\u2654", color: "#2563eb" }, 2: { name: t('playerFallback', {n: 2}), wappen: "\u265A", color: "#dc2626" } });
   const lastStateAt = useRef(0);
   function applyState(raw) {
     let s;
@@ -1756,7 +1766,7 @@ window.FortressApp = function Fortress() {
     const stillIn = players.filter((p) => !eliminated.current[p]);
     const pname = (x) => {
       var _a2;
-      return ((_a2 = playerInfo.current[x]) == null ? void 0 : _a2.name) || `Spieler ${x}`;
+      return ((_a2 = playerInfo.current[x]) == null ? void 0 : _a2.name) || t('playerFallback', {n: x});
     };
     if (stillIn.length <= 1) {
       running.current = false;
@@ -2085,7 +2095,7 @@ window.FortressApp = function Fortress() {
     if (newlyOut.length && numPlayersRef.current === 3) {
       const names = newlyOut.map((p) => {
         var _a2;
-        return ((_a2 = playerInfo.current[p]) == null ? void 0 : _a2.name) || `Spieler ${p}`;
+        return ((_a2 = playerInfo.current[p]) == null ? void 0 : _a2.name) || t('playerFallback', {n: p});
       }).join(", ");
       showWarn(t('warnAusgeschieden', {names}));
     }
@@ -2384,7 +2394,7 @@ window.FortressApp = function Fortress() {
     setUiTick((t) => t + 1);
     const left = cannonBudget.current[player];
     const pn = ((_a2 = playerInfo.current[player]) == null ? void 0 : _a2.name) || (player === 1 ? t('bluePlayer') : player === 2 ? t('redPlayer') : t('greenPlayer'));
-    showWarn(left > 0 ? t('warnKanoneGesetzt', {name: pn, left}) : `${FLAG_OF[player] || "\u2654"} Kanone (${pn}) platziert!`);
+    showWarn(left > 0 ? t('warnKanoneGesetzt', {name: pn, left}) : t('warnLastCannon', {flag: FLAG_OF[player] || "\u2654", name: pn}));
     if (phase_r.current === "setup" && playersList().every((p) => cannonBudget.current[p] <= 0) && timerVal.current > 3) {
       timerVal.current = 3;
       setTimer(3);
@@ -3521,7 +3531,7 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u23F3"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? "Warte auf Mitspieler\u2026" : "Verbinde mit Host\u2026"), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, "Teile diesen Code mit deinem Mitspieler:"), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u23F3"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
