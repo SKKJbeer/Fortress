@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.8.1</title>
+  <title>FORTRESS v3.9.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -674,31 +674,37 @@ function closedCannons(g, player, cannonList) {
 }
 const isCannonClosed = isObjectClosed;
 function drawWall(ctx, px, py, base, hi, lo, mortar) {
-  const m = 1;
+  const m = 0.6;
+  const x = px + m, y = py + m, w = CELL - 2 * m, hgt = CELL - 2 * m;
+  // glasiger Körper: hell oben → Basis → dunkel unten
   const g = ctx.createLinearGradient(px, py, px, py + CELL);
   g.addColorStop(0, hi);
-  g.addColorStop(0.5, base);
+  g.addColorStop(0.22, base);
   g.addColorStop(1, lo);
   ctx.fillStyle = g;
-  roundRectPath(ctx, px + m, py + m, CELL - 2 * m, CELL - 2 * m, 4);
+  roundRectPath(ctx, x, y, w, hgt, 3.5);
   ctx.fill();
-  // brick mortar lines (horizontal + offset vertical)
-  const row = Math.round(py / CELL);
-  ctx.strokeStyle = mortar || "rgba(0,0,0,0.32)";
-  ctx.lineWidth = 0.8;
+  // Neon-Oberkante (durchgehende Leuchtlinie über Mauerreihen)
+  ctx.fillStyle = hi;
+  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, 2.2, 1.4);
+  ctx.fill();
+  // Glanz-Highlight
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  roundRectPath(ctx, x + 1.4, y + 1.4, w - 2.8, 1.5, 1);
+  ctx.fill();
+  // dunkle Fase unten/rechts (Tiefe)
+  ctx.strokeStyle = "rgba(0,0,0,0.38)";
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(px + m, py + CELL / 2);
-  ctx.lineTo(px + CELL - m, py + CELL / 2);
-  const voff = (row % 2 === 0) ? CELL * 0.28 : CELL * 0.72;
-  ctx.moveTo(px + voff, py + m);
-  ctx.lineTo(px + voff, py + CELL / 2 - 1);
-  ctx.moveTo(px + voff, py + CELL / 2 + 1);
-  ctx.lineTo(px + voff, py + CELL - m);
+  ctx.moveTo(x + w - 0.5, y + 2);
+  ctx.lineTo(x + w - 0.5, y + hgt - 0.5);
+  ctx.lineTo(x + 2, y + hgt - 0.5);
   ctx.stroke();
-  // top shine highlight
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  roundRectPath(ctx, px + m + 1, py + m + 1, CELL - 2 * m - 2, 3, 2);
-  ctx.fill();
+  // feiner heller Innenrahmen
+  ctx.strokeStyle = "rgba(255,255,255,0.10)";
+  ctx.lineWidth = 0.8;
+  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, hgt - 1, 3);
+  ctx.stroke();
 }
 function __oldWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.fillStyle = base;
@@ -716,12 +722,32 @@ function __oldWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.fillRect(px + CELL - 1.5, py, 1.5, CELL);
 }
 function drawRubble(ctx, px, py) {
-  ctx.fillStyle = "#2d3748";
-  ctx.fillRect(px, py, CELL, CELL);
-  ctx.fillStyle = "#4a5568";
-  ctx.fillRect(px + 2, py + 2, 5, 4);
-  ctx.fillRect(px + 8, py + 4, 5, 3);
-  ctx.fillRect(px + 3, py + 9, 6, 4);
+  const g = ctx.createLinearGradient(px, py, px, py + CELL);
+  g.addColorStop(0, "#2a3344");
+  g.addColorStop(1, "#141a26");
+  ctx.fillStyle = g;
+  roundRectPath(ctx, px + 0.6, py + 0.6, CELL - 1.2, CELL - 1.2, 2.5);
+  ctx.fill();
+  // gebrochene Splitter
+  ctx.fillStyle = "rgba(120,135,160,0.55)";
+  ctx.beginPath();
+  ctx.moveTo(px + 3, py + CELL - 3);
+  ctx.lineTo(px + 6, py + 5);
+  ctx.lineTo(px + 9, py + CELL - 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(90,105,130,0.5)";
+  ctx.beginPath();
+  ctx.moveTo(px + CELL - 3, py + CELL - 3);
+  ctx.lineTo(px + CELL - 7, py + 7);
+  ctx.lineTo(px + CELL - 10, py + CELL - 4);
+  ctx.closePath();
+  ctx.fill();
+  // glimmende Glut
+  ctx.fillStyle = "rgba(251,146,60,0.55)";
+  ctx.beginPath();
+  ctx.arc(px + CELL * 0.5, py + CELL * 0.62, 1.5, 0, Math.PI * 2);
+  ctx.fill();
 }
 const ROOF_OF = { 1: "#2563eb", 2: "#dc2626", 3: "#059669" };
 const FLAG_OF = { 1: "\u2654", 2: "\u265A", 3: "\u265C" };
@@ -729,60 +755,100 @@ const ACCENT_OF = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
 const ACCENT_RGB = { 1: "rgba(251,191,36,", 2: "rgba(167,139,250,", 3: "rgba(52,211,153," };
 const GHOST_RGB = { 1: "rgba(96,165,250,", 2: "rgba(248,113,113,", 3: "rgba(52,211,153," };
 const GHOST_HEX = { 1: "#60a5fa", 2: "#f87171", 3: "#34d399" };
-const BALL_MID = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
-const BALL_DARK = { 1: "#92400e", 2: "#4c1d95", 3: "#065f46" };
+const BALL_MID = { 1: "#60a5fa", 2: "#f87171", 3: "#34d399" };
+const BALL_DARK = { 1: "#1e40af", 2: "#7f1d1d", 3: "#065f46" };
+const BALL_GLOW = { 1: "rgba(59,130,246,0.9)", 2: "rgba(239,68,68,0.9)", 3: "rgba(16,185,129,0.9)" };
 function drawCastle(ctx, cx, cy, player, open, now) {
   const S = CELL * 1.5;
-  const base = "#cbd5e1", dark = "#64748b";
   const roof = ROOF_OF[player] || "#2563eb";
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.fillRect(cx - S + 3, cy - S + 4, S * 2, S * 2);
-  ctx.fillStyle = base;
-  ctx.fillRect(cx - S, cy - S, S * 2, S * 2);
-  ctx.fillStyle = dark;
-  ctx.fillRect(cx - S, cy - S, S * 2, 3);
-  ctx.fillStyle = base;
-  for (let i = 0; i < 5; i++)
-    ctx.fillRect(cx - S + i * (S * 2 / 5), cy - S - 4, S * 2 / 5 - 2, 5);
+  const lt = { 1: "#93c5fd", 2: "#fca5a5", 3: "#6ee7b7" }[player] || "#93c5fd";
+  const glow = { 1: "rgba(59,130,246,", 2: "rgba(239,68,68,", 3: "rgba(16,185,129," }[player] || "rgba(59,130,246,";
+  // Schatten
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  roundRectPath(ctx, cx - S + 3, cy - S + 5, S * 2, S * 2, 4);
+  ctx.fill();
+  // Keep-K\u00F6rper (dunkler Metall-Stein)
+  const bg = ctx.createLinearGradient(cx, cy - S, cx, cy + S);
+  bg.addColorStop(0, "#3b4556");
+  bg.addColorStop(0.5, "#252d3a");
+  bg.addColorStop(1, "#141a25");
+  ctx.fillStyle = bg;
+  roundRectPath(ctx, cx - S, cy - S, S * 2, S * 2, 4);
+  ctx.fill();
+  // Zinnen mit Neon-Oberkante
+  for (let i = 0; i < 5; i++) {
+    const mx = cx - S + i * (S * 2 / 5);
+    ctx.fillStyle = "#2a323f";
+    ctx.fillRect(mx + 1, cy - S - 5, S * 2 / 5 - 3, 6);
+    ctx.fillStyle = roof;
+    ctx.fillRect(mx + 1, cy - S - 5, S * 2 / 5 - 3, 1.6);
+  }
+  // Seitent\u00FCrme + Neon-D\u00E4cher
   for (const sx of [-1, 1]) {
-    ctx.fillStyle = dark;
-    ctx.fillRect(cx + sx * S - (sx < 0 ? 0 : 6), cy - S - 2, 6, S * 2 + 2);
+    const tx = cx + sx * S - (sx < 0 ? 0 : 6);
+    const tg = ctx.createLinearGradient(tx, cy - S, tx, cy + S);
+    tg.addColorStop(0, "#454f61");
+    tg.addColorStop(1, "#161d29");
+    ctx.fillStyle = tg;
+    ctx.fillRect(tx, cy - S - 2, 6, S * 2 + 2);
     ctx.fillStyle = roof;
     ctx.beginPath();
-    ctx.moveTo(cx + sx * S - (sx < 0 ? -3 : 3), cy - S - 9);
+    ctx.moveTo(cx + sx * S - (sx < 0 ? -3 : 3), cy - S - 11);
     ctx.lineTo(cx + sx * S - (sx < 0 ? 0 : 6), cy - S - 2);
     ctx.lineTo(cx + sx * S - (sx < 0 ? -6 : 0), cy - S - 2);
     ctx.closePath();
     ctx.fill();
   }
-  ctx.fillStyle = "#451a03";
-  ctx.fillRect(cx - 5, cy + 1, 10, S - 1);
+  // Tor mit Neon-Bogen
+  ctx.fillStyle = "#0c1118";
+  roundRectPath(ctx, cx - 5, cy + 1, 10, S - 1, 3);
+  ctx.fill();
+  ctx.strokeStyle = glow + "0.6)";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  // Fahnenmast + Neon-Wimpel
   const wave = Math.sin(now / 200) * 2;
-  ctx.strokeStyle = "#78716c";
+  ctx.strokeStyle = "#94a3b8";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(cx, cy - S - 9);
-  ctx.lineTo(cx, cy - S - 20);
+  ctx.moveTo(cx, cy - S - 11);
+  ctx.lineTo(cx, cy - S - 22);
   ctx.stroke();
   ctx.fillStyle = roof;
   ctx.beginPath();
-  ctx.moveTo(cx, cy - S - 20);
-  ctx.lineTo(cx + 10, cy - S - 18 + wave);
-  ctx.lineTo(cx, cy - S - 14);
+  ctx.moveTo(cx, cy - S - 22);
+  ctx.lineTo(cx + 10, cy - S - 20 + wave);
+  ctx.lineTo(cx, cy - S - 16);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  // leuchtender Wappen-Kern
+  ctx.save();
+  ctx.shadowColor = roof;
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = glow + "0.18)";
+  ctx.beginPath();
+  ctx.arc(cx, cy - S * 0.35, CELL * 0.62, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  ctx.strokeStyle = lt;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(cx, cy - S * 0.35, CELL * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.font = `${CELL * 0.7}px serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(FLAG_OF[player] || "\u2654", cx, cy - S * 0.4);
+  ctx.fillText(FLAG_OF[player] || "\u2654", cx, cy - S * 0.35);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   if (open) {
     const a = 0.4 + 0.3 * Math.sin(now / 180);
     ctx.strokeStyle = `rgba(239,68,68,${a})`;
     ctx.lineWidth = 3;
-    ctx.strokeRect(cx - S - 2, cy - S - 2, S * 2 + 4, S * 2 + 4);
+    roundRectPath(ctx, cx - S - 2, cy - S - 2, S * 2 + 4, S * 2 + 4, 5);
+    ctx.stroke();
     ctx.fillStyle = `rgba(239,68,68,${a})`;
     ctx.font = `bold ${CELL}px sans-serif`;
     ctx.textAlign = "center";
@@ -801,63 +867,83 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   const R = CELL * 1.6;
-  const PAL = {
-    1: { b0: "#fcd34d", b1: "#b45309", b2: "#78350f", muz: "#92400e", g0: "#fde68a", g1: "#f59e0b", g2: "#92400e", stroke: "#78350f", flag: "#3b82f6", ring: "#fbbf24", glow: "rgba(251,191,36,0.35)" },
-    2: { b0: "#c4b5fd", b1: "#6d28d9", b2: "#3b0764", muz: "#4c1d95", g0: "#ede9fe", g1: "#8b5cf6", g2: "#4c1d95", stroke: "#2e1065", flag: "#ef4444", ring: "#a78bfa", glow: "rgba(167,139,250,0.35)" },
-    3: { b0: "#6ee7b7", b1: "#059669", b2: "#064e3b", muz: "#065f46", g0: "#d1fae5", g1: "#10b981", g2: "#065f46", stroke: "#064e3b", flag: "#34d399", ring: "#34d399", glow: "rgba(52,211,153,0.35)" }
+  const NEON = {
+    1: { ac: "#3b82f6", lt: "#93c5fd", glow: "rgba(59,130,246," },
+    2: { ac: "#ef4444", lt: "#fca5a5", glow: "rgba(239,68,68," },
+    3: { ac: "#10b981", lt: "#6ee7b7", glow: "rgba(16,185,129," }
   };
-  const pal = PAL[player] || PAL[1];
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  const n = NEON[player] || NEON[1];
+  const now = Date.now();
+  // Bodenschatten
+  ctx.fillStyle = "rgba(0,0,0,0.40)";
   ctx.beginPath();
-  ctx.ellipse(cx + 2, cy + 4, R, R * 0.45, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + 2, cy + 5, R * 0.95, R * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
-  const barrelLen = CELL * 2.6;
-  const barrelW = 8;
+  // \u2014 Lauf (Gunmetal + Neon-Linie + gl\u00fchende M\u00fcndung) \u2014
+  const barrelLen = CELL * 2.7, barrelW = 9;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
   const bG = ctx.createLinearGradient(0, -barrelW / 2, 0, barrelW / 2);
-  bG.addColorStop(0, pal.b0);
-  bG.addColorStop(0.5, pal.b1);
-  bG.addColorStop(1, pal.b2);
+  bG.addColorStop(0, "#8b95a7");
+  bG.addColorStop(0.45, "#3a4252");
+  bG.addColorStop(1, "#141925");
   ctx.fillStyle = bG;
-  roundRectPath(ctx, 0, -barrelW / 2, barrelLen, barrelW, 3);
+  roundRectPath(ctx, -CELL * 0.2, -barrelW / 2, barrelLen, barrelW, 4);
   ctx.fill();
-  ctx.fillStyle = pal.muz;
-  ctx.fillRect(barrelLen - 6, -barrelW / 2 - 2, 8, barrelW + 4);
+  ctx.fillStyle = n.ac;
+  ctx.fillRect(CELL * 0.2, -1, barrelLen - CELL * 0.55, 1.3);
+  ctx.shadowColor = n.ac;
+  ctx.shadowBlur = 9;
+  ctx.fillStyle = n.lt;
+  roundRectPath(ctx, barrelLen - CELL * 0.4, -barrelW / 2 - 1.5, 4.5, barrelW + 3, 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
   ctx.restore();
-  const grad = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx, cy, R);
-  grad.addColorStop(0, pal.g0);
-  grad.addColorStop(0.45, pal.g1);
-  grad.addColorStop(1, pal.g2);
+  // \u2014 Basis-Kuppel (Gunmetal-Radial) \u2014
+  const grad = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, 1, cx, cy, R * 0.85);
+  grad.addColorStop(0, "#5a6477");
+  grad.addColorStop(0.5, "#2c333f");
+  grad.addColorStop(1, "#10141d");
   ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
+  ctx.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = pal.stroke;
-  ctx.lineWidth = 2.5;
+  // Neon-Ring um Basis
+  ctx.strokeStyle = n.ac;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  // Schraubbolzen
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
   for (let i = 0; i < 6; i++) {
     const a = i / 6 * Math.PI * 2;
     ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * R * 0.55, cy + Math.sin(a) * R * 0.55, 1.6, 0, Math.PI * 2);
+    ctx.arc(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58, 1.5, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  // Glanz-Highlight
+  ctx.fillStyle = "rgba(255,255,255,0.28)";
   ctx.beginPath();
-  ctx.arc(cx - R * 0.25, cy - R * 0.25, R * 0.25, 0, Math.PI * 2);
+  ctx.arc(cx - R * 0.28, cy - R * 0.3, R * 0.22, 0, Math.PI * 2);
   ctx.fill();
+  // innerer Kern (Energiepunkt)
+  ctx.fillStyle = n.lt;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+  // \u2014 Neon-Wimpel \u2014
   const flagH = CELL * 2.2;
   const fx = cx + R * 0.55, fy = cy - R * 0.7;
-  ctx.strokeStyle = "#78716c";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(fx, fy);
   ctx.lineTo(fx, fy - flagH);
   ctx.stroke();
-  const wave = Math.sin(Date.now() / 200) * 3;
-  ctx.fillStyle = pal.flag;
+  const wave = Math.sin(now / 200) * 3;
+  ctx.fillStyle = n.ac;
   ctx.beginPath();
   ctx.moveTo(fx, fy - flagH);
   ctx.quadraticCurveTo(fx + CELL * 0.8, fy - flagH + wave, fx + CELL * 1.4, fy - flagH + wave * 0.5);
@@ -865,26 +951,31 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   ctx.quadraticCurveTo(fx + CELL * 0.8, fy - flagH + CELL * 0.8 + wave, fx, fy - flagH + CELL * 0.8);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.font = `${CELL * 0.55}px serif`;
   ctx.fillText(FLAG_OF[player] || "\u2654", fx + CELL * 0.35, fy - flagH + CELL * 0.6 + wave * 0.6);
+  // \u2014 Reload-/Ready-Ring \u2014
   if (reloadFrac < 1) {
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(cx, cy, R + 7, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = pal.ring;
+    ctx.strokeStyle = n.lt;
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(cx, cy, R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * reloadFrac);
     ctx.stroke();
   } else {
-    ctx.strokeStyle = pal.glow;
+    ctx.save();
+    ctx.shadowColor = n.ac;
+    ctx.shadowBlur = 8 + Math.sin(now / 250) * 4;
+    ctx.strokeStyle = n.glow + "0.85)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(cx, cy, R + 6 + Math.sin(Date.now() / 250) * 1.5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, R + 6, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
   }
 }
 const LANGS = {
@@ -3190,61 +3281,103 @@ window.FortressApp = function Fortress() {
       bgDirty.current = false;
       const bc = bgCanvas.current.getContext("2d");
       if (p1Flipped) { bc.save(); bc.translate(0, H); bc.scale(1, -1); }
+      // — Tiefer atmosphärischer Untergrund (Navy/Teal) —
       const mg2 = bc.createLinearGradient(0, 0, 0, H);
-      mg2.addColorStop(0, "#244e2d");
-      mg2.addColorStop(0.45, "#1a3f24");
-      mg2.addColorStop(1, "#0e2616");
+      mg2.addColorStop(0, "#0e2336");
+      mg2.addColorStop(0.5, "#0a1827");
+      mg2.addColorStop(1, "#060e1a");
       bc.fillStyle = mg2;
       bc.fillRect(0, 0, W, H);
+      // sanftes Lichtfeld von oben
+      const topGlow = bc.createRadialGradient(W / 2, -H * 0.08, 0, W / 2, -H * 0.08, H * 0.6);
+      topGlow.addColorStop(0, "rgba(56,189,248,0.10)");
+      topGlow.addColorStop(1, "rgba(56,189,248,0)");
+      bc.fillStyle = topGlow;
+      bc.fillRect(0, 0, W, H * 0.6);
+      // Höhen-Textur (dezente Teal-Flecken)
       for (let r = 0; r < ROWS; r += 2)
         for (let c = 0; c < COLS; c += 2) {
           const t = ter[r][c];
           if (t === 1 || t === 2) {
-            bc.fillStyle = t === 1 ? "rgba(40,90,30,0.42)" : "rgba(22,58,18,0.55)";
+            bc.fillStyle = t === 1 ? "rgba(45,130,120,0.10)" : "rgba(10,42,58,0.32)";
             bc.fillRect(c * CELL, r * CELL, CELL * 2, CELL * 2);
           }
         }
+      // feines Tech-Punktraster
+      bc.fillStyle = "rgba(125,180,210,0.05)";
+      for (let r = 0; r < ROWS; r += 3)
+        for (let c = ((r / 3) % 2 ? 3 : 0); c < COLS; c += 6) {
+          bc.beginPath();
+          bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, 1, 0, Math.PI * 2);
+          bc.fill();
+        }
+      // — Leuchtende Flüsse (Cyan-Glow) —
+      bc.save();
+      bc.shadowColor = "rgba(34,211,238,0.7)";
+      bc.shadowBlur = 6;
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
           if (ter[r][c] !== 3) continue;
-          bc.fillStyle = "#103a6e";
+          const rg = bc.createLinearGradient(c * CELL, r * CELL, c * CELL, r * CELL + CELL);
+          rg.addColorStop(0, "#155e8a");
+          rg.addColorStop(1, "#0a3a5e");
+          bc.fillStyle = rg;
           bc.fillRect(c * CELL, r * CELL, CELL, CELL);
-          bc.fillStyle = "rgba(34,211,238,0.28)";
-          bc.fillRect(c * CELL - 1, r * CELL, CELL + 2, 2);
         }
+      bc.shadowBlur = 0;
+      bc.restore();
+      // Wasser-Schimmer an der Uferkante
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          if (ter[r][c] !== 3) continue;
+          if (r === 0 || ter[r - 1][c] !== 3) {
+            bc.fillStyle = "rgba(103,232,249,0.5)";
+            bc.fillRect(c * CELL - 1, r * CELL, CELL + 2, 1.6);
+          }
+        }
+      // — Kristalline Berge mit Neon-Kantenlicht —
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
           if (ter[r][c] !== 4) continue;
-          const cx3 = c * CELL + CELL / 2, baseY3 = r * CELL + CELL;
-          bc.fillStyle = "#6b7280";
+          const cx3 = c * CELL + CELL / 2, baseY3 = r * CELL + CELL, topY = r * CELL + 1;
+          const mg = bc.createLinearGradient(0, topY, 0, baseY3);
+          mg.addColorStop(0, "#3a4a63");
+          mg.addColorStop(1, "#151e2f");
+          bc.fillStyle = mg;
           bc.beginPath();
-          bc.moveTo(cx3, r * CELL + 1);
+          bc.moveTo(cx3, topY);
           bc.lineTo(c * CELL + CELL - 1, baseY3 - 1);
           bc.lineTo(c * CELL + 1, baseY3 - 1);
           bc.closePath();
           bc.fill();
-          bc.fillStyle = "#f1f5f9";
+          bc.strokeStyle = "rgba(125,211,252,0.5)";
+          bc.lineWidth = 1;
           bc.beginPath();
-          bc.moveTo(cx3, r * CELL + 1);
-          bc.lineTo(cx3 + 3, r * CELL + 6);
-          bc.lineTo(cx3 - 3, r * CELL + 6);
+          bc.moveTo(cx3, topY);
+          bc.lineTo(c * CELL + 1, baseY3 - 1);
+          bc.stroke();
+          bc.fillStyle = "rgba(224,242,254,0.92)";
+          bc.beginPath();
+          bc.moveTo(cx3, topY);
+          bc.lineTo(cx3 + 3, topY + 5);
+          bc.lineTo(cx3 - 3, topY + 5);
           bc.closePath();
           bc.fill();
         }
-      for (let i = 0; i < 22; i++) {
+      // Ambient-Partikel (kühler Staub)
+      for (let i = 0; i < 26; i++) {
         const fc3 = i * 313 % COLS, fr3 = i * 191 % ROWS;
         if (ter[fr3][fc3] >= 3) continue;
         const fx3 = fc3 * CELL + i * 71 % CELL, fy3 = fr3 * CELL + i * 37 % CELL;
-        bc.fillStyle = ["#fde047", "#f9a8d4", "#e0e7ff", "#fdba74"][i % 4];
-        bc.fillRect(fx3 - 2, fy3 - 1, 4, 2);
-        bc.fillRect(fx3 - 1, fy3 - 2, 2, 4);
-        bc.fillStyle = "#facc15";
-        bc.fillRect(fx3 - 1, fy3 - 1, 2, 2);
+        bc.fillStyle = ["rgba(125,211,252,0.5)", "rgba(167,139,250,0.45)", "rgba(226,232,240,0.4)"][i % 3];
+        bc.beginPath();
+        bc.arc(fx3, fy3, 1.1, 0, Math.PI * 2);
+        bc.fill();
       }
       // cinematic vignette
-      const vig = bc.createRadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.85);
+      const vig = bc.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.9);
       vig.addColorStop(0, "rgba(0,0,0,0)");
-      vig.addColorStop(1, "rgba(0,0,0,0.55)");
+      vig.addColorStop(1, "rgba(0,0,0,0.62)");
       bc.fillStyle = vig;
       bc.fillRect(0, 0, W, H);
       if (p1Flipped) bc.restore();
@@ -3495,6 +3628,9 @@ window.FortressApp = function Fortress() {
       ctx.ellipse(bx, by, 6 * shScale, 4 * shScale, 0, 0, Math.PI * 2);
       ctx.fill();
       const ballR = 5 + h / (ball.arcH + 1) * 5;
+      ctx.save();
+      ctx.shadowColor = BALL_GLOW[ball.player] || BALL_GLOW[1];
+      ctx.shadowBlur = 12;
       const bg2 = ctx.createRadialGradient(bx - 2, drawY - 2, 0, bx, drawY, ballR);
       bg2.addColorStop(0, "#ffffff");
       bg2.addColorStop(0.4, BALL_MID[ball.player] || BALL_MID[1]);
@@ -3503,9 +3639,7 @@ window.FortressApp = function Fortress() {
       ctx.beginPath();
       ctx.arc(bx, drawY, ballR, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.3)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.restore();
     }
     for (const p of particles.current) {
       const a = p.life / p.maxLife;
@@ -3779,7 +3913,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.8.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.9.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",

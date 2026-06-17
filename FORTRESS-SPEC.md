@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.8.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.9.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -861,3 +861,16 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v3.8.1**: Kanonen-HP von 10 auf 15 erhöht.
   - `CANNON_HP = 15` — eine Kanone hält jetzt 15 direkte Treffer aus, bevor
     sie zerstört wird (vorher 10). HP-Balken skaliert automatisch.
+- **v3.9.0**: Canvas-Grafik-Overhaul — moderne Neon-Spielfeld-Optik.
+  - **Terrain**: tiefer Navy/Teal-Untergrund mit Lichtfeld von oben, Tech-Punktraster,
+    leuchtende Cyan-Flüsse (Glow + Uferschimmer), kristalline Berge mit Neon-Kantenlicht,
+    kühle Ambient-Partikel, stärkere Vignette (vorher Gras-Grün).
+  - **Mauern** (`drawWall`): schlanke beveled Neon-Tech-Blöcke — Glas-Gradient,
+    durchgehende Neon-Oberkante, Glanz-Highlight, Tiefen-Fase (vorher Backstein-Mörtel).
+  - **Kanonen** (`drawCannonFull`): Gunmetal-Geschütztürme mit Neon-Ring um die Basis,
+    glühende Mündung, Energiekern, pulsierender Ready-Glow, Neon-Wimpel (vorher flacher Kreis).
+  - **Festung** (`drawCastle`): schlanker dunkler Keep mit Neon-Dächern/Zinnen,
+    leuchtendem Wappen-Kern (Krone) und Neon-Tor (vorher Cartoon-Stein).
+  - **Schutt** (`drawRubble`): gebrochene Splitter mit glimmender Glut.
+  - **Geschosse**: leuchtende Energie-Orbs in Spielerfarbe (Blau/Rot/Grün) mit Glow.
+  - Spielmechanik unverändert; alle 87 Tests grün.
