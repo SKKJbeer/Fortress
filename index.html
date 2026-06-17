@@ -286,9 +286,10 @@ function makeCode() {
   return s;
 }
 // Matchmaking: ELO-naher Suchradius, der mit der Wartezeit wächst, damit
-// niemand ewig wartet. Nach ~50s ist der Radius praktisch unbegrenzt.
+// niemand ewig wartet. Sanftes Wachstum (±60 Basis, +8/s): nach 60s ±540,
+// nach 2min praktisch unbegrenzt — bevorzugt also möglichst faire Paarungen.
 const MM_BASE_RADIUS = 60;
-const MM_GROWTH_PER_SEC = 18;
+const MM_GROWTH_PER_SEC = 8;
 function mmRadius(waitSec) {
   return MM_BASE_RADIUS + Math.max(0, waitSec) * MM_GROWTH_PER_SEC;
 }
@@ -1416,6 +1417,7 @@ window.FortressApp = function Fortress() {
   const [mmElapsed, setMmElapsed] = useState(0);
   const mmChannel = useRef(null);
   const mmTickTimer = useRef(null);
+  const mmDisplayTimer = useRef(null);
   const mmHealTimer = useRef(null);
   const mmWatchdog = useRef(null);
   const mmCancelDisconnect = useRef(null);
@@ -1805,9 +1807,26 @@ window.FortressApp = function Fortress() {
       if (mmPendingCandidates.current && mmPendingCandidates.current[p2]) {
         fb.delete(mmPendingCandidates.current[p2]);
         delete mmPendingCandidates.current[p2];
-        if (Object.keys(mmPendingCandidates.current).length === 0 && mmWatchdog.current) {
+        const remaining = Object.keys(mmPendingCandidates.current);
+        if (remaining.length === 0 && mmWatchdog.current) {
           clearTimeout(mmWatchdog.current);
           mmWatchdog.current = null;
+        } else if (remaining.length > 0 && mmWatchdog.current) {
+          // Erster Gast beigetreten, zweiter noch ausstehend — Watchdog
+          // zurücksetzen damit der erste nicht nach kurzem Timeout rausfliegt.
+          clearTimeout(mmWatchdog.current);
+          const hostCode = mpCodeRef.current;
+          mmWatchdog.current = setTimeout(() => {
+            mmWatchdog.current = null;
+            if (gameStarted.current) return;
+            for (const k of Object.keys(mmPendingCandidates.current)) {
+              fb.delete(mmPendingCandidates.current[k]);
+            }
+            mmPendingCandidates.current = {};
+            const reNp = mmNp.current;
+            mmAbandonHostGame(hostCode);
+            startMatchmaking(reNp);
+          }, MM_GUEST_JOIN_TIMEOUT_MS);
         }
       }
       const need = numPlayersRef.current === 3 ? 2 : 1;
@@ -2047,6 +2066,10 @@ window.FortressApp = function Fortress() {
       clearInterval(mmTickTimer.current);
       mmTickTimer.current = null;
     }
+    if (mmDisplayTimer.current) {
+      clearInterval(mmDisplayTimer.current);
+      mmDisplayTimer.current = null;
+    }
     if (mmHealTimer.current) {
       clearTimeout(mmHealTimer.current);
       mmHealTimer.current = null;
@@ -2250,7 +2273,6 @@ window.FortressApp = function Fortress() {
   }
   function mmTick() {
     if (!mmActive.current) return;
-    setMmElapsed(Math.round((Date.now() - mmStartedAt.current) / 1e3));
     fb.patch(`${mmQueueName()}/${SESSION_ID}`, { hb: Date.now() });
     mmOnQueueUpdate();
   }
@@ -2307,6 +2329,13 @@ window.FortressApp = function Fortress() {
     });
     if (mmTickTimer.current) clearInterval(mmTickTimer.current);
     mmTickTimer.current = setInterval(mmTick, MM_TICK_MS);
+    // Eigener 1-Sekunden-Ticker nur für die Anzeige (Wartezeit + Radius),
+    // damit der Zähler flüssig hochläuft und nicht im 2s-Heartbeat-Takt springt.
+    if (mmDisplayTimer.current) clearInterval(mmDisplayTimer.current);
+    mmDisplayTimer.current = setInterval(() => {
+      if (!mmActive.current) return;
+      setMmElapsed(Math.round((Date.now() - mmStartedAt.current) / 1e3));
+    }, 1e3);
   }
   function startOnlineGame(role) {
     myRole.current = role;

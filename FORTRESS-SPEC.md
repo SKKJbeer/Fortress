@@ -804,3 +804,11 @@ und beschiessen danach gegenseitig ihre Festungen.
     Spieleranzahl.
   - Firebase Security Rules um `queue3`-Knoten ergänzt (identisches Schema
     wie `queue2`, inkl. Listen-`.read` für die Kandidatensuche).
+  - **Anzeige-Timer** entkoppelt: eigener 1-Sekunden-Interval
+    (`mmDisplayTimer`) aktualisiert Wartezeit und ELO-Radius im UI; der
+    Firebase-Heartbeat-Takt (`MM_TICK_MS = 2s`) bleibt unverändert — kein
+    2-Sekunden-Sprung mehr in der Zähleranzeige.
+  - **ELO-Radius-Wachstum** verlangsamt: `MM_GROWTH_PER_SEC` von 18 auf 8
+    reduziert (±60 Basis + 8/s; nach 60s Wartezeit ±540, nach ~2min
+    unbegrenzt) — bevorzugt faire Paarungen statt sofortiger Weitwinkel-
+    Matches.
