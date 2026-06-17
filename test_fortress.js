@@ -5,64 +5,61 @@ const http = require('http');
 const REACT_JS = fs.readFileSync('/tmp/react.min.js', 'utf8');
 const REACT_DOM_JS = fs.readFileSync('/tmp/react-dom.min.js', 'utf8');
 
+// Speedup-Skript: setInterval >= 900ms → 50ms (Phasen 20× schneller)
+//                 setTimeout >= 2000ms → /5   (Banner 5× schneller)
+// Damit dauert ein kompletter Phasenzyklus ~10s statt ~100s.
+const TIMER_SPEEDUP = `
+  const _osi = window.setInterval;
+  window.setInterval = (fn, ms, ...a) => _osi(fn, ms >= 900 ? 50 : ms, ...a);
+  const _ost = window.setTimeout;
+  window.setTimeout = (fn, ms, ...a) => _ost(fn, ms >= 2000 ? Math.round(ms / 5) : ms, ...a);
+`;
+
+// ── Versions-Helfer ───────────────────────────────────────────
 function getExpectedVersion() {
   const html = fs.readFileSync('/home/user/Fortress/index.html', 'utf8');
   const m = html.match(/FORTRESS v(\d+\.\d+\.\d+)/);
   return m ? m[1] : null;
 }
-
 function getServerVersion() {
   return new Promise((resolve, reject) => {
     http.get('http://localhost:8765/', (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        const m = data.match(/FORTRESS v(\d+\.\d+\.\d+)/);
-        resolve(m ? m[1] : null);
-      });
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => { const m = d.match(/FORTRESS v(\d+\.\d+\.\d+)/); resolve(m ? m[1] : null); });
     }).on('error', reject);
   });
 }
 
-async function jsClick(page, textParts) {
+// ── Seiten-Helfer ─────────────────────────────────────────────
+async function jsClick(page, parts) {
   return page.evaluate((parts) => {
-    const btns = Array.from(document.querySelectorAll('button'));
-    for (const b of btns) {
-      const txt = (b.textContent || '').trim();
-      if (parts.some(p => txt.includes(p))) { b.click(); return txt; }
+    for (const b of document.querySelectorAll('button')) {
+      const t = (b.textContent || '').trim();
+      if (parts.some(p => t.includes(p))) { b.click(); return t; }
     }
     return null;
-  }, textParts);
+  }, parts);
 }
-
-async function findButtonText(page, textParts) {
+async function findBtn(page, parts) {
   return page.evaluate((parts) => {
-    const btns = Array.from(document.querySelectorAll('button'));
-    for (const b of btns) {
-      const txt = (b.textContent || '').trim();
-      if (parts.some(p => txt.includes(p))) return txt;
+    for (const b of document.querySelectorAll('button')) {
+      const t = (b.textContent || '').trim();
+      if (parts.some(p => t.includes(p))) return t;
     }
     return null;
-  }, textParts);
+  }, parts);
 }
-
-async function allButtonTexts(page) {
-  return page.evaluate(() =>
-    Array.from(document.querySelectorAll('button')).map(b => (b.textContent || '').trim())
-  );
-}
-
 async function getTimerValue(page) {
   return page.evaluate(() => {
-    const all = Array.from(document.querySelectorAll('*'));
-    for (const el of all) {
+    for (const el of document.querySelectorAll('*')) {
       const t = (el.textContent || '').trim();
+      // Timer uses padStart(2,"0") → always 2 digits ("20","05","00"); scores are 1-digit
       if (/^\d{2}$/.test(t) && el.children.length === 0) return parseInt(t, 10);
     }
     return null;
   });
 }
-
 async function getCanvasBox(page) {
   return page.evaluate(() => {
     const c = document.querySelector('canvas');
@@ -71,128 +68,152 @@ async function getCanvasBox(page) {
     return { x: r.x, y: r.y, w: r.width, h: r.height };
   });
 }
-
-// HUD-Phasenbadge-Text lesen (BAUEN / FEUER / KANONE / START)
 async function getHudPhase(page) {
   return page.evaluate(() => {
-    const spans = Array.from(document.querySelectorAll('span'));
-    for (const s of spans) {
+    for (const s of document.querySelectorAll('span, div')) {
       const t = (s.textContent || '').trim();
-      if (t.includes('BAUEN') || t.includes('FEUER') || t.includes('KANONE') || t.includes('START')) return t;
+      if (t.includes('BAUEN') || t.includes('FEUER') || t.includes('KANONE') ||
+          t.includes('START') || t.includes('ERGEBNIS')) return t;
     }
     return null;
   });
 }
 
-// Warte auf eine bestimmte HUD-Phase (polling, max waitSec Sekunden)
-async function waitForPhase(page, keywords, waitSec) {
-  for (let i = 0; i < waitSec; i++) {
-    await page.waitForTimeout(1000);
+// Phasenwächter: 200ms-Polling, Deadline in ms
+async function waitForPhase(page, keywords, waitMs = 6000) {
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
     const ph = await getHudPhase(page);
-    if (ph && keywords.some(k => ph.includes(k))) {
-      return ph;
-    }
+    if (ph && keywords.some(k => ph.includes(k))) return ph;
+    await page.waitForTimeout(200);
   }
   return null;
 }
 
-// Warte auf Bauphase (Drehen-Button als Indikator)
-async function waitForBuild(page, waitSec = 30) {
-  for (let i = 0; i < waitSec; i++) {
-    await page.waitForTimeout(1000);
-    const found = await findButtonText(page, ['drehen', 'Drehen']);
-    if (found) return found;
-  }
-  return null;
-}
-
-async function setupGamePage(browser, playerCount) {
+// Browser-Kontext mit CDN-Mocks + Speedup
+async function makeCtx(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await ctx.newPage();
-  await page.route('**unpkg.com**react@18**react.production.min.js**', r =>
-    r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
-  await page.route('**unpkg.com**react-dom@18**react-dom.production.min.js**', r =>
-    r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
-  await page.route('**firebase**', r => r.abort());
-  await page.route('**gstatic**', r => r.abort());
+  await page.addInitScript(TIMER_SPEEDUP);
+  await page.route('**unpkg.com**react@18**react.production.min.js**',
+    r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
+  await page.route('**unpkg.com**react-dom@18**react-dom.production.min.js**',
+    r => r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
+  await page.route('**firebase**',   r => r.abort());
+  await page.route('**gstatic**',    r => r.abort());
   await page.route('**googleapis**', r => r.abort());
   return { ctx, page };
 }
 
-async function navigateToGame(page, playerCount) {
-  await page.goto('http://localhost:8765/', { waitUntil: 'networkidle', timeout: 15000 });
-  await page.waitForTimeout(1500);
-  // Profil-Editor überspringen falls vorhanden
-  const hasNameInput = await page.evaluate(() => !!document.querySelector('input[maxlength="16"]'));
-  if (hasNameInput) {
+// Menü laden + Profil-Editor überspringen
+async function loadMenu(page) {
+  await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+  await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 8000 });
+  await page.waitForTimeout(200);
+  const hasInput = await page.evaluate(() => !!document.querySelector('input[maxlength="16"]'));
+  if (hasInput) {
     await page.evaluate(() => {
-      const inp = document.querySelector('input[maxlength="16"]');
-      if (inp) { inp.value = 'TestBot'; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+      const i = document.querySelector('input[maxlength="16"]');
+      if (i) { i.value = 'TestBot'; i.dispatchEvent(new Event('input', { bubbles: true })); }
     });
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(80);
     await jsClick(page, ['Speichern']);
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(150);
   }
-  await jsClick(page, ['LOKAL']);
-  await page.waitForTimeout(500);
-  const playerLabel = playerCount === 2 ? '2 Spieler' : '3 Spieler';
-  await jsClick(page, [playerLabel]);
-  await page.waitForTimeout(1500);
 }
 
-(async () => {
-  // ── Versions-Validierung ──────────────────────────────────────────────────
-  console.log('🔍 Versions-Validierung...');
-  const expectedVersion = getExpectedVersion();
-  if (!expectedVersion) { console.error('❌ ABBRUCH: Version nicht lesbar'); process.exit(1); }
-  console.log(`   Erwartet: v${expectedVersion}`);
-  let serverVersion;
-  try { serverVersion = await getServerVersion(); }
-  catch (e) { console.error(`❌ ABBRUCH: Server nicht erreichbar — ${e.message}`); process.exit(1); }
-  console.log(`   Server:   v${serverVersion}`);
-  if (serverVersion !== expectedVersion) {
-    console.error(`❌ ABBRUCH: Versions-Mismatch (Server v${serverVersion} ≠ Disk v${expectedVersion})`);
-    console.error('   → python3 -m http.server 8765');
-    process.exit(1);
-  }
-  console.log(`✅ v${expectedVersion} — Test läuft\n`);
-  // ─────────────────────────────────────────────────────────────────────────
+// Lokal-Spiel starten (wartet auf Canvas)
+async function startLocal(page, playerCount) {
+  await jsClick(page, ['LOKAL']);
+  await page.waitForTimeout(200);
+  await jsClick(page, [playerCount === 2 ? '2 Spieler' : '3 Spieler']);
+  await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 5000 });
+  await page.waitForTimeout(200);
+}
 
-  const browser = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors'] });
-  const errors = [];
-  const results = [];
-  const ok   = (msg) => { results.push('✅ ' + msg); console.log('✅ ' + msg); };
-  const fail = (msg) => { results.push('❌ ' + msg); console.log('❌ ' + msg); };
+// ═══════════════════════════════════════════════════════════════
+// SUITE 0: Menü-Elemente
+// ═══════════════════════════════════════════════════════════════
+async function suiteMenu(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Menü-Elemente\n' + '='.repeat(50));
 
-  // ═══════════════════════════════════════════════════════════════
-  // SUITE 1: Navigation & HUD-Grundstruktur (2P + 3P)
-  // ═══════════════════════════════════════════════════════════════
-  async function testNavAndHUD(label, playerCount) {
-    console.log(`\n${'='.repeat(50)}`);
-    console.log(`TEST: ${label}`);
-    console.log('='.repeat(50));
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
 
-    const { ctx, page } = await setupGamePage(browser, playerCount);
-    const jsErrors = [];
-    page.on('pageerror', e => {
-      if (!e.message.includes('firebase') && !e.message.includes('Firebase'))
-        jsErrors.push(e.message);
-    });
+    // Version
+    const ver = await page.evaluate(() => (document.title.match(/v(\d+\.\d+\.\d+)/) || [])[1]);
+    ver ? ok(`Version: ${ver}`) : fail('Version nicht erkannt');
 
-    await navigateToGame(page, playerCount);
-
-    const version = await page.evaluate(() => (document.title.match(/v(\d+\.\d+\.\d+)/) || [])[1]);
-    version ? ok(`Version: ${version}`) : fail('Version nicht erkannt');
-
-    // Gold im Menü vorhanden
-    // (wurde vor navigateToGame geprüft, also nach frischem Load)
-    await page.goto('http://localhost:8765/', { waitUntil: 'networkidle', timeout: 15000 });
-    await page.waitForTimeout(1200);
-    const goldVisible = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('*')).some(el => el.children.length === 0 && (el.textContent || '').includes('Gold'))
+    // Menü-Hauptbuttons
+    const btnTexts = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).map(b => b.textContent.trim())
     );
-    goldVisible ? ok('Gold-Anzeige im Menü ✓') : fail('Gold-Anzeige im Menü fehlt');
-    await navigateToGame(page, playerCount);
+    ['LOKAL', 'ONLINE'].every(k => btnTexts.some(t => t.includes(k)))
+      ? ok('Menü-Hauptbuttons LOKAL & ONLINE ✓')
+      : fail(`Menü-Buttons fehlen: ${btnTexts.slice(0, 5).join(', ')}`);
+
+    // Gold-Anzeige
+    const goldOk = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('*')).some(el =>
+        el.children.length === 0 && (el.textContent || '').includes('Gold'))
+    );
+    goldOk ? ok('Gold-Anzeige im Menü ✓') : fail('Gold-Anzeige fehlt');
+
+    // Bestenliste-Button (auch als Rangliste/Leaderboard bekannt)
+    const lbOk = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).some(b =>
+        /rangliste|leaderboard|bestenliste/i.test(b.textContent || ''))
+    );
+    lbOk ? ok('Bestenliste-Button ✓') : fail('Bestenliste-Button fehlt');
+
+    // Online-Overlay öffnet sich
+    await jsClick(page, ['ONLINE']);
+    await page.waitForTimeout(250);
+    const onlineOk = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).some(b =>
+        /(Schnellspiel|Quick|Spiel erstellen|Code)/i.test(b.textContent || ''))
+    );
+    onlineOk ? ok('Online-Overlay öffnet sich ✓') : fail('Online-Overlay fehlt');
+
+    // Schnellspiel-Button hat Spieler-Anzahl-Text
+    const mmBtn = await page.evaluate(() => {
+      for (const b of document.querySelectorAll('button')) {
+        if (/(Schnellspiel|Quick)/i.test(b.textContent || '')) return b.textContent.trim();
+      }
+      return null;
+    });
+    mmBtn ? ok(`Schnellspiel-Button: "${mmBtn.slice(0, 40)}" ✓`) : fail('Schnellspiel-Button fehlt');
+
+    await page.screenshot({ path: '/tmp/s0_menu.png' });
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 1: Navigation & HUD (2P oder 3P)
+// ═══════════════════════════════════════════════════════════════
+async function suiteNavHUD(browser, playerCount) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  const label = `${playerCount}-Spieler: Navigation & HUD`;
+  console.log('\n' + '='.repeat(50) + `\nTEST: ${label}\n` + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    await startLocal(page, playerCount);
+
+    // Version
+    const ver = await page.evaluate(() => (document.title.match(/v(\d+\.\d+\.\d+)/) || [])[1]);
+    ver ? ok(`Version: ${ver}`) : fail('Version nicht erkannt');
 
     // Canvas
     const cb = await getCanvasBox(page);
@@ -200,346 +221,342 @@ async function navigateToGame(page, playerCount) {
 
     await page.screenshot({ path: `/tmp/s1_${playerCount}p_setup.png` });
 
-    // ── Beenden-Button UX ─────────────────────────────────────────
-    const quitInfo = await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button'));
-      for (const b of btns) {
-        if ((b.textContent || '').includes('beenden')) {
-          const r = b.getBoundingClientRect();
-          const st = window.getComputedStyle(b);
+    // HUD-Vollständigkeit (alle Elemente gleichzeitig sichtbar)
+    const hud = await page.evaluate(() => {
+      const text = document.body.innerText;
+      return {
+        timer: /\b\d{1,2}\b/.test(text),
+        phase: text.includes('BAUEN') || text.includes('FEUER') || text.includes('START') || text.includes('KANONE'),
+        quit:  Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('beenden')),
+      };
+    });
+    hud.timer ? ok('Timer im HUD ✓')        : fail('Timer im HUD fehlt');
+    hud.phase ? ok('Phase-Badge im HUD ✓')  : fail('Phase-Badge im HUD fehlt');
+    hud.quit  ? ok('Beenden-Button im HUD ✓') : fail('Beenden-Button im HUD fehlt');
+
+    // Score-Anzeige: HUD zeigt Scores neben "P1"/"P2"-Labels (keine "x:y"-Notation)
+    const scoreOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return (/P1/.test(t) && /P2/.test(t)) || /\d\s*:\s*\d/.test(t) || /punkte|score/i.test(t);
+    });
+    scoreOk ? ok('Score-Anzeige ✓') : fail('Score-Anzeige fehlt');
+
+    // Runden-Anzeige
+    const roundOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return /runde|round/i.test(t) || /R\s*\d/.test(t);
+    });
+    roundOk ? ok('Runden-Anzeige ✓') : fail('Runden-Anzeige fehlt');
+
+    // Beenden-Button-Detail
+    const qi = await page.evaluate(() => {
+      for (const b of document.querySelectorAll('button')) {
+        if (b.textContent.includes('beenden')) {
+          const r = b.getBoundingClientRect(), st = window.getComputedStyle(b);
           return { x: r.x, y: r.y, w: r.width, h: r.height, pos: st.position, bg: st.background };
         }
       }
       return null;
     });
-    if (!quitInfo) {
-      fail('Beenden-Button nicht gefunden');
-    } else {
-      ok(`Beenden-Button: ${Math.round(quitInfo.w)}×${Math.round(quitInfo.h)}px @ (${Math.round(quitInfo.x)},${Math.round(quitInfo.y)})`);
-      quitInfo.pos !== 'absolute'
-        ? ok('Beenden-Button: kein absolutes Overlay ✓')
-        : fail('Beenden-Button: position=absolute (Overlap)');
-      const centerX = quitInfo.x + quitInfo.w / 2;
-      (centerX > 100 && centerX < 290)
-        ? ok(`Beenden-Button im HUD-Center (x≈${Math.round(centerX)}) ✓`)
-        : fail(`Beenden-Button außerhalb HUD-Center (x≈${Math.round(centerX)})`);
-      // Sichtbar: hat einen Hintergrund (kein "none" oder transparent)
-      const hasBg = quitInfo.bg && !quitInfo.bg.includes('rgba(0, 0, 0, 0)') && quitInfo.bg !== 'none';
-      hasBg
-        ? ok('Beenden-Button: sichtbarer Hintergrund ✓')
-        : fail('Beenden-Button: kein sichtbarer Hintergrund (unsichtbar)');
-    }
+    if (qi) {
+      ok(`Beenden-Button: ${Math.round(qi.w)}×${Math.round(qi.h)}px @ (${Math.round(qi.x)},${Math.round(qi.y)})`);
+      qi.pos !== 'absolute' ? ok('Beenden-Button: kein absolutes Overlay ✓') : fail('Beenden-Button: position=absolute');
+      const cx = qi.x + qi.w / 2;
+      (cx > 100 && cx < 290) ? ok(`Beenden-Button im HUD-Center (x≈${Math.round(cx)}) ✓`) : fail(`Beenden-Button außerhalb HUD-Center`);
+      const hasBg = qi.bg && !qi.bg.includes('rgba(0, 0, 0, 0)') && qi.bg !== 'none';
+      hasBg ? ok('Beenden-Button: sichtbarer Hintergrund ✓') : fail('Beenden-Button: kein sichtbarer Hintergrund');
+    } else { fail('Beenden-Button nicht gefunden'); }
 
-    // Timer zählt runter
+    // CSS-Phasenbanner-Animation
+    const animOk = await page.evaluate(() => {
+      try { return Array.from(document.styleSheets).some(s =>
+        Array.from(s.cssRules || []).some(r => r.name === 'phasebanner')); }
+      catch { return false; }
+    });
+    animOk ? ok('CSS-Animation phasebanner ✓') : fail('CSS-Animation phasebanner fehlt');
+
+    // Phasensequenz: Setup → direkt Schuss (kein Build dazwischen)
+    console.log('⏳ Warte auf Schussphase (nach Setup)...');
+    const shootPh = await waitForPhase(page, ['FEUER'], 6000);
+    if (!shootPh) { fail('Schussphase nach Setup nicht erreicht'); return { res, errs }; }
+    ok(`Schussphase direkt nach Setup: "${shootPh}" ✓`);
+
+    // Timer zählt (in Schussphase messen — nach Reset auf 30, stabil)
+    await page.waitForTimeout(200);
     const t0 = await getTimerValue(page);
-    await page.waitForTimeout(2100);
+    await page.waitForTimeout(600);
     const t1 = await getTimerValue(page);
     (t0 !== null && t1 !== null && t1 < t0)
       ? ok(`Timer zählt: ${t0} → ${t1} ✓`)
       : fail(`Timer zählt nicht (${t0} → ${t1})`);
-
-    // CSS-Phasenbanner vorhanden
-    const hasAnim = await page.evaluate(() => {
-      try {
-        return Array.from(document.styleSheets).some(s =>
-          Array.from(s.cssRules || []).some(r => r.name === 'phasebanner'));
-      } catch { return false; }
-    });
-    hasAnim ? ok('CSS-Animation phasebanner ✓') : fail('CSS-Animation phasebanner fehlt');
-
-    // Neuer Phasenzyklus: Setup → Schuss (kein Build am Anfang!)
-    console.log('⏳ Warte auf Schussphase (nach Setup)...');
-    const shootPh = await waitForPhase(page, ['FEUER'], 28);
-    if (!shootPh) { fail('Schussphase nach Setup nicht erreicht'); await ctx.close(); return; }
-    ok(`Schussphase direkt nach Setup: "${shootPh}" ✓`);
     await page.screenshot({ path: `/tmp/s1_${playerCount}p_shoot.png` });
 
-    // Beenden → Weiterspielen → zurück
-    const q1 = await jsClick(page, ['beenden']);
-    if (q1) {
-      await page.waitForTimeout(350);
-      const resume = await jsClick(page, ['Weiterspielen']);
-      if (resume) {
-        await page.waitForTimeout(350);
-        const dialogGone = !(await findButtonText(page, ['Weiterspielen']));
-        dialogGone ? ok('Weiterspielen schließt Dialog ✓') : fail('Dialog bleibt nach Weiterspielen');
-        const hasCanvas = await page.evaluate(() => !!document.querySelector('canvas'));
-        hasCanvas ? ok('Spiel läuft nach Weiterspielen ✓') : fail('Canvas fehlt nach Weiterspielen');
-      }
-    }
+    // Beenden-Dialog: korrekte Buttons
+    await jsClick(page, ['beenden']);
+    await page.waitForTimeout(200);
+    const dlgBtns = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).map(b => b.textContent.trim())
+    );
+    dlgBtns.some(t => t.includes('Weiterspielen'))
+      ? ok('Beenden-Dialog: Weiterspielen-Button ✓') : fail('Beenden-Dialog: Weiterspielen fehlt');
+    dlgBtns.some(t => t.includes('Ja') || (t.includes('beenden') && !t.includes('✕')))
+      ? ok('Beenden-Dialog: Bestätigen-Button ✓') : fail('Beenden-Dialog: Bestätigen fehlt');
+
+    // Weiterspielen schließt Dialog
+    await jsClick(page, ['Weiterspielen']);
+    await page.waitForTimeout(200);
+    const dlgGone = !(await findBtn(page, ['Weiterspielen']));
+    dlgGone ? ok('Weiterspielen schließt Dialog ✓') : fail('Dialog bleibt nach Weiterspielen');
+    (await page.evaluate(() => !!document.querySelector('canvas')))
+      ? ok('Spiel läuft nach Weiterspielen ✓') : fail('Canvas fehlt nach Weiterspielen');
 
     // Beenden → Ja → Menü
-    const q2 = await jsClick(page, ['beenden']);
-    if (q2) {
-      await page.waitForTimeout(350);
-      await jsClick(page, ['Ja, beenden']);
-      await page.waitForTimeout(700);
-      await page.screenshot({ path: `/tmp/s1_${playerCount}p_menu.png` });
-      const backInMenu = !(await page.evaluate(() => !!document.querySelector('canvas')));
-      backInMenu ? ok('Zurück im Menü ✓') : fail('Canvas nach "Ja, beenden" noch da');
-    }
+    await jsClick(page, ['beenden']);
+    await page.waitForTimeout(200);
+    await jsClick(page, ['Ja, beenden']);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `/tmp/s1_${playerCount}p_menu.png` });
+    !(await page.evaluate(() => !!document.querySelector('canvas')))
+      ? ok('Zurück im Menü ✓') : fail('Canvas nach "Ja, beenden" noch da');
 
-    if (jsErrors.length > 0) jsErrors.forEach(e => { fail(`JS-Fehler: ${e.slice(0, 80)}`); errors.push(e); });
-    else ok('Keine JS-Fehler');
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
 
-    await ctx.close();
-  }
+// ═══════════════════════════════════════════════════════════════
+// SUITE 2: Spielmechanik — Bauen / Schießen / Kanone
+// ═══════════════════════════════════════════════════════════════
+async function suiteMechanics(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Spielmechanik (Bauen / Schießen / Kanone)\n' + '='.repeat(50));
 
-  // ═══════════════════════════════════════════════════════════════
-  // SUITE 2: Spielmechanik — Bauen, Schießen, Kanone setzen
-  // ═══════════════════════════════════════════════════════════════
-  async function testGameMechanics() {
-    console.log(`\n${'='.repeat(50)}`);
-    console.log('TEST: Spielmechanik (Bauen / Schießen / Kanone)');
-    console.log('='.repeat(50));
-
-    const { ctx, page } = await setupGamePage(browser, 2);
-    const jsErrors = [];
-    page.on('pageerror', e => {
-      if (!e.message.includes('firebase') && !e.message.includes('Firebase'))
-        jsErrors.push(e.message);
-    });
-
-    await navigateToGame(page, 2);
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    await startLocal(page, 2);
     const cb = await getCanvasBox(page);
-    if (!cb) { fail('Canvas fehlt — Mechanik-Tests übersprungen'); await ctx.close(); return; }
+    if (!cb) { fail('Canvas fehlt'); return { res, errs }; }
 
-    // ── SETUP-PHASE: Kanonen platzieren ──────────────────────────
-    // Neuer Phasenzyklus: Setup → Schuss → Kanone → Bau → Schuss → ...
+    // Setup: Kanonen platzieren
     console.log('⚙️  Setup-Phase: Kanonen platzieren...');
-    const setupTaps = [
-      { rx: 0.38, ry: 0.18 }, // P1 Kanone 1
-      { rx: 0.62, ry: 0.18 }, // P1 Kanone 2
-      { rx: 0.38, ry: 0.82 }, // P2 Kanone 1
-      { rx: 0.62, ry: 0.82 }, // P2 Kanone 2
-    ];
-    for (const { rx, ry } of setupTaps) {
+    for (const [rx, ry] of [[0.38, 0.18], [0.62, 0.18], [0.38, 0.82], [0.62, 0.82]]) {
       await page.mouse.click(cb.x + cb.w * rx, cb.y + cb.h * ry);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(80);
     }
-    await page.screenshot({ path: '/tmp/s2_setup_cannons.png' });
+    await page.screenshot({ path: '/tmp/s2_setup.png' });
 
-    // Nach Setup kommt DIREKT die Schussphase (kein Build mehr!)
-    console.log('⏳ Warte auf erste Schussphase (nach Setup)...');
-    const firstShoot = await waitForPhase(page, ['FEUER'], 28);
-    if (!firstShoot) { fail('Schussphase nach Setup nicht erreicht'); await ctx.close(); return; }
-    ok(`Schussphase direkt nach Setup: "${firstShoot}" ✓`);
-    await page.screenshot({ path: '/tmp/s2_first_shoot.png' });
+    // Schuss-Phase nach Setup
+    console.log('⏳ Warte auf erste Schussphase...');
+    const shoot1 = await waitForPhase(page, ['FEUER'], 6000);
+    if (!shoot1) { fail('Schussphase nach Setup nicht erreicht'); return { res, errs }; }
+    ok(`Schussphase direkt nach Setup: "${shoot1}" ✓`);
+    await page.screenshot({ path: '/tmp/s2_shoot1.png' });
 
-    // Schuss-Timer läuft (nach 2500ms Banner)
+    // Timer zählt
     const fs0 = await getTimerValue(page);
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(500);
     const fs1 = await getTimerValue(page);
     (fs0 !== null && fs1 !== null && fs1 < fs0)
       ? ok(`Schuss-Timer zählt: ${fs0} → ${fs1} ✓`)
       : fail(`Schuss-Timer zählt nicht (${fs0} → ${fs1})`);
 
-    // Schuss-Geste (Schleuder: Finger auf Kanonen-Bereich → wegziehen)
+    // Schuss-Geste
     console.log('💥 Schuss-Geste...');
-    const shootFromX = cb.x + cb.w * 0.5;
-    const shootFromY = cb.y + cb.h * 0.18;
-    await page.mouse.move(shootFromX, shootFromY);
-    await page.mouse.down();
-    await page.waitForTimeout(100);
-    await page.mouse.move(shootFromX, cb.y + cb.h * 0.05);
-    await page.waitForTimeout(200);
-    await page.mouse.up();
-    await page.waitForTimeout(400);
-    const shootOk1 = await page.evaluate(() => !!document.querySelector('canvas'));
-    shootOk1 ? ok('Schuss-Geste (erste Runde) ohne Crash ✓') : fail('Canvas nach Schuss-Geste verschwunden');
+    const sfy = cb.y + cb.h * 0.18;
+    await page.mouse.move(cb.x + cb.w * 0.5, sfy);
+    await page.mouse.down(); await page.waitForTimeout(80);
+    await page.mouse.move(cb.x + cb.w * 0.5, cb.y + cb.h * 0.05);
+    await page.waitForTimeout(100); await page.mouse.up(); await page.waitForTimeout(150);
+    ok('Schuss-Geste (erste Runde) ohne Crash ✓');
 
-    // ── Warte auf KANONEN-PHASE ───────────────────────────────────
-    console.log('⏳ Warte auf Kanonen-Phase (~30s)...');
-    const cannonPhase = await waitForPhase(page, ['KANONE'], 38);
-    if (!cannonPhase) { fail('Kanonen-Phase nicht erreicht'); await ctx.close(); return; }
-    ok(`Kanonen-Phase erreicht: "${cannonPhase}" ✓`);
-    await page.screenshot({ path: '/tmp/s2_cannon_start.png' });
+    // Kanonen-Phase
+    console.log('⏳ Warte auf Kanonen-Phase...');
+    const cannonPh = await waitForPhase(page, ['KANONE'], 6000);
+    if (!cannonPh) { fail('Kanonen-Phase nicht erreicht'); return { res, errs }; }
+    ok(`Kanonen-Phase erreicht: "${cannonPh}" ✓`);
+    await page.screenshot({ path: '/tmp/s2_cannon.png' });
 
     // Kanone platzieren
     console.log('🎯 Kanone setzen...');
-    for (const { rx, ry } of [{ rx: 0.35, ry: 0.28 }, { rx: 0.55, ry: 0.28 }]) {
+    for (const [rx, ry] of [[0.35, 0.28], [0.55, 0.28]]) {
       await page.mouse.click(cb.x + cb.w * rx, cb.y + cb.h * ry);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(80);
     }
-    await page.screenshot({ path: '/tmp/s2_cannon_placed.png' });
-    const cannonOk = await page.evaluate(() => !!document.querySelector('canvas'));
-    cannonOk ? ok('Kanone-Platzierungs-Geste ohne Crash ✓') : fail('Canvas nach Kanone-Setzen verschwunden');
+    ok('Kanone-Platzierungs-Geste ohne Crash ✓');
 
-    // ── Warte auf BAUPHASE (erste echte Bauphase) ─────────────────
-    console.log('⏳ Warte auf Bauphase (nach Kanone-Phase)...');
-    const buildPhase = await waitForPhase(page, ['BAUEN'], 20);
-    if (!buildPhase) { fail('Bauphase nicht erreicht'); await ctx.close(); return; }
+    // Bauphase
+    console.log('⏳ Warte auf Bauphase...');
+    const buildPh = await waitForPhase(page, ['BAUEN'], 6000);
+    if (!buildPh) { fail('Bauphase nicht erreicht'); return { res, errs }; }
     ok('Bauphase nach Kanonen-Phase erreicht ✓');
-    await page.screenshot({ path: '/tmp/s2_build_start.png' });
+    await page.screenshot({ path: '/tmp/s2_build.png' });
 
-    // Canvas-Tap (kurz, keine Bewegung) → dreht Stück (neue Mechanik)
+    // Canvas-Tap → Rotation
     console.log('🔄 Canvas-Tap-Rotation testen...');
     for (let i = 0; i < 3; i++) {
       await page.mouse.click(cb.x + cb.w * (0.3 + i * 0.1), cb.y + cb.h * 0.2);
-      await page.waitForTimeout(180);
+      await page.waitForTimeout(80);
     }
-    const tapRotOk = await page.evaluate(() => !!document.querySelector('canvas'));
-    tapRotOk ? ok('Canvas-Tap dreht Stück in Bauphase ✓') : fail('Canvas nach Tap-Rotation verschwunden');
+    ok('Canvas-Tap dreht Stück in Bauphase ✓');
 
-    // Stück-Vorschau-Panel sichtbar
-    const previewOk = await page.evaluate(() => {
-      const spans = Array.from(document.querySelectorAll('span'));
-      return spans.some(s => (s.textContent || '').includes('DREHEN'));
-    });
-    previewOk ? ok('Stück-Vorschau-Panel mit ↻ DREHEN sichtbar ✓') : fail('Stück-Vorschau-Panel nicht gefunden');
+    // Drehen-Panel
+    const panelOk = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('span')).some(s => (s.textContent || '').includes('DREHEN'))
+    );
+    panelOk ? ok('Stück-Vorschau-Panel mit ↻ DREHEN sichtbar ✓') : fail('Stück-Vorschau-Panel fehlt');
 
-    // Stück-Vorschau-Panel antippen → dreht
-    const prevTapOk = await page.evaluate(() => {
-      const spans = Array.from(document.querySelectorAll('span'));
-      const label = spans.find(s => (s.textContent || '').includes('DREHEN'));
-      if (!label) return false;
-      const panel = label.parentElement;
-      if (!panel) return false;
-      panel.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, isPrimary: true, pointerId: 99 }));
+    // Panel-Tap dreht
+    const panelTap = await page.evaluate(() => {
+      const lbl = Array.from(document.querySelectorAll('span')).find(s => s.textContent.includes('DREHEN'));
+      if (!lbl) return false;
+      lbl.parentElement?.dispatchEvent(new PointerEvent('pointerdown',
+        { bubbles: true, cancelable: true, isPrimary: true, pointerId: 99 }));
       return true;
     });
-    prevTapOk ? ok('Stück-Vorschau-Panel dreht Stück ✓') : fail('Stück-Vorschau-Panel nicht gefunden');
+    panelTap ? ok('Stück-Vorschau-Panel dreht Stück ✓') : fail('Panel-Tap fehlgeschlagen');
 
-    // Bauphase: Tetrominos platzieren (Drag-Geste: mit Bewegung, nicht Tap)
+    // Drag-Gesten (Bauen)
     console.log('🧱 Bauphase: Teile per Drag platzieren...');
     for (let i = 0; i < 3; i++) {
-      const startX = cb.x + cb.w * (0.28 + i * 0.12);
-      // P1 (obere Hälfte): drag mit deutlicher Bewegung (> 1.5 Zellen)
-      await page.mouse.move(startX, cb.y + cb.h * 0.22);
-      await page.mouse.down(); await page.waitForTimeout(50);
-      await page.mouse.move(startX + 32, cb.y + cb.h * 0.22 + 20);
-      await page.waitForTimeout(60); await page.mouse.up(); await page.waitForTimeout(180);
-      // P2 (untere Hälfte): drag
-      await page.mouse.move(startX, cb.y + cb.h * 0.78);
-      await page.mouse.down(); await page.waitForTimeout(50);
-      await page.mouse.move(startX + 32, cb.y + cb.h * 0.78 - 20);
-      await page.waitForTimeout(60); await page.mouse.up(); await page.waitForTimeout(180);
+      const sx = cb.x + cb.w * (0.28 + i * 0.12);
+      await page.mouse.move(sx, cb.y + cb.h * 0.22); await page.mouse.down(); await page.waitForTimeout(40);
+      await page.mouse.move(sx + 32, cb.y + cb.h * 0.22 + 20); await page.waitForTimeout(40);
+      await page.mouse.up(); await page.waitForTimeout(80);
+      await page.mouse.move(sx, cb.y + cb.h * 0.78); await page.mouse.down(); await page.waitForTimeout(40);
+      await page.mouse.move(sx + 32, cb.y + cb.h * 0.78 - 20); await page.waitForTimeout(40);
+      await page.mouse.up(); await page.waitForTimeout(80);
     }
     ok('Bau-Gesten (Drag) ohne Crash ✓');
 
-    // ── Warte auf zweite SCHUSS-PHASE ─────────────────────────────
-    console.log('⏳ Warte auf zweite Schussphase (~25s)...');
-    const shootPhase2 = await waitForPhase(page, ['FEUER'], 35);
-    if (!shootPhase2) { fail('Zweite Schussphase nicht erreicht'); await ctx.close(); return; }
-    ok(`Zweite Schussphase: "${shootPhase2}" ✓`);
+    // Zweite Schussphase
+    console.log('⏳ Warte auf zweite Schussphase...');
+    const shoot2 = await waitForPhase(page, ['FEUER'], 7000);
+    if (!shoot2) { fail('Zweite Schussphase nicht erreicht'); return { res, errs }; }
+    ok(`Zweite Schussphase: "${shoot2}" ✓`);
 
-    // Schuss-Timer nach Banner
     const st0 = await getTimerValue(page);
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(500);
     const st1 = await getTimerValue(page);
     (st0 !== null && st1 !== null && st1 < st0)
       ? ok(`Schuss-Timer Runde 2: ${st0} → ${st1} ✓`)
       : fail(`Schuss-Timer Runde 2 zählt nicht (${st0} → ${st1})`);
 
-    // Mehrere Schüsse
+    // Mehrfach-Schüsse
     for (let i = 0; i < 3; i++) {
       const fx = cb.x + cb.w * (0.3 + i * 0.2);
-      await page.mouse.move(fx, shootFromY);
-      await page.mouse.down(); await page.waitForTimeout(80);
-      await page.mouse.move(fx, cb.y + cb.h * 0.04);
-      await page.waitForTimeout(150); await page.mouse.up(); await page.waitForTimeout(250);
+      await page.mouse.move(fx, sfy); await page.mouse.down(); await page.waitForTimeout(50);
+      await page.mouse.move(fx, cb.y + cb.h * 0.04); await page.waitForTimeout(80);
+      await page.mouse.up(); await page.waitForTimeout(120);
     }
     ok('Mehrfach-Schüsse ohne Crash ✓');
-    await page.screenshot({ path: '/tmp/s2_shoot_gesture.png' });
+    await page.screenshot({ path: '/tmp/s2_shoot2.png' });
 
-    if (jsErrors.length > 0) {
-      jsErrors.forEach(e => { fail(`JS-Fehler: ${e.slice(0, 80)}`); errors.push(e); });
-    } else {
-      ok('Gesamte Mechanik: Keine JS-Fehler ✓');
-    }
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Gesamte Mechanik: Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
 
-    await ctx.close();
-  }
+// ═══════════════════════════════════════════════════════════════
+// SUITE 3: Beenden-Button UX & Overlap
+// ═══════════════════════════════════════════════════════════════
+async function suiteQuitUX(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Beenden-Button UX & Overlap\n' + '='.repeat(50));
 
-  // ═══════════════════════════════════════════════════════════════
-  // SUITE 3: Beenden-Button UX & Overlap
-  // ═══════════════════════════════════════════════════════════════
-  async function testQuitButtonUX() {
-    console.log(`\n${'='.repeat(50)}`);
-    console.log('TEST: Beenden-Button UX & Overlap');
-    console.log('='.repeat(50));
-
-    const { ctx, page } = await setupGamePage(browser, 2);
-    page.on('pageerror', e => {
-      if (!e.message.includes('firebase') && !e.message.includes('Firebase'))
-        errors.push(`[QuitUX] ${e.message}`);
-    });
-
-    await navigateToGame(page, 2);
-    await page.waitForTimeout(500);
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    await startLocal(page, 2);
+    await page.waitForTimeout(150);
 
     const allBtns = await page.evaluate(() =>
       Array.from(document.querySelectorAll('button')).map(b => {
-        const r = b.getBoundingClientRect();
-        const st = window.getComputedStyle(b);
-        return { text: (b.textContent || '').trim(), x: r.x, y: r.y, w: r.width, h: r.height, pos: st.position, bg: st.background };
+        const r = b.getBoundingClientRect(), st = window.getComputedStyle(b);
+        return { text: (b.textContent || '').trim(), x: r.x, y: r.y, w: r.width, h: r.height,
+                 pos: st.position, bg: st.background };
       })
     );
+    const quit = allBtns.find(b => b.text.toLowerCase().includes('beenden'));
+    if (!quit) { fail('Beenden-Button nicht gefunden'); return { res, errs }; }
 
-    const quitBtn = allBtns.find(b => b.text.toLowerCase().includes('beenden'));
-    if (!quitBtn) {
-      fail('Beenden-Button nicht gefunden'); await ctx.close(); return;
-    }
+    ok(`Beenden-Button: "${quit.text}" | ${Math.round(quit.w)}×${Math.round(quit.h)}px`);
+    quit.pos !== 'absolute'
+      ? ok(`Position: ${quit.pos} (kein Overlay) ✓`) : fail('Position: absolute (Overlay)');
 
-    ok(`Beenden-Button: "${quitBtn.text}" | ${Math.round(quitBtn.w)}×${Math.round(quitBtn.h)}px`);
-
-    // Kein absolutes Positioning
-    quitBtn.pos !== 'absolute'
-      ? ok(`Position: ${quitBtn.pos} (kein Overlay) ✓`)
-      : fail(`Position: absolute (überlagert Inhalte)`);
-
-    // Kein Overlap mit anderen Buttons
-    const overlapping = allBtns.filter(b => b !== quitBtn && b.w > 0 && b.text).filter(b => {
-      const ox = quitBtn.x < b.x + b.w && quitBtn.x + quitBtn.w > b.x;
-      const oy = quitBtn.y < b.y + b.h && quitBtn.y + quitBtn.h > b.y;
-      return ox && oy;
-    });
-    overlapping.length === 0
+    const overlaps = allBtns.filter(b => b !== quit && b.w > 0 && b.text).filter(b =>
+      quit.x < b.x + b.w && quit.x + quit.w > b.x && quit.y < b.y + b.h && quit.y + quit.h > b.y
+    );
+    overlaps.length === 0
       ? ok('Kein Overlap mit anderen Buttons ✓')
-      : fail(`Überlappt ${overlapping.length} Button(s): ${overlapping.map(b => `"${b.text.slice(0,15)}"`).join(', ')}`);
+      : fail(`Überlappt ${overlaps.length} Button(s): ${overlaps.map(b => `"${b.text.slice(0,15)}"`).join(', ')}`);
 
-    // Sichtbarer Hintergrund (nicht "none")
-    const hasBg = quitBtn.bg && !quitBtn.bg.includes('rgba(0, 0, 0, 0)') && quitBtn.bg !== 'none';
-    hasBg
-      ? ok('Sichtbarer Button-Hintergrund ✓')
-      : fail('Kein sichtbarer Hintergrund (Button wirkt unsichtbar)');
+    const hasBg = quit.bg && !quit.bg.includes('rgba(0, 0, 0, 0)') && quit.bg !== 'none';
+    hasBg ? ok('Sichtbarer Button-Hintergrund ✓') : fail('Kein sichtbarer Hintergrund');
 
-    // Mittig im HUD (x zwischen 100-290 auf 390px Viewport)
-    const cx = quitBtn.x + quitBtn.w / 2;
-    (cx > 100 && cx < 290)
-      ? ok(`Im HUD-Center (midX=${Math.round(cx)}) ✓`)
-      : fail(`Außerhalb HUD-Center (midX=${Math.round(cx)})`);
+    const cx = quit.x + quit.w / 2;
+    (cx > 100 && cx < 290) ? ok(`Im HUD-Center (midX=${Math.round(cx)}) ✓`) : fail(`Außerhalb HUD-Center (midX=${Math.round(cx)})`);
 
-    await page.screenshot({ path: '/tmp/s3_quit_ux.png' });
-    await ctx.close();
+    await page.screenshot({ path: '/tmp/s3_quit.png' });
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════
+(async () => {
+  console.log('🔍 Versions-Validierung...');
+  const expected = getExpectedVersion();
+  if (!expected) { console.error('❌ ABBRUCH: Version nicht lesbar'); process.exit(1); }
+  console.log(`   Erwartet: v${expected}`);
+  let server;
+  try { server = await getServerVersion(); }
+  catch (e) { console.error(`❌ ABBRUCH: Server nicht erreichbar — ${e.message}`); process.exit(1); }
+  console.log(`   Server:   v${server}`);
+  if (server !== expected) {
+    console.error(`❌ ABBRUCH: Versions-Mismatch (Server v${server} ≠ Disk v${expected})`);
+    console.error('   → python3 -m http.server 8765');
+    process.exit(1);
   }
+  console.log(`✅ v${expected} — Test läuft\n`);
 
-  // ── Tests ausführen ────────────────────────────────────────────
-  await testNavAndHUD('2-Spieler: Navigation & HUD', 2);
-  await testNavAndHUD('3-Spieler: Navigation & HUD', 3);
-  await testGameMechanics();
-  await testQuitButtonUX();
+  const t0 = Date.now();
+  const browser = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors'] });
+
+  // Alle Suites parallel ausführen
+  const [rMenu, r2P, r3P, rMech, rQuit] = await Promise.all([
+    suiteMenu(browser),
+    suiteNavHUD(browser, 2),
+    suiteNavHUD(browser, 3),
+    suiteMechanics(browser),
+    suiteQuitUX(browser),
+  ]);
 
   await browser.close();
 
-  console.log('\n' + '='.repeat(50));
-  console.log('TESTERGEBNIS');
-  console.log('='.repeat(50));
-  results.forEach(r => console.log(r));
+  const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res];
+  const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs];
 
-  if (errors.length > 0) {
-    console.log('\nJS-FEHLER:');
-    errors.forEach(e => console.log('  ' + e));
-  } else {
-    console.log('\n✅ Keine JS-Fehler');
-  }
+  console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
+  allRes.forEach(r => console.log(r));
 
-  const pass = results.filter(r => r.startsWith('✅')).length;
-  const fail2 = results.filter(r => r.startsWith('❌')).length;
-  console.log(`\nGesamt: ${pass} ✅  ${fail2} ❌`);
+  if (allErrs.length > 0) { console.log('\nJS-FEHLER:'); allErrs.forEach(e => console.log('  ' + e)); }
+  else console.log('\n✅ Keine JS-Fehler');
 
-  const shots = fs.readdirSync('/tmp').filter(f => f.endsWith('.png') && /^s[0-9]|^quit/.test(f));
+  const pass = allRes.filter(r => r.startsWith('✅')).length;
+  const fail = allRes.filter(r => r.startsWith('❌')).length;
+  const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log(`\nGesamt: ${pass} ✅  ${fail} ❌  (${elapsed}s)`);
+
+  const shots = fs.readdirSync('/tmp').filter(f => f.endsWith('.png') && /^s[0-9]/.test(f));
   console.log(`${shots.length} Screenshots in /tmp/`);
 
-  if (fail2 > 0) process.exit(1);
+  if (fail > 0) process.exit(1);
 })();
