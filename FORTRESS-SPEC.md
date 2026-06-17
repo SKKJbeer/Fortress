@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.8.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.8.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -858,3 +858,6 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Emoji-Präfixe aus i18n-Strings entfernt (Tipps, Warnungen, Buttons).
     Saubere Glyphen (✕ ← ✓ ♔♚♜) bleiben erhalten.
   - Test: alle 87 Checks grün (Button-Texte unverändert → keine Test-Brüche).
+- **v3.8.1**: Kanonen-HP von 10 auf 15 erhöht.
+  - `CANNON_HP = 15` — eine Kanone hält jetzt 15 direkte Treffer aus, bevor
+    sie zerstört wird (vorher 10). HP-Balken skaliert automatisch.
