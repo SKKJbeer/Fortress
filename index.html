@@ -3100,6 +3100,20 @@ window.FortressApp = function Fortress() {
       ctx.translate((Math.random() - 0.5) * shakeRef.current, (Math.random() - 0.5) * shakeRef.current);
       shakeRef.current *= 0.72;
     }
+    const p1Flipped = online.current && myRole.current === 1 && numPlayersRef.current === 2;
+    if (p1Flipped) {
+      ctx.save();
+      ctx.translate(0, H);
+      ctx.scale(1, -1);
+      const _origFT = CanvasRenderingContext2D.prototype.fillText;
+      ctx.fillText = function(text, x, y, maxW) {
+        this.save();
+        this.translate(x, y);
+        this.scale(1, -1);
+        _origFT.call(this, text, 0, 0, maxW);
+        this.restore();
+      };
+    }
     const terObj = terrain.current;
     const ter = terObj ? terObj.grid : null;
     if (!bgCanvas.current) {
@@ -3455,6 +3469,7 @@ window.FortressApp = function Fortress() {
     ctx.strokeStyle = "rgba(170,140,55,0.35)";
     ctx.lineWidth = 2.5;
     ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
+    if (p1Flipped) { delete ctx.fillText; ctx.restore(); }
     if (didShake) ctx.restore();
     if (online.current && myRole.current === 1) pushState(false);
     animId.current = requestAnimationFrame(renderLoop);
@@ -4318,8 +4333,7 @@ window.FortressApp = function Fortress() {
         width: viewSize.w,
         height: viewSize.h,
         touchAction: "none",
-        cursor: phase === "build" || phase === "cannon" || phase === "setup" ? "crosshair" : "default",
-        transform: (online.current && myRole.current === 1 && numPlayersRef.current === 2) ? "scaleY(-1)" : undefined
+        cursor: phase === "build" || phase === "cannon" || phase === "setup" ? "crosshair" : "default"
       }
     }
   )), /* @__PURE__ */ React.createElement("div", { ref: bottomBarRef, style: {
