@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.5)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.6)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -841,3 +841,6 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Der globale Canvas-Flip des Haupt-Canvas "hebt" den Pre-Flip wieder auf,
     sodass Berge (und andere gerichtete Hintergrund-Elemente) für P1 aufrecht
     erscheinen und korrekt zur Spielfeld-Orientierung passen.
+- **v3.7.6**: "Schnellspiel"/"Quick Match" → "Matchmaking" umbenannt.
+  - DE: `"⚡ Schnellspiel ({n} Spieler)"` → `"⚡ Matchmaking ({n} Spieler)"`
+  - EN: `"⚡ Quick Match ({n} Players)"` → `"⚡ Matchmaking ({n} Players)"`

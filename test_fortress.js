@@ -176,18 +176,18 @@ async function suiteMenu(browser) {
     await page.waitForTimeout(250);
     const onlineOk = await page.evaluate(() =>
       Array.from(document.querySelectorAll('button')).some(b =>
-        /(Schnellspiel|Quick|Spiel erstellen|Code)/i.test(b.textContent || ''))
+        /(Matchmaking|Spiel erstellen|Code)/i.test(b.textContent || ''))
     );
     onlineOk ? ok('Online-Overlay öffnet sich ✓') : fail('Online-Overlay fehlt');
 
-    // Schnellspiel-Button hat Spieler-Anzahl-Text
+    // Matchmaking-Button vorhanden
     const mmBtn = await page.evaluate(() => {
       for (const b of document.querySelectorAll('button')) {
-        if (/(Schnellspiel|Quick)/i.test(b.textContent || '')) return b.textContent.trim();
+        if (/Matchmaking/i.test(b.textContent || '')) return b.textContent.trim();
       }
       return null;
     });
-    mmBtn ? ok(`Schnellspiel-Button: "${mmBtn.slice(0, 40)}" ✓`) : fail('Schnellspiel-Button fehlt');
+    mmBtn ? ok(`Matchmaking-Button: "${mmBtn.slice(0, 40)}" ✓`) : fail('Matchmaking-Button fehlt');
 
     await page.screenshot({ path: '/tmp/s0_menu.png' });
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Keine JS-Fehler ✓');
@@ -438,8 +438,9 @@ async function suiteMechanics(browser) {
     if (!shoot2) { fail('Zweite Schussphase nicht erreicht'); return { res, errs }; }
     ok(`Zweite Schussphase: "${shoot2}" ✓`);
 
+    await page.waitForTimeout(200); // kurz nach Phasen-Reset stabilisieren
     const st0 = await getTimerValue(page);
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     const st1 = await getTimerValue(page);
     (st0 !== null && st1 !== null && st1 < st0)
       ? ok(`Schuss-Timer Runde 2: ${st0} → ${st1} ✓`)

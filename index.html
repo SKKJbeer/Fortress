@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.7.5</title>
+  <title>FORTRESS v3.7.6</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -859,7 +859,7 @@ const LANGS = {
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Zusammen spielen mit 2 oder 3 Spielern, jeder auf seinem eigenen Handy.",
     fbMissing: "⚠️ Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit FB_URL).",
-    quickMatchBtn: "⚡ Schnellspiel ({n} Spieler)",
+    quickMatchBtn: "⚡ Matchmaking ({n} Spieler)",
     quickMatchSub: "Du wirst automatisch mit einem passenden Gegner verbunden — kein Code n\xF6tig",
     orDivider: "ODER MIT CODE",
     searchingOpponent: "Suche Gegner…",
@@ -997,7 +997,7 @@ const LANGS = {
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Play together with 2 or 3 players, each on their own phone.",
     fbMissing: "⚠️ Firebase URL missing. Add your database URL in the code (line with FB_URL).",
-    quickMatchBtn: "⚡ Quick Match ({n} Players)",
+    quickMatchBtn: "⚡ Matchmaking ({n} Players)",
     quickMatchSub: "You'll be matched with a suitable opponent automatically — no code needed",
     orDivider: "OR WITH CODE",
     searchingOpponent: "Searching for opponent…",
@@ -2071,7 +2071,7 @@ window.FortressApp = function Fortress() {
     startPolling(code, role);
     setMpScreen("waiting");
   }
-  // ───────────────── Matchmaking (Schnellspiel, 2 oder 3 Spieler) ─────────────────
+  // ───────────────── Matchmaking (2 oder 3 Spieler) ─────────────────
   // Statt aktiv einen Code zu teilen, trägt sich der Spieler in
   // /queue2/{SESSION_ID} (2-Spieler) bzw. /queue3/{SESSION_ID} (3-Spieler) ein.
   // Getrennte Queues, damit 2er- und 3er-Suchende sich nie vermischen.
@@ -3713,7 +3713,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
