@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.4)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.5)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -835,3 +835,9 @@ und beschiessen danach gegenseitig ihre Festungen.
     Pushing, sodass der Gast nie Spielzustand empfing und in der Queue blieb.
   - `delete ctx.fillText` durch `ctx.fillText = CanvasRenderingContext2D.prototype.fillText`
     ersetzt (sicherer, kein Abhängigkeit von Konfigurierbarkeit des Host-Objekts).
+- **v3.7.5**: Bugfix — Berge in P1-Flipped-Ansicht zeigen nach oben.
+  - Beim Rendern des Hintergrund-Canvas (`bgCanvas`) wird für P1 (Host, Online
+    2v2) ein Pre-Flip angewendet: `bc.translate(0,H); bc.scale(1,-1)`.
+  - Der globale Canvas-Flip des Haupt-Canvas "hebt" den Pre-Flip wieder auf,
+    sodass Berge (und andere gerichtete Hintergrund-Elemente) für P1 aufrecht
+    erscheinen und korrekt zur Spielfeld-Orientierung passen.
