@@ -15,6 +15,25 @@ const TIMER_SPEEDUP = `
   window.setTimeout = (fn, ms, ...a) => _ost(fn, ms >= 2000 ? Math.round(ms / 5) : ms, ...a);
 `;
 
+// Profil vorab in localStorage setzen, damit der Profil-Editor nie erscheint.
+// Der Profil-Editor zeigt "WAPPEN" als Label (6 Großbuchstaben), das sonst
+// fälschlich als Spielcode erkannt wird.
+const PROFILE_INIT = `
+  try {
+    localStorage.setItem('fortress_profile', JSON.stringify({
+      id: 'test_bot_001',
+      name: 'TestBot',
+      wappen: '♔',
+      color: '#2563eb',
+      stats: { wins: 0, losses: 0, games: 0 },
+      stats3: { wins: 0, losses: 0, games: 0 },
+      elo: 1000,
+      elo3: 1000,
+      gold: 100
+    }));
+  } catch(e) {}
+`;
+
 // ── Versions-Helfer ───────────────────────────────────────────
 function getExpectedVersion() {
   const html = fs.readFileSync('/home/user/Fortress/index.html', 'utf8');
@@ -94,6 +113,7 @@ async function waitForPhase(page, keywords, waitMs = 6000) {
 async function makeCtx(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await ctx.newPage();
+  await page.addInitScript(PROFILE_INIT);
   await page.addInitScript(TIMER_SPEEDUP);
   await page.route('**unpkg.com**react@18**react.production.min.js**',
     r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
@@ -105,20 +125,25 @@ async function makeCtx(browser) {
   return { ctx, page };
 }
 
-// Menü laden + Profil-Editor überspringen
+// Menü laden + Profil-Editor überspringen (falls PROFILE_INIT nicht gegriffen hat)
 async function loadMenu(page) {
   await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded', timeout: 10000 });
   await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 8000 });
   await page.waitForTimeout(200);
-  const hasInput = await page.evaluate(() => !!document.querySelector('input[maxlength="16"]'));
+  // Prüft auf beliebiges Input-Feld (Profil-Editor hat input ohne maxlength-Attribut)
+  const hasInput = await page.evaluate(() => !!document.querySelector('input'));
   if (hasInput) {
     await page.evaluate(() => {
-      const i = document.querySelector('input[maxlength="16"]');
+      const i = document.querySelector('input');
       if (i) { i.value = 'TestBot'; i.dispatchEvent(new Event('input', { bubbles: true })); }
     });
     await page.waitForTimeout(80);
-    await jsClick(page, ['Speichern']);
+    // Button heißt "Profil erstellen ⚔️" (kein Profil) oder "Speichern" (Profil vorhanden)
+    await jsClick(page, ['Speichern', 'Profil erstellen', 'Save', 'Create profile']);
     await page.waitForTimeout(150);
+    await page.waitForFunction(
+      () => !document.querySelector('input'), { timeout: 3000 }
+    ).catch(() => {});
   }
 }
 
@@ -510,6 +535,404 @@ async function suiteQuitUX(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MOCK FIREBASE SERVER (Port 8766)
+// Simuliert Firebase Realtime DB via HTTP für Online-Tests.
+// Alle Schreiboperationen erhöhen einen globalen Versionszähler;
+// alle Subscriptions pollen per GET /fb?op=poll&since=<ver>.
+// ═══════════════════════════════════════════════════════════════
+function startMockFbServer() {
+  const store = {};
+  let ver = 0;
+
+  function getAt(path) {
+    const parts = path.split('/').filter(Boolean);
+    let c = store;
+    for (const p of parts) {
+      if (c == null || typeof c !== 'object') return null;
+      c = c[p];
+    }
+    return c !== undefined ? c : null;
+  }
+
+  function setAt(path, val) {
+    const parts = path.split('/').filter(Boolean);
+    let c = store;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!c[parts[i]] || typeof c[parts[i]] !== 'object') c[parts[i]] = {};
+      c = c[parts[i]];
+    }
+    if (val === null || val === undefined) delete c[parts.at(-1)];
+    else c[parts.at(-1)] = val;
+    ver++;
+  }
+
+  function patchAt(path, obj) {
+    const cur = getAt(path);
+    const base = (cur !== null && typeof cur === 'object') ? cur : {};
+    setAt(path, { ...base, ...obj });
+  }
+
+  const server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+    const url  = new URL(req.url, 'http://localhost');
+    const op   = url.searchParams.get('op') || '';
+    const path = url.searchParams.get('path') || '/';
+
+    if (op === 'get') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(getAt(path)));
+      return;
+    }
+    if (op === 'poll') {
+      const since = parseInt(url.searchParams.get('since') || '-1', 10);
+      res.setHeader('Content-Type', 'application/json');
+      const val = ver > since ? getAt(path) : undefined;
+      res.end(JSON.stringify({ ver, value: val }));
+      return;
+    }
+    if (op === 'delete') {
+      setAt(path, null);
+      res.setHeader('Content-Type', 'application/json');
+      res.end('{"ok":true}');
+      return;
+    }
+
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body || 'null');
+        if (op === 'set') {
+          setAt(path, data);
+          res.setHeader('Content-Type', 'application/json');
+          res.end('{"ok":true}');
+        } else if (op === 'patch') {
+          patchAt(path, data);
+          res.setHeader('Content-Type', 'application/json');
+          res.end('{"ok":true}');
+        } else if (op === 'cas') {
+          // Compare-and-swap für runTransaction / fb.reserve
+          const cur = getAt(path);
+          if (JSON.stringify(cur) === JSON.stringify(data.expected)) {
+            setAt(path, data.newVal);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ committed: true, value: data.newVal }));
+          } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ committed: false, value: cur }));
+          }
+        } else {
+          res.writeHead(400);
+          res.end('{"error":"unknown op"}');
+        }
+      } catch (e) {
+        res.writeHead(400);
+        res.end('{"error":"bad request"}');
+      }
+    });
+  });
+
+  return new Promise(resolve => server.listen(8766, () => resolve(server)));
+}
+
+// Browser-seitiger Firebase-Mock: ruft den Mock-Server via fetch auf.
+// Wird per addInitScript injiziert BEVOR das echte Firebase-SDK lädt
+// (das über gstatic geblockt ist) → window.__fb bleibt unser Mock.
+function makeFbMock(port) {
+  return `(function() {
+  const B = 'http://localhost:${port}';
+  async function _f(url, opts) {
+    try { return await fetch(url, opts); } catch(e) { return null; }
+  }
+  function ref(db, path) { return { __p: path }; }
+  async function set(ref, data) {
+    await _f(B+'/fb?op=set&path='+encodeURIComponent(ref.__p),
+      {method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});
+  }
+  async function update(ref, data) {
+    await _f(B+'/fb?op=patch&path='+encodeURIComponent(ref.__p),
+      {method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});
+  }
+  async function remove(ref) {
+    await _f(B+'/fb?op=delete&path='+encodeURIComponent(ref.__p),{method:'DELETE'});
+  }
+  async function get(ref) {
+    const r = await _f(B+'/fb?op=get&path='+encodeURIComponent(ref.__p));
+    const v = r ? await r.json() : null;
+    return { exists:()=>v!==null&&v!==undefined, val:()=>v };
+  }
+  function onValue(ref, cb, errCb) {
+    let last = -1;
+    const id = setInterval(async () => {
+      try {
+        const r = await _f(B+'/fb?op=poll&path='+encodeURIComponent(ref.__p)+'&since='+last);
+        if (!r) return;
+        const d = await r.json();
+        if (d.ver > last) {
+          last = d.ver;
+          if (d.value !== undefined) cb({exists:()=>d.value!==null,val:()=>d.value});
+        }
+      } catch(e) { if (errCb) errCb(e); }
+    }, 120);
+    return id;
+  }
+  function off(ref, type, id) { clearInterval(id); }
+  async function runTransaction(ref, fn) {
+    try {
+      const rg = await _f(B+'/fb?op=get&path='+encodeURIComponent(ref.__p));
+      const cur = rg ? await rg.json() : null;
+      const newVal = fn(cur);
+      if (newVal === undefined)
+        return { committed:false, snapshot:{exists:()=>cur!==null,val:()=>cur} };
+      const rp = await _f(B+'/fb?op=cas&path='+encodeURIComponent(ref.__p), {
+        method:'POST',
+        body:JSON.stringify({expected:cur,newVal}),
+        headers:{'Content-Type':'application/json'}
+      });
+      const d = rp ? await rp.json() : {committed:false,value:cur};
+      return { committed:d.committed, snapshot:{exists:()=>d.value!==null,val:()=>d.value} };
+    } catch(e) {
+      return { committed:false, snapshot:{exists:()=>false,val:()=>null} };
+    }
+  }
+  function onDisconnect(ref) { return { remove:()=>{}, cancel:()=>{} }; }
+  window.__fb = { db:{}, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect };
+})();`;
+}
+
+// Browser-Kontext mit Firebase-Mock (für Online-Tests)
+async function makeOnlineCtx(browser, fbPort) {
+  const ctx  = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const page = await ctx.newPage();
+  await page.addInitScript(PROFILE_INIT);
+  await page.addInitScript(TIMER_SPEEDUP);
+  await page.addInitScript(makeFbMock(fbPort));
+  await page.route('**unpkg.com**react@18**react.production.min.js**',
+    r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
+  await page.route('**unpkg.com**react-dom@18**react-dom.production.min.js**',
+    r => r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
+  await page.route('**firebase**',   r => r.abort());
+  await page.route('**gstatic**',    r => r.abort());
+  await page.route('**googleapis**', r => r.abort());
+  return { ctx, page };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 4: Online-UI (kein vollständiges Spiel nötig)
+// ═══════════════════════════════════════════════════════════════
+async function suiteOnlineUI(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Online-UI\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeOnlineCtx(browser, fbPort);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // Online-Overlay öffnet sich
+    await jsClick(page, ['ONLINE']);
+    await page.waitForTimeout(300);
+    const hasMainBtns = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button')).map(b => b.textContent.trim());
+      return btns.some(t => /erstellen/i.test(t)) && btns.some(t => /beitreten/i.test(t));
+    });
+    hasMainBtns ? ok('Online-Overlay: "Spiel erstellen" + "Spiel beitreten" ✓')
+                : fail('Online-Overlay-Hauptbuttons fehlen');
+
+    // "Spiel beitreten" → Code-Eingabe
+    await jsClick(page, ['Spiel beitreten', 'beitreten']);
+    await page.waitForFunction(() => !!document.querySelector('input'), { timeout: 3000 }).catch(() => {});
+    const inputOk = await page.evaluate(() => !!document.querySelector('input'));
+    inputOk ? ok('"Spiel beitreten": Code-Eingabefeld ✓') : fail('"Spiel beitreten": Eingabefeld fehlt');
+
+    // "Zurück" aus Code-Eingabe
+    await jsClick(page, ['Zurück', 'back', 'Abbrechen']);
+    await page.waitForTimeout(200);
+
+    // "Spiel erstellen" → Wartescreen mit 6-stelligem Code
+    await jsClick(page, ['Spiel erstellen']);
+    // Warte bis Code-TextNode erscheint (max 5s)
+    await page.waitForFunction(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) { if (re.test(w.currentNode.textContent.trim())) return true; }
+      return false;
+    }, { timeout: 5000 }).catch(() => {});
+
+    const code = await page.evaluate(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        const t = w.currentNode.textContent.trim();
+        if (re.test(t)) return t;
+      }
+      return null;
+    });
+
+    code ? ok(`"Spiel erstellen": Code "${code}" ✓`) : fail('"Spiel erstellen": kein Spielcode');
+
+    const waitOk = await page.evaluate(() =>
+      /warte|teile|share|code/i.test(document.body.innerText)
+    );
+    waitOk ? ok('"Spiel erstellen": Wartescreen sichtbar ✓') : fail('"Spiel erstellen": Wartescreen fehlt');
+
+    await page.screenshot({ path: '/tmp/s4_online_create.png' });
+
+    // Abbrechen aus Wartescreen → Menü
+    await jsClick(page, ['Abbrechen', 'cancel', 'Cancel']);
+    await page.waitForTimeout(400);
+    const menuBack = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).some(b => /LOKAL/.test(b.textContent))
+    );
+    menuBack ? ok('Wartescreen abbrechen → Menü ✓') : fail('Abbrechen aus Wartescreen: kein Menü');
+
+    await page.screenshot({ path: '/tmp/s4_online_menu.png' });
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 5: Online 2-Spieler-Spiel (Host + Gast via Mock-Firebase)
+// ═══════════════════════════════════════════════════════════════
+async function suiteOnline2P(browser, fbPort) {
+  const res = [], errs1 = [], errs2 = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Online 2-Spieler\n' + '='.repeat(50));
+
+  const { ctx: ctxH, page: pH } = await makeOnlineCtx(browser, fbPort);
+  const { ctx: ctxG, page: pG } = await makeOnlineCtx(browser, fbPort);
+  pH.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs1.push(e.message); });
+  pG.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs2.push(e.message); });
+
+  try {
+    await Promise.all([loadMenu(pH), loadMenu(pG)]);
+
+    // ── HOST: Spiel erstellen ──────────────────────────────────
+    await jsClick(pH, ['ONLINE']);
+    await pH.waitForTimeout(200);
+    await jsClick(pH, ['Spiel erstellen']);
+    await pH.waitForTimeout(1200);
+
+    // Code-TextNode suchen (genau 6 Chars aus Game-Charset, kein I/O/0/1)
+    const code = await pH.evaluate(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        const t = w.currentNode.textContent.trim();
+        if (re.test(t)) return t;
+      }
+      return null;
+    });
+    if (!code) {
+      fail('Host: kein Spielcode → Suite abgebrochen'); return { res, errs: [...errs1,...errs2] };
+    }
+    ok(`Host erstellt Spiel: Code "${code}" ✓`);
+    await pH.screenshot({ path: '/tmp/s5_host_waiting.png' });
+
+    // ── GAST: Code eingeben + beitreten ───────────────────────
+    await jsClick(pG, ['ONLINE']);
+    await pG.waitForTimeout(200);
+    await jsClick(pG, ['Spiel beitreten', 'beitreten']);
+    await pG.waitForTimeout(200);
+
+    // Warte auf Input-Feld, dann mit Playwright fill() schreiben (korrekte React-Integration)
+    await pG.waitForSelector('input', { timeout: 3000 }).catch(() => {});
+    const typed = await pG.evaluate(() => !!document.querySelector('input'));
+    if (typed) await pG.fill('input', code);
+    typed ? ok('Gast: Code eingetippt ✓') : fail('Gast: Eingabefeld nicht gefunden');
+
+    await pG.waitForTimeout(100);
+    await jsClick(pG, ['Beitreten']);
+    // Kurz warten bis guestJoinGame() abgeschlossen + React gerendert (~50ms),
+    // aber bevor das Spiel startet (~600ms) — Wartescreen ist kurz sichtbar.
+    await pG.waitForTimeout(150);
+    const guestWait = await pG.evaluate(() => /warte|verbinde/i.test(document.body.innerText));
+    guestWait ? ok('Gast: Wartescreen nach Beitreten ✓') : fail('Gast: kein Wartescreen');
+    await pG.screenshot({ path: '/tmp/s5_guest_waiting.png' });
+
+    // ── Spielstart: beide bekommen Canvas ─────────────────────
+    console.log('⏳ Warte auf Spielstart (Host + Gast)...');
+    const hostCanvas = await pH.waitForSelector('canvas', { timeout: 6000 })
+      .then(() => true).catch(() => false);
+    hostCanvas ? ok('Host: Canvas nach Gast-Beitritt ✓') : fail('Host: kein Canvas');
+
+    const guestCanvas = await pG.waitForSelector('canvas', { timeout: 8000 })
+      .then(() => true).catch(() => false);
+    guestCanvas ? ok('Gast: Canvas nach State-Empfang ✓') : fail('Gast: kein Canvas (State-Sync fehlgeschlagen)');
+
+    if (!hostCanvas || !guestCanvas) return { res, errs: [...errs1,...errs2] };
+
+    await pH.screenshot({ path: '/tmp/s5_host_game.png' });
+    await pG.screenshot({ path: '/tmp/s5_guest_game.png' });
+
+    // ── Phasen-Sync prüfen ────────────────────────────────────
+    const hostPh = await waitForPhase(pH, ['FEUER','BAUEN','START','KANONE'], 5000);
+    const guestPh = await waitForPhase(pG, ['FEUER','BAUEN','START','KANONE'], 5000);
+
+    hostPh ? ok(`Host-Phase erkannt: "${hostPh.slice(0,25)}" ✓`) : fail('Host: keine Phase erkannt');
+    guestPh ? ok(`Gast-Phase erkannt: "${guestPh.slice(0,25)}" ✓`) : fail('Gast: keine Phase erkannt');
+
+    if (hostPh && guestPh) {
+      const hK = ['FEUER','BAUEN','START','KANONE'].find(k => hostPh.includes(k));
+      const gK = ['FEUER','BAUEN','START','KANONE'].find(k => guestPh.includes(k));
+      hK === gK
+        ? ok(`Phase-Sync: beide in "${hK}" ✓`)
+        : fail(`Phase-Desync: Host="${hK}" Gast="${gK}"`);
+    }
+
+    // ── Timer auf Gast-Seite zählt (beweist laufenden State-Sync) ──
+    // Warte auf Schussphase (Host hat dann mehrfach gepusht, Gast empfängt aktiv)
+    console.log('⏳ Warte auf Schussphase für Gast-Timer-Check...');
+    await waitForPhase(pG, ['FEUER'], 6000);
+    await pG.waitForTimeout(300); // kurz nach Reset stabilisieren
+    const gt0 = await getTimerValue(pG);
+    await pG.waitForTimeout(1200);
+    const gt1 = await getTimerValue(pG);
+    (gt0 !== null && gt1 !== null && gt1 < gt0)
+      ? ok(`Gast-Timer läuft (State-Sync aktiv): ${gt0} → ${gt1} ✓`)
+      : fail(`Gast-Timer steht (State-Sync defekt): ${gt0} → ${gt1}`);
+
+    // ── Gast kann Aktion senden (Touch auf Canvas) ────────────
+    const gcb = await getCanvasBox(pG);
+    if (gcb) {
+      await pG.mouse.click(gcb.x + gcb.w * 0.5, gcb.y + gcb.h * 0.25);
+      await pG.waitForTimeout(150);
+      ok('Gast: Canvas-Tap ohne Crash ✓');
+    }
+
+    // ── Host HUD prüfen ───────────────────────────────────────
+    const hostHud = await pH.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        timer: /\d{2}/.test(t),
+        quit:  Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('beenden')),
+        // Online HUD zeigt "TestBot (Du)" für den Host; offline "P1"/"P2"
+        score: /Du/.test(t) || (/P1/.test(t) && /P2/.test(t)),
+      };
+    });
+    hostHud.timer ? ok('Host HUD: Timer ✓') : fail('Host HUD: kein Timer');
+    hostHud.quit  ? ok('Host HUD: Beenden-Button ✓') : fail('Host HUD: kein Beenden-Button');
+    hostHud.score ? ok('Host HUD: Spieler-Labels (P1/P2) ✓') : fail('Host HUD: Spieler-Labels fehlen');
+
+    // ── JS-Fehler ─────────────────────────────────────────────
+    errs1.length === 0 ? ok('Host: Keine JS-Fehler ✓') : errs1.forEach(e => fail(`Host JS: ${e.slice(0,80)}`));
+    errs2.length === 0 ? ok('Gast: Keine JS-Fehler ✓') : errs2.forEach(e => fail(`Gast JS: ${e.slice(0,80)}`));
+  } finally {
+    await ctxH.close();
+    await ctxG.close();
+  }
+  return { res, errs: [...errs1, ...errs2] };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -529,21 +952,28 @@ async function suiteQuitUX(browser) {
   console.log(`✅ v${expected} — Test läuft\n`);
 
   const t0 = Date.now();
-  const browser = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors'] });
+  const browser   = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors', '--disable-web-security'] });
+  const mockFbSrv = await startMockFbServer();
+  const FB_PORT   = 8766;
 
-  // Alle Suites parallel ausführen
-  const [rMenu, r2P, r3P, rMech, rQuit] = await Promise.all([
+  // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
     suiteMechanics(browser),
     suiteQuitUX(browser),
+    suiteOnlineUI(browser, FB_PORT),
+    suiteOnline2P(browser, FB_PORT),
   ]);
 
   await browser.close();
+  mockFbSrv.close();
 
-  const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res];
-  const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs];
+  const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+                   ...rOnlineUI.res, ...rOnline2P.res];
+  const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+                   ...rOnlineUI.errs, ...rOnline2P.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
