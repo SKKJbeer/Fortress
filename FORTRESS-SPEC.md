@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.4.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.5)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -156,6 +156,55 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Spieldaten werden NICHT bei pagehide/visibilitychange gelöscht (iOS feuert
   diese schon beim App-Wechsel → würde Spiel killen). Nur bei bewusstem Verlassen
 - Verlust-Zustand wird mehrfach gepusht (sofort, +300ms, +800ms) zur Sicherheit
+
+### Matchmaking ("Schnellspiel", seit v3.6.0; 2 + 3 Spieler seit v3.7.1):
+
+- **Kein aktives Koppeln per Code** — Spieler tritt einer Warteschlange bei
+  statt einen Code zu teilen/einzugeben. Code-basiertes Erstellen/Beitreten
+  bleibt parallel verfügbar (für Spiele mit Freunden).
+- **Getrennte Queues je Spieleranzahl**: 2-Spieler → `/queue2`, 3-Spieler →
+  `/queue3`. So vermischen sich 2er- und 3er-Suchende nie. Der "Schnellspiel"-
+  Button respektiert die Spieleranzahl-Auswahl im Online-Menü. ELO-Quelle:
+  `profile.elo` (2p) bzw. `profile.elo3` (3p).
+- **Schema**: `/queueN/{SESSION_ID}` → `{ name, wappen, color, elo, ts, hb,
+  status, claimBy, claimTs, code, role }`. `ts` = Eintrittszeit (fest, treibt
+  den Such-Radius), `hb` = Heartbeat (alle 2s aktualisiert, Stale-Erkennung).
+- **Kein Server/Cloud Function nötig** (bleibt im Spark-Plan):
+  - Jeder wartende Client abonniert seine Queue per `onValue()` (echtes
+    Realtime, kein Polling) und sucht bei jedem Snapshot + alle 2s
+    (`MM_TICK_MS`) selbst nach Kandidaten.
+  - **ELO-Suchradius wächst mit Wartezeit**: `radius = MM_BASE_RADIUS (60) +
+    wartezeit_s * MM_GROWTH_PER_SEC (18)`. Damit niemand ewig wartet, gilt
+    der **größere** der beiden Radien (eigener vs. Kandidat).
+  - **Initiator-Auswahl (genau ein Host pro Gruppe)**: Der Suchende sammelt
+    die `np-1` ELO-nächsten Kandidaten innerhalb des Radius und initiiert nur,
+    wenn seine eigene `SESSION_ID` kleiner ist als die **aller** gewählten
+    Kandidaten. Bei 2 Spielern ist das genau ein Gegner, bei 3 Spielern zwei.
+  - **Atomares Claiming per Firebase-Transaktion** (`fb.transact`) verhindert,
+    dass zwei Matcher gleichzeitig denselben Kandidaten claimen — exakt das
+    gleiche Muster wie die bestehende Gast-Slot-Reservierung. Bei 3 Spielern
+    werden beide Kandidaten nacheinander geclaimt; schlägt einer fehl, werden
+    bereits geclaimte Tickets wieder auf `"waiting"` zurückgerollt.
+  - Der **Claimer wird automatisch Host (P1)**, erstellt `/games/{code}` und
+    schreibt `status:"matched"` + `code`/`role` in alle beteiligten Tickets
+    (Kandidaten erhalten Rolle 2 und 3). Jeder gematchte Gegner erkennt das
+    über seinen eigenen Ticket-Snapshot und tritt seinem Slot bei (`reserve`
+    auf `guestAction2`/`guestAction3`, wie beim normalen Code-Beitritt). Der
+    Host startet das Spiel erst, wenn **alle** Gäste beigetreten sind.
+  - **Selbstheilung ohne Cron**: Ticket bleibt durch `onDisconnect().remove()`
+    serverseitig konsistent (Tab-Schluss/Crash → sofort gelöscht, kein Cloud
+    Function nötig). Zusätzlich: veraltete Tickets (`hb` älter als
+    `MM_HEARTBEAT_STALE_MS` = 35s) werden bei jedem Scan best-effort gelöscht;
+    ein hängender `"claiming"`-Status (Matcher abgestürzt) heilt nach
+    `MM_CLAIM_HEAL_MS` = 6s zurück auf `"waiting"`; ein Host, dessen
+    gematchte Gegner nicht binnen `MM_GUEST_JOIN_TIMEOUT_MS` = 15s tatsächlich
+    beitreten (verwaiste Tickets erwischt), bricht ab und sucht automatisch
+    neu (mit gleicher Spieleranzahl).
+  - **Aufräumen (ereignisgesteuert, seit v3.6.3)**: Der Host löscht sein
+    eigenes Ticket sofort; jedes Kandidaten-Ticket wird erst gelöscht, wenn
+    der zugehörige Gast tatsächlich beigetreten ist (`mmPendingCandidates`
+    hält pro Rolle den vollständigen Ticket-Pfad). Kein zeitbasiertes Löschen
+    mehr — das war ein Race, der Gäste in der Suche hängen ließ.
 
 -----
 
@@ -609,3 +658,186 @@ und beschiessen danach gegenseitig ihre Festungen.
       `rgba(160,140,70,0.65)`, Innen-Glow. Punkte in Goldfarbe `#fde68a` mit Text-Glow.
   13. **Phasenbadge**: Erhöhte Sättigung + `boxShadow`-Glow je nach Phase (Grün/Rot/Gold).
   14. **Timer**: Immer leichter Glow (`0 0 5px rgba(200,180,100,0.25)`), bei ≤5s intensiv.
+- **v3.5.0**: Zweisprachigkeit DE/EN — vollständige UI-Übersetzung.
+  - **LANGS-Objekt** mit ~100 Schlüsseln (DE + EN) vor der App-Funktion definiert.
+  - **`lang`-State** in React, persistiert in `localStorage('fortress_lang')`, Standard: 'de'.
+  - **`t(key, vars)`-Funktion** für alle UI-Strings; `{variable}`-Ersetzung per Regex.
+  - **Sprachschalter** im Menü: 🇩🇪 DE / 🇬🇧 EN als Pill-Buttons.
+  - Alle UI-Strings ersetzt: Menü, HUD, Phasenbanner, Tipps, Beenden-Dialog, Profil,
+    Online-Lobby, Wartescreen, Ergebnis-Screen, Leaderboard, Hilfekarten.
+- **v3.5.1**: Fix — verbliebene hartcodierte deutsche Strings im Spiel übersetzt.
+  Letzte-Kanone-platziert-Meldung, Warte-/Verbinde-Bildschirm, Code-teilen-Hinweis,
+  Fallback-Spielernamen (`Spieler N`) und Profil-Editor-Default nutzen jetzt `t()`.
+- **v3.5.2**: UX — mehr Spielfläche während der Bauphase.
+  - **Stück-Vorschau-Panel verkleinert**: Padding, Mindesthöhe (64→42px), Punktgröße
+    (11→8px) und Beschriftung kompakter, ohne die Drehen-Funktion einzuschränken.
+  - **Dynamische Höhenmessung statt fixem Abzug**: `fit()` misst jetzt die tatsächliche
+    Höhe von Score-Leiste, 3-Spieler-Zeile und Vorschau-Panel per Ref/`ResizeObserver`
+    statt einen festen Wert (150px) vom Viewport abzuziehen. Dadurch passt sich das
+    Spielfeld korrekt an — auch bei 3 Spielern oder wenn sich die Panel-Höhe durch
+    Phasenwechsel ändert — ohne dass das Layout über den Bildschirmrand hinausragt.
+- **v3.5.3**: Fix — Layout-Sprünge & Online-Verzögerung beim Bauen.
+  - **Stück-Vorschau fixe Box-Größe**: Vorschau-Raster sitzt jetzt in einer festen
+    32×32px-Box (Dot-Größe passt sich pro Stück an: `Math.floor(BOX / max(Zeilen,
+    Spalten)) - 1`). Lange Teile (z. B. I-Stück) ändern dadurch nicht mehr die Höhe
+    des Panels, also kein Aufblähen von Bauleiste/Spielfeld mehr bei länglichen Teilen.
+  - **Client-seitige Vorhersage für Gäste (Online)**: Platzieren, Kanone setzen und
+    Drehen werden beim Gast jetzt sofort lokal angewendet (`placePiece`/`placeCannon`/
+    `rotatePiece`) statt auf die Host-Bestätigung über Firebase zu warten — die nächste
+    Stück-Vorschau erscheint ohne Round-Trip-Delay. Der autoritative Host-State
+    überschreibt anschließend wie gewohnt (`applyState`), Diskrepanzen korrigieren
+    sich selbst.
+- **v3.5.4**: Fix — Vorschau-Delay auch lokal behoben.
+  - **`placePiece()` löste keinen Re-Render aus**: `setGrid()` aktualisiert nur Refs
+    (`grid.current`, `gridVersion.current`), kein React-State. `placeCannon()` rief
+    danach bereits `setUiTick()` auf, `placePiece()` jedoch nicht — die neue
+    Stück-Vorschau erschien erst beim nächsten zufälligen Re-Render (z. B. Timer-Tick,
+    bis zu ~1s Verzögerung). Jetzt ruft `placePiece()` nach dem Platzieren ebenfalls
+    `setUiTick()` auf — die nächste Vorschau erscheint sofort, lokal wie online.
+- **v3.5.5**: Fix — wahre Ursache des Vorschau-"Delays" beim Drop gefunden.
+  - **Drag-vs-Tap-Schwelle skalierte fälschlich mit der Canvas-Anzeigegröße**:
+    `onPointerUp` klassifizierte Gesten als Tap (→ Drehen) statt Platzieren,
+    wenn die Bewegung `< CELL * 1.5` in **internen Grid-Pixeln** war. Da diese
+    aus den CSS-Pixeln über `toCanvas()` (Skalierung `viewSize.w / W`) berechnet
+    werden, musste man bei größerer Canvas-Anzeige (z. B. nach der UX-Vergrößerung
+    in v3.5.2) physisch deutlich weiter ziehen, damit ein Drop überhaupt als
+    Platzierung erkannt wurde — sonst drehte sich nur das Stück, ohne Fehlermeldung,
+    und der Spieler musste erneut ziehen → gefühltes "Delay".
+  - **Fix**: Die Klassifizierung nutzt jetzt die tatsächliche Bildschirmbewegung
+    (`e.clientX/clientY` ggü. `startCX/startCY`, feste Schwelle `14px`), unabhängig
+    von Canvas-Auflösung oder Zoom. Platzieren reagiert dadurch beim ersten
+    Loslassen zuverlässig und ohne gefühlte Verzögerung.
+- **v3.5.6**: Feature — Timer-Verkürzung jetzt auch in der Kanonen-Setzphase.
+  - Beim initialen Kanonen-Setup (Setup-Phase) wurde der Timer schon bisher auf
+    3s verkürzt, sobald alle Spieler ihr Budget verbraucht hatten (`placeCannon()`).
+    Diese Logik galt aber nicht für die spätere **Kanone-setzen-Phase** (`cannon`,
+    +1 Kanone pro Runde) — dort musste der volle 12s-Timer ablaufen, selbst wenn
+    alle bereits fertig platziert hatten.
+  - Fix: Die Bedingung in `placeCannon()` prüft jetzt zusätzlich auf
+    `phase_r.current === "cannon"`, sodass auch dort der Timer auf 3s springt,
+    sobald `cannonBudget` aller Spieler aufgebraucht ist.
+- **v3.6.0**: Feature — Matchmaking ("Schnellspiel") für 2-Spieler-Online.
+  - Neuer Button "⚡ Schnellspiel" im Online-Menü, neben den bestehenden
+    Optionen Code erstellen/beitreten (bleiben erhalten). Spieler tritt einer
+    Warteschlange bei (`/queue2/{SESSION_ID}`) statt aktiv einen Code zu
+    teilen.
+  - Matching erfolgt **ELO-nah mit wachsendem Suchradius** (Basis ±60,
+    +18/Sekunde Wartezeit) — kurze Wartezeit garantiert, ohne grobe
+    ELO-Fehlpaarungen am Anfang.
+  - Komplett ohne Cloud Functions (Spark-Plan-konform): atomares Claiming per
+    Firebase-Transaktion, `onDisconnect().remove()` für sofortige Aufräumung
+    bei Verbindungsabbruch, Heartbeat-basierte Stale-Erkennung und
+    Selbstheilung bei abgebrochenem Matching-Versuch. Details siehe Abschnitt
+    8 ("Matchmaking").
+  - Siehe `index.html`: `startMatchmaking()`, `mmTryFindMatch()`,
+    `mmClaimAndMatch()`, `mmBecomeHost()`, `mmJoinMatchedGame()`.
+  - Firebase Security Rules um `queue2`-Knoten ergänzt (gleiches offenes
+    Schema wie `games`, mit Feld-Validierung für `ts`/`status`/`elo` etc.).
+- **v3.6.1**: Fix — Warte-Icon im Matchmaking-Screen.
+  - Das Lupen-Emoji nutzte versehentlich die `sl`-Keyframe-Animation der
+    Splash-Screen-Ladebalken (`translateX(-100%) → translateX(390%)`) — dafür
+    gedacht, einen schmalen Balken über seine eigene Breite zu bewegen, nicht
+    ein Emoji über den ganzen Bildschirm.
+  - Neue `jesterdance`-Keyframe-Animation (Hoch-Tief-Wippen + Rotation in
+    Schleife) + Hofnarr-Emoji (🤡) ersetzt die Lupe als Warte-Symbol.
+- **v3.6.2**: Fix — Matchmaking matchte nicht zuverlässig (zwei Bugs).
+  - Bug 1 (Firebase-Regeln): `.read: true` für `queue2` war nur auf
+    Ticket-Ebene (`/queue2/{ticketId}`) gesetzt, nicht auf der Listen-Ebene
+    selbst. `mmTryFindMatch()` muss aber die **ganze Liste** lesen
+    (`onValue("queue2")`), um Kandidaten zu finden — das wurde von Firebase
+    mit `permission_denied` abgelehnt, da keine Regel auf Listenebene
+    existierte. Fix: `.read: true` jetzt zusätzlich auf `queue2`-Root-Ebene.
+  - Bug 2 (Race-Condition beim Claiming): Wenn zwei wartende Clients sich
+    gegenseitig als Match fanden, versuchten **beide gleichzeitig** den
+    anderen zu claimen (`mmClaimAndMatch` transagiert nur das fremde
+    Ticket, nicht das eigene). Beide Transaktionen liefen auf
+    unterschiedlichen Pfaden und konnten beide erfolgreich committen —
+    dadurch erstellten beide Seiten ein eigenes Spiel und überschrieben sich
+    gegenseitig die `matched`-Markierung. Resultat: beide Clients wurden
+    Host (gleicher Spieler/gleiche Rolle) und der jeweilige Gast trat dem
+    falschen/keinem Spiel bei, wodurch `playerInfo` nie korrekt vom Host
+    übertragen wurde und der Fallback-Name ("Spieler 1"/"Spieler 2") stehen
+    blieb. Fix: deterministischer Tie-Breaker in `mmTryFindMatch()` — nur
+    die Seite mit der lexikographisch kleineren `SESSION_ID` darf claimen.
+- **v3.6.3**: Fix — Gast hing nach erfolgreichem Match dauerhaft in der
+  Suche fest (Race-Condition bei der Ticket-Aufräumung).
+  - `mmBecomeHost()` löschte bisher **beide** Queue2-Tickets (eigenes +
+    Kandidat) nach einer fixen `MM_CLEANUP_DELAY_MS`-Verzögerung (8s),
+    unabhängig davon, ob der Gast seinen "matched"-Status überhaupt schon
+    gelesen hatte. Bei Netzwerklatenz konnte das Kandidat-Ticket gelöscht
+    werden, bevor der Gast (via `queue2`-Subscription) je davon erfuhr —
+    er sah dann nie `status: "matched"`, blieb in `mmActive` stecken und
+    hatte kein Ticket mehr, über das ein erneuter Versuch möglich gewesen
+    wäre.
+  - Fix: Aufräumung ist jetzt ereignisgesteuert statt zeitbasiert.
+    - Der Host löscht sein **eigenes** Ticket sofort in `mmBecomeHost()`
+      (unkritisch, der Host braucht es nicht mehr).
+    - Das **Kandidat-Ticket** (= Gast) wird erst gelöscht, wenn der Host
+      den echten Beitritt über `guestAction2` bestätigt bekommt
+      (`handleGuestAction`, Fall `type === "join"`, neuer Ref
+      `mmPendingCandidateId`).
+    - Der bestehende 15s-Watchdog (`MM_GUEST_JOIN_TIMEOUT_MS`) bleibt als
+      Fallback: tritt der Gast nie bei (z. B. Ticket war ohnehin eine
+      Karteileiche), wird das Kandidat-Ticket gelöscht und der Host kehrt
+      automatisch in die Warteschlange zurück.
+- **v3.7.1**: Feature — Matchmaking jetzt auch für **3 Spieler**.
+  - Der "⚡ Schnellspiel"-Button respektiert nun die Spieleranzahl-Auswahl
+    (2 oder 3) im Online-Menü; der Button-Text zeigt die gewählte Anzahl.
+  - **Getrennte Queues**: 2-Spieler nutzt `/queue2`, 3-Spieler `/queue3` —
+    so vermischen sich 2er- und 3er-Suchende nie. Die ELO-Werte stammen
+    aus `profile.elo` (2p) bzw. `profile.elo3` (3p).
+  - **Mehrfach-Claiming**: Bei 3 Spielern sammelt der Initiator `np-1 = 2`
+    Gegner. `mmTryFindMatch()` wählt die zwei ELO-nächsten Kandidaten und
+    initiiert nur, wenn die eigene `SESSION_ID` kleiner ist als die **aller**
+    gewählten Kandidaten (genau ein Host pro kompatibler Gruppe).
+  - **Atomares Claiming mit Rollback**: `mmClaimAndMatch()` claimt die
+    Kandidaten nacheinander per Transaktion; schlägt ein Claim fehl (jemand
+    war schneller), werden alle bereits geclaimten Tickets wieder auf
+    `waiting` zurückgesetzt — kein hängender Halbzustand.
+  - Rollen 2 und 3 werden den Kandidaten zugewiesen; jeder Gast tritt seinem
+    Slot (`guestAction2`/`guestAction3`) bei. Der Host startet das Spiel erst,
+    wenn **beide** Gäste beigetreten sind (bestehende `need`-Logik).
+  - Ereignisgesteuerte Ticket-Aufräumung (aus v3.6.3) verallgemeinert:
+    `mmPendingCandidates` hält jetzt pro Rolle den vollständigen Ticket-Pfad;
+    jeder wird gelöscht, sobald der zugehörige Gast beigetreten ist. Der
+    15s-Watchdog räumt verbliebene Tickets auf und re-queued mit gleicher
+    Spieleranzahl.
+  - Firebase Security Rules um `queue3`-Knoten ergänzt (identisches Schema
+    wie `queue2`, inkl. Listen-`.read` für die Kandidatensuche).
+  - **Anzeige-Timer** entkoppelt: eigener 1-Sekunden-Interval
+    (`mmDisplayTimer`) aktualisiert Wartezeit und ELO-Radius im UI; der
+    Firebase-Heartbeat-Takt (`MM_TICK_MS = 2s`) bleibt unverändert — kein
+    2-Sekunden-Sprung mehr in der Zähleranzeige.
+  - **ELO-Radius-Wachstum** verlangsamt: `MM_GROWTH_PER_SEC` von 18 auf 8
+    reduziert (±60 Basis + 8/s; nach 60s Wartezeit ±540, nach ~2min
+    unbegrenzt) — bevorzugt faire Paarungen statt sofortiger Weitwinkel-
+    Matches.
+- **v3.7.2**: Feature — Teilen-Button im Ergebnis-Screen.
+  - Nach jeder Partie erscheint ein "🔗 Teilen"-Button unter dem Ergebnis.
+  - Auf Mobile: Web Share API (nativer Share-Dialog mit App-Auswahl).
+  - Auf Desktop: Fallback auf Clipboard-Copy (Text + URL).
+  - Share-Text passt sich dem Ergebnis an (Sieg / Niederlage / Unentschieden).
+  - Button zeigt kurz "✓ Geteilt!" nach dem Tippen, kehrt dann zurück.
+- **v3.7.3**: UX — Online 2v2: P1 sieht sich immer unten.
+  - P1 (Host) sieht seine Burg jetzt unten, P2 (Gegner) oben — identisch
+    mit der Perspektive von P2.
+  - Umsetzung: `ctx.translate(0,H); ctx.scale(1,-1)` im Render-Loop.
+    Burg und Kanone erhalten lokalen Counter-Flip, damit sie aufrecht
+    erscheinen. `ctx.fillText` wird per Monkey-Patch gegen-skaliert.
+    Kanonen-Winkel wird negiert für korrekte Schussrichtung.
+  - Pointer-Y wird invertiert (`y = H - rawY`).
+  - `liftedGhost` hebt den Ghost in die korrekte Richtung (+LIFT_ROWS
+    statt -LIFT_ROWS), Hilfs-Linie und ✓/✗ werden entsprechend gespiegelt.
+- **v3.7.4**: Bugfix — Render-Loop-Absturz verhindert Quick-Match.
+  - Render-Loop-Hauptteil in `try/finally` eingebettet: `pushState` und
+    `requestAnimationFrame` laufen nun immer, auch wenn ein Rendering-Fehler
+    auftritt. Ohne diesen Fix stoppte ein Fehler im Loop das komplette State-
+    Pushing, sodass der Gast nie Spielzustand empfing und in der Queue blieb.
+  - `delete ctx.fillText` durch `ctx.fillText = CanvasRenderingContext2D.prototype.fillText`
+    ersetzt (sicherer, kein Abhängigkeit von Konfigurierbarkeit des Host-Objekts).
+- **v3.7.5**: Bugfix — Berge in P1-Flipped-Ansicht zeigen nach oben.
+  - Beim Rendern des Hintergrund-Canvas (`bgCanvas`) wird für P1 (Host, Online
+    2v2) ein Pre-Flip angewendet: `bc.translate(0,H); bc.scale(1,-1)`.
+  - Der globale Canvas-Flip des Haupt-Canvas "hebt" den Pre-Flip wieder auf,
+    sodass Berge (und andere gerichtete Hintergrund-Elemente) für P1 aufrecht
+    erscheinen und korrekt zur Spielfeld-Orientierung passen.
