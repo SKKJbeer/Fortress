@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.6)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.8.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -844,3 +844,17 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **v3.7.6**: "Schnellspiel"/"Quick Match" → "Matchmaking" umbenannt.
   - DE: `"⚡ Schnellspiel ({n} Spieler)"` → `"⚡ Matchmaking ({n} Spieler)"`
   - EN: `"⚡ Quick Match ({n} Players)"` → `"⚡ Matchmaking ({n} Players)"`
+- **v3.8.0**: Visual-Overhaul — Dark Glassmorphism & Icon-System.
+  - Neues Theme: tiefes Navy/Indigo statt Grün, Glas-Panels (backdrop-blur),
+    Neon-Akzente (Cyan/Violett/Blau). CSS-Variablen in `:root`.
+  - **Icon-System** (`Icon`-Komponente + `ICON_PATHS`): saubere Lucide-Strich-SVGs
+    als React-Inline-Komponente — ersetzt Deko-Emojis in der gesamten UI
+    (Menü, Online-Overlay, HUD, Phasen-Banner, Ergebnis-Screen, Quit-Dialog).
+  - Haupt-Buttons (LOKAL/ONLINE/Matchmaking/Erstellen/Beitreten) mit Icon +
+    Gradient + Neon-Glow. Spieler-HUD-Panels auf Glassmorphism mit Spielerfarben
+    (P1 Blau, P2 Rot, P3 Grün).
+  - Canvas: Wandfarben an Neon-Palette angeglichen, Terrain kühler/cinematischer,
+    Fluss mit Cyan-Glow. Phasen-Banner zeigt großes Icon statt Emoji.
+  - Emoji-Präfixe aus i18n-Strings entfernt (Tipps, Warnungen, Buttons).
+    Saubere Glyphen (✕ ← ✓ ♔♚♜) bleiben erhalten.
+  - Test: alle 87 Checks grün (Button-Texte unverändert → keine Test-Brüche).

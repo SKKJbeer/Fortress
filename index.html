@@ -6,26 +6,38 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Fortress"/>
   <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#050d05"/>
+  <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.7.6</title>
+  <title>FORTRESS v3.8.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+    :root{
+      --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
+      --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
+      --glass-bd:rgba(255,255,255,0.10); --glass-bd-strong:rgba(255,255,255,0.16);
+      --txt:#eef2f9; --muted:#7c8aa3; --faint:#475569;
+      --p1:#3b82f6; --p2:#ef4444; --p3:#10b981;
+      --cyan:#22d3ee; --violet:#a78bfa; --amber:#fbbf24;
+      --shadow:0 12px 40px rgba(0,0,0,0.55); --shadow-sm:0 4px 18px rgba(0,0,0,0.4);
+    }
+    html,body{height:100dvh;background:#02060f;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);color:#eef2f9;font-family:'Segoe UI',system-ui,sans-serif}
+    body{background:radial-gradient(ellipse 120% 80% at 50% -10%,#102036 0%,#081225 38%,#040a16 70%,#02060f 100%)}
     #root{height:100%}
-    #splash{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 30% 20%,#0f2d12 0%,#050d05 55%,#15082a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s ease}
-    #splash h1{font-family:'Segoe UI',system-ui,sans-serif;font-size:52px;font-weight:900;letter-spacing:-2px;margin-top:16px;background:linear-gradient(135deg,#4ade80,#38bdf8 50%,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    #splash p{color:#475569;font-family:system-ui;font-size:13px;margin-top:4px}
-    #splash-bar{width:48px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:28px;overflow:hidden}
-    #splash-bar span{display:block;height:100%;width:35%;background:#4ade80;border-radius:2px;animation:sl 1s ease-in-out infinite}
+    #splash{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse 120% 90% at 50% 12%,#13243f 0%,#081326 45%,#02060f 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s ease}
+    #splash h1{font-family:'Segoe UI',system-ui,sans-serif;font-size:54px;font-weight:900;letter-spacing:-2.5px;margin-top:16px;background:linear-gradient(120deg,#22d3ee 0%,#60a5fa 45%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 26px rgba(56,189,248,0.35))}
+    #splash p{color:#64748b;font-family:system-ui;font-size:13px;margin-top:4px;letter-spacing:0.04em}
+    #splash-bar{width:54px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:28px;overflow:hidden}
+    #splash-bar span{display:block;height:100%;width:35%;background:linear-gradient(90deg,#22d3ee,#a78bfa);border-radius:2px;animation:sl 1s ease-in-out infinite;box-shadow:0 0 12px rgba(56,189,248,0.6)}
     @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
     @keyframes jesterdance{0%{transform:translateY(0) rotate(-12deg)}25%{transform:translateY(-12px) rotate(10deg)}50%{transform:translateY(0) rotate(-12deg)}75%{transform:translateY(-12px) rotate(10deg)}100%{transform:translateY(0) rotate(-12deg)}}
     @keyframes phasebanner{0%{opacity:0;transform:translate(-50%,-50%) scale(0.75)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}20%{transform:translate(-50%,-50%) scale(1)}76%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.93)}}
-    #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(10,20,35,0.96);border:1px solid rgba(74,222,128,0.35);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(20px)}
+    @keyframes glowpulse{0%,100%{opacity:0.6}50%{opacity:1}}
+    .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+    #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
-    #ios-hint p b{color:#4ade80}
-    #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#059669,#0284c7);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
+    #ios-hint p b{color:#22d3ee}
+    #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
   </style>
 
   <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
@@ -74,6 +86,45 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script>
 const { useState, useEffect, useRef, useCallback } = React;
+// ── Icon-System (Lucide-Pfade als Inline-SVG, React-nativ) ──────────────
+// Ersetzt Emojis durch saubere, konsistente Strich-Icons. textContent bleibt
+// leer, daher stören Icons keine Test-Selektoren, die auf Button-Text prüfen.
+const ICON_PATHS = {
+  x:           ["M18 6 6 18", "m6 6 12 12"],
+  trophy:      ["M6 9H4.5a2.5 2.5 0 0 1 0-5H6", "M18 9h1.5a2.5 2.5 0 0 0 0-5H18", "M4 22h16", "M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22", "M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22", "M18 2H6v7a6 6 0 0 0 12 0V2Z"],
+  zap:         ["M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"],
+  plus:        ["M5 12h14", "M12 5v14"],
+  key:         ["m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4", "m21 2-9.6 9.6", "M13 15.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0Z"],
+  arrowLeft:   ["m12 19-7-7 7-7", "M19 12H5"],
+  copy:        ["M20 9H11a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z", "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"],
+  swords:      ["M14.5 17.5 3 6V3h3l11.5 11.5", "m13 19 6-6", "m16 16 4 4", "m19 21 2-2", "M14.5 6.5 18 3h3v3l-3.5 3.5", "m5 14 4 4", "m7 17-2 2", "m3 19 2 2"],
+  shield:      ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"],
+  crown:       ["M11.56 3.69a.5.5 0 0 1 .88 0l2.54 4.6a.5.5 0 0 0 .74.18l4.3-3.3a.5.5 0 0 1 .8.5l-2.34 9.4a1 1 0 0 1-.97.76H6.49a1 1 0 0 1-.97-.76L3.18 5.67a.5.5 0 0 1 .8-.5l4.3 3.3a.5.5 0 0 0 .74-.18z", "M5 21h14"],
+  users:       ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
+  user:        ["M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2", "M12 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8"],
+  wifi:        ["M12 20h.01", "M2 8.82a15 15 0 0 1 20 0", "M5 12.86a10 10 0 0 1 14 0", "M8.5 16.43a5 5 0 0 1 7 0"],
+  book:        ["M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"],
+  chevronUp:   ["m18 15-6-6-6 6"],
+  chevronDown: ["m6 9 6 6 6-6"],
+  rotateCw:    ["M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8", "M21 3v5h-5"],
+  share:       ["M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8", "M16 6l-4-4-4 4", "M12 2v13"],
+  target:      ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12", "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4"],
+  flame:       ["M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5"],
+  home:        ["M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8", "M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"],
+  globe:       ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20"],
+  coins:       ["M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z", "M18.09 10.37A6 6 0 1 1 10.34 18", "M7 6h1v4", "m16.71 13.88.7.71-2.82 2.82"],
+  hourglass:   ["M5 22h14", "M5 2h14", "M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22", "M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"],
+};
+function Icon(props) {
+  const { name, size = 16, color, style = {} } = props || {};
+  const paths = ICON_PATHS[name];
+  if (!paths) return null;
+  return React.createElement("svg", {
+    className: "li", width: size, height: size, viewBox: "0 0 24 24",
+    style: Object.assign({ color: color || "currentColor", flexShrink: 0 }, style),
+    "aria-hidden": true
+  }, paths.map((d, i) => React.createElement("path", { key: i, d })));
+}
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
 var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
@@ -842,9 +893,9 @@ const LANGS = {
     subtitle: "Bauen \xB7 Verteidigen \xB7 Zerst\xF6ren",
     howToPlay: "Wie spielt man?",
     hideHelp: "Anleitung ausblenden",
-    playLocal: "▶ LOKAL SPIELEN (1 Ger\xE4t)",
-    playOnline: "\u{1F310} ONLINE SPIELEN (2–3 Ger\xE4te)",
-    leaderboard: "\u{1F3C6} Bestenliste",
+    playLocal: "LOKAL SPIELEN (1 Ger\xE4t)",
+    playOnline: "ONLINE SPIELEN (2–3 Ger\xE4te)",
+    leaderboard: "Bestenliste",
     helpStartTitle: "Start",
     helpStartDesc: "Platziere zu Beginn 2 Kanonen rund um deine Burg, dann ummauere alles dicht.",
     helpBuildTitle: "Bauen (25s)",
@@ -853,13 +904,13 @@ const LANGS = {
     helpShootDesc: "Schleuder: Finger von der Kanone wegziehen, Zielkreuz zeigt den Einschlag. Nur eingebaute Kanonen feuern!",
     helpLoseTitle: "Verlieren",
     helpLoseDesc: "Deine BURG muss geschlossen bleiben — ist sie am Ende der Bauphase offen, verlierst du. Offene Kanonen schie\xDFen nur nicht.",
-    local2p: "⚔️ 2 Spieler",
-    local3p: "\u{1F451} 3 Spieler (alle gegen alle)",
+    local2p: "2 Spieler",
+    local3p: "3 Spieler (alle gegen alle)",
     back: "← Zur\xFCck",
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Zusammen spielen mit 2 oder 3 Spielern, jeder auf seinem eigenen Handy.",
-    fbMissing: "⚠️ Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit FB_URL).",
-    quickMatchBtn: "⚡ Matchmaking ({n} Spieler)",
+    fbMissing: "Firebase-URL fehlt noch. Trage deine Datenbank-URL oben im Code ein (Zeile mit FB_URL).",
+    quickMatchBtn: "Matchmaking ({n} Spieler)",
     quickMatchSub: "Du wirst automatisch mit einem passenden Gegner verbunden — kein Code n\xF6tig",
     orDivider: "ODER MIT CODE",
     searchingOpponent: "Suche Gegner…",
@@ -867,12 +918,12 @@ const LANGS = {
     searchingRadius: "Such-ELO-Radius: \xB1{r}",
     cancelSearch: "Suche abbrechen",
     playerCount: "SPIELERANZAHL (zum Erstellen)",
-    createGame: "➕ Spiel erstellen ({n} Spieler)",
-    joinGameBtn: "\u{1F511} Spiel beitreten",
+    createGame: "Spiel erstellen ({n} Spieler)",
+    joinGameBtn: "Spiel beitreten",
     enterCode: "Code eingeben",
-    pasteCode: "\u{1F4CB} Code einf\xFCgen",
+    pasteCode: "Code einf\xFCgen",
     join: "Beitreten",
-    copyCode: "\u{1F4CB} Code kopieren",
+    copyCode: "Code kopieren",
     copied: "✓ Code kopiert!",
     cancel: "Abbrechen",
     waitFor: "Warte auf {total} Mitspieler — {count}/{total} beigetreten",
@@ -880,10 +931,10 @@ const LANGS = {
     guestJoined: "Du bist Spieler {n}.",
     waitFirstState: "Warte auf den ersten Spielzustand vom Host…",
     startsAuto: "(Spiel startet automatisch)",
-    phaseBuild: "\u{1F9F1} BAUEN",
-    phaseShoot: "\u{1F4A3} FEUER",
-    phaseSetup: "\u{1F3F0} START",
-    phaseCannon: "\u{1F3F0} KANONE",
+    phaseBuild: "BAUEN",
+    phaseShoot: "FEUER",
+    phaseSetup: "START",
+    phaseCannon: "KANONE",
     bannerSetupTitle: "SPIELSTART",
     bannerSetupSub: "Platziere 2 Kanonen rund um deine Burg",
     bannerBuildTitle: "BAUPHASE",
@@ -892,22 +943,22 @@ const LANGS = {
     bannerShootSub: "Zieh von deiner Kanone weg zum Zielen",
     bannerCannonTitle: "NEUE KANONE",
     bannerCannonSub: "Tippe auf eine freie 3\xD73-Fl\xE4che",
-    warnBurgOffen: "⚠️ BURG von {name} offen — bis Bauende schlie\xDFen!",
-    warnKanoneZerstoert: "\u{1F4A5} Kanone von {name} zerst\xF6rt!",
-    warnKeinKanone: "⚠ Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
+    warnBurgOffen: "BURG von {name} offen — bis Bauende schlie\xDFen!",
+    warnKanoneZerstoert: "Kanone von {name} zerst\xF6rt!",
+    warnKeinKanone: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     warnKanoneGesetzt: "Kanone ({name}) platziert — noch {left}",
-    warnAusgeschieden: "\u{1F4A5} {names} ausgeschieden — Burg offen!",
-    warnVerlassen: "\u{1F6AA} {name} hat das Spiel verlassen",
-    warnHostAntwortetNicht: "⚠️ Host antwortet nicht — Verbindung unterbrochen?",
+    warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
+    warnVerlassen: "{name} hat das Spiel verlassen",
+    warnHostAntwortetNicht: "Host antwortet nicht — Verbindung unterbrochen?",
     warnCode6: "Bitte 6-stelligen Code eingeben.",
     warnSpielNichtGefunden: "Spiel nicht gefunden — Code pr\xFCfen.",
     warnSpielVoll3: "Dieses Spiel ist bereits voll (3 Spieler).",
     warnSpielVoll: "Dieses Spiel ist bereits voll.",
     warnVerbindung: "Verbindung fehlgeschlagen:",
-    warnNoCannonReady: "⚠ Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
-    tipCannon: "\u{1F3F0} Neue Kanone setzen! Tippe auf eine freie 3\xD73-Fl\xE4che — dann in der Bauphase ummauern",
-    tipSetup: "\u{1F3F0} START: Platziere deine 2 Kanonen rund um die Burg — danach ummauern (Burg muss dicht sein!)",
-    tipShoot: "\u{1F3F9} Schleuder: Finger von der Kanone wegziehen \xB7 \u{1F3AF} Fadenkreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern",
+    warnNoCannonReady: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
+    tipCannon: "Neue Kanone setzen! Tippe auf eine freie 3\xD73-Fl\xE4che — dann in der Bauphase ummauern",
+    tipSetup: "START: Platziere deine 2 Kanonen rund um die Burg — danach ummauern (Burg muss dicht sein!)",
+    tipShoot: "Schleuder: Finger von der Kanone wegziehen \xB7 \u{1F3AF} Fadenkreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern",
     quitTitle: "Spiel beenden?",
     quitMsgOnline: "Du verl\xE4sst das Online-Spiel und kehrst zum Hauptmen\xFC zur\xFCck.",
     quitMsgLocal: "Das aktuelle Spiel endet und du kehrst zum Hauptmen\xFC zur\xFCck.",
@@ -920,19 +971,19 @@ const LANGS = {
     shareTextLose: "Ich spiele FORTRESS — nächstes Mal gewinne ich!",
     shareTextDraw: "Ich spiele FORTRESS — wer gewinnt beim nächsten Mal?",
     shareTextInvite: "Kostenlos im Browser → https://skkjbeer.github.io/Fortress/",
-    shareBtn: "🔗 Teilen",
+    shareBtn: "Teilen",
     shareBtnDone: "✓ Geteilt!",
     resultWinner: "{name} siegt!",
-    resultLeft: "\u{1F6AA} Ein Spieler hat das Spiel verlassen",
+    resultLeft: "Ein Spieler hat das Spiel verlassen",
     resultLastStanding: "Letzte geschlossene Burg gewinnt",
     resultBurgDurch: "Burg durchbrochen \u{1F4A5}",
     resultBurgOffen: "Burg war nicht geschlossen",
     eloChange: "ELO-\xC4NDERUNG",
     goldLabel: "GOLD-\xC4NDERUNG",
-    waitHost: "⏳ Warte auf Host f\xFCr n\xE4chste Runde…",
-    nextRound: "🔄 N\xE4chste Runde",
-    newMap: "🆕 Neue Karte",
-    mainMenu: "🏠 Hauptmen\xFC",
+    waitHost: "Warte auf Host f\xFCr n\xE4chste Runde…",
+    nextRound: "N\xE4chste Runde",
+    newMap: "Neue Karte",
+    mainMenu: "Hauptmen\xFC",
     profileTitle: "Profil bearbeiten",
     profileWelcome: "Willkommen, Feldherr!",
     profileSubExisting: "\xC4ndere Name, Wappen und Farbe.",
@@ -942,7 +993,7 @@ const LANGS = {
     profileColorLabel: "FARBE",
     profileSave: "Speichern",
     profileCreate: "Profil erstellen ⚔️",
-    lbTitle: "🏆 Bestenliste",
+    lbTitle: "Bestenliste",
     lbSubtitle: "Sortiert nach ELO (Start 1000) \xB7 weltweit",
     p1Kingdom: "♔ Blaues K\xF6nigreich",
     p2Kingdom: "♚ Rotes K\xF6nigreich",
@@ -951,8 +1002,8 @@ const LANGS = {
     syncRole: "SYNC \xB7 Rolle",
     syncHost: "Host",
     syncGuest: "Gast",
-    online2p: "⚔️ 2 Spieler",
-    online3p: "\u{1F451} 3 Spieler",
+    online2p: "2 Spieler",
+    online3p: "3 Spieler",
     pwaHint1: "Tippe auf",
     pwaHint2: "Teilen ↑",
     pwaHint3: "Zum Home-Bildschirm",
@@ -980,9 +1031,9 @@ const LANGS = {
     subtitle: "Build \xB7 Defend \xB7 Destroy",
     howToPlay: "How to play?",
     hideHelp: "Hide instructions",
-    playLocal: "▶ PLAY LOCAL (1 Device)",
-    playOnline: "\u{1F310} PLAY ONLINE (2–3 Devices)",
-    leaderboard: "\u{1F3C6} Leaderboard",
+    playLocal: "PLAY LOCAL (1 Device)",
+    playOnline: "PLAY ONLINE (2–3 Devices)",
+    leaderboard: "Leaderboard",
     helpStartTitle: "Start",
     helpStartDesc: "Place 2 cannons around your castle at the start, then wall everything in tightly.",
     helpBuildTitle: "Build (25s)",
@@ -991,13 +1042,13 @@ const LANGS = {
     helpShootDesc: "Slingshot: drag away from cannon, crosshair shows impact. Only walled-in cannons fire!",
     helpLoseTitle: "Lose",
     helpLoseDesc: "Your CASTLE must stay closed — if it's open at the end of the build phase, you lose. Open cannons just don't fire.",
-    local2p: "⚔️ 2 Players",
-    local3p: "\u{1F451} 3 Players (free-for-all)",
+    local2p: "2 Players",
+    local3p: "3 Players (free-for-all)",
     back: "← Back",
     onlineTitle: "Online Multiplayer",
     onlineSubtitle: "Play together with 2 or 3 players, each on their own phone.",
-    fbMissing: "⚠️ Firebase URL missing. Add your database URL in the code (line with FB_URL).",
-    quickMatchBtn: "⚡ Matchmaking ({n} Players)",
+    fbMissing: "Firebase URL missing. Add your database URL in the code (line with FB_URL).",
+    quickMatchBtn: "Matchmaking ({n} Players)",
     quickMatchSub: "You'll be matched with a suitable opponent automatically — no code needed",
     orDivider: "OR WITH CODE",
     searchingOpponent: "Searching for opponent…",
@@ -1005,12 +1056,12 @@ const LANGS = {
     searchingRadius: "Search ELO radius: \xB1{r}",
     cancelSearch: "Cancel search",
     playerCount: "PLAYER COUNT (to create)",
-    createGame: "➕ Create game ({n} players)",
-    joinGameBtn: "\u{1F511} Join game",
+    createGame: "Create game ({n} players)",
+    joinGameBtn: "Join game",
     enterCode: "Enter code",
-    pasteCode: "\u{1F4CB} Paste code",
+    pasteCode: "Paste code",
     join: "Join",
-    copyCode: "\u{1F4CB} Copy code",
+    copyCode: "Copy code",
     copied: "✓ Code copied!",
     cancel: "Cancel",
     waitFor: "Waiting for {total} players — {count}/{total} joined",
@@ -1018,10 +1069,10 @@ const LANGS = {
     guestJoined: "You are Player {n}.",
     waitFirstState: "Waiting for first game state from host…",
     startsAuto: "(Game starts automatically)",
-    phaseBuild: "\u{1F9F1} BUILD",
-    phaseShoot: "\u{1F4A3} FIRE",
-    phaseSetup: "\u{1F3F0} START",
-    phaseCannon: "\u{1F3F0} CANNON",
+    phaseBuild: "BUILD",
+    phaseShoot: "FIRE",
+    phaseSetup: "START",
+    phaseCannon: "CANNON",
     bannerSetupTitle: "GAME START",
     bannerSetupSub: "Place 2 cannons around your castle",
     bannerBuildTitle: "BUILD PHASE",
@@ -1030,22 +1081,22 @@ const LANGS = {
     bannerShootSub: "Drag from your cannon to aim",
     bannerCannonTitle: "NEW CANNON",
     bannerCannonSub: "Tap an empty 3\xD73 area",
-    warnBurgOffen: "⚠️ CASTLE of {name} open — close before build ends!",
-    warnKanoneZerstoert: "\u{1F4A5} {name}'s cannon destroyed!",
-    warnKeinKanone: "⚠ No ready cannon — cannons must be walled in!",
+    warnBurgOffen: "CASTLE of {name} open — close before build ends!",
+    warnKanoneZerstoert: "{name}'s cannon destroyed!",
+    warnKeinKanone: "No ready cannon — cannons must be walled in!",
     warnKanoneGesetzt: "Cannon ({name}) placed — {left} remaining",
-    warnAusgeschieden: "\u{1F4A5} {names} eliminated — castle open!",
-    warnVerlassen: "\u{1F6AA} {name} left the game",
-    warnHostAntwortetNicht: "⚠️ Host not responding — connection lost?",
+    warnAusgeschieden: "{names} eliminated — castle open!",
+    warnVerlassen: "{name} left the game",
+    warnHostAntwortetNicht: "Host not responding — connection lost?",
     warnCode6: "Please enter a 6-character code.",
     warnSpielNichtGefunden: "Game not found — check code.",
     warnSpielVoll3: "This game is already full (3 players).",
     warnSpielVoll: "This game is already full.",
     warnVerbindung: "Connection failed:",
-    warnNoCannonReady: "⚠ No ready cannon — cannons must be walled in!",
-    tipCannon: "\u{1F3F0} Place new cannon! Tap an empty 3\xD73 area — then wall it in during build phase",
-    tipSetup: "\u{1F3F0} START: Place your 2 cannons around the castle — then wall them in (castle must be closed!)",
-    tipShoot: "\u{1F3F9} Slingshot: drag from your cannon \xB7 \u{1F3AF} crosshair = impact \xB7 \u{1F4A5} only walled-in cannons fire",
+    warnNoCannonReady: "No ready cannon — cannons must be walled in!",
+    tipCannon: "Place new cannon! Tap an empty 3\xD73 area — then wall it in during build phase",
+    tipSetup: "START: Place your 2 cannons around the castle — then wall them in (castle must be closed!)",
+    tipShoot: "Slingshot: drag from your cannon \xB7 \u{1F3AF} crosshair = impact \xB7 \u{1F4A5} only walled-in cannons fire",
     quitTitle: "End game?",
     quitMsgOnline: "You will leave the online game and return to the main menu.",
     quitMsgLocal: "The current game will end and you will return to the main menu.",
@@ -1058,19 +1109,19 @@ const LANGS = {
     shareTextLose: "I'm playing FORTRESS — next time I'll win!",
     shareTextDraw: "Playing FORTRESS — who wins next time?",
     shareTextInvite: "Free in the browser → https://skkjbeer.github.io/Fortress/",
-    shareBtn: "🔗 Share",
+    shareBtn: "Share",
     shareBtnDone: "✓ Shared!",
     resultWinner: "{name} wins!",
-    resultLeft: "\u{1F6AA} A player left the game",
+    resultLeft: "A player left the game",
     resultLastStanding: "Last closed castle wins",
     resultBurgDurch: "Castle breached \u{1F4A5}",
     resultBurgOffen: "Castle was not closed",
     eloChange: "ELO CHANGE",
     goldLabel: "GOLD CHANGE",
-    waitHost: "⏳ Waiting for host for next round…",
-    nextRound: "\u{1F504} Next round",
-    newMap: "\u{1F195} New map",
-    mainMenu: "\u{1F3E0} Main menu",
+    waitHost: "Waiting for host for next round…",
+    nextRound: "Next round",
+    newMap: "New map",
+    mainMenu: "Main menu",
     profileTitle: "Edit profile",
     profileWelcome: "Welcome, Commander!",
     profileSubExisting: "Change your name, coat of arms and color.",
@@ -1080,7 +1131,7 @@ const LANGS = {
     profileColorLabel: "COLOR",
     profileSave: "Save",
     profileCreate: "Create profile ⚔️",
-    lbTitle: "\u{1F3C6} Leaderboard",
+    lbTitle: "Leaderboard",
     lbSubtitle: "Sorted by ELO (start 1000) \xB7 worldwide",
     p1Kingdom: "♔ Blue Kingdom",
     p2Kingdom: "♚ Red Kingdom",
@@ -1089,8 +1140,8 @@ const LANGS = {
     syncRole: "SYNC \xB7 Role",
     syncHost: "Host",
     syncGuest: "Guest",
-    online2p: "⚔️ 2 Players",
-    online3p: "\u{1F451} 3 Players",
+    online2p: "2 Players",
+    online3p: "3 Players",
     pwaHint1: "Tap",
     pwaHint2: "Share ↑",
     pwaHint3: "Add to Home Screen",
@@ -3140,25 +3191,25 @@ window.FortressApp = function Fortress() {
       const bc = bgCanvas.current.getContext("2d");
       if (p1Flipped) { bc.save(); bc.translate(0, H); bc.scale(1, -1); }
       const mg2 = bc.createLinearGradient(0, 0, 0, H);
-      mg2.addColorStop(0, "#2e5a22");
-      mg2.addColorStop(0.45, "#254d1c");
-      mg2.addColorStop(1, "#172e10");
+      mg2.addColorStop(0, "#244e2d");
+      mg2.addColorStop(0.45, "#1a3f24");
+      mg2.addColorStop(1, "#0e2616");
       bc.fillStyle = mg2;
       bc.fillRect(0, 0, W, H);
       for (let r = 0; r < ROWS; r += 2)
         for (let c = 0; c < COLS; c += 2) {
           const t = ter[r][c];
           if (t === 1 || t === 2) {
-            bc.fillStyle = t === 1 ? "rgba(45,95,30,0.45)" : "rgba(30,70,20,0.55)";
+            bc.fillStyle = t === 1 ? "rgba(40,90,30,0.42)" : "rgba(22,58,18,0.55)";
             bc.fillRect(c * CELL, r * CELL, CELL * 2, CELL * 2);
           }
         }
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
           if (ter[r][c] !== 3) continue;
-          bc.fillStyle = "#1a3d70";
+          bc.fillStyle = "#103a6e";
           bc.fillRect(c * CELL, r * CELL, CELL, CELL);
-          bc.fillStyle = "rgba(80,160,220,0.20)";
+          bc.fillStyle = "rgba(34,211,238,0.28)";
           bc.fillRect(c * CELL - 1, r * CELL, CELL + 2, 2);
         }
       for (let r = 0; r < ROWS; r++)
@@ -3230,9 +3281,9 @@ window.FortressApp = function Fortress() {
         const v = g[r][c];
         if (v === EMPTY) continue;
         const px = c * CELL, py = r * CELL;
-        if (v === WALL1) drawWall(ctx, px, py, "#2563eb", "#7db4fc", "#1e3a8a", "#172a63");
-        else if (v === WALL2) drawWall(ctx, px, py, "#c92a2a", "#fc9a9a", "#7f1d1d", "#5e1414");
-        else if (v === WALL3) drawWall(ctx, px, py, "#059669", "#6ee7b7", "#065f46", "#044a37");
+        if (v === WALL1) drawWall(ctx, px, py, "#3b82f6", "#93c5fd", "#1e40af", "#172a63");
+        else if (v === WALL2) drawWall(ctx, px, py, "#ef4444", "#fca5a5", "#991b1b", "#5e1414");
+        else if (v === WALL3) drawWall(ctx, px, py, "#10b981", "#6ee7b7", "#065f46", "#044a37");
         else if (v === RUBBLE) drawRubble(ctx, px, py);
       }
     }
@@ -3599,26 +3650,26 @@ window.FortressApp = function Fortress() {
   }
   const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
-    background: "radial-gradient(ellipse at 30% 15%, #10260f 0%, #0a0e1a 55%, #140828 100%)",
+    background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
     minHeight: "100dvh",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontFamily: "'Segoe UI',system-ui,sans-serif",
-    color: "#e2e8f0",
+    color: "#eef2f9",
     padding: 16,
     boxSizing: "border-box"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 38, marginBottom: 4, letterSpacing: 8 } }, "\u{1F3F0}\u2694\uFE0F\u{1F3F0}"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#4ade80", marginBottom: 8 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
+  } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
     fontSize: "clamp(50px,14vw,76px)",
     fontWeight: 900,
     margin: "0 0 4px",
-    background: "linear-gradient(135deg,#4ade80,#38bdf8 50%,#a78bfa)",
+    background: "linear-gradient(120deg,#22d3ee 0%,#60a5fa 45%,#a78bfa 100%)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
-    letterSpacing: "-2px",
+    letterSpacing: "-2.5px",
     lineHeight: 1,
-    filter: "drop-shadow(0 4px 24px rgba(56,189,248,0.3))"
-  } }, "FORTRESS"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#475569", marginBottom: 6 } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
+    filter: "drop-shadow(0 4px 28px rgba(56,189,248,0.35))"
+  } }, "FORTRESS"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#64748b", marginBottom: 6, letterSpacing: "0.04em" } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
     alignItems: "center",
     gap: 12,
@@ -3639,7 +3690,7 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, "\u2694\uFE0F ", /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 1 } }, "\u{1F451} ", /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 3 } }, "\uD83D\uDCB0 ", typeof profile.gold === "number" ? profile.gold : 100, " Gold")), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+  } }, profile.wappen), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold")), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.15)",
     color: "#cbd5e1",
@@ -3648,45 +3699,51 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     flexShrink: 0
-  } }, "\u270F\uFE0F")), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
-    ["\u{1F3F0}", t('helpStartTitle'), t('helpStartDesc')],
-    ["\u{1F9F1}", t('helpBuildTitle'), t('helpBuildDesc')],
-    ["\u{1F4A3}", t('helpShootTitle'), t('helpShootDesc')],
-    ["\u2620\uFE0F", t('helpLoseTitle'), t('helpLoseDesc')]
-  ].map(([icon, title, desc]) => /* @__PURE__ */ React.createElement("div", { key: title, style: {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 10,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 }))), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
+    ["crown", "#22d3ee", t('helpStartTitle'), t('helpStartDesc')],
+    ["shield", "#4ade80", t('helpBuildTitle'), t('helpBuildDesc')],
+    ["flame", "#f87171", t('helpShootTitle'), t('helpShootDesc')],
+    ["x", "#a78bfa", t('helpLoseTitle'), t('helpLoseDesc')]
+  ].map(([icon, col, title, desc]) => /* @__PURE__ */ React.createElement("div", { key: title, style: {
+    background: "rgba(255,255,255,0.045)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 12,
     padding: "11px 10px",
-    textAlign: "left"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, marginBottom: 3 } }, icon), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, color: "#94a3b8", marginBottom: 3, fontSize: 11 } }, title), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", lineHeight: 1.45 } }, desc)))), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowHelp((h) => !h), style: {
+    textAlign: "left",
+    backdropFilter: "blur(10px)"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 5, color: col } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 18 })), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, color: "#cbd5e1", marginBottom: 3, fontSize: 11 } }, title), /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", lineHeight: 1.45 } }, desc)))), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowHelp((h) => !h), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    background: showHelp ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.05)",
+    background: showHelp ? "rgba(96,165,250,0.14)" : "rgba(255,255,255,0.05)",
     color: showHelp ? "#93c5fd" : "#cbd5e1",
-    border: showHelp ? "1px solid rgba(96,165,250,0.35)" : "1px solid rgba(255,255,255,0.12)",
+    border: showHelp ? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.1)",
     fontSize: 14,
     fontWeight: 600,
     cursor: "pointer",
     marginBottom: 16,
     padding: "12px",
-    borderRadius: 12
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, "\u{1F4D6}"), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, opacity: 0.7 } }, showHelp ? "\u25B2" : "\u25BC")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+    borderRadius: 12,
+    backdropFilter: "blur(10px)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
-    background: "linear-gradient(135deg,#059669,#0284c7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "white",
-    border: "none",
+    border: "1px solid rgba(124,58,237,0.5)",
     padding: "16px",
     fontSize: 16,
     fontWeight: 800,
-    borderRadius: 12,
+    borderRadius: 14,
     cursor: "pointer",
     letterSpacing: "0.04em",
-    boxShadow: "0 0 36px rgba(5,150,105,0.35)"
-  } }, t('playLocal')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    boxShadow: "0 6px 30px rgba(59,130,246,0.35)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 19 }), t('playLocal')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     numPlayersRef.current = 2;
     setNumPlayers(2);
     setMpError("");
@@ -3694,26 +3751,35 @@ window.FortressApp = function Fortress() {
   }, style: {
     width: "100%",
     marginTop: 10,
-    background: "rgba(255,255,255,0.06)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(34,211,238,0.16))",
     color: "#e2e8f0",
-    border: "1px solid rgba(255,255,255,0.15)",
+    border: "1px solid rgba(16,185,129,0.45)",
     padding: "15px",
     fontSize: 15,
     fontWeight: 700,
-    borderRadius: 12,
-    cursor: "pointer"
-  } }, "\u{1F310} ONLINE SPIELEN (2\u20133 Ger\xE4te)"), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    borderRadius: 14,
+    cursor: "pointer",
+    boxShadow: "0 4px 22px rgba(16,185,129,0.18)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 18 }), "ONLINE SPIELEN (2\u20133 Ger\xE4te)"), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
     width: "100%",
     marginTop: 10,
-    background: "rgba(202,138,4,0.12)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    background: "rgba(251,191,36,0.1)",
     color: "#fde68a",
-    border: "1px solid rgba(202,138,4,0.35)",
+    border: "1px solid rgba(251,191,36,0.32)",
     padding: "13px",
     fontSize: 14,
     fontWeight: 700,
-    borderRadius: 12,
+    borderRadius: 14,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.8.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -3852,25 +3918,34 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     fontWeight: 600,
     borderRadius: 10,
-    cursor: "pointer"
-  } }, "\u{1F504} Aktualisieren"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 15 }), "Aktualisieren"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
-    background: "rgba(5,8,15,0.92)",
+    background: "rgba(2,6,15,0.78)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1e3,
     padding: 20
   } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
+    background: "linear-gradient(165deg, rgba(16,32,54,0.85), rgba(8,18,37,0.9))",
     border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 28,
     maxWidth: 380,
     width: "100%",
-    textAlign: "center"
-  } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F3AE}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    textAlign: "center",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    boxShadow: "0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
+  } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     numPlayersRef.current = 2;
     setNumPlayers(2);
@@ -3878,17 +3953,22 @@ window.FortressApp = function Fortress() {
     fullReset();
   }, style: {
     width: "100%",
-    background: "linear-gradient(135deg,#059669,#0284c7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "white",
-    border: "none",
+    border: "1px solid rgba(124,58,237,0.5)",
     padding: "16px",
     fontSize: 16,
     fontWeight: 800,
-    borderRadius: 12,
+    borderRadius: 14,
     cursor: "pointer",
     marginBottom: 10,
-    letterSpacing: "0.03em"
-  } }, t('local2p')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    letterSpacing: "0.03em",
+    boxShadow: "0 6px 26px rgba(59,130,246,0.3)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 18 }), t('local2p')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     numPlayersRef.current = 3;
     setNumPlayers(3);
@@ -3896,26 +3976,31 @@ window.FortressApp = function Fortress() {
     fullReset();
   }, style: {
     width: "100%",
-    background: "linear-gradient(135deg,#7c3aed,#059669)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "linear-gradient(135deg,#7c3aed,#0891b2)",
     color: "white",
-    border: "none",
+    border: "1px solid rgba(124,58,237,0.5)",
     padding: "16px",
     fontSize: 16,
     fontWeight: 800,
-    borderRadius: 12,
+    borderRadius: 14,
     cursor: "pointer",
     marginBottom: 16,
-    letterSpacing: "0.03em"
-  } }, t('local3p')), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen(null), style: {
+    letterSpacing: "0.03em",
+    boxShadow: "0 6px 26px rgba(124,58,237,0.3)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 18 }), t('local3p')), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen(null), style: {
     width: "100%",
     background: "transparent",
     color: "#64748b",
     border: "1px solid rgba(255,255,255,0.1)",
     padding: "12px",
     fontSize: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     cursor: "pointer"
-  } }, "\u2190 Zur\xFCck")), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F310}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "\u2190 Zur\xFCck")), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
     background: "rgba(245,158,11,0.12)",
     border: "1px solid rgba(245,158,11,0.3)",
     borderRadius: 8,
@@ -3934,44 +4019,62 @@ window.FortressApp = function Fortress() {
     cursor: "pointer",
     fontSize: 14,
     fontWeight: 700,
-    background: numPlayers === m ? "rgba(2,132,199,0.3)" : "rgba(255,255,255,0.05)",
-    color: numPlayers === m ? "#7dd3fc" : "#94a3b8",
-    border: numPlayers === m ? "1px solid rgba(2,132,199,0.6)" : "1px solid rgba(255,255,255,0.1)"
-  } }, m === 2 ? t('local2p') : "\u{1F451} 3 Spieler"))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: {
+    background: numPlayers === m ? "rgba(34,211,238,0.18)" : "rgba(255,255,255,0.05)",
+    color: numPlayers === m ? "#67e8f9" : "#94a3b8",
+    border: numPlayers === m ? "1px solid rgba(34,211,238,0.55)" : "1px solid rgba(255,255,255,0.1)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: m === 2 ? "swords" : "crown", size: 15 }), m === 2 ? t('local2p') : "3 Spieler"))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: {
     width: "100%",
-    background: "linear-gradient(135deg,#f59e0b,#dc2626)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "linear-gradient(135deg,#f59e0b,#ec4899)",
     color: "white",
-    border: "none",
+    border: "1px solid rgba(236,72,153,0.5)",
     padding: "16px",
     fontSize: 16,
     fontWeight: 800,
-    borderRadius: 12,
+    borderRadius: 14,
     cursor: "pointer",
     marginBottom: 8,
-    letterSpacing: "0.03em"
-  } }, t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#475569" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
+    letterSpacing: "0.03em",
+    boxShadow: "0 6px 26px rgba(245,158,11,0.3)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 19 }), t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: "#475569", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#475569" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
     width: "100%",
-    background: "linear-gradient(135deg,#059669,#0284c7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    background: "linear-gradient(135deg,#2563eb,#0891b2)",
     color: "white",
-    border: "none",
+    border: "1px solid rgba(8,145,178,0.5)",
     padding: "15px",
     fontSize: 15,
     fontWeight: 700,
-    borderRadius: 10,
+    borderRadius: 14,
     cursor: "pointer",
-    marginBottom: 10
-  } }, `${t('createGame', {n: numPlayers})}`), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: {
+    marginBottom: 10,
+    boxShadow: "0 4px 20px rgba(37,99,235,0.25)"
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 17 }), `${t('createGame', {n: numPlayers})}`), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: {
     width: "100%",
-    background: "rgba(255,255,255,0.08)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    background: "rgba(255,255,255,0.06)",
     color: "#e2e8f0",
-    border: "1px solid rgba(255,255,255,0.15)",
+    border: "1px solid rgba(255,255,255,0.14)",
     padding: "14px",
     fontSize: 15,
     fontWeight: 700,
-    borderRadius: 10,
+    borderRadius: 14,
     cursor: "pointer",
     marginBottom: 16
-  } }, t('joinGameBtn')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 16 }), t('joinGameBtn')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
     color: "#64748b",
     border: "none",
@@ -3993,7 +4096,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 10,
     cursor: "pointer"
-  } }, t('cancelSearch'))), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u{1F511}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 14px", fontSize: 20 } }, t('enterCode')), /* @__PURE__ */ React.createElement(
+  } }, t('cancelSearch'))), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 14px", fontSize: 20 } }, t('enterCode')), /* @__PURE__ */ React.createElement(
     "input",
     {
       value: mpInput,
@@ -4047,7 +4150,7 @@ window.FortressApp = function Fortress() {
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 6 } }, "\u23F3"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center", animation: "glowpulse 1.6s ease-in-out infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "hourglass", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -4064,7 +4167,7 @@ window.FortressApp = function Fortress() {
     borderRadius: 10,
     padding: "14px",
     marginBottom: 8
-  } }, mpCode, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, codeCopied ? "\u2713" : "\u{1F4CB}")), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+  } }, mpCode, /* @__PURE__ */ React.createElement("span", { style: { display: "inline-flex", alignItems: "center", color: codeCopied ? "#4ade80" : "#94a3b8" } }, codeCopied ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, "\u2713") : /* @__PURE__ */ React.createElement(Icon, { name: "copy", size: 17 }))), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
     width: "100%",
     cursor: "pointer",
     marginBottom: 8,
@@ -4118,8 +4221,11 @@ window.FortressApp = function Fortress() {
       fontWeight: 700,
       background: "rgba(74,222,128,0.08)",
       borderRadius: 6,
-      padding: "4px 12px"
-    } }, "\u{1F310} ONLINE \xB7 ", myKingdom), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, marginBottom: 14 } }, drawn ? "\u{1F91D}" : online.current ? iWon ? "\u{1F3C6}" : "\u{1F480}" : isWin ? "\u{1F3C6}" : "\u{1F480}"), /* @__PURE__ */ React.createElement("div", { style: {
+      padding: "4px 12px",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 13 }), "ONLINE \xB7 ", myKingdom), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14, display: "flex", justifyContent: "center", color: drawn ? "#fbbf24" : (online.current ? iWon : isWin) ? "#fbbf24" : "#ef4444", filter: "drop-shadow(0 0 26px currentColor)" } }, /* @__PURE__ */ React.createElement(Icon, { name: drawn ? "swords" : (online.current ? iWon : isWin) ? "trophy" : "x", size: 56 })), /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: "clamp(20px,5vw,28px)",
       fontWeight: 800,
       marginBottom: 6,
@@ -4158,7 +4264,7 @@ window.FortressApp = function Fortress() {
   borderRadius: 10,
   padding: "10px 20px",
   textAlign: "center"
-} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, " \uD83D\uDCB0"))), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 12, color: "#fbbf24", style: { marginLeft: 3 } })))), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
       width: "100%",
       maxWidth: 280,
       background: shareShared ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.06)",
@@ -4189,36 +4295,49 @@ window.FortressApp = function Fortress() {
         cursor: "pointer"
       } }, t('mainMenu')))
     ) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 } }, /* @__PURE__ */ React.createElement("button", { onClick: onlineNextRound2, style: {
-      background: "linear-gradient(135deg,#059669,#0284c7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      background: "linear-gradient(135deg,#2563eb,#7c3aed)",
       color: "white",
-      border: "none",
+      border: "1px solid rgba(124,58,237,0.5)",
       padding: "16px",
       fontSize: 16,
       fontWeight: 700,
-      borderRadius: 10,
-      cursor: "pointer"
-    } }, t('nextRound')), /* @__PURE__ */ React.createElement("button", { onClick: onlineNewGame2, style: {
-      background: "rgba(255,255,255,0.08)",
+      borderRadius: 14,
+      cursor: "pointer",
+      boxShadow: "0 6px 26px rgba(59,130,246,0.3)"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 17 }), t('nextRound')), /* @__PURE__ */ React.createElement("button", { onClick: onlineNewGame2, style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      background: "rgba(255,255,255,0.06)",
       color: "#cbd5e1",
       border: "1px solid rgba(255,255,255,0.12)",
       padding: "13px",
       fontSize: 14,
-      borderRadius: 10,
+      borderRadius: 14,
       cursor: "pointer"
-    } }, t('newMap')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 16 }), t('newMap')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       scoresRef.current = { 1: 0, 2: 0 };
       setScores({ 1: 0, 2: 0 });
       if (online.current) leaveOnline();
       else setScreen("menu");
     }, style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
       background: "transparent",
       color: "#64748b",
       border: "1px solid rgba(255,255,255,0.08)",
       padding: "12px",
       fontSize: 13,
-      borderRadius: 10,
+      borderRadius: 14,
       cursor: "pointer"
-    } }, t('mainMenu'))));
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "home", size: 15 }), t('mainMenu'))));
   }
   return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
     background: "#04080d",
@@ -4264,14 +4383,15 @@ window.FortressApp = function Fortress() {
   } }, /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
-    background: "linear-gradient(160deg, rgba(25,55,130,0.88), rgba(12,28,80,0.92))",
-    border: "1px solid rgba(160,140,70,0.65)",
-    borderRadius: 10,
+    background: "linear-gradient(160deg, rgba(59,130,246,0.20), rgba(30,58,138,0.30))",
+    border: "1px solid rgba(59,130,246,0.45)",
+    borderRadius: 12,
     padding: "5px 8px",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    boxShadow: "0 2px 14px rgba(30,70,200,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
   } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {
     background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",
@@ -4294,24 +4414,26 @@ window.FortressApp = function Fortress() {
   } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#64748b" } }, t('roundLabel'), round)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { marginTop: 5, background: "rgba(15,23,42,0.7)", border: "1px solid rgba(100,116,139,0.22)", color: "#4a5568", borderRadius: 8, padding: "5px 0 6px", fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: "0.09em", textTransform: "uppercase", lineHeight: 1, display: "block", width: "100%", textAlign: "center" } }, t('endBtnText'))), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
-    background: "linear-gradient(160deg, rgba(110,18,18,0.88), rgba(70,10,10,0.92))",
-    border: "1px solid rgba(160,140,70,0.65)",
-    borderRadius: 10,
+    background: "linear-gradient(160deg, rgba(239,68,68,0.20), rgba(127,29,29,0.30))",
+    border: "1px solid rgba(239,68,68,0.45)",
+    borderRadius: 12,
     padding: "5px 8px",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    boxShadow: "0 2px 14px rgba(200,30,30,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
   } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg, rgba(5,80,50,0.88), rgba(3,50,30,0.92))",
-    border: "1px solid rgba(160,140,70,0.65)",
-    borderRadius: 10,
+    background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
+    border: "1px solid rgba(16,185,129,0.45)",
+    borderRadius: 12,
     padding: "4px 14px",
     display: "flex",
     alignItems: "center",
     gap: 8,
-    boxShadow: "0 2px 14px rgba(16,140,80,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 2px 16px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
   } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? ((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "\u265C" : "\u265C"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? " (Du)" : "") : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
@@ -4333,7 +4455,7 @@ window.FortressApp = function Fortress() {
     maxWidth: "92vw",
     overflow: "hidden",
     textOverflow: "ellipsis"
-  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(8px)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 54, lineHeight: 1, marginBottom: 8 } }, pb.emoji), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: "1px solid rgba(255,255,255,0.07)",
@@ -4450,40 +4572,46 @@ window.FortressApp = function Fortress() {
   } }, t('tipShoot'))), showQuitConfirm && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
-    background: "rgba(5,8,15,0.92)",
+    background: "rgba(2,6,15,0.78)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1200,
     padding: 20
   } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
+    background: "linear-gradient(165deg, rgba(16,32,54,0.85), rgba(8,18,37,0.9))",
     border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     maxWidth: 340,
     width: "100%",
-    textAlign: "center"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 30, marginBottom: 8 } }, "\u{1F6AA}"), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: {
+    textAlign: "center",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    boxShadow: "0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#f87171", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "x", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: {
     width: "100%",
-    background: "linear-gradient(135deg,#dc2626,#991b1b)",
+    background: "linear-gradient(135deg,#ef4444,#991b1b)",
     color: "white",
-    border: "none",
+    border: "1px solid rgba(239,68,68,0.5)",
     padding: "14px",
     fontSize: 15,
     fontWeight: 700,
-    borderRadius: 10,
+    borderRadius: 14,
     cursor: "pointer",
-    marginBottom: 10
+    marginBottom: 10,
+    boxShadow: "0 4px 20px rgba(239,68,68,0.3)"
   } }, t('quitYes')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: {
     width: "100%",
-    background: "rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
-    border: "1px solid rgba(255,255,255,0.15)",
+    border: "1px solid rgba(255,255,255,0.14)",
     padding: "13px",
     fontSize: 14,
     fontWeight: 600,
-    borderRadius: 10,
+    borderRadius: 14,
     cursor: "pointer"
   } }, t('quitContinue')))));
 };
