@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.2)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -812,3 +812,9 @@ und beschiessen danach gegenseitig ihre Festungen.
     reduziert (±60 Basis + 8/s; nach 60s Wartezeit ±540, nach ~2min
     unbegrenzt) — bevorzugt faire Paarungen statt sofortiger Weitwinkel-
     Matches.
+- **v3.7.2**: Feature — Teilen-Button im Ergebnis-Screen.
+  - Nach jeder Partie erscheint ein "🔗 Teilen"-Button unter dem Ergebnis.
+  - Auf Mobile: Web Share API (nativer Share-Dialog mit App-Auswahl).
+  - Auf Desktop: Fallback auf Clipboard-Copy (Text + URL).
+  - Share-Text passt sich dem Ergebnis an (Sieg / Niederlage / Unentschieden).
+  - Button zeigt kurz "✓ Geteilt!" nach dem Tippen, kehrt dann zurück.

@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.7.1</title>
+  <title>FORTRESS v3.7.2</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -916,6 +916,12 @@ const LANGS = {
     resultDraw: "Unentschieden!",
     resultWin: "Du gewinnst! \u{1F389}",
     resultLose: "Du verlierst.",
+    shareTextWin: "Ich hab FORTRESS gewonnen! Kannst du mich schlagen?",
+    shareTextLose: "Ich spiele FORTRESS — nächstes Mal gewinne ich!",
+    shareTextDraw: "Ich spiele FORTRESS — wer gewinnt beim nächsten Mal?",
+    shareTextInvite: "Kostenlos im Browser → https://skkjbeer.github.io/Fortress/",
+    shareBtn: "🔗 Teilen",
+    shareBtnDone: "✓ Geteilt!",
     resultWinner: "{name} siegt!",
     resultLeft: "\u{1F6AA} Ein Spieler hat das Spiel verlassen",
     resultLastStanding: "Letzte geschlossene Burg gewinnt",
@@ -1048,6 +1054,12 @@ const LANGS = {
     resultDraw: "Draw!",
     resultWin: "You win! \u{1F389}",
     resultLose: "You lose.",
+    shareTextWin: "I just won at FORTRESS! Think you can beat me?",
+    shareTextLose: "I'm playing FORTRESS — next time I'll win!",
+    shareTextDraw: "Playing FORTRESS — who wins next time?",
+    shareTextInvite: "Free in the browser → https://skkjbeer.github.io/Fortress/",
+    shareBtn: "🔗 Share",
+    shareBtnDone: "✓ Shared!",
     resultWinner: "{name} wins!",
     resultLeft: "\u{1F6AA} A player left the game",
     resultLastStanding: "Last closed castle wins",
@@ -1414,6 +1426,7 @@ window.FortressApp = function Fortress() {
   const [mpInput, setMpInput] = useState("");
   const [mpError, setMpError] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [shareShared, setShareShared] = useState(false);
   const [mmElapsed, setMmElapsed] = useState(0);
   const mmChannel = useRef(null);
   const mmTickTimer = useRef(null);
@@ -1433,6 +1446,24 @@ window.FortressApp = function Fortress() {
   function dbgBump(field, info) {
     dbg.current[field] = (dbg.current[field] || 0) + 1;
     if (info) dbg.current.lastInfo = info;
+  }
+  function shareResult(iWon, drawn) {
+    const url = "https://skkjbeer.github.io/Fortress/";
+    const emoji = drawn ? "\u{1F91D}" : iWon ? "\u{1F3C6}" : "\u{1F480}";
+    const outcome = drawn ? t('shareTextDraw') : iWon ? t('shareTextWin') : t('shareTextLose');
+    const text = `${emoji} ${outcome} — ${t('shareTextInvite')}`;
+    if (navigator.share) {
+      navigator.share({ title: "FORTRESS", text, url }).catch(() => {});
+    } else {
+      const full = text + "\n" + url;
+      const ta = document.createElement("textarea");
+      ta.value = full; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    setShareShared(true);
+    setTimeout(() => setShareShared(false), 2500);
   }
   function copyCode() {
     const code = mpCode;
@@ -3642,7 +3673,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -4087,7 +4118,21 @@ window.FortressApp = function Fortress() {
   borderRadius: 10,
   padding: "10px 20px",
   textAlign: "center"
-} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, " \uD83D\uDCB0"))), online.current && !isHost ? (
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, " \uD83D\uDCB0"))), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
+      width: "100%",
+      maxWidth: 280,
+      background: shareShared ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.06)",
+      color: shareShared ? "#4ade80" : "#94a3b8",
+      border: "1px solid " + (shareShared ? "rgba(74,222,128,0.4)" : "rgba(255,255,255,0.1)"),
+      padding: "11px",
+      fontSize: 14,
+      fontWeight: 600,
+      borderRadius: 10,
+      cursor: "pointer",
+      marginBottom: 14,
+      transition: "all 0.2s"
+    } }, shareShared ? t('shareBtnDone') : t('shareBtn')),
+    online.current && !isHost ? (
       // Gast: wartet auf Host, kann aber selbst ins Hauptmenü
       /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 280, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 14, fontStyle: "italic" } }, t('waitHost')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
         scoresRef.current = { 1: 0, 2: 0 };
