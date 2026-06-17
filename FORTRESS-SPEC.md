@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.9.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.9.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -873,4 +873,17 @@ und beschiessen danach gegenseitig ihre Festungen.
     leuchtendem Wappen-Kern (Krone) und Neon-Tor (vorher Cartoon-Stein).
   - **Schutt** (`drawRubble`): gebrochene Splitter mit glimmender Glut.
   - **Geschosse**: leuchtende Energie-Orbs in Spielerfarbe (Blau/Rot/Grün) mit Glow.
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.9.1**: Fantasy-Avatar-System — 12 individuelle SVG-Charaktere ersetzen Emojis.
+  - `WAPPEN_SVG`: Objekt mit 12 einzigartigen Charakteren als inline-SVG (40×40 viewBox):
+    `vampir` (Vampirlord), `pestdoc` (Pestdoktor), `eismagie` (Eismagierin),
+    `schatten` (Schattenjäger), `sternmage` (Sternenzauberer), `golem` (Eisengolem),
+    `seehexe` (Seehexe), `feuergeist` (Feuergeist), `totenmage` (Totenmagier),
+    `sturmreiter` (Sturmreiter), `golddrache` (Golddrache), `phoenix` (Phönix).
+  - `WAPPEN = Object.keys(WAPPEN_SVG)` — Array der IDs (strings, rückwärtskompatibel).
+  - `WAPPEN_SRC`: precomputed data-URIs (`data:image/svg+xml,...`) für alle 12 Avatare.
+  - `WappenAvatar({ id, size })`: React-Komponente, rendert Avatar als `<img>` mit data-URI.
+    Fallback auf `vampir` wenn ID unbekannt (Rückwärtskompatibilität mit alten Profilen).
+  - Render-Stellen aktualisiert: Profilkarte, Profil-Editor-Buttons, Rangliste,
+    P1/P2/P3-Anzeigetafel im Spiel — alle nutzen jetzt `WappenAvatar`.
   - Spielmechanik unverändert; alle 87 Tests grün.
