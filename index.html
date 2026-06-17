@@ -3101,18 +3101,28 @@ window.FortressApp = function Fortress() {
       shakeRef.current *= 0.72;
     }
     const p1Flipped = online.current && myRole.current === 1 && numPlayersRef.current === 2;
+    let p1FlipPatch = null;
     if (p1Flipped) {
       ctx.save();
       ctx.translate(0, H);
       ctx.scale(1, -1);
       const _origFT = CanvasRenderingContext2D.prototype.fillText;
-      ctx.fillText = function(text, x, y, maxW) {
+      p1FlipPatch = function(text, x, y, maxW) {
         this.save();
         this.translate(x, y);
         this.scale(1, -1);
         _origFT.call(this, text, 0, 0, maxW);
         this.restore();
       };
+      ctx.fillText = p1FlipPatch;
+    }
+    function p1CounterFlip(cx, cy) {
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(1, -1); ctx.translate(-cx, -cy);
+      delete ctx.fillText;
+    }
+    function p1CounterFlipEnd() {
+      ctx.restore();
+      ctx.fillText = p1FlipPatch;
     }
     const terObj = terrain.current;
     const ter = terObj ? terObj.grid : null;
@@ -3226,7 +3236,9 @@ window.FortressApp = function Fortress() {
       if (!ct) continue;
       const cx2 = ct.c * CELL + CELL / 2, cy2 = ct.r * CELL + CELL / 2;
       const open2 = !fc.castleClosed[player];
+      if (p1Flipped) p1CounterFlip(cx2, cy2);
       drawCastle(ctx, cx2, cy2, player, open2, now);
+      if (p1Flipped) p1CounterFlipEnd();
     }
     if (phase_r.current === "build") {
       for (const player of players) {
@@ -3370,9 +3382,11 @@ window.FortressApp = function Fortress() {
         const cx = cn.c * CELL + CELL / 2;
         const cy = cn.r * CELL + CELL / 2;
         const isClosed = isReady(cn);
-        drawCannonFull(ctx, cx, cy, angle, player, reload.current[player]);
+        if (p1Flipped) p1CounterFlip(cx, cy);
+        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player]);
+        if (p1Flipped) p1CounterFlipEnd();
         if (cn.hp < CANNON_HP) {
-          const bw = CELL * 2.4, bx = cx - bw / 2, by = cy - CELL * 2.1;
+          const bw = CELL * 2.4, bx = cx - bw / 2, by = p1Flipped ? cy + CELL * 2.1 : cy - CELL * 2.1;
           ctx.fillStyle = "rgba(0,0,0,0.6)";
           roundRectPath(ctx, bx, by, bw, 5, 2.5);
           ctx.fill();
