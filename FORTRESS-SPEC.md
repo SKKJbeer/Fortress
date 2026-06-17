@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.3)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -818,3 +818,10 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Auf Desktop: Fallback auf Clipboard-Copy (Text + URL).
   - Share-Text passt sich dem Ergebnis an (Sieg / Niederlage / Unentschieden).
   - Button zeigt kurz "✓ Geteilt!" nach dem Tippen, kehrt dann zurück.
+- **v3.7.3**: UX — Online 2v2: P1 sieht sich immer unten.
+  - Bisher sah P1 (Host) seine Burg oben, P2 (Gast) seine Burg unten.
+  - Jetzt: Canvas wird für P1 per CSS `scaleY(-1)` gespiegelt — P1 sieht
+    seine Burg unten, P2 (Gegner) oben.
+  - Pointer-Koordinaten werden synchron invertiert (`y = H - rawY`), sodass
+    Bau-Platzierung, Ghost-Piece und Schleuder-Steuerung weiterhin korrekt
+    funktionieren.
