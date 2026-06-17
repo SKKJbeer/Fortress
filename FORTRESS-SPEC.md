@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -157,7 +157,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   diese schon beim App-Wechsel → würde Spiel killen). Nur bei bewusstem Verlassen
 - Verlust-Zustand wird mehrfach gepusht (sofort, +300ms, +800ms) zur Sicherheit
 
-### Matchmaking ("Schnellspiel", seit v3.6.0; 2 + 3 Spieler seit v3.7.0):
+### Matchmaking ("Schnellspiel", seit v3.6.0; 2 + 3 Spieler seit v3.7.1):
 
 - **Kein aktives Koppeln per Code** — Spieler tritt einer Warteschlange bei
   statt einen Code zu teilen/einzugeben. Code-basiertes Erstellen/Beitreten
@@ -780,7 +780,7 @@ und beschiessen danach gegenseitig ihre Festungen.
       Fallback: tritt der Gast nie bei (z. B. Ticket war ohnehin eine
       Karteileiche), wird das Kandidat-Ticket gelöscht und der Host kehrt
       automatisch in die Warteschlange zurück.
-- **v3.7.0**: Feature — Matchmaking jetzt auch für **3 Spieler**.
+- **v3.7.1**: Feature — Matchmaking jetzt auch für **3 Spieler**.
   - Der "⚡ Schnellspiel"-Button respektiert nun die Spieleranzahl-Auswahl
     (2 oder 3) im Online-Menü; der Button-Text zeigt die gewählte Anzahl.
   - **Getrennte Queues**: 2-Spieler nutzt `/queue2`, 3-Spieler `/queue3` —
