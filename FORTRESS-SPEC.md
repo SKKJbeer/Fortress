@@ -819,9 +819,12 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Share-Text passt sich dem Ergebnis an (Sieg / Niederlage / Unentschieden).
   - Button zeigt kurz "✓ Geteilt!" nach dem Tippen, kehrt dann zurück.
 - **v3.7.3**: UX — Online 2v2: P1 sieht sich immer unten.
-  - Bisher sah P1 (Host) seine Burg oben, P2 (Gast) seine Burg unten.
-  - Jetzt: Canvas wird für P1 per CSS `scaleY(-1)` gespiegelt — P1 sieht
-    seine Burg unten, P2 (Gegner) oben.
-  - Pointer-Koordinaten werden synchron invertiert (`y = H - rawY`), sodass
-    Bau-Platzierung, Ghost-Piece und Schleuder-Steuerung weiterhin korrekt
-    funktionieren.
+  - P1 (Host) sieht seine Burg jetzt unten, P2 (Gegner) oben — identisch
+    mit der Perspektive von P2.
+  - Umsetzung: `ctx.translate(0,H); ctx.scale(1,-1)` im Render-Loop.
+    Burg und Kanone erhalten lokalen Counter-Flip, damit sie aufrecht
+    erscheinen. `ctx.fillText` wird per Monkey-Patch gegen-skaliert.
+    Kanonen-Winkel wird negiert für korrekte Schussrichtung.
+  - Pointer-Y wird invertiert (`y = H - rawY`).
+  - `liftedGhost` hebt den Ghost in die korrekte Richtung (+LIFT_ROWS
+    statt -LIFT_ROWS), Hilfs-Linie und ✓/✗ werden entsprechend gespiegelt.

@@ -2880,8 +2880,10 @@ window.FortressApp = function Fortress() {
   const LIFT_ROWS = 6;
   function liftedGhost(player, x, y) {
     const gc = Math.floor(x / CELL);
-    let gr = Math.floor(y / CELL) - LIFT_ROWS;
-    if (gr < 1) gr = 1;
+    const fl = online.current && myRole.current === 1 && numPlayersRef.current === 2;
+    let gr = Math.floor(y / CELL) + (fl ? LIFT_ROWS : -LIFT_ROWS);
+    if (fl) { if (gr >= ROWS - 1) gr = ROWS - 2; }
+    else { if (gr < 1) gr = 1; }
     return { gr, gc };
   }
   const onPointerDown = useCallback((e) => {
@@ -3270,15 +3272,17 @@ window.FortressApp = function Fortress() {
         ctx.strokeStyle = col + "0.4)";
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 4]);
+        const ownFlipped = p1Flipped && player === 1;
+        const liftSign = ownFlipped ? -1 : 1;
         ctx.beginPath();
-        ctx.moveTo(ghostCenterX, (p.ghostR + Math.floor(Math.max(...cells.map(([r]) => r)) / 2) + 1) * CELL);
-        ctx.lineTo(ghostCenterX, ghostCenterY + LIFT_ROWS * CELL);
+        ctx.moveTo(ghostCenterX, ownFlipped ? offR * CELL : (p.ghostR + Math.floor(Math.max(...cells.map(([r]) => r)) / 2) + 1) * CELL);
+        ctx.lineTo(ghostCenterX, ghostCenterY + liftSign * LIFT_ROWS * CELL);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.fillStyle = valid ? GHOST_HEX[player] || GHOST_HEX[1] : "#6b7280";
         ctx.font = `bold ${CELL * 0.8}px system-ui`;
         ctx.textAlign = "center";
-        ctx.fillText(valid ? "\u2713" : "\u2717", ghostCenterX, ghostCenterY + LIFT_ROWS * CELL - 2);
+        ctx.fillText(valid ? "\u2713" : "\u2717", ghostCenterX, ghostCenterY + liftSign * LIFT_ROWS * CELL - 2);
         ctx.textAlign = "left";
       }
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
