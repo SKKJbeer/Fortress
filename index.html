@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.7.3</title>
+  <title>FORTRESS v3.7.4</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
@@ -3120,12 +3120,13 @@ window.FortressApp = function Fortress() {
     }
     function p1CounterFlip(cx, cy) {
       ctx.save(); ctx.translate(cx, cy); ctx.scale(1, -1); ctx.translate(-cx, -cy);
-      delete ctx.fillText;
+      ctx.fillText = CanvasRenderingContext2D.prototype.fillText;
     }
     function p1CounterFlipEnd() {
       ctx.restore();
       ctx.fillText = p1FlipPatch;
     }
+    try {
     const terObj = terrain.current;
     const ter = terObj ? terObj.grid : null;
     if (!bgCanvas.current) {
@@ -3487,8 +3488,10 @@ window.FortressApp = function Fortress() {
     ctx.strokeStyle = "rgba(170,140,55,0.35)";
     ctx.lineWidth = 2.5;
     ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
-    if (p1Flipped) { delete ctx.fillText; ctx.restore(); }
-    if (didShake) ctx.restore();
+    } finally {
+      if (p1Flipped) { ctx.fillText = CanvasRenderingContext2D.prototype.fillText; ctx.restore(); }
+      if (didShake) ctx.restore();
+    }
     if (online.current && myRole.current === 1) pushState(false);
     animId.current = requestAnimationFrame(renderLoop);
   }, []);
@@ -3708,7 +3711,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",

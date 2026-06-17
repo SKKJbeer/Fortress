@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.3)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.4)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -828,3 +828,10 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Pointer-Y wird invertiert (`y = H - rawY`).
   - `liftedGhost` hebt den Ghost in die korrekte Richtung (+LIFT_ROWS
     statt -LIFT_ROWS), Hilfs-Linie und ✓/✗ werden entsprechend gespiegelt.
+- **v3.7.4**: Bugfix — Render-Loop-Absturz verhindert Quick-Match.
+  - Render-Loop-Hauptteil in `try/finally` eingebettet: `pushState` und
+    `requestAnimationFrame` laufen nun immer, auch wenn ein Rendering-Fehler
+    auftritt. Ohne diesen Fix stoppte ein Fehler im Loop das komplette State-
+    Pushing, sodass der Gast nie Spielzustand empfing und in der Queue blieb.
+  - `delete ctx.fillText` durch `ctx.fillText = CanvasRenderingContext2D.prototype.fillText`
+    ersetzt (sicherer, kein Abhängigkeit von Konfigurierbarkeit des Host-Objekts).
