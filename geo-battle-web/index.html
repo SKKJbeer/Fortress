@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>GEO BATTLE v0.1.3</title>
+  <title>GEO BATTLE v0.1.4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0F" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -210,7 +210,7 @@
     } from 'https://esm.sh/h3-js@4';
 
     // ---------------- Konstanten ----------------
-    const VERSION = '0.1.3';
+    const VERSION = '0.1.4';
     const H3_RES = 8;
     const CAPTURE_BASE_SEC = 12; // Testmodus: beschleunigt (echtes Spiel: ~60s)
 
@@ -356,8 +356,8 @@
       $app.innerHTML = `
         <div id="map"></div>
         <div class="hud-top">
-          <div class="badge" style="border-color:${f.color};color:${f.color}">
-            <span>${f.emoji}</span><span>${f.name}</span>
+          <div class="badge" id="badge" style="border-color:${f.color};color:${f.color}">
+            <span>${f.emoji}</span><span>${f.name}</span><span style="opacity:.6">ⓘ</span>
           </div>
         </div>
         <div class="loc-btn" id="loc-btn">◎</div>
@@ -385,6 +385,7 @@
       document.getElementById('loc-btn').addEventListener('click', centerOnUser);
       document.getElementById('run-btn').addEventListener('click', () => startRun(false));
       document.getElementById('test-btn').addEventListener('click', () => startRun(true));
+      document.getElementById('badge').addEventListener('click', () => alert(getDiagText()));
 
       ensureMap();
       if (run.active) renderRunOverlay();
@@ -397,7 +398,14 @@
       if (!el) return;
       if (!map) {
         const center = userPos ? [userPos.lat, userPos.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng];
-        map = L.map(el, { zoomControl:false, attributionControl:true }).setView(center, 15);
+        map = L.map(el, { zoomControl:false, attributionControl:true, preferCanvas:true }).setView(center, 15);
+        // iOS-Fix: Karte neu vermessen, sobald der Container Größe bekommt (sonst schwarz)
+        if (window.ResizeObserver) {
+          const ro = new ResizeObserver(() => { if (map) { map.invalidateSize(); drawHexes(); } });
+          ro.observe(el);
+        }
+        window.addEventListener('resize', () => { if (map) { map.invalidateSize(); drawHexes(); } });
+        window.addEventListener('orientationchange', () => setTimeout(() => { if (map) { map.invalidateSize(); drawHexes(); } }, 300));
         // Dunkle CARTO-Tiles, mit OSM-Fallback falls blockiert
         const carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           attribution:'© OpenStreetMap, © CARTO', maxZoom:19, subdomains:'abcd',
@@ -419,8 +427,8 @@
         map.on('moveend', drawHexes);
         updateDiag();
         // Leaflet braucht invalidateSize nachdem der Container Layout hat → sonst schwarz
-        setTimeout(() => { if (map) { map.invalidateSize(); drawHexes(); } }, 150);
-        setTimeout(() => { if (map) map.invalidateSize(); }, 450);
+        [60, 200, 500, 1000, 2000].forEach(ms =>
+          setTimeout(() => { if (map) { map.invalidateSize(); drawHexes(); } }, ms));
       } else {
         map.invalidateSize();
       }
@@ -776,6 +784,24 @@
       if (!el) return;
       el.textContent = `v${VERSION} · Karte:${diag.map}(${diag.tiles}${diag.tileErr?'/e'+diag.tileErr:''}) · GPS-Recht:${diag.perm} · ${diag.geo}`;
     }
+    function getDiagText() {
+      const el = document.getElementById('map');
+      const size = el ? `${el.clientWidth}×${el.clientHeight}px` : 'kein #map';
+      const has = (typeof L !== 'undefined') ? 'ja' : 'NEIN (Leaflet fehlt!)';
+      return [
+        'Geo Battle v' + VERSION,
+        'Leaflet geladen: ' + has,
+        'Karte erstellt: ' + (map ? 'ja' : 'nein'),
+        'Karten-Größe: ' + size,
+        'Tiles geladen: ' + diag.tiles + (diag.tileErr ? (' / Fehler ' + diag.tileErr) : ''),
+        'Tile-Status: ' + diag.map,
+        'GPS-Recht: ' + diag.perm,
+        'GPS: ' + diag.geo,
+        'Position: ' + (userPos ? userPos.lat.toFixed(5) + ',' + userPos.lng.toFixed(5) : 'keine'),
+        'Territorien: ' + Object.keys(state.territories).length,
+      ].join('\n');
+    }
+
     function queryPerm() {
       if (navigator.permissions && navigator.permissions.query) {
         navigator.permissions.query({ name:'geolocation' }).then(p => {
