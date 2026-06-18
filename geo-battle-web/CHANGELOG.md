@@ -6,7 +6,18 @@
 
 | Version | Status |
 |---|---|
-| **0.1.6** | aktuell |
+| **0.1.7** | aktuell |
+
+---
+
+## v0.1.7 — Manueller Test-Modus: Karte antippen statt joggen
+**Warum:** Zum Testen will man GPS simulieren und die Karte selbst „ablaufen", statt auf einen automatischen Jog zu warten.
+
+- Test-Modus ist jetzt **manuell**: Auf die Karte tippen = Läufer „geht" dorthin
+- Jede angetippte Gegner-/Neutral-Zelle wird **sofort erobert** (Farbe wechselt sichtbar)
+- Route wird als Linie gezeichnet, Distanz wird mitgezählt
+- Funktioniert komplett **ohne GPS** — ideal zum Durchspielen am Schreibtisch
+- Button umbenannt: „🧪 Test-Modus (Karte antippen statt joggen)"
 
 ---
 

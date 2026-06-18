@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>GEO BATTLE v0.1.6</title>
+  <title>GEO BATTLE v0.1.7</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0F" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -244,7 +244,7 @@
     } from 'https://esm.sh/h3-js@4';
 
     // ---------------- Konstanten ----------------
-    const VERSION = '0.1.6';
+    const VERSION = '0.1.7';
     const H3_RES = 8;
     const CAPTURE_BASE_SEC = 12; // Testmodus: beschleunigt (echtes Spiel: ~60s)
 
@@ -402,7 +402,7 @@
         </div>
         <div class="bottom-bar" id="bottom-bar">
           <button class="run-btn" id="run-btn" style="background:${f.color}">🏃 RUN STARTEN</button>
-          <button class="test-btn" id="test-btn">🧪 Test-Modus (ohne Joggen ausprobieren)</button>
+          <button class="test-btn" id="test-btn">🧪 Test-Modus (Karte antippen statt joggen)</button>
         </div>
         <div id="overlay-slot"></div>
         <div id="profile-slot"></div>
@@ -578,7 +578,7 @@
       renderMain();
       run.timer = setInterval(tickOverlay, 500);
 
-      if (sim) { startSim(); return; }
+      if (sim) { startManualSim(); return; }
 
       if (!navigator.geolocation) { toast('GPS nicht verfügbar — nutze 🧪 Test-Modus', 3000); stopRun(); return; }
       run.watchId = navigator.geolocation.watchPosition(
@@ -658,46 +658,40 @@
     }
 
     // Test-Modus: simuliert einen kleinen Jog durch Nachbarzellen
-    function startSim() {
-      if (!userCell) { toast('Karte lädt noch…'); stopRun(); return; }
-      toast('🧪 Test-Modus: virtueller Jog läuft…');
-      const neighbors = gridDisk(userCell, 2).filter(id => {
-        const t = state.territories[id];
-        return id !== userCell && (!t || t.faction !== state.faction);
-      }).slice(0, 6);
-      let idx = 0;
-      const visit = () => {
-        if (idx >= neighbors.length) { toast('🧪 Test beendet'); stopRun(); return; }
-        const target = neighbors[idx++];
-        const [lat,lng] = cellToLatLng(target);
-        // simuliere mehrere Positions-Updates in der Zelle bis Capture
-        let steps = 0;
-        run.inProgress = null;
-        userCell = target;
-        const stepInZell = setInterval(() => {
-          const jitterLat = lat + (Math.random()-.5)*0.0006;
-          const jitterLng = lng + (Math.random()-.5)*0.0006;
-          run.speeding = false;
-          run.lastSpeed = 6 + Math.random()*3; // ~6-9 km/h Jogging
-          if (run.lastPos) run.distanceKm += haversineKm(run.lastPos, {lat:jitterLat,lng:jitterLng});
-          run.lastPos = { lat:jitterLat, lng:jitterLng };
-          userPos = run.lastPos;
-          run.path.push([jitterLat, jitterLng]);
-          setUserMarker(jitterLat, jitterLng);
-          map.panTo([jitterLat, jitterLng], { animate:true });
-          captureTick(target);
-          drawPath(); drawHexes();
-          steps++;
-          if (run.captured.includes(target) || steps > 30) {
-            clearInterval(stepInZell);
-            run.simTimer = setTimeout(visit, 400);
-          }
-        }, 250);
-        run._stepInterval = stepInZell;
-      };
-      // Test-Modus nutzt verkürzte Capture-Zeit
-      run._origBase = CAPTURE_BASE_SEC;
-      visit();
+    // Manueller Test-Modus: Karte antippen = dorthin "laufen" und Zelle erobern
+    function startManualSim() {
+      ensureMap();
+      if (!map) { toast('Karte lädt noch…'); stopRun(); return; }
+      if (!userPos) {
+        const c = map.getCenter();
+        userPos = { lat:c.lat, lng:c.lng };
+        userCell = latLngToCell(c.lat, c.lng, H3_RES);
+      }
+      run.lastPos = userPos;
+      setUserMarker(userPos.lat, userPos.lng);
+      map.on('click', onSimTap);
+      toast('🧪 Tippe auf die Karte, um dorthin zu laufen und Zellen zu erobern', 4000);
+    }
+
+    function onSimTap(e) {
+      const lat = e.latlng.lat, lng = e.latlng.lng;
+      const pos = { lat, lng };
+      if (run.lastPos) run.distanceKm += haversineKm(run.lastPos, pos);
+      run.lastPos = pos; userPos = pos;
+      run.path.push([lat, lng]);
+      const cell = latLngToCell(lat, lng, H3_RES);
+      userCell = cell;
+      setUserMarker(lat, lng);
+      drawPath();
+      // In der Simulation: angetippte Gegner-/Neutral-Zelle sofort erobern
+      const t = state.territories[cell];
+      const mine = t && t.faction === state.faction;
+      if (!mine && !run.captured.includes(cell)) {
+        captureCell(cell);
+      } else {
+        drawHexes();
+      }
+      renderRunOverlay();
     }
 
     function drawPath() {
@@ -713,6 +707,7 @@
       if (run.timer) clearInterval(run.timer);
       if (run.simTimer) clearTimeout(run.simTimer);
       if (run._stepInterval) clearInterval(run._stepInterval);
+      if (map) map.off('click', onSimTap);
       const km = Math.round(run.distanceKm*100)/100;
       const captured = run.captured.length;
       state.stats.runs += 1;
