@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Geo Battle",
+    "slug": "geo-battle",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.geobattle.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Geo Battle zeigt Territorien auf der Karte und verfolgt deine Runs.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Geo Battle braucht deinen Standort im Hintergrund, um Runs zu verfolgen.",
+        "NSLocationAlwaysUsageDescription": "Geo Battle braucht deinen Standort im Hintergrund, um Runs zu verfolgen."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A0F"
+      },
+      "package": "com.geobattle.app",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Geo Battle braucht deinen Standort für Runs und Territorien."
+        }
+      ]
+    ]
+  }
+}
