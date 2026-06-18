@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>GEO BATTLE v0.1.1</title>
+  <title>GEO BATTLE v0.1.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0F" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -180,6 +180,25 @@
     .toast.show { opacity: 1; }
 
     .version { position: absolute; bottom: 2px; left: 6px; z-index: 600; font-size: 9px; color: #333; }
+
+    /* GPS-Hilfe */
+    .gps-help {
+      position: absolute; left: 14px; right: 14px; z-index: 850;
+      top: calc(60px + env(safe-area-inset-top));
+      background: rgba(14,14,24,.98); border: 1px solid #FF6666; border-radius: 14px;
+      padding: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.6);
+    }
+    .gh-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+    .gh-text, .gh-text2 { font-size: 13px; color: #BBB; line-height: 1.45; }
+    .gh-text2 { margin-top: 10px; color: #888; font-size: 12px; }
+    .gh-steps { margin: 10px 0; padding-left: 20px; }
+    .gh-steps li { font-size: 13px; color: #DDD; margin-bottom: 5px; line-height: 1.4; }
+    .gh-btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .gh-btns button {
+      flex: 1; min-width: 90px; border: 1px solid var(--border); background: var(--panel);
+      color: var(--text); border-radius: 10px; padding: 11px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .gh-btns button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   </style>
 </head>
 <body>
@@ -191,7 +210,7 @@
     } from 'https://esm.sh/h3-js@4';
 
     // ---------------- Konstanten ----------------
-    const VERSION = '0.1.1';
+    const VERSION = '0.1.2';
     const H3_RES = 8;
     const CAPTURE_BASE_SEC = 12; // Testmodus: beschleunigt (echtes Spiel: ~60s)
 
@@ -483,7 +502,7 @@
         },
         err => {
           if (err.code === 1) {
-            toast('📍 Standort verweigert. Tippe ◎ um erneut zu fragen, oder nutze 🧪 Test-Modus.', 4000);
+            showGpsHelp();
           } else {
             toast('📍 Standort nicht verfügbar — Demo-Karte', 3000);
           }
@@ -507,8 +526,8 @@
         p => onPosition(p.coords.latitude, p.coords.longitude, p.coords.speed),
         err => {
           if (err.code === 1) {
-            toast('📍 Standort verweigert — Run gestoppt. Erlaube GPS in den Safari-Einstellungen oder nutze 🧪 Test-Modus.', 4500);
             stopRun();
+            showGpsHelp();
           } else {
             toast('GPS-Signal schwach…', 2500);
           }
@@ -744,6 +763,33 @@
       el.textContent = msg; el.classList.add('show');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(()=>el.classList.remove('show'), dur);
+    }
+
+    function hideGpsHelp() { document.getElementById('gps-help')?.remove(); }
+    function showGpsHelp() {
+      hideGpsHelp();
+      const wrap = document.createElement('div');
+      wrap.id = 'gps-help';
+      wrap.className = 'gps-help';
+      wrap.innerHTML = `
+        <div class="gh-title">📍 Standort ist von Safari blockiert</div>
+        <div class="gh-text">Safari hat den Standort gesperrt und fragt nicht mehr automatisch. So schaltest du ihn frei:</div>
+        <ol class="gh-steps">
+          <li>In Safari oben in der Adressleiste auf <b>„aA"</b> tippen</li>
+          <li><b>Website-Einstellungen</b> öffnen</li>
+          <li>Bei <b>Standort</b> auf <b>Erlauben</b> stellen</li>
+          <li>Diese Seite neu laden</li>
+        </ol>
+        <div class="gh-text2">Falls „aA" fehlt: iPhone-Einstellungen → Datenschutz &amp; Sicherheit → Ortungsdienste → ein (und „Safari-Websites" → „Beim Verwenden").</div>
+        <div class="gh-btns">
+          <button class="primary" id="gh-retry">↻ Erneut versuchen</button>
+          <button id="gh-test">🧪 Test-Modus</button>
+          <button id="gh-close">Schließen</button>
+        </div>`;
+      $app.appendChild(wrap);
+      document.getElementById('gh-retry').onclick = () => { hideGpsHelp(); startLocate(true); };
+      document.getElementById('gh-test').onclick = () => { hideGpsHelp(); startRun(true); };
+      document.getElementById('gh-close').onclick = hideGpsHelp;
     }
 
     // ---------------- Start ----------------
