@@ -6,7 +6,16 @@
 
 | Version | Status |
 |---|---|
-| **0.1.5** | aktuell |
+| **0.1.6** | aktuell |
+
+---
+
+## v0.1.6 — Leaflet-CSS eingebettet + Test-Modus ohne GPS lauffähig
+**Warum:** Karte blieb über alle Versionen schwarz → Verdacht: externes Leaflet-CSS (unpkg) wird im Mobilfunknetz/durch Inhaltsblocker nicht geladen, dann positioniert Leaflet seine Kacheln nicht. Test-Modus brach ohne GPS sofort ab.
+
+- **Leaflet-Kern-CSS direkt in die HTML eingebettet** → Karte funktioniert unabhängig von externen CSS-Servern
+- **Test-Modus-Bug behoben**: Start-Zelle wird jetzt aus der Kartenmitte gesetzt, wenn kein GPS vorhanden ist → Test-Modus läuft auch ohne Standortfreigabe
+- Karten-Container bekommt **explizite Pixel-Höhe** (`window.innerHeight`) statt nur CSS `100%` (zusätzlicher Schutz gegen iOS-Schwarz)
 
 ---
 
