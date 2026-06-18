@@ -567,13 +567,75 @@ service cloud.firestore {
 4. **Battery-Aware**: GPS-Tracking muss Battery-schonend sein (sonst deinstallieren User)
 5. **Solo-playable**: Auch ohne andere Spieler in der Region macht es Spass (Karte erkunden)
 6. **Privacy**: Genaue GPS-Tracks nie öffentlich anzeigen — nur Hex-Territorien
+7. **Nachvollziehbarkeit**: Aktuelle Version ist immer im Spiel sichtbar; jede Änderung steht im Changelog mit Begründung
 
 ---
 
-## Changelog
+## 14. Architektur-Entscheidungen (Decision Log / ADR)
+
+Jede wichtige Entscheidung mit **Kontext**, **Entscheidung** und **Begründung** — damit später nachvollziehbar ist, *warum* etwas so gebaut wurde.
+
+### ADR-1: Zwei getrennte Tracks (Web-Prototyp + Native App)
+- **Kontext**: Sofort auf dem iPhone testbar sein, aber langfristig in die App Stores.
+- **Entscheidung**: `geo-battle-web/` (Single-File-Web-App) zum sofortigen Testen + `geo-battle/` (Expo/React Native) als Store-Track.
+- **Begründung**: Der Web-Prototyp erfordert vom Nutzer **null Setup** (nur Link öffnen). Die Native-App liefert später Hintergrund-GPS und Store-Distribution.
+
+### ADR-2: Web-Prototyp als einzelne HTML-Datei
+- **Kontext**: Schnelle Iteration, zuverlässiges Deployment über die bestehende GitHub-Pages-Pipeline.
+- **Entscheidung**: Eine `index.html` mit allem (wie Fortress), Abhängigkeiten via CDN (Leaflet, h3-js).
+- **Begründung**: Kein Build-Schritt, kein Asset-Pfad-Problem bei Unterordner-Deployment, sofort deploybar. Bewusste Abweichung: kein React-Build wie im Native-Track.
+
+### ADR-3: Hexagon-Grid mit Uber H3, Auflösung 8
+- **Kontext**: Territorien deterministisch und gerätelokal aus GPS berechnen.
+- **Entscheidung**: H3 Resolution 8 (≈ 460 m Durchmesser).
+- **Begründung**: Lokale Zellberechnung spart Server-Roundtrips; Res 8 gibt in Städten interessante Granularität. Nur belegte Zellen werden gespeichert.
+
+### ADR-4: Karten via Leaflet + OpenStreetMap/CARTO
+- **Kontext**: Zero-Cost-Politik in der aktuellen Phase.
+- **Entscheidung**: Leaflet mit CARTO-Dark-Tiles, automatischer **OSM-Fallback** bei Tile-Fehlern.
+- **Begründung**: Kostenlos, keine API-Keys nötig, dunkler Stil passt zur Atmosphäre.
+
+### ADR-5: Backend Firebase Spark (Phase 2)
+- **Kontext**: Multiplayer/Territorien teilen ohne laufende Kosten.
+- **Entscheidung**: Firestore + Auth im kostenlosen Spark-Plan, Viewport-Queries + lokaler Cache.
+- **Begründung**: Bekannt aus Fortress, ausreichende Limits für Beta, sauberer Upgrade-Pfad zu Blaze.
+
+### ADR-6: Strikte Trennung von Fortress
+- **Kontext**: Fortress darf durch Geo Battle nicht beeinträchtigt werden.
+- **Entscheidung**: Eigene Ordner (`geo-battle-web/`, `geo-battle/`), eigenes Manifest/Icons, localStorage-Präfix `geo_battle_`. Fortress-Root (`index.html`) wird nie angefasst.
+- **Begründung**: Keine Vermischung von Spielständen, kein Risiko für das Live-Spiel.
+
+### ADR-7: GPS-Strategie Web vs. Native
+- **Kontext**: iOS Safari kann GPS-Popups nach Ablehnung nicht erneut erzwingen; Hintergrund-GPS ist im Browser nicht zuverlässig.
+- **Entscheidung**: Web = nur Vordergrund-GPS + robuste Retries + In-App-Hilfe + Test-Modus ohne GPS. Hintergrund-GPS nur im Native-Track.
+- **Begründung**: Bestmögliche Testbarkeit im Browser, ohne falsche Erwartungen an Browser-Limits.
+
+### ADR-8: Sichtbare Version + sichtbare Diagnose
+- **Kontext**: Safari cached aggressiv; Fehler auf dem Gerät sind ohne Messwerte schwer zu finden.
+- **Entscheidung**: Version immer sichtbar (Onboarding + Pill auf der Karte); antippbares Diagnose-Fenster mit Kartengröße, Tiles, GPS-Status.
+- **Begründung**: Schnelle Bestätigung der geladenen Version + Ferndiagnose ohne Bildschirmzugriff.
+
+---
+
+## 15. Changelog
+
+**Spec-Dokument (Architektur/Design):**
 
 | Datum | Version | Änderung |
 |---|---|---|
 | 2026-06-18 | 0.1 | Initiale Architektur + Planungsphase |
 | 2026-06-18 | 0.2 | Design-Entscheidungen: Passiv+Spell, Decay, Solo-Modus, iOS+Android parallel |
 | 2026-06-18 | 0.3 | Web-Prototyp (geo-battle-web/) für sofortiges Browser-Testen + Native Expo-App (geo-battle/) |
+| 2026-06-18 | 0.4 | Architektur-Entscheidungs-Log (ADR-1…8) ergänzt; Verweis auf Web-Changelog |
+
+**Web-Prototyp (Spielversionen):** vollständiges Protokoll mit Begründungen in
+[`geo-battle-web/CHANGELOG.md`](geo-battle-web/CHANGELOG.md). Kurzüberblick:
+
+| Version | Kern-Änderung |
+|---|---|
+| 0.1.0 | Erster spielbarer Web-Prototyp (Karte, H3, Fraktionen, Run, Test-Modus, Profil) |
+| 0.1.1 | Karte lädt sofort (von GPS entkoppelt), OSM-Fallback-Tiles |
+| 0.1.2 | In-App-Hilfe bei GPS-Verweigerung |
+| 0.1.3 | Sichtbare Diagnose-Zeile + robusteres GPS (Timeout-Retry) |
+| 0.1.4 | iOS „schwarze Karte" behoben (ResizeObserver/Canvas) + Diagnose-Fenster |
+| 0.1.5 | Version sichtbar im Spiel (Onboarding + Pill auf der Karte) |
