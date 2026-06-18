@@ -221,27 +221,46 @@ Strength nach Stunden:
 
 Zum Erobern einer Stärke-N-Zelle braucht Angreifer: **(N × Basis-Zeit)** in der Zelle.
 
-Basis-Zeit (je nach Fraktion):
+### 5.2 Fraktions-Design ✅ (Entschieden: Passiv + 1 Spell)
 
-| Fraktion | Angriffs-Multiplikator | Beschreibung |
-|---|---|---|
-| Untote | 0.8× | Schneller erobern durch Ausdauer |
-| Menschen | 1.0× | Standard |
-| Elfen | 1.2× langsam, aber... | Sonderfähigkeit: können 2 Zellen gleichzeitig capturen |
+Jede Fraktion hat **passive Boni** + **1 aktiven Signature-Spell** (Cooldown ~24h):
 
-### 5.2 Decay-System
+| Fraktion | Passiv | Signature Spell | Spell-Effekt |
+|---|---|---|---|
+| **Untote** | Capture-Zeit −20%, Decay −50% | **Pest** | Benachbarte gegnerische Zellen verlieren sofort 3 Stärke (Radius 2 Hexes) |
+| **Menschen** | Ausgewogen (1.0×), Stärke wächst 20% schneller | **Festung** | Wähle 3 Zellen → uneinnehmbar für 6h |
+| **Elfen** | Bewegungs-Bonus: 1.5× Speed-Cap (52 km/h) | **Naturpakt** | Laufe eine Route → alle berührten eigenen Zellen sofort Stärke 10 |
+
+**Spell-Auslösung**: In-App Button, nur verfügbar wenn Cooldown abgelaufen + Mindest-Territorium besessen.
+
+### 5.3 Decay-System ✅ (Entschieden: Aktiver Decay → neutral)
 
 Verlassene Zellen werden **schwächer** (ohne aktiven Besitzer):
 - Pro 24h ohne Aktivität in der Nähe: Stärke −1
-- Bei Stärke 0: Zelle wird **neutral** (grau auf der Karte)
-- Verhindert "tote" Karten in inaktiven Regionen
+- Bei Stärke 0: Zelle wird **neutral** (grau auf der Karte, niemandem gehörend)
+- Verhindert "tote" Karten in inaktiven Regionen — aktives Spielen wird belohnt
 
-Fraktion-spezifischer Decay:
-- **Untote**: Decay 0.5× (halten Territorien länger)
-- **Elfen**: Decay 2× (verlieren schnell ohne Aktivität)
+Fraktion-spezifischer Decay (passiver Bonus):
+- **Untote**: Decay 0.5× (halten Territorien doppelt so lang)
+- **Elfen**: Decay 1.5× (verlieren Territorium schneller → Bewegung ist Pflicht)
 - **Menschen**: Decay 1× (Standard)
 
-### 5.3 Geo Run Ablauf
+**Decay-Berechnung**: Client-seitig beim Karten-Laden (kein Server-Cron nötig):
+```javascript
+const currentStrength = Math.max(0,
+  territory.strength - Math.floor((now - territory.lastActivityAt) / 86400000)
+);
+```
+
+### 5.4 Solo-Modus ✅ (Entschieden: Solo macht Spass)
+
+Spieler können **ohne andere aktive Spieler** laufen:
+- Neutrale (graue) Zellen können durch jeden Run captured werden
+- Eigene Zellen können durch Laufen **verstärkt** werden (Stärke auf max bringen)
+- Solo-Runs zählen voll für persönliche Stats + Fraktion-Gesamtterritoriuum
+- **Motivation allein**: Karte in der eigenen Stadt für die Fraktion einfärben
+
+### 5.5 Geo Run Ablauf
 
 ```
 App-Flow während eines Runs:
@@ -267,7 +286,7 @@ App-Flow während eines Runs:
   Auswertung: Karte der captured Cells, Stats-Update
 ```
 
-### 5.4 Anti-Cheat
+### 5.6 Anti-Cheat
 
 - **Speed-Cap**: GPS-Punkte mit >35 km/h → Run wird ungültig markiert
 - **Minimum Accuracy**: GPS-Genauigkeit >50m → Capture wird nicht gezählt
@@ -420,7 +439,7 @@ eas submit --platform ios  # Direkt zu TestFlight / App Store Connect
 
 **Ziel**: Mehrere Spieler können gegeneinander spielen.
 
-### Phase 5 — Store-Readiness (Wochen 16–18)
+### Phase 5 — Store-Readiness (Wochen 16–18) ✅ (iOS + Android gleichzeitig)
 
 - [ ] Privacy Policy (Firebase = Daten!)
 - [ ] App Store Screenshots
@@ -521,3 +540,4 @@ service cloud.firestore {
 | Datum | Version | Änderung |
 |---|---|---|
 | 2026-06-18 | 0.1 | Initiale Architektur + Planungsphase |
+| 2026-06-18 | 0.2 | Design-Entscheidungen: Passiv+Spell, Decay, Solo-Modus, iOS+Android parallel |
