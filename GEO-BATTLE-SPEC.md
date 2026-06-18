@@ -353,7 +353,42 @@ App Navigation (React Navigation Stack):
 
 ---
 
+## 7b. Zwei Tracks: Web-Prototyp + Native App
+
+Geo Battle hat bewusst **zwei getrennte Implementierungen**:
+
+| Track | Ordner | Zweck | Live-URL |
+|---|---|---|---|
+| **Web-Prototyp** | `geo-battle-web/` | Sofort testbar im Browser, kein Setup | https://skkjbeer.github.io/Fortress/geo-battle-web/ |
+| **Native App (Expo)** | `geo-battle/` | App Store Track (iOS + Android), Hintergrund-GPS | später via TestFlight / EAS |
+
+### Web-Prototyp (`geo-battle-web/index.html`)
+- **Einzelne HTML-Datei** (wie Fortress) — Leaflet + OpenStreetMap, h3-js via CDN
+- Läuft auf jedem Smartphone-Browser, **kein Expo Go, kein Terminal nötig**
+- localStorage-Keys mit Präfix `geo_battle_` → **sauber getrennt** von Fortress (`fortress_profile`)
+- Enthält **Test-Modus**: simuliert einen Jog, damit man die Eroberung ohne echtes Joggen sehen kann
+- GPS via Browser-Geolocation (Vordergrund). Hintergrund-GPS → nur Native Track
+- Deployt über die bestehende GitHub-Pages-Pipeline (eigener Unterordner, Fortress unberührt)
+
+### ⚠️ Trennung von Fortress (verbindlich)
+- Fortress = Root `index.html` — **niemals von Geo-Battle-Änderungen anfassen**
+- Geo Battle lebt ausschließlich in `geo-battle/` und `geo-battle-web/`
+- Eigene Icons, eigenes Manifest, eigene localStorage-Keys
+
+---
+
 ## 8. iPhone 15 Test-Setup (sofort möglich)
+
+### Schnellster Weg: Web-Prototyp (0 Setup)
+
+1. Auf dem iPhone **Safari** öffnen
+2. https://skkjbeer.github.io/Fortress/geo-battle-web/ aufrufen
+3. Name + Fraktion wählen → Standort erlauben → loslegen
+4. „🧪 Test-Modus" tippen zum Ausprobieren ohne Joggen, oder „🏃 Run starten" für echtes GPS
+5. Optional: Teilen-Button → „Zum Home-Bildschirm" → läuft wie eine App
+
+### Native App (später)
+
 
 ### Schritt 1: Expo Go (kein Mac Build nötig)
 
@@ -541,3 +576,4 @@ service cloud.firestore {
 |---|---|---|
 | 2026-06-18 | 0.1 | Initiale Architektur + Planungsphase |
 | 2026-06-18 | 0.2 | Design-Entscheidungen: Passiv+Spell, Decay, Solo-Modus, iOS+Android parallel |
+| 2026-06-18 | 0.3 | Web-Prototyp (geo-battle-web/) für sofortiges Browser-Testen + Native Expo-App (geo-battle/) |

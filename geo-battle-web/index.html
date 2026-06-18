@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>GEO BATTLE v0.1.0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A0A0F" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Geo Battle" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- Leaflet (Karten) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg: #0A0A0F;
+      --panel: #141420;
+      --panel2: #0E0E18;
+      --border: #2A2A3A;
+      --text: #E8E8F0;
+      --muted: #888;
+      --accent: #1E8FD9;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overscroll-behavior: none;
+    }
+    #app { height: 100%; width: 100%; position: relative; }
+
+    /* ---------- Onboarding ---------- */
+    .onboard {
+      height: 100%; overflow-y: auto; padding: 20px;
+      padding-top: calc(20px + env(safe-area-inset-top));
+      padding-bottom: calc(40px + env(safe-area-inset-bottom));
+    }
+    .title { font-size: 30px; font-weight: 900; text-align: center; margin: 14px 0 4px; }
+    .subtitle { font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 26px; }
+    .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
+    .input {
+      width: 100%; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 16px; padding: 14px; outline: none;
+    }
+    .section { margin-bottom: 22px; }
+    .faction-card {
+      background: var(--panel); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 15px; margin-bottom: 12px; cursor: pointer; transition: all .15s;
+    }
+    .faction-head { display: flex; align-items: center; margin-bottom: 7px; }
+    .faction-emoji { font-size: 24px; margin-right: 10px; }
+    .faction-name { font-size: 18px; font-weight: 700; flex: 1; }
+    .faction-sel { font-size: 13px; font-weight: 600; }
+    .faction-desc { color: #AAA; font-size: 13px; line-height: 1.4; margin-bottom: 6px; }
+    .faction-bonus, .faction-spell { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .btn {
+      width: 100%; border: none; border-radius: 12px; padding: 17px; font-size: 16px;
+      font-weight: 700; color: #fff; background: var(--accent); cursor: pointer; margin-top: 6px;
+    }
+    .btn:disabled { background: var(--border); color: #666; }
+    .hint { color: #444; font-size: 11px; text-align: center; margin-top: 12px; }
+
+    /* ---------- Map ---------- */
+    #map { position: absolute; inset: 0; background: var(--bg); }
+    .leaflet-container { background: #0A0A0F; }
+    .leaflet-control-attribution { font-size: 9px; background: rgba(10,10,15,.7) !important; color: #666 !important; }
+    .leaflet-control-attribution a { color: #888 !important; }
+
+    /* HUD top */
+    .hud-top {
+      position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 14px; right: 14px;
+      z-index: 600; display: flex; align-items: center; gap: 8px; pointer-events: none;
+    }
+    .badge {
+      display: flex; align-items: center; gap: 6px; pointer-events: auto;
+      background: rgba(10,10,15,.85); border: 1.5px solid var(--accent);
+      border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 700;
+    }
+    .loc-btn {
+      position: absolute; right: 14px; top: calc(60px + env(safe-area-inset-top)); z-index: 600;
+      width: 44px; height: 44px; border-radius: 22px; background: rgba(20,20,32,.92);
+      border: 1px solid var(--border); color: var(--text); font-size: 22px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+
+    /* Legend */
+    .legend {
+      position: absolute; right: 14px; bottom: calc(150px + env(safe-area-inset-bottom)); z-index: 600;
+      background: rgba(10,10,15,.85); border: 1px solid var(--border); border-radius: 10px; padding: 9px;
+    }
+    .legend-item { display: flex; align-items: center; margin-bottom: 4px; font-size: 11px; color: #AAA; }
+    .legend-item:last-child { margin-bottom: 0; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+
+    /* Bottom bar (start run) */
+    .bottom-bar {
+      position: absolute; left: 18px; right: 18px; z-index: 600;
+      bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+    .run-btn {
+      width: 100%; border: none; border-radius: 16px; padding: 18px; font-size: 16px;
+      font-weight: 800; letter-spacing: 1px; color: #fff; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    }
+    .test-btn {
+      width: 100%; margin-top: 8px; border: 1px dashed var(--border); border-radius: 12px;
+      padding: 11px; font-size: 13px; color: var(--muted); background: rgba(20,20,32,.85); cursor: pointer;
+    }
+
+    /* Run overlay */
+    .run-overlay {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 700;
+      background: rgba(10,10,15,.96); border-top: 1px solid var(--border);
+      border-radius: 20px 20px 0 0; padding: 16px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+    .stats-row { display: flex; justify-content: space-around; margin-bottom: 12px; }
+    .stat-box { text-align: center; }
+    .stat-val { font-size: 22px; font-weight: 700; }
+    .stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .speeding { color: #FF4444 !important; }
+    .capture-box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .capture-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+    .progress-bg { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+    .capture-time { font-size: 11px; color: var(--muted); margin-top: 6px; }
+    .warn { background: rgba(255,68,68,.15); border: 1px solid #FF4444; color: #FF8888; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 12px; text-align: center; }
+    .stop-btn { width: 100%; border: 1px solid #FF4444; background: #2A0000; color: #FF6666; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; letter-spacing: 1px; cursor: pointer; }
+
+    /* Profile panel */
+    .panel-screen {
+      position: absolute; inset: 0; z-index: 650; background: var(--bg);
+      overflow-y: auto; padding: 20px;
+      padding-top: calc(20px + env(safe-area-inset-top));
+      padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    }
+    .screen-title { font-size: 24px; font-weight: 800; margin-bottom: 18px; }
+    .player-card { display: flex; align-items: center; background: var(--panel); border: 2px solid var(--accent); border-radius: 14px; padding: 16px; margin-bottom: 22px; }
+    .player-emoji { font-size: 36px; margin-right: 14px; }
+    .player-name { font-size: 20px; font-weight: 700; }
+    .player-faction { font-size: 14px; font-weight: 600; margin-top: 2px; }
+    .sec-title { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 22px; }
+    .grid-box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+    .grid-val { font-size: 22px; font-weight: 700; }
+    .grid-lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .spell-card { background: var(--panel); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 22px; cursor: pointer; }
+    .spell-head { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .spell-name { font-size: 16px; font-weight: 700; }
+    .spell-desc { color: #AAA; font-size: 13px; line-height: 1.4; }
+    .cd-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+    .cd-fill { height: 100%; border-radius: 2px; }
+    .info-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
+    .info-text { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .info-desc { color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .danger-btn { width: 100%; border: 1px solid var(--border); background: transparent; color: #FF6666; border-radius: 10px; padding: 13px; font-size: 13px; cursor: pointer; }
+
+    /* Bottom tabs */
+    .tabs {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 800; display: flex;
+      background: var(--panel2); border-top: 1px solid var(--border);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .tab { flex: 1; text-align: center; padding: 10px 0 12px; cursor: pointer; color: #555; font-size: 11px; }
+    .tab .ico { font-size: 20px; display: block; margin-bottom: 2px; }
+    .tab.active { color: var(--accent); }
+
+    .toast {
+      position: absolute; left: 50%; transform: translateX(-50%); z-index: 900;
+      bottom: calc(160px + env(safe-area-inset-bottom)); background: rgba(20,20,32,.96);
+      border: 1px solid var(--accent); border-radius: 12px; padding: 12px 18px; font-size: 14px;
+      font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; max-width: 80%; text-align: center;
+    }
+    .toast.show { opacity: 1; }
+
+    .version { position: absolute; bottom: 2px; left: 6px; z-index: 600; font-size: 9px; color: #333; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import {
+      latLngToCell, cellToBoundary, cellToLatLng, gridDisk, gridDistance
+    } from 'https://esm.sh/h3-js@4';
+
+    // ---------------- Konstanten ----------------
+    const VERSION = '0.1.0';
+    const H3_RES = 8;
+    const CAPTURE_BASE_SEC = 12; // Testmodus: beschleunigt (echtes Spiel: ~60s)
+
+    const FACTIONS = {
+      undead: {
+        id:'undead', name:'Untote', emoji:'💀', color:'#9B30FF', border:'#7B00DD',
+        rgb:'155,48,255',
+        desc:'Ausdauernd und zäh. Territorien halten doppelt so lang ohne zu zerfallen.',
+        bonus:'Capture −20% Zeit · Decay −50%',
+        spell:{ name:'Pest', desc:'Benachbarte Gegner-Zellen verlieren sofort 3 Stärke (Radius 2)' },
+        captureMult:0.8, decayMult:0.5, speedCap:35,
+      },
+      human: {
+        id:'human', name:'Menschen', emoji:'⚔️', color:'#1E8FD9', border:'#0D6FAF',
+        rgb:'30,143,217',
+        desc:'Ausgewogen und strategisch. Stärke wächst schneller, perfekt zum Verteidigen.',
+        bonus:'Stärke +20% schneller · Balanced',
+        spell:{ name:'Festung', desc:'3 Zellen für 6h uneinnehmbar machen' },
+        captureMult:1.0, decayMult:1.0, speedCap:35,
+      },
+      elf: {
+        id:'elf', name:'Elfen', emoji:'🌿', color:'#00C853', border:'#009640',
+        rgb:'0,200,83',
+        desc:'Schnell und mobil. Höherer Speed-Cap erlaubt Fahrrad-Runs.',
+        bonus:'Speed-Cap 52 km/h · sehr mobil',
+        spell:{ name:'Naturpakt', desc:'Gelaufene Route → alle eigenen Zellen auf Stärke 10' },
+        captureMult:1.0, decayMult:1.5, speedCap:52,
+      },
+    };
+    const NEUTRAL = { color:'#4A4A5A', border:'#3A3A4A', rgb:'74,74,90' };
+    const DEFAULT_CENTER = { lat: 47.3769, lng: 8.5417 }; // Zürich Fallback
+
+    // ---------------- State ----------------
+    const SKEY = 'geo_battle_state_v1';
+    function loadState() {
+      try { return JSON.parse(localStorage.getItem(SKEY)) || null; } catch { return null; }
+    }
+    function saveState() { localStorage.setItem(SKEY, JSON.stringify(state)); }
+    function freshState() {
+      return {
+        onboarded:false, name:'', faction:null,
+        stats:{ runs:0, km:0, captured:0 },
+        spellLastUsedAt:null,
+        territories:{}, // h3id -> {faction, owner, strength, conqueredAt, lastActivityAt}
+      };
+    }
+    let state = loadState() || freshState();
+
+    // Laufzeit (nicht persistiert)
+    let tab = 'map';
+    let map = null, hexLayers = {}, userMarker = null, pathLine = null;
+    let userPos = null, userCell = null;
+    let run = {
+      active:false, sim:false, startTime:0, path:[], distanceKm:0,
+      captured:[], inProgress:null, lastPos:null, lastTime:0, lastSpeed:0,
+      speeding:false, watchId:null, timer:null, simTimer:null,
+    };
+
+    const $app = document.getElementById('app');
+    const fc = () => state.faction ? FACTIONS[state.faction] : null;
+
+    // ---------------- Decay ----------------
+    function currentStrength(t) {
+      const days = (Date.now() - t.lastActivityAt) / 86400000;
+      const mult = FACTIONS[t.faction] ? FACTIONS[t.faction].decayMult : 1;
+      return Math.max(0, Math.floor(t.strength - days * mult));
+    }
+
+    // ---------------- Demo-Territorien ----------------
+    function seedDemo(centerCell) {
+      const cells = gridDisk(centerCell, 4);
+      const facs = ['undead','human','elf'];
+      const terr = {};
+      cells.forEach((id, i) => {
+        if (id === centerCell) return;
+        if (i % 5 === 0) return; // einige neutral lassen
+        const faction = facs[i % 3];
+        const daysAgo = Math.random() * 3;
+        terr[id] = {
+          faction, owner: 'Demo ' + FACTIONS[faction].name,
+          strength: Math.max(1, Math.floor(5 - daysAgo)),
+          conqueredAt: Date.now() - daysAgo*86400000,
+          lastActivityAt: Date.now() - daysAgo*86400000,
+        };
+      });
+      state.territories = terr;
+      saveState();
+    }
+
+    // ================ RENDER ================
+    function render() {
+      if (!state.onboarded) { renderOnboarding(); return; }
+      renderMain();
+    }
+
+    // ---------------- Onboarding ----------------
+    let obName = '', obFaction = null;
+    function renderOnboarding() {
+      $app.innerHTML = `
+        <div class="onboard">
+          <div class="title">⚔️ GEO BATTLE</div>
+          <div class="subtitle">Erobere die Welt durch Bewegung</div>
+          <div class="section">
+            <p class="label">Dein Name</p>
+            <input id="ob-name" class="input" maxlength="20" placeholder="Kriegername…" value="${obName}" autocomplete="off" />
+          </div>
+          <div class="section">
+            <p class="label">Wähle deine Fraktion</p>
+            ${Object.values(FACTIONS).map(f => `
+              <div class="faction-card" data-f="${f.id}"
+                style="${obFaction===f.id ? `border-color:${f.color};background:rgba(${f.rgb},.18)`:''}">
+                <div class="faction-head">
+                  <span class="faction-emoji">${f.emoji}</span>
+                  <span class="faction-name" style="color:${f.color}">${f.name}</span>
+                  ${obFaction===f.id ? `<span class="faction-sel" style="color:${f.color}">✓ Gewählt</span>`:''}
+                </div>
+                <div class="faction-desc">${f.desc}</div>
+                <div class="faction-bonus">🛡 ${f.bonus}</div>
+                <div class="faction-spell">✨ Spell: <b style="color:${f.color}">${f.spell.name}</b> — ${f.spell.desc}</div>
+              </div>`).join('')}
+          </div>
+          <button id="ob-go" class="btn" disabled>Ins Schlachtfeld →</button>
+          <p class="hint">⚠️ Fraktion kann später nicht mehr gewechselt werden</p>
+        </div>`;
+
+      const nameEl = document.getElementById('ob-name');
+      const goEl = document.getElementById('ob-go');
+      const refreshGo = () => { goEl.disabled = !(obName.trim().length>=2 && obFaction); };
+      nameEl.addEventListener('input', e => { obName = e.target.value; refreshGo(); });
+      document.querySelectorAll('.faction-card').forEach(c => {
+        c.addEventListener('click', () => { obFaction = c.dataset.f; renderOnboarding(); });
+      });
+      refreshGo();
+      goEl.addEventListener('click', () => {
+        state.onboarded = true; state.name = obName.trim(); state.faction = obFaction;
+        saveState(); render(); initMapFlow();
+      });
+    }
+
+    // ---------------- Main (Karte + Tabs) ----------------
+    function renderMain() {
+      const f = fc();
+      $app.innerHTML = `
+        <div id="map"></div>
+        <div class="hud-top">
+          <div class="badge" style="border-color:${f.color};color:${f.color}">
+            <span>${f.emoji}</span><span>${f.name}</span>
+          </div>
+        </div>
+        <div class="loc-btn" id="loc-btn">◎</div>
+        <div class="legend">
+          ${Object.values(FACTIONS).map(x=>`<div class="legend-item"><span class="dot" style="background:${x.color}"></span>${x.name}</div>`).join('')}
+          <div class="legend-item"><span class="dot" style="background:${NEUTRAL.color}"></span>Neutral</div>
+        </div>
+        <div class="bottom-bar" id="bottom-bar">
+          <button class="run-btn" id="run-btn" style="background:${f.color}">🏃 RUN STARTEN</button>
+          <button class="test-btn" id="test-btn">🧪 Test-Modus (ohne Joggen ausprobieren)</button>
+        </div>
+        <div id="overlay-slot"></div>
+        <div id="profile-slot"></div>
+        <div class="tabs">
+          <div class="tab ${tab==='map'?'active':''}" data-tab="map" style="${tab==='map'?`color:${f.color}`:''}"><span class="ico">🗺️</span>Karte</div>
+          <div class="tab ${tab==='profile'?'active':''}" data-tab="profile" style="${tab==='profile'?`color:${f.color}`:''}"><span class="ico">👤</span>Profil</div>
+        </div>
+        <div class="toast" id="toast"></div>
+        <div class="version">v${VERSION}</div>`;
+
+      document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+        tab = t.dataset.tab; renderMain();
+        if (tab==='map' && map) setTimeout(()=>map.invalidateSize(), 50);
+      }));
+      document.getElementById('loc-btn').addEventListener('click', centerOnUser);
+      document.getElementById('run-btn').addEventListener('click', () => startRun(false));
+      document.getElementById('test-btn').addEventListener('click', () => startRun(true));
+
+      ensureMap();
+      if (run.active) renderRunOverlay();
+      if (tab==='profile') renderProfile();
+    }
+
+    // ---------------- Karte ----------------
+    function ensureMap() {
+      const el = document.getElementById('map');
+      if (!el) return;
+      if (!map) {
+        map = L.map(el, { zoomControl:false, attributionControl:true })
+          .setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution:'© OpenStreetMap, © CARTO', maxZoom:19, subdomains:'abcd',
+        }).addTo(map);
+        map.on('moveend', drawHexes);
+      } else {
+        map.invalidateSize();
+      }
+      drawHexes();
+    }
+
+    function hexStyle(id) {
+      const t = state.territories[id];
+      const isCaptured = run.captured.includes(id);
+      const isProgress = run.inProgress && run.inProgress.cell === id;
+      const isUser = id === userCell;
+      const f = fc();
+      if (isCaptured) return { color:f.color, weight:2, fillColor:f.color, fillOpacity:.45 };
+      if (isProgress) {
+        const p = Math.min(1, run.inProgress.sec / run.inProgress.req);
+        return { color:f.color, weight:2, fillColor:f.color, fillOpacity:.2 + p*.5 };
+      }
+      if (isUser && !run.active) return { color:'#FFFFFF', weight:1.5, fillColor:'#FFFFFF', fillOpacity:.12 };
+      if (t) { const ff=FACTIONS[t.faction]; return { color:ff.border, weight:.6, fillColor:ff.color, fillOpacity:.32 }; }
+      return { color:NEUTRAL.border, weight:.6, fillColor:NEUTRAL.color, fillOpacity:.16 };
+    }
+
+    function drawHexes() {
+      if (!map) return;
+      const c = map.getCenter();
+      const centerCell = latLngToCell(c.lat, c.lng, H3_RES);
+      const cells = gridDisk(centerCell, 6);
+      const wanted = new Set(cells);
+
+      // Entferne nicht mehr sichtbare
+      for (const id in hexLayers) {
+        if (!wanted.has(id)) { map.removeLayer(hexLayers[id]); delete hexLayers[id]; }
+      }
+      // Zeichne/aktualisiere
+      cells.forEach(id => {
+        const boundary = cellToBoundary(id); // [[lat,lng],...]
+        if (hexLayers[id]) {
+          hexLayers[id].setStyle(hexStyle(id));
+        } else {
+          const poly = L.polygon(boundary, hexStyle(id)).addTo(map);
+          hexLayers[id] = poly;
+        }
+      });
+    }
+
+    function refreshHexStyles() {
+      for (const id in hexLayers) hexLayers[id].setStyle(hexStyle(id));
+    }
+
+    function setUserMarker(lat, lng) {
+      if (!map) return;
+      if (!userMarker) {
+        userMarker = L.circleMarker([lat,lng], {
+          radius:8, color:'#fff', weight:2, fillColor: fc().color, fillOpacity:1,
+        }).addTo(map);
+      } else userMarker.setLatLng([lat,lng]);
+    }
+
+    function centerOnUser() {
+      if (userPos && map) map.setView([userPos.lat, userPos.lng], 16, { animate:true });
+    }
+
+    function initMapFlow() {
+      // nach Onboarding: Standort holen + Demo seeden
+      if (!navigator.geolocation) { afterLocate(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false); return; }
+      navigator.geolocation.getCurrentPosition(
+        p => afterLocate(p.coords.latitude, p.coords.longitude, true),
+        () => afterLocate(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false),
+        { enableHighAccuracy:true, timeout:8000 }
+      );
+    }
+    function afterLocate(lat, lng, real) {
+      userPos = { lat, lng };
+      userCell = latLngToCell(lat, lng, H3_RES);
+      if (Object.keys(state.territories).length === 0) seedDemo(userCell);
+      ensureMap();
+      setUserMarker(lat, lng);
+      map.setView([lat,lng], 16);
+      drawHexes();
+      if (!real) toast('📍 Standort nicht verfügbar — Demo bei Zürich');
+    }
+
+    // ---------------- Run ----------------
+    function startRun(sim) {
+      run = { active:true, sim, startTime:Date.now(), path:[], distanceKm:0,
+        captured:[], inProgress:null, lastPos:userPos, lastTime:Date.now(),
+        lastSpeed:0, speeding:false, watchId:null, timer:null, simTimer:null };
+      renderMain();
+      run.timer = setInterval(tickOverlay, 500);
+
+      if (sim) { startSim(); return; }
+
+      if (!navigator.geolocation) { toast('GPS nicht verfügbar'); stopRun(); return; }
+      run.watchId = navigator.geolocation.watchPosition(
+        p => onPosition(p.coords.latitude, p.coords.longitude, p.coords.speed),
+        err => toast('GPS-Fehler: ' + err.message),
+        { enableHighAccuracy:true, maximumAge:2000, timeout:10000 }
+      );
+    }
+
+    function onPosition(lat, lng, speedMs) {
+      const now = Date.now();
+      const pos = { lat, lng };
+      // Distanz + Speed
+      let speedKmh = (speedMs != null && speedMs >= 0) ? speedMs*3.6 : 0;
+      if (run.lastPos) {
+        const d = haversineKm(run.lastPos, pos);
+        run.distanceKm += d;
+        if (!speedKmh) {
+          const dt = (now - run.lastTime)/1000;
+          if (dt > 0) speedKmh = (d/dt)*3600;
+        }
+      }
+      run.lastPos = pos; run.lastTime = now; run.lastSpeed = speedKmh;
+      run.speeding = speedKmh > fc().speedCap;
+      run.path.push([lat,lng]);
+
+      userPos = pos;
+      const cell = latLngToCell(lat, lng, H3_RES);
+      const cellChanged = cell !== userCell;
+      userCell = cell;
+      setUserMarker(lat, lng);
+      drawPath();
+      if (cellChanged) run.inProgress = null;
+
+      captureTick(cell);
+      drawHexes();
+    }
+
+    function captureTick(cell) {
+      const t = state.territories[cell];
+      const mine = t && t.faction === state.faction;
+      if (mine || run.speeding || run.captured.includes(cell)) {
+        if (run.speeding && run.inProgress) run.inProgress.start = Date.now(); // reset bei speeding
+        return;
+      }
+      const strength = t ? Math.max(1, currentStrength(t)) : 1;
+      const base = run.sim ? 2 : CAPTURE_BASE_SEC; // Test-Modus: schnelle Eroberung
+      const req = Math.round(base * strength * fc().captureMult);
+      if (!run.inProgress || run.inProgress.cell !== cell) {
+        run.inProgress = { cell, start: Date.now(), sec:0, req };
+        return;
+      }
+      run.inProgress.sec = (Date.now() - run.inProgress.start)/1000;
+      run.inProgress.req = req;
+      if (run.inProgress.sec >= req) {
+        captureCell(cell);
+        run.inProgress = null;
+      }
+    }
+
+    function captureCell(cell) {
+      state.territories[cell] = {
+        faction: state.faction, owner: state.name, strength:1,
+        conqueredAt: Date.now(), lastActivityAt: Date.now(),
+      };
+      run.captured.push(cell);
+      saveState();
+      toast('⚔️ Zelle erobert! (' + run.captured.length + ')');
+      refreshHexStyles();
+    }
+
+    // Test-Modus: simuliert einen kleinen Jog durch Nachbarzellen
+    function startSim() {
+      if (!userCell) { toast('Karte lädt noch…'); stopRun(); return; }
+      toast('🧪 Test-Modus: virtueller Jog läuft…');
+      const neighbors = gridDisk(userCell, 2).filter(id => {
+        const t = state.territories[id];
+        return id !== userCell && (!t || t.faction !== state.faction);
+      }).slice(0, 6);
+      let idx = 0;
+      const visit = () => {
+        if (idx >= neighbors.length) { toast('🧪 Test beendet'); stopRun(); return; }
+        const target = neighbors[idx++];
+        const [lat,lng] = cellToLatLng(target);
+        // simuliere mehrere Positions-Updates in der Zelle bis Capture
+        let steps = 0;
+        run.inProgress = null;
+        userCell = target;
+        const stepInZell = setInterval(() => {
+          const jitterLat = lat + (Math.random()-.5)*0.0006;
+          const jitterLng = lng + (Math.random()-.5)*0.0006;
+          run.speeding = false;
+          run.lastSpeed = 6 + Math.random()*3; // ~6-9 km/h Jogging
+          if (run.lastPos) run.distanceKm += haversineKm(run.lastPos, {lat:jitterLat,lng:jitterLng});
+          run.lastPos = { lat:jitterLat, lng:jitterLng };
+          userPos = run.lastPos;
+          run.path.push([jitterLat, jitterLng]);
+          setUserMarker(jitterLat, jitterLng);
+          map.panTo([jitterLat, jitterLng], { animate:true });
+          captureTick(target);
+          drawPath(); drawHexes();
+          steps++;
+          if (run.captured.includes(target) || steps > 30) {
+            clearInterval(stepInZell);
+            run.simTimer = setTimeout(visit, 400);
+          }
+        }, 250);
+        run._stepInterval = stepInZell;
+      };
+      // Test-Modus nutzt verkürzte Capture-Zeit
+      run._origBase = CAPTURE_BASE_SEC;
+      visit();
+    }
+
+    function drawPath() {
+      if (!map) return;
+      if (run.path.length < 2) return;
+      if (!pathLine) {
+        pathLine = L.polyline(run.path, { color: fc().color, weight:4, opacity:.8 }).addTo(map);
+      } else pathLine.setLatLngs(run.path);
+    }
+
+    function stopRun() {
+      if (run.watchId != null) navigator.geolocation.clearWatch(run.watchId);
+      if (run.timer) clearInterval(run.timer);
+      if (run.simTimer) clearTimeout(run.simTimer);
+      if (run._stepInterval) clearInterval(run._stepInterval);
+      const km = Math.round(run.distanceKm*100)/100;
+      const captured = run.captured.length;
+      state.stats.runs += 1;
+      state.stats.km = Math.round((state.stats.km + km)*10)/10;
+      state.stats.captured += captured;
+      saveState();
+      run.active = false;
+      if (pathLine) { map.removeLayer(pathLine); pathLine = null; }
+      renderMain();
+      toast(`🏁 ${km.toFixed(2)} km · ${captured} Zellen erobert`, 2500);
+    }
+
+    function tickOverlay() { if (run.active) renderRunOverlay(); }
+
+    function renderRunOverlay() {
+      const slot = document.getElementById('overlay-slot');
+      if (!slot) return;
+      document.getElementById('bottom-bar')?.style.setProperty('display','none');
+      const f = fc();
+      const el = Math.floor((Date.now()-run.startTime)/1000);
+      const mm = String(Math.floor(el/60)).padStart(2,'0');
+      const ss = String(el%60).padStart(2,'0');
+      const ip = run.inProgress;
+      const p = ip ? Math.min(1, ip.sec/ip.req) : 0;
+      slot.innerHTML = `
+        <div class="run-overlay">
+          <div class="stats-row">
+            <div class="stat-box"><div class="stat-val">${mm}:${ss}</div><div class="stat-lbl">Zeit</div></div>
+            <div class="stat-box"><div class="stat-val">${run.distanceKm.toFixed(2)}</div><div class="stat-lbl">km</div></div>
+            <div class="stat-box"><div class="stat-val ${run.speeding?'speeding':''}">${run.lastSpeed.toFixed(0)}</div><div class="stat-lbl">km/h ${run.speeding?'⚠️':''}</div></div>
+            <div class="stat-box"><div class="stat-val" style="color:${f.color}">${run.captured.length}</div><div class="stat-lbl">Erobert</div></div>
+          </div>
+          ${ip ? `
+            <div class="capture-box">
+              <div class="capture-head"><span style="color:#AAA">⚔️ Eroberung läuft…</span><b>${Math.round(p*100)}%</b></div>
+              <div class="progress-bg"><div class="progress-fill" style="width:${p*100}%;background:${f.color}"></div></div>
+              <div class="capture-time">${Math.max(0,Math.round(ip.req-ip.sec))}s verbleibend</div>
+            </div>`:''}
+          ${run.speeding ? `<div class="warn">⚠️ Zu schnell! Captures werden nicht gezählt (${run.lastSpeed.toFixed(0)} km/h)</div>`:''}
+          <button class="stop-btn" id="stop-btn">■ RUN BEENDEN</button>
+        </div>`;
+      document.getElementById('stop-btn').addEventListener('click', stopRun);
+    }
+
+    // ---------------- Profil ----------------
+    function renderProfile() {
+      const slot = document.getElementById('profile-slot');
+      if (!slot) return;
+      const f = fc();
+      const owned = Object.values(state.territories).filter(t => t.faction===state.faction).length;
+      const ready = !state.spellLastUsedAt || (Date.now()-state.spellLastUsedAt) > 24*3600000;
+      const cdH = state.spellLastUsedAt ? Math.max(0, 24-(Date.now()-state.spellLastUsedAt)/3600000) : 0;
+      slot.innerHTML = `
+        <div class="panel-screen">
+          <div class="screen-title">Profil</div>
+          <div class="player-card" style="border-color:${f.color}">
+            <span class="player-emoji">${f.emoji}</span>
+            <div><div class="player-name">${state.name}</div>
+            <div class="player-faction" style="color:${f.color}">${f.name}</div></div>
+          </div>
+          <p class="sec-title">Statistiken</p>
+          <div class="stats-grid">
+            <div class="grid-box"><div class="grid-val">${state.stats.runs}</div><div class="grid-lbl">Runs</div></div>
+            <div class="grid-box"><div class="grid-val">${state.stats.km.toFixed(1)}</div><div class="grid-lbl">Gesamt km</div></div>
+            <div class="grid-box"><div class="grid-val" style="color:${f.color}">${state.stats.captured}</div><div class="grid-lbl">Zellen erobert</div></div>
+            <div class="grid-box"><div class="grid-val" style="color:${f.color}">${owned}</div><div class="grid-lbl">Aktuell besessen</div></div>
+          </div>
+          <p class="sec-title">Fraktion Spell</p>
+          <div class="spell-card" id="spell-card" style="border-color:${ready?f.color:'var(--border)'}">
+            <div class="spell-head">
+              <span class="spell-name" style="color:${ready?f.color:'#555'}">✨ ${f.spell.name}</span>
+              <span style="font-size:13px;color:${ready?f.color:'#555'};font-weight:700">${ready?'BEREIT':cdH.toFixed(1)+'h'}</span>
+            </div>
+            <div class="spell-desc">${f.spell.desc}</div>
+            ${!ready ? `<div class="cd-bar"><div class="cd-fill" style="width:${((24-cdH)/24)*100}%;background:${f.color}"></div></div>`:''}
+          </div>
+          <p class="sec-title">Passiver Bonus</p>
+          <div class="info-card">
+            <div class="info-text">🛡 ${f.bonus}</div>
+            <div class="info-desc">${f.desc}</div>
+          </div>
+          <button class="danger-btn" id="reset-btn">Profil zurücksetzen (Demo neu)</button>
+        </div>`;
+      document.getElementById('spell-card').addEventListener('click', () => {
+        if (!ready) { toast('Spell lädt noch ('+cdH.toFixed(1)+'h)'); return; }
+        state.spellLastUsedAt = Date.now(); saveState();
+        toast('✨ '+f.spell.name+' aktiviert!'); renderProfile();
+      });
+      document.getElementById('reset-btn').addEventListener('click', () => {
+        if (confirm('Profil & Territorien wirklich zurücksetzen?')) {
+          state = freshState(); saveState(); obName=''; obFaction=null;
+          location.reload();
+        }
+      });
+    }
+
+    // ---------------- Helpers ----------------
+    function haversineKm(a, b) {
+      const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lng-a.lng)*Math.PI/180;
+      const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+      return R*2*Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+    }
+    let toastTimer = null;
+    function toast(msg, dur=1800) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg; el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>el.classList.remove('show'), dur);
+    }
+
+    // ---------------- Start ----------------
+    render();
+    if (state.onboarded) initMapFlow();
+  </script>
+</body>
+</html>
