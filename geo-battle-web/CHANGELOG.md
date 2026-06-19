@@ -6,7 +6,18 @@
 
 | Version | Status |
 |---|---|
-| **0.1.7** | aktuell |
+| **0.1.8** | aktuell |
+| 0.1.7 | veraltet |
+
+---
+
+## v0.1.8 — Karte + Hexagone sichtbar: Leaflet-Orphan-Bug behoben
+**Warum:** Karte blieb schwarz und Hexagone erschienen nie — auch im Test-Modus. Root-Cause: Jeder Aufruf von `renderMain()` (Tab-Wechsel, Run starten/stoppen) ersetzte das gesamte DOM via `innerHTML`, wobei die `#map`-Div zerstört wurde. Die Leaflet-Instanz (`map`-Variable) zeigte danach auf ein verwaistes Element. Die `if (!map)`-Guard in `ensureMap()` verhinderte das Neuerstellen — alle Polygone wurden ins Nichts gezeichnet.
+
+- **Root-Bug behoben**: Leaflet-Instanz wird am Anfang jedes `renderMain()`-Aufrufs via `map.remove()` sauber entfernt, bevor die DOM neu aufgebaut wird → neue `#map`-Div bekommt eine frische Leaflet-Instanz
+- **Externes Leaflet-CSS-Link entfernt**: `<link href="unpkg.com/leaflet.css">` war redundant (CSS seit v0.1.6 eingebettet) und konnte Cascade-Konflikte verursachen
+- **Overlay-SVG Visibility**: `.leaflet-overlay-pane svg path { visibility:visible }` verhindert, dass geerbtes `visibility:hidden` der Tiles auf Hexagon-Polygone durchschlägt
+- **Ergebnis**: Hexagone (Demo-Territorien) erscheinen sofort beim Öffnen der Karte; Test-Modus zeigt farbige Hexagone beim Antippen
 
 ---
 
