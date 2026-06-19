@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>GEO BATTLE v0.1.7</title>
+  <title>GEO BATTLE v0.1.8</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0F" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -12,8 +12,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
 
-  <!-- Leaflet (Karten) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet (Karten) — JS von CDN, CSS vollständig eingebettet (kein externes CSS) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
@@ -83,7 +82,8 @@
     .leaflet-popup-pane { z-index:700; }
     .leaflet-map-pane canvas { z-index:100; }
     .leaflet-map-pane svg { z-index:200; }
-    .leaflet-overlay-pane svg { user-select:none; }
+    .leaflet-overlay-pane svg { user-select:none; overflow:visible; }
+    .leaflet-overlay-pane svg path { visibility:visible; }
     .leaflet-control { position:relative; z-index:800; pointer-events:auto; float:left; clear:both; }
     .leaflet-top,.leaflet-bottom { position:absolute; z-index:1000; pointer-events:none; }
     .leaflet-top { top:0; } .leaflet-bottom { bottom:0; }
@@ -244,7 +244,7 @@
     } from 'https://esm.sh/h3-js@4';
 
     // ---------------- Konstanten ----------------
-    const VERSION = '0.1.7';
+    const VERSION = '0.1.8';
     const H3_RES = 8;
     const CAPTURE_BASE_SEC = 12; // Testmodus: beschleunigt (echtes Spiel: ~60s)
 
@@ -386,6 +386,9 @@
 
     // ---------------- Main (Karte + Tabs) ----------------
     function renderMain() {
+      // Leaflet-Instanz entfernen BEVOR innerHTML die #map-div zerstört —
+      // sonst zeigt map auf ein verwaistes DOM-Element und drawHexes rendert ins Nichts.
+      if (map) { map.remove(); map = null; hexLayers = {}; userMarker = null; pathLine = null; }
       const f = fc();
       $app.innerHTML = `
         <div id="map"></div>
