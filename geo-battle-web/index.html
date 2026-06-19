@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>GEO BATTLE v0.1.8</title>
+  <title>GEO BATTLE v0.1.9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0F" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -94,6 +94,15 @@
     .leaflet-fade-anim .leaflet-tile { will-change:opacity; }
     .leaflet-zoom-anim .leaflet-zoom-animated { transition:transform .25s cubic-bezier(0,0,.25,1); }
     .leaflet-grab { cursor:grab; } .leaflet-dragging .leaflet-grab { cursor:grabbing; }
+
+    /* Zell-Labels (verbleibende Meter im Hex-Zentrum) */
+    .hex-label.leaflet-tooltip {
+      background: transparent; border: none; box-shadow: none;
+      color: rgba(255,255,255,.85); font-size: 11px; font-weight: 700;
+      padding: 2px 4px; pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.8);
+    }
+    .hex-label.leaflet-tooltip::before { display: none; }
 
     /* ---------- Map ---------- */
     #map { position: absolute; inset: 0; background: var(--bg); }
@@ -244,9 +253,9 @@
     } from 'https://esm.sh/h3-js@4';
 
     // ---------------- Konstanten ----------------
-    const VERSION = '0.1.8';
+    const VERSION = '0.1.9';
     const H3_RES = 8;
-    const CAPTURE_BASE_SEC = 12; // Testmodus: beschleunigt (echtes Spiel: ~60s)
+    const CAPTURE_BASE_M = 150; // Meter in einer Zelle nötig zum Erobern (Stärke 1 neutral)
 
     const FACTIONS = {
       undead: {
@@ -490,12 +499,36 @@
       const f = fc();
       if (isCaptured) return { color:f.color, weight:2, fillColor:f.color, fillOpacity:.45 };
       if (isProgress) {
-        const p = Math.min(1, run.inProgress.sec / run.inProgress.req);
-        return { color:f.color, weight:2, fillColor:f.color, fillOpacity:.2 + p*.5 };
+        const p = Math.min(1, (run.inProgress.metersIn || 0) / run.inProgress.req);
+        return { color:f.color, weight:2.5, fillColor:f.color, fillOpacity:.2 + p*.5 };
       }
       if (isUser && !run.active) return { color:'#FFFFFF', weight:1.5, fillColor:'#FFFFFF', fillOpacity:.12 };
       if (t) { const ff=FACTIONS[t.faction]; return { color:ff.border, weight:.6, fillColor:ff.color, fillOpacity:.32 }; }
       return { color:NEUTRAL.border, weight:.6, fillColor:NEUTRAL.color, fillOpacity:.16 };
+    }
+
+    function hexLabelText(id) {
+      if (!run.active) return '';
+      const t = state.territories[id];
+      const mine = t && t.faction === state.faction;
+      if (mine || run.captured.includes(id)) return '';
+      const strength = t ? Math.max(1, currentStrength(t)) : 1;
+      const reqM = Math.round(CAPTURE_BASE_M * strength * fc().captureMult);
+      if (run.inProgress && run.inProgress.cell === id) {
+        const rem = Math.max(0, Math.round(reqM - (run.inProgress.metersIn || 0)));
+        return rem + 'm';
+      }
+      return reqM + 'm';
+    }
+
+    function updateHexLabel(id, poly) {
+      const label = hexLabelText(id);
+      if (label) {
+        if (poly._tooltip) poly.setTooltipContent(label);
+        else poly.bindTooltip(label, { permanent:true, direction:'center', className:'hex-label' });
+      } else {
+        if (poly._tooltip) poly.unbindTooltip();
+      }
     }
 
     function drawHexes() {
@@ -514,15 +547,20 @@
         const boundary = cellToBoundary(id); // [[lat,lng],...]
         if (hexLayers[id]) {
           hexLayers[id].setStyle(hexStyle(id));
+          updateHexLabel(id, hexLayers[id]);
         } else {
           const poly = L.polygon(boundary, hexStyle(id)).addTo(map);
+          updateHexLabel(id, poly);
           hexLayers[id] = poly;
         }
       });
     }
 
     function refreshHexStyles() {
-      for (const id in hexLayers) hexLayers[id].setStyle(hexStyle(id));
+      for (const id in hexLayers) {
+        hexLayers[id].setStyle(hexStyle(id));
+        updateHexLabel(id, hexLayers[id]);
+      }
     }
 
     function setUserMarker(lat, lng) {
@@ -585,35 +623,34 @@
 
       if (!navigator.geolocation) { toast('GPS nicht verfügbar — nutze 🧪 Test-Modus', 3000); stopRun(); return; }
       run.watchId = navigator.geolocation.watchPosition(
-        p => onPosition(p.coords.latitude, p.coords.longitude, p.coords.speed),
+        p => onPosition(p.coords.latitude, p.coords.longitude, p.coords.speed, p.coords.accuracy),
         err => {
-          if (err.code === 1) {
-            stopRun();
-            showGpsHelp();
-          } else {
-            toast('GPS-Signal schwach…', 2500);
-          }
+          if (err.code === 1) { stopRun(); showGpsHelp(); }
+          else { toast('GPS-Signal schwach…', 2500); }
         },
-        { enableHighAccuracy:true, maximumAge:2000, timeout:10000 }
+        { enableHighAccuracy:true, maximumAge:1000, timeout:15000 }
       );
     }
 
-    function onPosition(lat, lng, speedMs) {
+    function onPosition(lat, lng, speedMs, accuracy) {
+      // Positionen mit sehr schlechter Genauigkeit überspringen (>80m → GPS-Sprung)
+      if (accuracy && accuracy > 80) return;
       const now = Date.now();
       const pos = { lat, lng };
-      // Distanz + Speed
       let speedKmh = (speedMs != null && speedMs >= 0) ? speedMs*3.6 : 0;
+      let distDeltaM = 0;
       if (run.lastPos) {
         const d = haversineKm(run.lastPos, pos);
+        distDeltaM = d * 1000;
         run.distanceKm += d;
-        if (!speedKmh) {
+        if (!speedKmh && distDeltaM > 0) {
           const dt = (now - run.lastTime)/1000;
           if (dt > 0) speedKmh = (d/dt)*3600;
         }
       }
       run.lastPos = pos; run.lastTime = now; run.lastSpeed = speedKmh;
       run.speeding = speedKmh > fc().speedCap;
-      run.path.push([lat,lng]);
+      run.path.push([lat, lng]);
 
       userPos = pos;
       const cell = latLngToCell(lat, lng, H3_RES);
@@ -623,27 +660,26 @@
       drawPath();
       if (cellChanged) run.inProgress = null;
 
-      captureTick(cell);
+      captureTick(cell, distDeltaM);
       drawHexes();
     }
 
-    function captureTick(cell) {
+    function captureTick(cell, distDeltaM) {
       const t = state.territories[cell];
       const mine = t && t.faction === state.faction;
       if (mine || run.speeding || run.captured.includes(cell)) {
-        if (run.speeding && run.inProgress) run.inProgress.start = Date.now(); // reset bei speeding
+        if (run.speeding) run.inProgress = null; // Speeding bricht Eroberung ab
         return;
       }
       const strength = t ? Math.max(1, currentStrength(t)) : 1;
-      const base = run.sim ? 2 : CAPTURE_BASE_SEC; // Test-Modus: schnelle Eroberung
-      const req = Math.round(base * strength * fc().captureMult);
+      const req = Math.round(CAPTURE_BASE_M * strength * fc().captureMult);
       if (!run.inProgress || run.inProgress.cell !== cell) {
-        run.inProgress = { cell, start: Date.now(), sec:0, req };
+        run.inProgress = { cell, metersIn: distDeltaM, req };
         return;
       }
-      run.inProgress.sec = (Date.now() - run.inProgress.start)/1000;
+      run.inProgress.metersIn = (run.inProgress.metersIn || 0) + distDeltaM;
       run.inProgress.req = req;
-      if (run.inProgress.sec >= req) {
+      if (run.inProgress.metersIn >= req) {
         captureCell(cell);
         run.inProgress = null;
       }
@@ -730,26 +766,31 @@
       if (!slot) return;
       document.getElementById('bottom-bar')?.style.setProperty('display','none');
       const f = fc();
-      const el = Math.floor((Date.now()-run.startTime)/1000);
-      const mm = String(Math.floor(el/60)).padStart(2,'0');
-      const ss = String(el%60).padStart(2,'0');
+      const elapsed = Math.floor((Date.now()-run.startTime)/1000);
+      const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
+      const ss = String(elapsed%60).padStart(2,'0');
+      // Pace (min/km) wie Strava
+      const pace = run.lastSpeed > 0.5 ? (60 / run.lastSpeed) : 0;
+      const paceStr = pace > 0
+        ? Math.floor(pace) + "'" + String(Math.round((pace % 1)*60)).padStart(2,'0') + '"'
+        : '--';
       const ip = run.inProgress;
-      const p = ip ? Math.min(1, ip.sec/ip.req) : 0;
+      const p = ip ? Math.min(1, (ip.metersIn||0) / ip.req) : 0;
       slot.innerHTML = `
         <div class="run-overlay">
           <div class="stats-row">
             <div class="stat-box"><div class="stat-val">${mm}:${ss}</div><div class="stat-lbl">Zeit</div></div>
-            <div class="stat-box"><div class="stat-val">${run.distanceKm.toFixed(2)}</div><div class="stat-lbl">km</div></div>
-            <div class="stat-box"><div class="stat-val ${run.speeding?'speeding':''}">${run.lastSpeed.toFixed(0)}</div><div class="stat-lbl">km/h ${run.speeding?'⚠️':''}</div></div>
+            <div class="stat-box"><div class="stat-val">${run.distanceKm >= 1 ? run.distanceKm.toFixed(2) : (run.distanceKm*1000).toFixed(0)+'m'}</div><div class="stat-lbl">${run.distanceKm >= 1 ? 'km' : 'Distanz'}</div></div>
+            <div class="stat-box"><div class="stat-val ${run.speeding?'speeding':''}">${paceStr}</div><div class="stat-lbl">min/km ${run.speeding?'⚡':''}${run.sim?'🧪':''}</div></div>
             <div class="stat-box"><div class="stat-val" style="color:${f.color}">${run.captured.length}</div><div class="stat-lbl">Erobert</div></div>
           </div>
           ${ip ? `
             <div class="capture-box">
-              <div class="capture-head"><span style="color:#AAA">⚔️ Eroberung läuft…</span><b>${Math.round(p*100)}%</b></div>
+              <div class="capture-head"><span style="color:#AAA">⚔️ Zelle wird erobert…</span><b>${Math.round(p*100)}%</b></div>
               <div class="progress-bg"><div class="progress-fill" style="width:${p*100}%;background:${f.color}"></div></div>
-              <div class="capture-time">${Math.max(0,Math.round(ip.req-ip.sec))}s verbleibend</div>
+              <div class="capture-time">${Math.max(0,Math.round(ip.req-(ip.metersIn||0)))} m verbleibend</div>
             </div>`:''}
-          ${run.speeding ? `<div class="warn">⚠️ Zu schnell! Captures werden nicht gezählt (${run.lastSpeed.toFixed(0)} km/h)</div>`:''}
+          ${run.speeding ? `<div class="warn">⚡ Zu schnell für Eroberung (${run.lastSpeed.toFixed(0)} km/h > ${fc().speedCap} km/h)</div>`:''}
           <button class="stop-btn" id="stop-btn">■ RUN BEENDEN</button>
         </div>`;
       document.getElementById('stop-btn').addEventListener('click', stopRun);

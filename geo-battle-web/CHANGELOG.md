@@ -6,8 +6,21 @@
 
 | Version | Status |
 |---|---|
-| **0.1.8** | aktuell |
-| 0.1.7 | veraltet |
+| **0.1.9** | aktuell |
+| 0.1.8 | veraltet |
+
+---
+
+## v0.1.9 — GPS wie Strava: Distanz-basiertes Erobern + Meter-Label in jeder Zelle
+**Warum:** GPS-Tracking soll sich wie Strava/Adidas Running anfühlen. Außerdem soll jede Zelle zeigen wie viel Meter noch gelaufen werden müssen um sie einzunehmen.
+
+- **Distanz-basiertes Erobern**: Statt Sekunden zählen jetzt Meter in der Zelle — 150m für neutrale Zelle (Stärke 1), mehr für stärkere Gegner-Zellen. Passt zu GPS-Lauf-Apps.
+- **Meter-Label in jeder Zelle**: Während eines Runs zeigt jede einnehmbare Zelle „Xm" im Zentrum (z.B. „150m"). Die aktuell bearbeitete Zelle zeigt die verbleibenden Meter live ab.
+- **Pace (min/km) statt km/h**: HUD zeigt jetzt min/km wie Strava — relevanter für Läufer. Format: z.B. `5'30"`.
+- **Distanz im HUD**: Unter 1 km als Meter angezeigt (z.B. „230m"), ab 1 km als „X.XX km"
+- **GPS-Genauigkeitsfilter**: Positionen mit >80m Genauigkeit werden verworfen → verhindert GPS-Sprünge auf der Route
+- **Schnelleres GPS**: `maximumAge:1000` statt 2000 → flüssigere Route und reaktionsschnellere Zell-Erkennung
+- **Speeding-Feedback**: Klarere Warnung wenn zu schnell (⚡ statt ⚠️)
 
 ---
 
