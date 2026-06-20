@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>GEO BATTLE v0.1.9</title>
+  <title>GEO BATTLE v0.1.10</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0A0A0F" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -95,14 +95,20 @@
     .leaflet-zoom-anim .leaflet-zoom-animated { transition:transform .25s cubic-bezier(0,0,.25,1); }
     .leaflet-grab { cursor:grab; } .leaflet-dragging .leaflet-grab { cursor:grabbing; }
 
-    /* Zell-Labels (verbleibende Meter im Hex-Zentrum) */
-    .hex-label.leaflet-tooltip {
-      background: transparent; border: none; box-shadow: none;
-      color: rgba(255,255,255,.85); font-size: 11px; font-weight: 700;
-      padding: 2px 4px; pointer-events: none;
-      text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.8);
+    /* Leaflet-Tooltip Basis (nötig da kein externes Leaflet-CSS mehr) */
+    .leaflet-tooltip {
+      position: absolute; user-select: none; pointer-events: none;
+      white-space: nowrap; box-sizing: border-box;
     }
-    .hex-label.leaflet-tooltip::before { display: none; }
+    /* Verteidigungs-Zahl oben-rechts im Hex (Fantasy-Defence-Wert) */
+    .hex-def.leaflet-tooltip {
+      background: rgba(0,0,0,.68); border: 1px solid rgba(255,255,255,.22);
+      border-radius: 4px; box-shadow: none;
+      color: rgba(255,255,255,.92); font-size: 11px; font-weight: 900;
+      padding: 0px 5px; letter-spacing: .5px;
+      text-shadow: 0 1px 3px rgba(0,0,0,1);
+    }
+    .hex-def.leaflet-tooltip::before { display: none; }
 
     /* ---------- Map ---------- */
     #map { position: absolute; inset: 0; background: var(--bg); }
@@ -253,7 +259,7 @@
     } from 'https://esm.sh/h3-js@4';
 
     // ---------------- Konstanten ----------------
-    const VERSION = '0.1.9';
+    const VERSION = '0.1.10';
     const H3_RES = 8;
     const CAPTURE_BASE_M = 150; // Meter in einer Zelle nötig zum Erobern (Stärke 1 neutral)
 
@@ -304,7 +310,8 @@
 
     // Laufzeit (nicht persistiert)
     let tab = 'map';
-    let map = null, hexLayers = {}, userMarker = null, pathLine = null;
+    let map = null, hexLayers = {}, hexLabels = {}, userMarker = null, pathLine = null;
+    const hexPosCache = {}; // gecachte oben-rechts Positionen pro H3-Zelle
     let userPos = null, userCell = null;
     let run = {
       active:false, sim:false, startTime:0, path:[], distanceKm:0,
@@ -397,7 +404,7 @@
     function renderMain() {
       // Leaflet-Instanz entfernen BEVOR innerHTML die #map-div zerstört —
       // sonst zeigt map auf ein verwaistes DOM-Element und drawHexes rendert ins Nichts.
-      if (map) { map.remove(); map = null; hexLayers = {}; userMarker = null; pathLine = null; }
+      if (map) { map.remove(); map = null; hexLayers = {}; hexLabels = {}; userMarker = null; pathLine = null; }
       const f = fc();
       $app.innerHTML = `
         <div id="map"></div>
@@ -507,27 +514,48 @@
       return { color:NEUTRAL.border, weight:.6, fillColor:NEUTRAL.color, fillOpacity:.16 };
     }
 
-    function hexLabelText(id) {
-      if (!run.active) return '';
-      const t = state.territories[id];
-      const mine = t && t.faction === state.faction;
-      if (mine || run.captured.includes(id)) return '';
-      const strength = t ? Math.max(1, currentStrength(t)) : 1;
-      const reqM = Math.round(CAPTURE_BASE_M * strength * fc().captureMult);
-      if (run.inProgress && run.inProgress.cell === id) {
-        const rem = Math.max(0, Math.round(reqM - (run.inProgress.metersIn || 0)));
-        return rem + 'm';
-      }
-      return reqM + 'm';
+    // Berechnet die oben-rechts Position innerhalb eines Hex (gecacht)
+    function hexTopRightPos(id) {
+      if (hexPosCache[id]) return hexPosCache[id];
+      const center = cellToLatLng(id); // [lat, lng]
+      const boundary = cellToBoundary(id);
+      const cLat = center[0], cLng = center[1];
+      const cosLat = Math.cos(cLat * Math.PI / 180);
+      let best = boundary[0], bestScore = -Infinity;
+      boundary.forEach(v => {
+        const score = (v[0] - cLat) + (v[1] - cLng) * cosLat;
+        if (score > bestScore) { bestScore = score; best = v; }
+      });
+      hexPosCache[id] = [cLat + (best[0] - cLat) * 0.62, cLng + (best[1] - cLng) * 0.62];
+      return hexPosCache[id];
     }
 
-    function updateHexLabel(id, poly) {
-      const label = hexLabelText(id);
+    // Verteidigungs-Wert der Zelle (Stärke = Fantasy-Defence-Stat)
+    function hexDefLabel(id) {
+      const t = state.territories[id];
+      const mine = t && t.faction === state.faction;
+      if (mine || run.captured.includes(id)) return ''; // eigene Zellen: kein Label
+      const strength = t ? Math.max(1, currentStrength(t)) : 1;
+      return String(strength);
+    }
+
+    // Erstellt oder aktualisiert das Verteidigungs-Label (unsichtbarer Anker-Marker + Tooltip)
+    function updateHexLabel(id) {
+      const label = hexDefLabel(id);
       if (label) {
-        if (poly._tooltip) poly.setTooltipContent(label);
-        else poly.bindTooltip(label, { permanent:true, direction:'center', className:'hex-label' });
+        if (hexLabels[id]) {
+          hexLabels[id].setTooltipContent(label);
+        } else {
+          const pos = hexTopRightPos(id);
+          hexLabels[id] = L.marker(pos, {
+            icon: L.divIcon({ html:'', iconSize:[0,0], iconAnchor:[0,0] }),
+            interactive: false, keyboard: false,
+          })
+          .bindTooltip(label, { permanent:true, direction:'center', className:'hex-def' })
+          .addTo(map);
+        }
       } else {
-        if (poly._tooltip) poly.unbindTooltip();
+        if (hexLabels[id]) { map.removeLayer(hexLabels[id]); delete hexLabels[id]; }
       }
     }
 
@@ -540,26 +568,27 @@
 
       // Entferne nicht mehr sichtbare
       for (const id in hexLayers) {
-        if (!wanted.has(id)) { map.removeLayer(hexLayers[id]); delete hexLayers[id]; }
+        if (!wanted.has(id)) {
+          map.removeLayer(hexLayers[id]); delete hexLayers[id];
+          if (hexLabels[id]) { map.removeLayer(hexLabels[id]); delete hexLabels[id]; }
+        }
       }
       // Zeichne/aktualisiere
       cells.forEach(id => {
         const boundary = cellToBoundary(id); // [[lat,lng],...]
         if (hexLayers[id]) {
           hexLayers[id].setStyle(hexStyle(id));
-          updateHexLabel(id, hexLayers[id]);
         } else {
-          const poly = L.polygon(boundary, hexStyle(id)).addTo(map);
-          updateHexLabel(id, poly);
-          hexLayers[id] = poly;
+          hexLayers[id] = L.polygon(boundary, hexStyle(id)).addTo(map);
         }
+        updateHexLabel(id);
       });
     }
 
     function refreshHexStyles() {
       for (const id in hexLayers) {
         hexLayers[id].setStyle(hexStyle(id));
-        updateHexLabel(id, hexLayers[id]);
+        updateHexLabel(id);
       }
     }
 

@@ -6,8 +6,18 @@
 
 | Version | Status |
 |---|---|
-| **0.1.9** | aktuell |
-| 0.1.8 | veraltet |
+| **0.1.10** | aktuell |
+| 0.1.9 | veraltet |
+
+---
+
+## v0.1.10 — Fantasy-Defence-Wert oben-rechts im Hex (statt Meter-Zahlen-Chaos)
+**Warum:** Zu viele Zahlen im Hex — verbleibende Meter als Label machte die Karte unlesbar. Stattdessen: eine einzige Zahl, oben-rechts im Hexagon, die die **Verteidigungsstärke** der Zelle zeigt — wie eine Festungsstärke im Fantasy-Spiel.
+
+- **Eine Zahl pro Hex, oben-rechts**: neutrale Zelle = `1`, feindliche Zelle mit Stärke 3 = `3` usw. Eigene Zellen: kein Label.
+- **Technisch**: unsichtbarer Anker-Marker am geografischen oben-rechts Punkt des Hexagons → Leaflet-Tooltip mit der Stärkezahl. Cachet Positionen für Performance.
+- **Immer sichtbar** (nicht nur im Run) → man kann die Karte „lesen" und Route planen bevor man startet
+- Meter-basiertes Erobern aus v0.1.9 bleibt aktiv; die Stärkezahl kommuniziert implizit wie schwer eine Zelle ist (Stärke 3 → 450m nötig)
 
 ---
 
