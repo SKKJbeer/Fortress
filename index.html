@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.9.1</title>
+  <title>FORTRESS v3.10.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -33,6 +33,9 @@
     @keyframes jesterdance{0%{transform:translateY(0) rotate(-12deg)}25%{transform:translateY(-12px) rotate(10deg)}50%{transform:translateY(0) rotate(-12deg)}75%{transform:translateY(-12px) rotate(10deg)}100%{transform:translateY(0) rotate(-12deg)}}
     @keyframes phasebanner{0%{opacity:0;transform:translate(-50%,-50%) scale(0.75)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}20%{transform:translate(-50%,-50%) scale(1)}76%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.93)}}
     @keyframes glowpulse{0%,100%{opacity:0.6}50%{opacity:1}}
+    @keyframes lvlUpFlash{0%{opacity:0;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}70%{transform:scale(0.96)}100%{opacity:1;transform:scale(1)}}
+    @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}
+    @keyframes xpNumPop{0%{opacity:0;transform:scale(0.7) translateY(6px)}60%{transform:scale(1.12) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
@@ -1312,6 +1315,97 @@ window.FortressApp = function Fortress() {
     const src = WAPPEN_SRC[id] || WAPPEN_SRC.vampir;
     return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: 6, imageRendering: 'auto' } });
   }
+  // Statische XP-Leiste (Profil-Karte, Profil-Editor)
+  function XpBarUI({ level, xp }) {
+    const needed = xpToNextLevel(level);
+    const pct = Math.min(100, xp / needed * 100);
+    return React.createElement("div", { style: { marginTop: 5 } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 } },
+        React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#a78bfa", letterSpacing: "0.05em" } }, "LVL " + level),
+        React.createElement("span", { style: { fontSize: 9, color: "#475569" } }, xp + " / " + needed + " XP")
+      ),
+      React.createElement("div", { style: { height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden", position: "relative" } },
+        React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(90deg,#7c3aed,#22d3ee)", borderRadius: 3, boxShadow: "0 0 6px rgba(124,58,237,0.7)", transition: "width 0.4s ease" } })
+      )
+    );
+  }
+  // Animierter XP-Reward-Screen nach Online-Spiel
+  function XpResultAnim({ xpChange }) {
+    const [animXp, setAnimXp] = useState(xpChange.oldXp);
+    const [animLevel, setAnimLevel] = useState(xpChange.oldLevel);
+    const [phase, setPhase] = useState("waiting");
+    const [showLvlUp, setShowLvlUp] = useState(false);
+    useEffect(() => {
+      let active = true;
+      const t0 = setTimeout(() => {
+        if (!active) return;
+        setPhase("running");
+        const total = xpChange.xpGained;
+        if (total === 0) { setPhase("done"); return; }
+        const dur = Math.min(2200, Math.max(700, total * 28));
+        const framesTotal = Math.round(dur / (1000 / 60));
+        let frame = 0;
+        const iv = setInterval(() => {
+          if (!active) { clearInterval(iv); return; }
+          frame++;
+          const t = Math.min(1, frame / framesTotal);
+          const ease = 1 - Math.pow(1 - t, 3);
+          let rawXp = xpChange.oldXp + Math.round(total * ease);
+          let lvl = xpChange.oldLevel;
+          while (rawXp >= xpToNextLevel(lvl)) { rawXp -= xpToNextLevel(lvl); lvl++; }
+          setAnimXp(rawXp);
+          setAnimLevel(lvl);
+          if (frame >= framesTotal) {
+            clearInterval(iv);
+            setPhase("done");
+            if (xpChange.newLevel > xpChange.oldLevel) setShowLvlUp(true);
+          }
+        }, 1000 / 60);
+      }, 500);
+      return () => { active = false; clearTimeout(t0); };
+    }, []);
+    const needed = xpToNextLevel(animLevel);
+    const pct = Math.min(100, animXp / needed * 100);
+    return React.createElement("div", { style: { marginTop: 10, marginBottom: 4 } },
+      showLvlUp && React.createElement("div", { style: {
+        background: "linear-gradient(135deg,rgba(251,191,36,0.18),rgba(167,139,250,0.18))",
+        border: "1.5px solid rgba(251,191,36,0.7)",
+        borderRadius: 12,
+        padding: "10px 20px",
+        marginBottom: 8,
+        textAlign: "center",
+        animation: "lvlUpFlash 0.55s cubic-bezier(.36,1.6,.56,1) both"
+      } },
+        React.createElement("div", { style: { fontSize: 15, fontWeight: 900, color: "#fbbf24", letterSpacing: "0.18em", textShadow: "0 0 16px rgba(251,191,36,0.8)" } }, "★ LEVEL UP! ★"),
+        React.createElement("div", { style: { fontSize: 12, color: "#a78bfa", marginTop: 3, fontWeight: 700 } }, "Level " + xpChange.oldLevel + " → Level " + xpChange.newLevel)
+      ),
+      React.createElement("div", { style: {
+        background: "rgba(99,102,241,0.1)",
+        border: "1px solid rgba(99,102,241,0.35)",
+        borderRadius: 10,
+        padding: "12px 20px",
+        textAlign: "center"
+      } },
+        React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginBottom: 6, letterSpacing: "0.06em", fontWeight: 600 } }, "XP"),
+        React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: "0 0 14px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 4 } },
+          React.createElement("span", null, "Level " + animLevel),
+          React.createElement("span", null, animXp + " / " + needed)
+        ),
+        React.createElement("div", { style: { height: 9, background: "rgba(255,255,255,0.06)", borderRadius: 5, overflow: "hidden", position: "relative" } },
+          React.createElement("div", { style: {
+            position: "absolute", top: 0, left: 0, height: "100%",
+            width: pct + "%",
+            background: "linear-gradient(90deg,#7c3aed,#22d3ee)",
+            borderRadius: 5,
+            boxShadow: "0 0 12px rgba(124,58,237,0.75)",
+            animation: phase === "running" ? "xpBarGlow 1.2s ease infinite" : "none",
+            transition: phase === "running" ? "none" : "width 0.3s ease"
+          } })
+        )
+      )
+    );
+  }
   const PROFILE_COLORS = [
     { name: "Blau", hex: "#2563eb" },
     { name: "Rot", hex: "#dc2626" },
@@ -1344,7 +1438,10 @@ window.FortressApp = function Fortress() {
           elo3: typeof p.elo3 === "number" ? p.elo3 : 1e3,
           stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 },
           stats3: { wins: ((_d = p.stats3) == null ? void 0 : _d.wins) || 0, losses: ((_e = p.stats3) == null ? void 0 : _e.losses) || 0, games: ((_f = p.stats3) == null ? void 0 : _f.games) || 0 },
-          gold: typeof p.gold === "number" ? p.gold : 100
+          gold: typeof p.gold === "number" ? p.gold : 100,
+          level: typeof p.level === "number" ? p.level : 1,
+          xp: typeof p.xp === "number" ? p.xp : 0,
+          unlockedRewards: Array.isArray(p.unlockedRewards) ? p.unlockedRewards : []
         };
         if (needsSave) {
           try {
@@ -1374,6 +1471,26 @@ window.FortressApp = function Fortress() {
     const eloDiff = opponentElo - myElo;
     return Math.min(50, Math.max(5, Math.round(10 * (1 + Math.max(0, eloDiff) / 100))));
   }
+  // ── XP / Level-System ────────────────────────────────────────────────────
+  function xpToNextLevel(level) { return 100 + level * 25; }
+  function computeXpGain(won, myElo, opponentElos) {
+    const base = won ? 25 : 10;
+    if (!won || !opponentElos.length) return base;
+    const avgOpp = opponentElos.reduce((a, b) => a + b, 0) / opponentElos.length;
+    const diff = avgOpp - myElo;
+    const bonus = diff >= 100 ? Math.min(20, 15 + Math.round((diff - 100) / 50))
+                : diff >= -50  ? 10
+                : diff >= -150 ? Math.max(0, 5 + Math.round((diff + 50) / 20))
+                : 0;
+    return base + bonus;
+  }
+  function applyXpGain(prof, xpGained) {
+    let level = typeof prof.level === "number" ? prof.level : 1;
+    let xp = (typeof prof.xp === "number" ? prof.xp : 0) + xpGained;
+    const levelsGained = [];
+    while (xp >= xpToNextLevel(level)) { xp -= xpToNextLevel(level); level++; levelsGained.push(level); }
+    return { level, xp, levelsGained };
+  }
   function recordResult(won, mode) {
     if (!profile) return;
     const m3 = mode === 3;
@@ -1401,7 +1518,10 @@ window.FortressApp = function Fortress() {
       : 0;
     const newGold = oldGold + goldEarned;
     goldChangeRef.current = { oldGold, newGold, delta: goldEarned };
-    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, gold: newGold });
+    const xpGained = computeXpGain(won === true, myElo, opponents);
+    const { level: newLevel, xp: newXp, levelsGained } = applyXpGain(profile, xpGained);
+    xpChangeRef.current = { oldLevel: typeof profile.level === "number" ? profile.level : 1, newLevel, oldXp: typeof profile.xp === "number" ? profile.xp : 0, newXp, xpGained, levelsGained };
+    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, gold: newGold, level: newLevel, xp: newXp });
     saveProfile(updated);
     pushLeaderboard(updated);
   }
@@ -1428,7 +1548,10 @@ window.FortressApp = function Fortress() {
       elo3: typeof (profile == null ? void 0 : profile.elo3) === "number" ? profile.elo3 : 1e3,
       stats: (profile == null ? void 0 : profile.stats) || { wins: 0, losses: 0, games: 0 },
       stats3: (profile == null ? void 0 : profile.stats3) || { wins: 0, losses: 0, games: 0 },
-      gold: typeof (profile == null ? void 0 : profile.gold) === "number" ? profile.gold : 100
+      gold: typeof (profile == null ? void 0 : profile.gold) === "number" ? profile.gold : 100,
+      level: typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1,
+      xp: typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0,
+      unlockedRewards: Array.isArray(profile == null ? void 0 : profile.unlockedRewards) ? profile.unlockedRewards : []
     };
     saveProfile(p);
     setShowProfileEditor(false);
@@ -1498,6 +1621,8 @@ window.FortressApp = function Fortress() {
         elo: typeof p.elo === "number" ? p.elo : 1e3,
         elo3: typeof p.elo3 === "number" ? p.elo3 : 1e3,
         gold: typeof p.gold === "number" ? p.gold : 100,
+        level: typeof p.level === "number" ? p.level : 1,
+        xp: typeof p.xp === "number" ? p.xp : 0,
         updatedAt: Date.now()
       });
     } catch (e) {
@@ -2542,6 +2667,7 @@ window.FortressApp = function Fortress() {
     statRecorded.current = false;
     eloChangeRef.current = null;
     goldChangeRef.current = null;
+    xpChangeRef.current = null;
     setMpScreen(null);
     if (role === 1) {
       initGrid();
@@ -2717,6 +2843,7 @@ window.FortressApp = function Fortress() {
   const statRecorded = useRef(false);
   const eloChangeRef = useRef(null);
   const goldChangeRef = useRef(null);
+  const xpChangeRef = useRef(null);
   function startBuild() {
     const players = playersList();
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
@@ -3849,7 +3976,7 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 28 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold")), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 28 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 })), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.15)",
     color: "#cbd5e1",
@@ -3938,7 +4065,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.9.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.10.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -4423,7 +4550,7 @@ window.FortressApp = function Fortress() {
   borderRadius: 10,
   padding: "10px 20px",
   textAlign: "center"
-} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 12, color: "#fbbf24", style: { marginLeft: 3 } })))), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 12, color: "#fbbf24", style: { marginLeft: 3 } })))), online.current && xpChangeRef.current && /* @__PURE__ */ React.createElement(XpResultAnim, { xpChange: xpChangeRef.current }), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
       width: "100%",
       maxWidth: 280,
       background: shareShared ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.06)",
