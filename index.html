@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.1</title>
+  <title>FORTRESS v3.11.2</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -1425,50 +1425,26 @@ window.FortressApp = function Fortress() {
   }
   // Animierter XP-Reward-Screen nach Online-Spiel
   function XpResultAnim({ xpChange }) {
-    const [animXp, setAnimXp] = useState(xpChange.oldXp);
-    const [animLevel, setAnimLevel] = useState(xpChange.oldLevel);
-    const [phase, setPhase] = useState("waiting");
+    const [started, setStarted] = useState(false);
     const [showLvlUp, setShowLvlUp] = useState(false);
     useEffect(() => {
-      let active = true;
-      const t0 = setTimeout(() => {
-        if (!active) return;
-        setPhase("running");
-        const total = xpChange.xpGained;
-        if (total === 0) { setPhase("done"); return; }
-        const dur = Math.min(2200, Math.max(700, total * 28));
-        const framesTotal = Math.round(dur / (1000 / 60));
-        let frame = 0;
-        const iv = setInterval(() => {
-          if (!active) { clearInterval(iv); return; }
-          frame++;
-          const t = Math.min(1, frame / framesTotal);
-          const ease = 1 - Math.pow(1 - t, 3);
-          let rawXp = xpChange.oldXp + Math.round(total * ease);
-          let lvl = xpChange.oldLevel;
-          while (rawXp >= xpToNextLevel(lvl)) { rawXp -= xpToNextLevel(lvl); lvl++; }
-          setAnimXp(rawXp);
-          setAnimLevel(lvl);
-          if (frame >= framesTotal) {
-            clearInterval(iv);
-            setPhase("done");
-            if (xpChange.newLevel > xpChange.oldLevel) setShowLvlUp(true);
-          }
-        }, 1000 / 60);
-      }, 500);
-      return () => { active = false; clearTimeout(t0); };
+      const t1 = setTimeout(() => setStarted(true), 350);
+      const t2 = xpChange.newLevel > xpChange.oldLevel
+        ? setTimeout(() => setShowLvlUp(true), 1100)
+        : null;
+      return () => { clearTimeout(t1); if (t2) clearTimeout(t2); };
     }, []);
-    const needed = xpToNextLevel(animLevel);
-    const pct = Math.min(100, animXp / needed * 100);
+    const needed = xpToNextLevel(xpChange.newLevel);
+    const startPct = Math.min(100, xpChange.oldXp / xpToNextLevel(xpChange.oldLevel) * 100);
+    const endPct = Math.min(100, xpChange.newXp / needed * 100);
+    const pct = started ? endPct : startPct;
     const nextUnlockEntry = Object.entries(AVATAR_UNLOCKS).filter(([, lvl]) => lvl > xpChange.newLevel).sort(([, a], [, b]) => a - b)[0];
     return React.createElement("div", { style: { marginTop: 6, marginBottom: 2 } },
       showLvlUp && React.createElement(ConfettiBurst, { active: true }),
       showLvlUp && React.createElement("div", { style: {
         background: "linear-gradient(135deg,rgba(251,191,36,0.18),rgba(167,139,250,0.18))",
         border: "1.5px solid rgba(251,191,36,0.7)",
-        borderRadius: 10,
-        padding: "7px 16px",
-        marginBottom: 6,
+        borderRadius: 10, padding: "7px 16px", marginBottom: 6,
         textAlign: "center",
         animation: "lvlUpFlash 0.55s cubic-bezier(.36,1.6,.56,1) both"
       } },
@@ -1476,17 +1452,14 @@ window.FortressApp = function Fortress() {
         React.createElement("div", { style: { fontSize: 12, color: "#a78bfa", marginTop: 3, fontWeight: 700 } }, "Level " + xpChange.oldLevel + " → Level " + xpChange.newLevel)
       ),
       React.createElement("div", { style: {
-        background: "rgba(99,102,241,0.1)",
-        border: "1px solid rgba(99,102,241,0.35)",
-        borderRadius: 10,
-        padding: "8px 16px",
-        textAlign: "center"
+        background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.35)",
+        borderRadius: 10, padding: "8px 16px", textAlign: "center"
       } },
         React.createElement("div", { style: { fontSize: 10, color: "#64748b", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, "XP"),
         React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: "#a78bfa", marginBottom: 6, textShadow: "0 0 14px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
         React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 4 } },
-          React.createElement("span", null, "Level " + animLevel),
-          React.createElement("span", null, animXp + " / " + needed)
+          React.createElement("span", null, "Level " + xpChange.newLevel),
+          React.createElement("span", null, xpChange.newXp + " / " + needed)
         ),
         React.createElement("div", { style: { height: 9, background: "rgba(255,255,255,0.06)", borderRadius: 5, overflow: "hidden", position: "relative" } },
           React.createElement("div", { style: {
@@ -1495,8 +1468,7 @@ window.FortressApp = function Fortress() {
             background: "linear-gradient(90deg,#7c3aed,#22d3ee)",
             borderRadius: 5,
             boxShadow: "0 0 12px rgba(124,58,237,0.75)",
-            animation: phase === "running" ? "xpBarGlow 1.2s ease infinite" : "none",
-            transition: phase === "running" ? "none" : "width 0.3s ease"
+            transition: started ? "width 1s cubic-bezier(0.34,1.1,0.64,1)" : "none"
           } })
         )
       ),
@@ -4311,7 +4283,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
