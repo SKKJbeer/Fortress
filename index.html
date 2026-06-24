@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.2</title>
+  <title>FORTRESS v3.11.3</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -1477,9 +1477,8 @@ window.FortressApp = function Fortress() {
       )
     );
   }
-  function DailyRewardModal({ daily, onCollect, onClose }) {
+  function DailyRewardModal({ daily, onCollect, onClose, collected }) {
     const [collecting, setCollecting] = useState(false);
-    const [collected, setCollected] = useState(false);
     const canCollect = getDailyCollectable(daily);
     const streakIdx = getDailyStreakIndex(daily);
     const reward = DAILY_REWARDS[streakIdx];
@@ -1488,9 +1487,9 @@ window.FortressApp = function Fortress() {
     const hLeft = Math.floor(msLeft / 3600000);
     const mLeft = Math.floor((msLeft % 3600000) / 60000);
     function handleCollect() {
-      if (!canCollect || collecting) return;
+      if (!canCollect || collecting || collected) return;
       setCollecting(true);
-      setTimeout(() => { setCollected(true); onCollect(reward, streakIdx); }, 350);
+      setTimeout(() => onCollect(reward, streakIdx), 350);
     }
     const days = DAILY_REWARDS.map((r, i) => {
       const isPast = i < streakIdx;
@@ -1755,13 +1754,15 @@ window.FortressApp = function Fortress() {
       updatedProfile = __spreadProps(__spreadValues({}, updatedProfile), { level: newLevel, xp: newXp });
     }
     saveProfile(updatedProfile);
-    setTimeout(() => setShowDailyModal(false), 1400);
+    setDailyCollected(true);
+    setTimeout(() => { setShowDailyModal(false); setDailyCollected(false); }, 1400);
   }
   const [leaderboard, setLeaderboard] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [dailyState, setDailyState] = useState(() => loadDailyState());
   const [showDailyModal, setShowDailyModal] = useState(false);
+  const [dailyCollected, setDailyCollected] = useState(false);
   async function quitGame() {
     setShowQuitConfirm(false);
     running.current = false;
@@ -4283,7 +4284,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -4443,7 +4444,8 @@ window.FortressApp = function Fortress() {
   } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 15 }), "Aktualisieren"))), showDailyModal && React.createElement(DailyRewardModal, {
     daily: dailyState,
     onCollect: handleDailyCollect,
-    onClose: () => setShowDailyModal(false)
+    onClose: () => setShowDailyModal(false),
+    collected: dailyCollected
   }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,

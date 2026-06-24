@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.2)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.3)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -928,3 +928,24 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **localStorage**: Neuer Key `fortress_daily` für Streak-System; Profil erweitert um `peakElo`, `peakElo3`, `achievements[]`, `dailyTasks[]`, `seasonXp`
 - **Architektur-Vorbereitung**: Datenstrukturen für Achievements, Daily Tasks, Season-System, Social Features (Kommentare im Code)
 - **i18n**: Neue Strings für Tier-Labels, Daily Reward, Win-Rate, Peak ELO, Avatar-Lock-Hinweise
+
+### v3.11.1 — Ergebnis-Bildschirm iPhone-Fix
+- **Problem**: Ergebnis-Bildschirm wurde auf iPhone 15 (390×844) am unteren Rand abgeschnitten.
+- **Fix**: ~120px Gesamt-Höhe reduziert:
+  - Äußeres Padding auf 14px/20px reduziert + `overflowY: auto` hinzugefügt
+  - Trophy-Icon auf 44px verkleinert
+  - Score-Margin auf 10px reduziert
+  - Alle Abstände kompaktiert
+
+### v3.11.2 — XP-Animation Infinite-Loop-Fix
+- **Problem**: `XpResultAnim`-Komponente ging in eine Endlosschleife, weil sie innerhalb von `FortressApp` definiert ist — jedes Re-Render von `FortressApp` erzeugt eine neue Funktionsreferenz → React unmountet/remountet die Komponente → `setInterval` startet neu.
+- **Root Cause**: Online-Spiele → Firebase-Push → `applyState` → `setUiTick(t=>t+1)` → FortressApp Re-Render → Loop.
+- **Fix**: `setInterval`-basierte Animation durch CSS-Transition ersetzt. `useState(started)` togglet nach 350ms → Balken animiert via `transition: "width 1s cubic-bezier(0.34,1.1,0.64,1)"`. Kein laufendes Interval → immun gegen Remounting.
+
+### v3.11.3 — DailyRewardModal Bug-Fix + Test-Erweiterung
+- **Bug-Fix**: `DailyRewardModal` zeigte nach dem Abholen kurz den Countdown statt "✓ Abgeholt".
+  - **Root Cause**: Gleicher Remount-Mechanismus wie v3.11.2 — `collected`-State in der Komponente wurde bei FortressApp-Re-Render (durch `setDailyState`/`saveProfile`) zurückgesetzt.
+  - **Fix**: `collected`-State in `FortressApp` gehoben als `dailyCollected`. `DailyRewardModal` erhält es als Prop. `handleDailyCollect` setzt `setDailyCollected(true)` synchron, schließt Modal nach 1400ms.
+- **Test-Erweiterung** (`test_fortress.js`):
+  - `PROFILE_INIT` aktualisiert: alle neuen Felder (level, xp, peakElo, peakElo3, unlockedRewards, achievements, dailyTasks, seasonXp). `fortress_daily` mit aktuellem Timestamp → verhindert Auto-Show in unrelated Tests.
+  - Neue Suite `suiteProgression`: 14 Tests für LevelBadge, XP-Leiste, Win-Rate %, ELO-Anzeige, CSS-Keyframes, Tages-Belohnungs-Button, Modal-Kalender, Abhol-Flow, Gold-Update, Streak-Persistenz, gesperrte Avatare, Basis-Avatare frei, Level-Overlay.

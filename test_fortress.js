@@ -18,18 +18,33 @@ const TIMER_SPEEDUP = `
 // Profil vorab in localStorage setzen, damit der Profil-Editor nie erscheint.
 // Der Profil-Editor zeigt "WAPPEN" als Label (6 Großbuchstaben), das sonst
 // fälschlich als Spielcode erkannt wird.
+// fortress_daily wird mit aktuellem Timestamp gesetzt, damit die Tages-Belohnungs-
+// Modal sich NICHT automatisch nach 1200ms öffnet (würde unrelated Tests stören).
 const PROFILE_INIT = `
   try {
     localStorage.setItem('fortress_profile', JSON.stringify({
       id: 'test_bot_001',
       name: 'TestBot',
-      wappen: '♔',
+      wappen: 'vampir',
       color: '#2563eb',
-      stats: { wins: 0, losses: 0, games: 0 },
+      stats: { wins: 3, losses: 1, games: 4 },
       stats3: { wins: 0, losses: 0, games: 0 },
-      elo: 1000,
+      elo: 1050,
       elo3: 1000,
-      gold: 100
+      gold: 175,
+      level: 1,
+      xp: 40,
+      peakElo: 1100,
+      peakElo3: 1000,
+      unlockedRewards: [],
+      achievements: [],
+      dailyTasks: [],
+      seasonXp: 0
+    }));
+    localStorage.setItem('fortress_daily', JSON.stringify({
+      lastCollect: Date.now() - 1000,
+      streak: 1,
+      lastStreakDay: new Date().toISOString().slice(0, 10)
     }));
   } catch(e) {}
 `;
@@ -933,6 +948,211 @@ async function suiteOnline2P(browser, fbPort) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 6: Progressionssystem (Level, XP, Daily Reward, Avatar-Locks)
+// ═══════════════════════════════════════════════════════════════
+async function suiteProgression(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Progressionssystem\n' + '='.repeat(50));
+
+  // Eigener Kontext mit Daily als abholbar (lastCollect=0)
+  const { ctx, page } = await makeCtx(browser);
+  await page.addInitScript(`
+    try {
+      localStorage.setItem('fortress_daily', JSON.stringify({
+        lastCollect: 0, streak: 2, lastStreakDay: ''
+      }));
+    } catch(e) {}
+  `);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── CSS-Keyframes (neue v3.11.0 Animationen) ──────────────
+    const kfOk = await page.evaluate(() => {
+      try {
+        const needed = ['confettiFall','dailyBounceIn','badgePop','streakGlow','collectBounce'];
+        const rules = Array.from(document.styleSheets).flatMap(s => { try { return Array.from(s.cssRules); } catch { return []; } });
+        const found = rules.filter(r => r.name && needed.includes(r.name)).map(r => r.name);
+        return { found, missing: needed.filter(n => !found.includes(n)) };
+      } catch(e) { return { found: [], missing: [], err: e.message }; }
+    });
+    kfOk.missing.length === 0
+      ? ok(`CSS-Keyframes v3.11.0: ${kfOk.found.join(', ')} ✓`)
+      : fail(`CSS-Keyframes fehlen: ${kfOk.missing.join(', ')}`);
+
+    // ── LevelBadge im Profil-Bereich ──────────────────────────
+    const lvlBadge = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('*'));
+      return els.some(el => el.children.length === 0 && /^L\d+$/.test((el.textContent || '').trim()));
+    });
+    lvlBadge ? ok('LevelBadge "L1" sichtbar im Menü ✓') : fail('LevelBadge nicht gefunden');
+
+    // ── XP-Leiste im Menü ─────────────────────────────────────
+    const xpOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return /LVL\s*\d/.test(t) && /XP/.test(t);
+    });
+    xpOk ? ok('XP-Leiste (LVL + XP) im Menü ✓') : fail('XP-Leiste nicht gefunden');
+
+    // ── Win-Rate-Anzeige (%) ──────────────────────────────────
+    const winRateOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return /\d+%/.test(t);
+    });
+    winRateOk ? ok('Win-Rate (%) im Menü ✓') : fail('Win-Rate nicht gefunden');
+
+    // ── Gold-Anzeige ──────────────────────────────────────────
+    const goldOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return /\d+\s*Gold/.test(t);
+    });
+    goldOk ? ok('Gold-Anzeige im Menü ✓') : fail('Gold-Anzeige fehlt');
+
+    // ── ELO-Anzeige ──────────────────────────────────────────
+    const eloOk = await page.evaluate(() => /\d{3,4}\s*ELO/.test(document.body.innerText));
+    eloOk ? ok('ELO-Anzeige im Menü ✓') : fail('ELO-Anzeige fehlt');
+
+    // ── Tages-Belohnung-Button sichtbar (streak-glow animiert) ─
+    const dailyBtn = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('button')).some(b => {
+        const s = window.getComputedStyle(b);
+        const anim = s.animationName || '';
+        return anim.includes('streakGlow') || (b.title || '').toLowerCase().includes('belohnung');
+      });
+    });
+    dailyBtn ? ok('Tages-Belohnungs-Button (streakGlow) sichtbar ✓') : fail('Tages-Belohnungs-Button nicht gefunden');
+
+    await page.screenshot({ path: '/tmp/s6_menu.png' });
+
+    // ── Modal öffnen via Button-Klick ─────────────────────────
+    const opened = await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => {
+        const s = window.getComputedStyle(b);
+        return (s.animationName || '').includes('streakGlow') || (b.title || '').toLowerCase().includes('belohnung');
+      });
+      if (btn) { btn.click(); return true; }
+      return false;
+    });
+    opened ? ok('Tages-Belohnungs-Button klickbar ✓') : fail('Tages-Belohnungs-Button nicht klickbar');
+
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: '/tmp/s6_daily_modal.png' });
+
+    // ── Modal-Inhalt prüfen ───────────────────────────────────
+    const modalOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      // Kalender (T1-T7) und Belohnungs-Button ("Abholen!")
+      const hasStreak = /T1/.test(t) && /T7/.test(t);
+      const hasCollect = Array.from(document.querySelectorAll('button')).some(b =>
+        /Abholen/i.test(b.textContent || ''));
+      const hasDailyTitle = /Tages.Belohnung|Daily Reward/i.test(t);
+      return { hasStreak, hasCollect, hasDailyTitle };
+    });
+    modalOk.hasDailyTitle ? ok('Daily Modal: Titel sichtbar ✓') : fail('Daily Modal: Titel fehlt');
+    modalOk.hasStreak     ? ok('Daily Modal: Streak-Kalender T1–T7 ✓') : fail('Daily Modal: Streak-Kalender fehlt');
+    modalOk.hasCollect    ? ok('Daily Modal: "Abholen!"-Button ✓') : fail('Daily Modal: "Abholen!"-Button fehlt');
+
+    // ── Belohnung abholen ─────────────────────────────────────
+    const goldBefore = await page.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('fortress_profile')).gold; } catch { return null; }
+    });
+    await jsClick(page, ['Abholen', 'Collect']);
+    await page.waitForTimeout(600); // nach 350ms-Delay zeigt Modal "✓ Abgeholt"
+    const collectedOk = await page.evaluate(() =>
+      /Abgeholt|Collected/i.test(document.body.innerText)
+    );
+    collectedOk ? ok('Daily: "✓ Abgeholt"-Bestätigung nach Abholen ✓') : fail('Daily: Bestätigung fehlt');
+
+    await page.waitForTimeout(900); // Modal schließt sich nach insgesamt 1400ms
+    const goldAfter = await page.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('fortress_profile')).gold; } catch { return null; }
+    });
+    const goldIncreased = goldBefore !== null && goldAfter !== null && goldAfter > goldBefore;
+    goldIncreased
+      ? ok(`Daily: Gold erhöht ${goldBefore} → ${goldAfter} ✓`)
+      : fail(`Daily: Gold nicht erhöht (${goldBefore} → ${goldAfter})`);
+
+    const modalGone = await page.evaluate(() =>
+      !Array.from(document.querySelectorAll('button')).some(b => /Abholen/i.test(b.textContent || ''))
+    );
+    modalGone ? ok('Daily Modal schließt sich nach Abholen ✓') : fail('Daily Modal bleibt offen nach Abholen');
+
+    // ── Streak in localStorage gespeichert ────────────────────
+    const streakOk = await page.evaluate(() => {
+      try {
+        const d = JSON.parse(localStorage.getItem('fortress_daily'));
+        return d && typeof d.streak === 'number' && d.streak >= 1 && d.lastCollect > 0;
+      } catch { return false; }
+    });
+    streakOk ? ok('Daily: Streak in localStorage gespeichert ✓') : fail('Daily: Streak nicht gespeichert');
+
+    await page.screenshot({ path: '/tmp/s6_after_collect.png' });
+
+    // ── Profil-Editor: gesperrte Avatare ─────────────────────
+    const editorOpened = await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => {
+        const s = window.getComputedStyle(b);
+        const r = b.getBoundingClientRect();
+        // Profil-Edit-Button: kleiner Button rechts im Profilbereich
+        return r.width > 0 && b.textContent.trim() === '' &&
+          (b.querySelector('svg') || b.querySelector('img'));
+      });
+      if (btn) { btn.click(); return true; }
+      // Fallback: suche Button mit user-Icon (kein Text)
+      const btns = Array.from(document.querySelectorAll('button'));
+      for (const b of btns) {
+        if (b.textContent.trim() === '' && b.getBoundingClientRect().width > 0) {
+          b.click(); return 'fallback';
+        }
+      }
+      return false;
+    });
+
+    await page.waitForTimeout(300);
+    const hasWappenLabel = await page.evaluate(() => /WAPPEN/i.test(document.body.innerText));
+    hasWappenLabel ? ok('Profil-Editor öffnet sich ✓') : fail('Profil-Editor öffnet sich nicht');
+
+    if (hasWappenLabel) {
+      // Gesperrte Avatare: Level 1 → sternmage(L5), golem(L10), etc. müssen gesperrt sein
+      const lockInfo = await page.evaluate(() => {
+        const lockedBtns = Array.from(document.querySelectorAll('button')).filter(b => {
+          const title = b.getAttribute('title') || '';
+          return /Level|Ab Level/i.test(title) && /\d+/.test(title);
+        });
+        const freeAvatars = ['vampir', 'pestdoc', 'eismagie', 'schatten'];
+        const lockedTitles = lockedBtns.map(b => b.getAttribute('title'));
+        const freeOk = freeAvatars.every(a => {
+          const btn = Array.from(document.querySelectorAll('button')).find(b =>
+            b.getAttribute('title') === a);
+          return btn && parseFloat(window.getComputedStyle(btn).opacity) > 0.9;
+        });
+        return { lockedCount: lockedBtns.length, lockedTitles: lockedTitles.slice(0, 4), freeOk };
+      });
+
+      lockInfo.lockedCount >= 8
+        ? ok(`Profil-Editor: ${lockInfo.lockedCount} gesperrte Avatare (ab Level 5–50) ✓`)
+        : fail(`Profil-Editor: zu wenige gesperrte Avatare (${lockInfo.lockedCount})`);
+      lockInfo.freeOk
+        ? ok('Profil-Editor: 4 Basis-Avatare (vampir/pestdoc/eismagie/schatten) frei ✓')
+        : fail('Profil-Editor: Basis-Avatare nicht korrekt als frei markiert');
+
+      // Avatar-Overlays mit "L5", "L10" etc.
+      const overlayOk = await page.evaluate(() => {
+        const spans = Array.from(document.querySelectorAll('span'));
+        return spans.some(s => /^L\d+$/.test((s.textContent || '').trim()) &&
+          parseInt(s.textContent.trim().slice(1), 10) >= 5);
+      });
+      overlayOk ? ok('Profil-Editor: Level-Overlay (L5+) auf gesperrten Avataren ✓') : fail('Profil-Editor: Level-Overlay fehlt');
+    }
+
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Progressionssystem: Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -957,7 +1177,7 @@ async function suiteOnline2P(browser, fbPort) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -965,15 +1185,16 @@ async function suiteOnline2P(browser, fbPort) {
     suiteQuitUX(browser),
     suiteOnlineUI(browser, FB_PORT),
     suiteOnline2P(browser, FB_PORT),
+    suiteProgression(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
