@@ -125,6 +125,55 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 
 ---
 
+## Langzeit-Progressionssystem (seit v3.11.0)
+
+### localStorage-Keys
+| Key | Inhalt |
+|---|---|
+| `fortress_profile` | Profil inkl. `level, xp, gold, peakElo, peakElo3, achievements[], dailyTasks[], seasonXp, unlockedRewards[]` |
+| `fortress_daily` | `{ lastCollect: timestamp, streak: number, lastStreakDay: "YYYY-MM-DD" }` |
+
+### Neue Konstanten
+- `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)
+- `DAILY_REWARDS`: Array von 7 täglichen Belohnungen (Tag 7 = Legendäre Kiste 200G+50XP)
+- `getLevelTier(level)`: gibt Tier-Objekt zurück `{ name, label, color, glow, border }`
+
+### Neue Komponenten
+- `LevelBadge({ level, size })`: Tier-farbiges Badge (Silber/Gold/Platin/Legendär) — `size="lg"` für größere Darstellung
+- `ConfettiBurst({ active })`: CSS-Konfetti bei Level-Up (20 Partikel, keine `Math.random()`)
+- `DailyRewardModal({ daily, onCollect, onClose })`: 7-Tage-Streak-Kalender + Belohnungsabholung
+
+### Neue CSS-Keyframes
+- `confettiFall`: Konfetti-Partikel fallen und drehen sich
+- `dailyBounceIn`: Modal-Einblendung mit Bounce
+- `badgePop`: Badge-Erscheinen mit Scale-Animation
+- `streakGlow`: Pulsierender Glow für aktiven Streak-Tag und Tages-Belohnungs-Button
+- `collectBounce`: Bounce-Feedback beim Abholen
+
+### State-Variablen (neu)
+- `dailyState`: `{ lastCollect, streak, lastStreakDay }` — aus `fortress_daily` geladen
+- `showDailyModal`: Boolean — steuert DailyRewardModal
+
+### Funktionen (neu)
+- `loadDailyState()` / `saveDailyState(d)`: localStorage-Helpers für Streak-Daten
+- `getDailyCollectable(daily)`: true wenn ≥24h seit letzter Abholung
+- `getDailyStreakIndex(daily)`: aktueller Streak-Index (0–6, zyklisch)
+- `handleDailyCollect(reward, streakIdx)`: Streak updaten, Gold/XP vergeben, Profil speichern
+
+### Design-Prinzipien
+- Kein Pay2Win: Alle Freischaltungen rein kosmetisch/motivational
+- Motivationskette: Online spielen → XP → Level → Belohnungen → Gold → Anpassungen → wieder spielen
+- Tägliche Rückkehr: Streak-System belohnt konsistentes Spielen (Tag 7 = Legendäre Kiste)
+- Progression sichtbar: LevelBadge neben Avatar im Profil und Menü
+
+### Vorbereitet (noch keine UI)
+- Achievements: Datenstruktur-Kommentare im Code
+- Daily Tasks: Datenstruktur-Kommentare im Code
+- Season-System: Datenstruktur-Kommentare im Code
+- Social Features: Vorbereitung für Freundessystem via Firebase
+
+---
+
 ## 3-Spieler-Besonderheiten
 
 - **Terrain**: Y-förmig (Hub bei 40% Höhe), Flussarme bei 70°/180°/290°

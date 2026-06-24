@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.10.1</title>
+  <title>FORTRESS v3.11.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -36,6 +36,11 @@
     @keyframes lvlUpFlash{0%{opacity:0;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}70%{transform:scale(0.96)}100%{opacity:1;transform:scale(1)}}
     @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}
     @keyframes xpNumPop{0%{opacity:0;transform:scale(0.7) translateY(6px)}60%{transform:scale(1.12) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(180px) rotate(720deg)}}
+    @keyframes dailyBounceIn{0%{opacity:0;transform:scale(0.7) translateY(20px)}60%{transform:scale(1.05) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes badgePop{0%{transform:scale(0)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+    @keyframes streakGlow{0%,100%{box-shadow:0 0 6px rgba(251,191,36,0.4)}50%{box-shadow:0 0 18px rgba(251,191,36,0.9)}}
+    @keyframes collectBounce{0%{transform:scale(1)}30%{transform:scale(1.15)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
@@ -1119,6 +1124,22 @@ const LANGS = {
     shareCode: "Teile diesen Code mit deinem Mitspieler:",
     localTitle: "Lokal spielen",
     localSub: "Alle auf einem Ger\xE4t. Wie viele Spieler?",
+    levelBadgeSilver: "Silber",
+    levelBadgeGold: "Gold",
+    levelBadgePlatin: "Platin",
+    levelBadgeLegend: "Legendär",
+    dailyTitle: "Tages-Belohnung",
+    dailyStreak: "Streak: {n} Tag(e)",
+    dailyCollect: "Abholen!",
+    dailyCollected: "✓ Abgeholt",
+    dailyNextIn: "Nächste in {h}h {m}m",
+    dailyComeBack: "Morgen wiederkommen!",
+    dailyChest: "Legendäre Kiste",
+    winRate: "Winrate",
+    peakElo: "Peak ELO",
+    lockedAt: "Ab Level {n}",
+    nextRewardAt: "Nächste Belohnung: Level {n}",
+    dailyRewardBtn: "Tages-Belohnung",
   },
   en: {
     tagline: "2 PLAYERS \xB7 SIMULTANEOUS \xB7 ONE DEVICE",
@@ -1257,6 +1278,22 @@ const LANGS = {
     shareCode: "Share this code with your co-player:",
     localTitle: "Play Local",
     localSub: "All on one device. How many players?",
+    levelBadgeSilver: "Silver",
+    levelBadgeGold: "Gold",
+    levelBadgePlatin: "Platinum",
+    levelBadgeLegend: "Legendary",
+    dailyTitle: "Daily Reward",
+    dailyStreak: "Streak: {n} day(s)",
+    dailyCollect: "Collect!",
+    dailyCollected: "✓ Collected",
+    dailyNextIn: "Next in {h}h {m}m",
+    dailyComeBack: "Come back tomorrow!",
+    dailyChest: "Legendary Chest",
+    winRate: "Win Rate",
+    peakElo: "Peak ELO",
+    lockedAt: "From Level {n}",
+    nextRewardAt: "Next reward: Level {n}",
+    dailyRewardBtn: "Daily Reward",
   }
 };
 window.FortressApp = function Fortress() {
@@ -1310,6 +1347,63 @@ window.FortressApp = function Fortress() {
   const WAPPEN_SRC = {};
   for (const [id, svg] of Object.entries(WAPPEN_SVG)) {
     WAPPEN_SRC[id] = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+  // Avatar-Unlock-System: Erste 4 sofort verfügbar, restliche 8 per Level
+  const AVATAR_UNLOCKS = {
+    vampir:      1, pestdoc:    1, eismagie:   1, schatten:    1,
+    sternmage:   5, golem:     10, seehexe:   15, feuergeist: 20,
+    totenmage:  25, sturmreiter:30, golddrache:40, phoenix:    50,
+  };
+  function getLevelTier(level) {
+    if (level >= 50) return { name: "legend", label: "LEGENDÄR", color: "#a78bfa", glow: "rgba(167,139,250,0.7)", border: "#7c3aed" };
+    if (level >= 25) return { name: "platin", label: "PLATIN",   color: "#22d3ee", glow: "rgba(34,211,238,0.7)",  border: "#0891b2" };
+    if (level >= 10) return { name: "gold",   label: "GOLD",     color: "#fbbf24", glow: "rgba(251,191,36,0.7)", border: "#ca8a04" };
+    return              { name: "silver",  label: "SILBER",   color: "#94a3b8", glow: "rgba(148,163,184,0.5)", border: "#64748b" };
+  }
+  function LevelBadge({ level, size }) {
+    const tier = getLevelTier(level);
+    const isLg = size === "lg";
+    return React.createElement("div", {
+      style: {
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(135deg," + tier.border + "cc," + tier.border + "55)",
+        border: "1.5px solid " + tier.border,
+        borderRadius: isLg ? 8 : 6,
+        padding: isLg ? "3px 8px" : "2px 5px",
+        fontSize: isLg ? 12 : 9,
+        fontWeight: 900,
+        color: tier.color,
+        letterSpacing: "0.04em",
+        boxShadow: "0 0 8px " + tier.glow,
+        flexShrink: 0,
+        animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both"
+      }
+    }, "L" + level);
+  }
+  function ConfettiBurst({ active }) {
+    if (!active) return null;
+    const colors = ["#fbbf24","#a78bfa","#22d3ee","#f87171","#4ade80","#60a5fa","#fb923c","#e879f9"];
+    const particles = Array.from({ length: 20 }, (_, i) => {
+      const color = colors[i % colors.length];
+      const left = 10 + (i / 19) * 80;
+      const delay = (i * 0.05).toFixed(2);
+      const dur = (0.8 + (i * 0.037) % 0.6).toFixed(2);
+      const sz = 4 + (i % 3) * 2;
+      return React.createElement("div", {
+        key: i,
+        style: {
+          position: "absolute", left: left + "%", top: "0%",
+          width: sz, height: sz * (i % 2 === 0 ? 2 : 1),
+          borderRadius: i % 3 === 0 ? "50%" : 1,
+          background: color,
+          animation: "confettiFall " + dur + "s " + delay + "s ease-in both",
+          pointerEvents: "none"
+        }
+      });
+    });
+    return React.createElement("div", {
+      style: { position: "relative", height: 0, overflow: "visible", pointerEvents: "none" }
+    }, ...particles);
   }
   function WappenAvatar({ id, size = 36 }) {
     const src = WAPPEN_SRC[id] || WAPPEN_SRC.vampir;
@@ -1366,7 +1460,9 @@ window.FortressApp = function Fortress() {
     }, []);
     const needed = xpToNextLevel(animLevel);
     const pct = Math.min(100, animXp / needed * 100);
+    const nextUnlockEntry = Object.entries(AVATAR_UNLOCKS).filter(([, lvl]) => lvl > xpChange.newLevel).sort(([, a], [, b]) => a - b)[0];
     return React.createElement("div", { style: { marginTop: 10, marginBottom: 4 } },
+      showLvlUp && React.createElement(ConfettiBurst, { active: true }),
       showLvlUp && React.createElement("div", { style: {
         background: "linear-gradient(135deg,rgba(251,191,36,0.18),rgba(167,139,250,0.18))",
         border: "1.5px solid rgba(251,191,36,0.7)",
@@ -1403,6 +1499,75 @@ window.FortressApp = function Fortress() {
             transition: phase === "running" ? "none" : "width 0.3s ease"
           } })
         )
+      ),
+      nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: "#64748b", textAlign: "center", fontStyle: "italic" } },
+        t('nextRewardAt', { n: nextUnlockEntry[1] })
+      )
+    );
+  }
+  function DailyRewardModal({ daily, onCollect, onClose }) {
+    const [collecting, setCollecting] = useState(false);
+    const [collected, setCollected] = useState(false);
+    const canCollect = getDailyCollectable(daily);
+    const streakIdx = getDailyStreakIndex(daily);
+    const reward = DAILY_REWARDS[streakIdx];
+    const nowMs = Date.now();
+    const msLeft = Math.max(0, 86400000 - (nowMs - (daily.lastCollect || 0)));
+    const hLeft = Math.floor(msLeft / 3600000);
+    const mLeft = Math.floor((msLeft % 3600000) / 60000);
+    function handleCollect() {
+      if (!canCollect || collecting) return;
+      setCollecting(true);
+      setTimeout(() => { setCollected(true); onCollect(reward, streakIdx); }, 350);
+    }
+    const days = DAILY_REWARDS.map((r, i) => {
+      const isPast = i < streakIdx;
+      const isCurrent = i === streakIdx;
+      return React.createElement("div", { key: i, style: {
+        flex: 1, textAlign: "center",
+        background: isCurrent ? "rgba(251,191,36,0.18)" : isPast ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",
+        border: "1px solid " + (isCurrent ? "rgba(251,191,36,0.6)" : isPast ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.08)"),
+        borderRadius: 8, padding: "6px 2px",
+        animation: isCurrent ? "streakGlow 2s ease infinite" : "none"
+      } },
+        React.createElement("div", { style: { fontSize: 8, color: "#64748b", marginBottom: 2 } }, "T" + (i + 1)),
+        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: isCurrent ? "#fbbf24" : isPast ? "#4ade80" : "#475569" } },
+          isPast ? "✓" : r.special === "chest" ? "★" : "+" + r.gold + "G"
+        )
+      );
+    });
+    return React.createElement("div", {
+      style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.94)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 20 }
+    },
+      React.createElement("div", { style: {
+        background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(251,191,36,0.3)",
+        borderRadius: 16, padding: 24, maxWidth: 360, width: "100%", textAlign: "center",
+        animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both"
+      } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } },
+          React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: "#475569", cursor: "pointer" } },
+            React.createElement(Icon, { name: "x", size: 18 })
+          )
+        ),
+        React.createElement("div", { style: { marginBottom: 4, color: "#fbbf24", display: "flex", justifyContent: "center" } },
+          React.createElement(Icon, { name: "zap", size: 28, color: "#fbbf24" })
+        ),
+        React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
+        React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+        React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
+        collected
+          ? React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#4ade80", marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
+          : canCollect
+            ? React.createElement("div", { style: { marginBottom: 12 } },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#fbbf24" } }, "+" + reward.gold + " Gold"),
+                reward.xp > 0 && React.createElement("div", { style: { fontSize: 14, color: "#a78bfa", marginTop: 4 } }, "+" + reward.xp + " XP"),
+                reward.special === "chest" && React.createElement("div", { style: { fontSize: 12, color: "#22d3ee", marginTop: 4 } }, t('dailyChest'))
+              )
+            : React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
+        canCollect && !collected && React.createElement("button", {
+          onClick: handleCollect,
+          style: { width: "100%", background: "linear-gradient(135deg,#ca8a04,#fbbf24)", color: "#0a0a0a", border: "none", padding: "15px", fontSize: 16, fontWeight: 900, borderRadius: 12, cursor: "pointer", boxShadow: "0 4px 20px rgba(251,191,36,0.4)" }
+        }, t('dailyCollect'))
       )
     );
   }
@@ -1441,7 +1606,12 @@ window.FortressApp = function Fortress() {
           gold: typeof p.gold === "number" ? p.gold : 100,
           level: typeof p.level === "number" ? p.level : 1,
           xp: typeof p.xp === "number" ? p.xp : 0,
-          unlockedRewards: Array.isArray(p.unlockedRewards) ? p.unlockedRewards : []
+          unlockedRewards: Array.isArray(p.unlockedRewards) ? p.unlockedRewards : [],
+          peakElo: typeof p.peakElo === "number" ? p.peakElo : (typeof p.elo === "number" ? p.elo : 1000),
+          peakElo3: typeof p.peakElo3 === "number" ? p.peakElo3 : (typeof p.elo3 === "number" ? p.elo3 : 1000),
+          achievements: Array.isArray(p.achievements) ? p.achievements : [],
+          dailyTasks: Array.isArray(p.dailyTasks) ? p.dailyTasks : [],
+          seasonXp: typeof p.seasonXp === "number" ? p.seasonXp : 0
         };
         if (needsSave) {
           try {
@@ -1463,6 +1633,37 @@ window.FortressApp = function Fortress() {
     }
     setProfile(p);
   }
+  // ── Daily Reward System ───────────────────────────────────────────────────
+  const DAILY_REWARDS = [
+    { day: 1, gold: 25,  xp: 0,  special: null },
+    { day: 2, gold: 35,  xp: 0,  special: null },
+    { day: 3, gold: 50,  xp: 0,  special: null },
+    { day: 4, gold: 75,  xp: 0,  special: null },
+    { day: 5, gold: 100, xp: 0,  special: null },
+    { day: 6, gold: 150, xp: 0,  special: null },
+    { day: 7, gold: 200, xp: 50, special: "chest" },
+  ];
+  function loadDailyState() {
+    try {
+      const raw = localStorage.getItem("fortress_daily");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { lastCollect: 0, streak: 0, lastStreakDay: "" };
+  }
+  function saveDailyState(d) {
+    try { localStorage.setItem("fortress_daily", JSON.stringify(d)); } catch (e) {}
+  }
+  function getDailyCollectable(daily) {
+    return Date.now() - (daily.lastCollect || 0) >= 86400000;
+  }
+  function getDailyStreakIndex(daily) {
+    return Math.min((daily.streak || 0) % 7, 6);
+  }
+  // ── Architektur-Vorbereitung: Datenstrukturen (noch keine UI) ────────────
+  // Achievements: { id, name, desc, icon, check: (profile, context) => bool }
+  // Daily Tasks: { id, desc, goal, reward: {gold, xp}, type: "wins"|"games"|"xp" }
+  // Season: { id, name, startMs, endMs, rewards: [{level, item}] }
+  // Social: profile.friends = [playerId, ...] (future Firebase feature)
   function eloDelta(current, opponent, score) {
     const expected = 1 / (1 + Math.pow(10, (opponent - current) / 400));
     return 32 * (score - expected);
@@ -1512,6 +1713,9 @@ window.FortressApp = function Fortress() {
       newElo = Math.round(myElo + avgDelta);
     }
     eloChangeRef.current = { oldElo: myElo, newElo, delta: newElo - myElo };
+    const peakEloKey = m3 ? "peakElo3" : "peakElo";
+    const curPeak = typeof profile[peakEloKey] === "number" ? profile[peakEloKey] : myElo;
+    const newPeakElo = Math.max(newElo, curPeak);
     const oldGold = typeof profile.gold === "number" ? profile.gold : 100;
     const goldEarned = won === true && opponents.length
       ? Math.round(opponents.reduce((sum, opp) => sum + goldDelta(myElo, opp), 0) / opponents.length)
@@ -1521,7 +1725,7 @@ window.FortressApp = function Fortress() {
     const xpGained = computeXpGain(won === true, myElo, opponents);
     const { level: newLevel, xp: newXp, levelsGained } = applyXpGain(profile, xpGained);
     xpChangeRef.current = { oldLevel: typeof profile.level === "number" ? profile.level : 1, newLevel, oldXp: typeof profile.xp === "number" ? profile.xp : 0, newXp, xpGained, levelsGained };
-    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, gold: newGold, level: newLevel, xp: newXp });
+    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, [peakEloKey]: newPeakElo, gold: newGold, level: newLevel, xp: newXp });
     saveProfile(updated);
     pushLeaderboard(updated);
   }
@@ -1551,15 +1755,41 @@ window.FortressApp = function Fortress() {
       gold: typeof (profile == null ? void 0 : profile.gold) === "number" ? profile.gold : 100,
       level: typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1,
       xp: typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0,
-      unlockedRewards: Array.isArray(profile == null ? void 0 : profile.unlockedRewards) ? profile.unlockedRewards : []
+      unlockedRewards: Array.isArray(profile == null ? void 0 : profile.unlockedRewards) ? profile.unlockedRewards : [],
+      peakElo: typeof (profile == null ? void 0 : profile.peakElo) === "number" ? profile.peakElo : (typeof (profile == null ? void 0 : profile.elo) === "number" ? profile.elo : 1000),
+      peakElo3: typeof (profile == null ? void 0 : profile.peakElo3) === "number" ? profile.peakElo3 : (typeof (profile == null ? void 0 : profile.elo3) === "number" ? profile.elo3 : 1000),
+      achievements: Array.isArray(profile == null ? void 0 : profile.achievements) ? profile.achievements : [],
+      dailyTasks: Array.isArray(profile == null ? void 0 : profile.dailyTasks) ? profile.dailyTasks : [],
+      seasonXp: typeof (profile == null ? void 0 : profile.seasonXp) === "number" ? profile.seasonXp : 0
     };
     saveProfile(p);
     setShowProfileEditor(false);
     pushLeaderboard(p);
   }
+  function handleDailyCollect(reward, streakIdx) {
+    if (!profile) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const curDaily = loadDailyState();
+    const wasStreak = curDaily.lastStreakDay === yesterday;
+    const newStreak = wasStreak ? (curDaily.streak || 0) + 1 : 1;
+    const newDaily = { lastCollect: Date.now(), streak: newStreak, lastStreakDay: today };
+    saveDailyState(newDaily);
+    setDailyState(newDaily);
+    const newGold = (typeof profile.gold === "number" ? profile.gold : 100) + reward.gold;
+    let updatedProfile = __spreadProps(__spreadValues({}, profile), { gold: newGold });
+    if (reward.xp > 0) {
+      const { level: newLevel, xp: newXp } = applyXpGain(updatedProfile, reward.xp);
+      updatedProfile = __spreadProps(__spreadValues({}, updatedProfile), { level: newLevel, xp: newXp });
+    }
+    saveProfile(updatedProfile);
+    setTimeout(() => setShowDailyModal(false), 1400);
+  }
   const [leaderboard, setLeaderboard] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [dailyState, setDailyState] = useState(() => loadDailyState());
+  const [showDailyModal, setShowDailyModal] = useState(false);
   async function quitGame() {
     setShowQuitConfirm(false);
     running.current = false;
@@ -1623,11 +1853,21 @@ window.FortressApp = function Fortress() {
         gold: typeof p.gold === "number" ? p.gold : 100,
         level: typeof p.level === "number" ? p.level : 1,
         xp: typeof p.xp === "number" ? p.xp : 0,
+        peakElo: typeof p.peakElo === "number" ? p.peakElo : (typeof p.elo === "number" ? p.elo : 1000),
+        peakElo3: typeof p.peakElo3 === "number" ? p.peakElo3 : (typeof p.elo3 === "number" ? p.elo3 : 1000),
         updatedAt: Date.now()
       });
     } catch (e) {
     }
   }
+  useEffect(() => {
+    if (!profile) return;
+    const d = loadDailyState();
+    if (getDailyCollectable(d)) {
+      const timer = setTimeout(() => setShowDailyModal(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const [lbRaw, setLbRaw] = useState(null);
   const [lbMode, setLbMode] = useState(2);
   async function openLeaderboard() {
@@ -3976,16 +4216,22 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 28 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 })), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    color: "#cbd5e1",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 13,
-    cursor: "pointer",
-    flexShrink: 0
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 }))), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
+  } }, React.createElement("div", { style: { position: "relative" } },
+    React.createElement(WappenAvatar, { id: profile.wappen, size: 28 }),
+    React.createElement("div", { style: { position: "absolute", bottom: -6, right: -6 } },
+      React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 })
+    )
+  )), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins / Math.max(1, profile.stats.games) * 100), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), typeof profile.peakElo === "number" && profile.peakElo > (typeof profile.elo === "number" ? profile.elo : 1000) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#64748b", marginTop: 1 } }, t('peakElo') + ": " + profile.peakElo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 } },
+    /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+      color: "#cbd5e1", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 })),
+    getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyRewardBtn'), style: {
+      background: "rgba(251,191,36,0.18)", border: "1px solid rgba(251,191,36,0.5)",
+      color: "#fbbf24", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer",
+      animation: "streakGlow 2s ease infinite"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }))
+  )), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
     ["crown", "#22d3ee", t('helpStartTitle'), t('helpStartDesc')],
     ["shield", "#4ade80", t('helpBuildTitle'), t('helpBuildDesc')],
     ["flame", "#f87171", t('helpShootTitle'), t('helpShootDesc')],
@@ -4065,7 +4311,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.10.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -4102,15 +4348,28 @@ window.FortressApp = function Fortress() {
         marginBottom: 16
       }
     }
-  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "WAPPEN"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, justifyContent: "center" } }, WAPPEN.map((w) => /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
-    width: 40,
-    height: 40,
-    fontSize: 20,
-    borderRadius: 8,
-    cursor: "pointer",
-    background: editWappen === w ? editColor : "rgba(255,255,255,0.06)",
-    border: editWappen === w ? "2px solid #fff" : "1px solid rgba(255,255,255,0.12)"
-  } }, React.createElement(WappenAvatar, { id: w, size: 28 })))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('profileColorLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {
+  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "WAPPEN"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, justifyContent: "center" } }, WAPPEN.map((w) => {
+    const reqLevel = AVATAR_UNLOCKS[w] || 1;
+    const curLevel = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1;
+    const locked = reqLevel > curLevel;
+    return /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => !locked && setEditWappen(w), style: {
+      width: 40, height: 40, fontSize: 20, borderRadius: 8,
+      cursor: locked ? "not-allowed" : "pointer",
+      background: editWappen === w ? editColor : locked ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+      border: editWappen === w ? "2px solid #fff" : locked ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(255,255,255,0.12)",
+      position: "relative", overflow: "hidden", opacity: locked ? 0.45 : 1
+    }, title: locked ? t('lockedAt', { n: reqLevel }) : w },
+      React.createElement(WappenAvatar, { id: w, size: 28 }),
+      locked && React.createElement("div", { style: {
+        position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        background: "rgba(2,6,15,0.65)", fontSize: 7, color: "#94a3b8", gap: 1
+      } },
+        React.createElement(Icon, { name: "key", size: 10, color: "#64748b" }),
+        React.createElement("span", null, "L" + reqLevel)
+      )
+    );
+  })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('profileColorLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {
     width: 34,
     height: 34,
     borderRadius: "50%",
@@ -4209,7 +4468,11 @@ window.FortressApp = function Fortress() {
     alignItems: "center",
     justifyContent: "center",
     gap: 8
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 15 }), "Aktualisieren"))), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 15 }), "Aktualisieren"))), showDailyModal && React.createElement(DailyRewardModal, {
+    daily: dailyState,
+    onCollect: handleDailyCollect,
+    onClose: () => setShowDailyModal(false)
+  }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(2,6,15,0.78)",

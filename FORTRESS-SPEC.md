@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.10.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -913,3 +913,18 @@ und beschiessen danach gegenseitig ihre Festungen.
   - `@keyframes jesterdance` entfernt, ersetzt durch `@keyframes radarSpin` (360°-Rotation, 3s linear).
   - Matchmaking-Wartescreen zeigt jetzt rotierendes `target`-Icon (Lucide, 48px, #22d3ee)
     mit Drop-Shadow-Glow statt clown-Emoji.
+
+### v3.11.0 — Langzeit-Progressionssystem
+- **LevelBadge**: Tier-farbige Level-Anzeige neben Avatar (Silber L1-9, Gold L10-24, Platin L25-49, Legendär L50+)
+- **getLevelTier()**: Hilfsfunktion für Tier-Farben und Glow-Effekte
+- **ConfettiBurst**: CSS-Konfetti-Animation bei Level-Up (20 Partikel, deterministische Timings)
+- **XpResultAnim**: Konfetti + "Nächste Belohnung"-Vorschau nach Level-Up
+- **AVATAR_UNLOCKS**: 4 Basis-Avatare gratis, 8 weitere ab Level 5/10/15/20/25/30/40/50
+- **DailyRewardModal**: Tägliche Belohnung mit 7-Tage-Streak-Kalender (Tag 1–7: 25/35/50/75/100/150/200G, Tag 7 +50XP + Legendäre Kiste)
+- **Profil-Karte**: LevelBadge auf Avatar-Overlay, Win-Rate-Anzeige, Peak-ELO-Zeile, Tages-Belohnung-Button mit Glow
+- **Avatar-Editor**: Gesperrte Avatare ausgegraut mit Schloss-Symbol und Level-Anforderung
+- **Peak ELO**: Tracking in `recordResult`, gespeichert in `peakElo`/`peakElo3`, im Leaderboard
+- **Neue CSS-Keyframes**: `confettiFall`, `dailyBounceIn`, `badgePop`, `streakGlow`, `collectBounce`
+- **localStorage**: Neuer Key `fortress_daily` für Streak-System; Profil erweitert um `peakElo`, `peakElo3`, `achievements[]`, `dailyTasks[]`, `seasonXp`
+- **Architektur-Vorbereitung**: Datenstrukturen für Achievements, Daily Tasks, Season-System, Social Features (Kommentare im Code)
+- **i18n**: Neue Strings für Tier-Labels, Daily Reward, Win-Rate, Peak ELO, Avatar-Lock-Hinweise
