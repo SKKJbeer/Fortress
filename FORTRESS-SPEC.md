@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.9.1)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.10.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -886,4 +886,26 @@ und beschiessen danach gegenseitig ihre Festungen.
     Fallback auf `vampir` wenn ID unbekannt (Rückwärtskompatibilität mit alten Profilen).
   - Render-Stellen aktualisiert: Profilkarte, Profil-Editor-Buttons, Rangliste,
     P1/P2/P3-Anzeigetafel im Spiel — alle nutzen jetzt `WappenAvatar`.
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.10.0**: XP- und Level-System eingeführt.
+  - **XP-Gewinn** (nur Online-Spiele): Niederlage +10 XP, Sieg +25 XP Basis.
+    ELO-Bonus bei Sieg: +0–5 XP (schwächerer Gegner), +10 XP (gleich stark),
+    +15–20 XP (stärkerer Gegner, ab +100 ELO-Differenz). Max. +20 Bonus.
+  - **Level-Formel**: XP bis nächstes Level = 100 + (Level × 25).
+    Level 1→2: 125 XP, Level 5→6: 225 XP, Level 10→11: 350 XP.
+    Unbegrenzte Level; Start: Level 1, 0 XP.
+  - **Neue Hilfsfunktionen**: `xpToNextLevel(level)`, `computeXpGain(won, myElo, opponentElos)`,
+    `applyXpGain(prof, xpGained)` → gibt `{level, xp, levelsGained}`.
+  - **Profil-Erweiterung**: `level`, `xp`, `unlockedRewards` in localStorage + Firebase.
+    `unlockedRewards: []` als Basis-Architektur für spätere freischaltbare Inhalte.
+  - **`xpChangeRef`**: neuer Ref (analog `eloChangeRef`/`goldChangeRef`).
+    Inhalt: `{ oldLevel, newLevel, oldXp, newXp, xpGained, levelsGained }`.
+  - **UI-Komponenten**:
+    - `XpBarUI({ level, xp })`: statische XP-Leiste (violett→cyan Gradient, 5px Höhe)
+      — in Profilkarte unterhalb Gold-Anzeige.
+    - `XpResultAnim({ xpChange })`: animierter XP-Reward-Screen auf Ergebnis-Bildschirm
+      — XP-Zahl hochzählen (easeOutCubic, bis 2,2s), Leiste füllt sich, Glow-Animation.
+      Bei Level-Up: "★ LEVEL UP! ★" Badge mit `lvlUpFlash`-Animation (0,55s spring).
+  - **CSS-Keyframes**: `lvlUpFlash`, `xpBarGlow`, `xpNumPop`.
+  - **Ergebnis-Bildschirm**: XpResultAnim erscheint nach Gold-Block (nur Online, wenn xpChangeRef gesetzt).
   - Spielmechanik unverändert; alle 87 Tests grün.
