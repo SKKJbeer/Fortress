@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.10.0)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.10.1)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -909,3 +909,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   - **CSS-Keyframes**: `lvlUpFlash`, `xpBarGlow`, `xpNumPop`.
   - **Ergebnis-Bildschirm**: XpResultAnim erscheint nach Gold-Block (nur Online, wenn xpChangeRef gesetzt).
   - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.10.1**: Matchmaking-Icon: 🤡-Emoji durch neon-cyan Radar/Crosshair-SVG ersetzt.
+  - `@keyframes jesterdance` entfernt, ersetzt durch `@keyframes radarSpin` (360°-Rotation, 3s linear).
+  - Matchmaking-Wartescreen zeigt jetzt rotierendes `target`-Icon (Lucide, 48px, #22d3ee)
+    mit Drop-Shadow-Glow statt clown-Emoji.
