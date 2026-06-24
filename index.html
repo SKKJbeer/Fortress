@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.0</title>
+  <title>FORTRESS v3.11.1</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -1461,14 +1461,14 @@ window.FortressApp = function Fortress() {
     const needed = xpToNextLevel(animLevel);
     const pct = Math.min(100, animXp / needed * 100);
     const nextUnlockEntry = Object.entries(AVATAR_UNLOCKS).filter(([, lvl]) => lvl > xpChange.newLevel).sort(([, a], [, b]) => a - b)[0];
-    return React.createElement("div", { style: { marginTop: 10, marginBottom: 4 } },
+    return React.createElement("div", { style: { marginTop: 6, marginBottom: 2 } },
       showLvlUp && React.createElement(ConfettiBurst, { active: true }),
       showLvlUp && React.createElement("div", { style: {
         background: "linear-gradient(135deg,rgba(251,191,36,0.18),rgba(167,139,250,0.18))",
         border: "1.5px solid rgba(251,191,36,0.7)",
-        borderRadius: 12,
-        padding: "10px 20px",
-        marginBottom: 8,
+        borderRadius: 10,
+        padding: "7px 16px",
+        marginBottom: 6,
         textAlign: "center",
         animation: "lvlUpFlash 0.55s cubic-bezier(.36,1.6,.56,1) both"
       } },
@@ -1479,11 +1479,11 @@ window.FortressApp = function Fortress() {
         background: "rgba(99,102,241,0.1)",
         border: "1px solid rgba(99,102,241,0.35)",
         borderRadius: 10,
-        padding: "12px 20px",
+        padding: "8px 16px",
         textAlign: "center"
       } },
-        React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginBottom: 6, letterSpacing: "0.06em", fontWeight: 600 } }, "XP"),
-        React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: "0 0 14px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
+        React.createElement("div", { style: { fontSize: 10, color: "#64748b", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, "XP"),
+        React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: "#a78bfa", marginBottom: 6, textShadow: "0 0 14px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
         React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 4 } },
           React.createElement("span", null, "Level " + animLevel),
           React.createElement("span", null, animXp + " / " + needed)
@@ -4311,7 +4311,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
@@ -4765,12 +4765,13 @@ window.FortressApp = function Fortress() {
       justifyContent: "center",
       fontFamily: "'Segoe UI',system-ui,sans-serif",
       color: "#e2e8f0",
-      padding: 24,
-      textAlign: "center"
+      padding: "14px 20px",
+      textAlign: "center",
+      overflowY: "auto"
     } }, online.current && /* @__PURE__ */ React.createElement("div", { style: {
       fontSize: 11,
       color: "#4ade80",
-      marginBottom: 10,
+      marginBottom: 6,
       fontWeight: 700,
       background: "rgba(74,222,128,0.08)",
       borderRadius: 6,
@@ -4778,10 +4779,10 @@ window.FortressApp = function Fortress() {
       display: "inline-flex",
       alignItems: "center",
       gap: 6
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 13 }), "ONLINE \xB7 ", myKingdom), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14, display: "flex", justifyContent: "center", color: drawn ? "#fbbf24" : (online.current ? iWon : isWin) ? "#fbbf24" : "#ef4444", filter: "drop-shadow(0 0 26px currentColor)" } }, /* @__PURE__ */ React.createElement(Icon, { name: drawn ? "swords" : (online.current ? iWon : isWin) ? "trophy" : "x", size: 56 })), /* @__PURE__ */ React.createElement("div", { style: {
-      fontSize: "clamp(20px,5vw,28px)",
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 13 }), "ONLINE \xB7 ", myKingdom), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 8, display: "flex", justifyContent: "center", color: drawn ? "#fbbf24" : (online.current ? iWon : isWin) ? "#fbbf24" : "#ef4444", filter: "drop-shadow(0 0 26px currentColor)" } }, /* @__PURE__ */ React.createElement(Icon, { name: drawn ? "swords" : (online.current ? iWon : isWin) ? "trophy" : "x", size: 44 })), /* @__PURE__ */ React.createElement("div", { style: {
+      fontSize: "clamp(18px,5vw,24px)",
       fontWeight: 800,
-      marginBottom: 6,
+      marginBottom: 3,
       color: drawn ? "#fbbf24" : isWin ? ROOF_OF[info.winner] || "#60a5fa" : "#ef4444"
     } }, (() => {
       const wname = (p) => {
@@ -4791,33 +4792,33 @@ window.FortressApp = function Fortress() {
       if (!isWin) return t('resultDraw');
       if (online.current) return iWon ? t('resultWin') : t('resultLose');
       return t('resultWinner', {name: wname(info.winner)});
-    })()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 20 } }, info.reason === "left" || info.reason === "host_left" ? t('resultLeft') : info.numPlayers === 3 || numPlayers === 3 ? t('resultLastStanding') : info.reason === "breach" ? t('resultBurgDurch') : t('resultBurgOffen')), /* @__PURE__ */ React.createElement("div", { style: {
+    })()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 8 } }, info.reason === "left" || info.reason === "host_left" ? t('resultLeft') : info.numPlayers === 3 || numPlayers === 3 ? t('resultLastStanding') : info.reason === "breach" ? t('resultBurgDurch') : t('resultBurgOffen')), /* @__PURE__ */ React.createElement("div", { style: {
       display: "flex",
-      gap: 16,
-      fontSize: 22,
+      gap: 14,
+      fontSize: 20,
       fontWeight: 800,
-      marginBottom: 28,
+      marginBottom: 10,
       background: "rgba(255,255,255,0.05)",
-      borderRadius: 12,
-      padding: "12px 26px",
+      borderRadius: 10,
+      padding: "7px 20px",
       border: "1px solid rgba(255,255,255,0.08)"
     } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#60a5fa" } }, "\u2654 ", scores[1]), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#f87171" } }, scores[2], " \u265A"), (info.numPlayers === 3 || numPlayers === 3) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, ":"), /* @__PURE__ */ React.createElement("span", { style: { color: "#34d399" } }, scores[3] || 0, " \u265C"))), online.current && eloChangeRef.current && /* @__PURE__ */ React.createElement("div", { style: {
-  marginTop: 16,
+  marginTop: 8,
   marginBottom: 4,
   background: eloChangeRef.current.delta >= 0 ? "rgba(74,222,128,0.1)" : "rgba(239,68,68,0.1)",
   border: "1px solid " + (eloChangeRef.current.delta >= 0 ? "rgba(74,222,128,0.3)" : "rgba(239,68,68,0.3)"),
   borderRadius: 10,
-  padding: "10px 20px",
+  padding: "7px 14px",
   textAlign: "center"
-} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('eloChange')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, eloChangeRef.current.oldElo), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.newElo), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.delta >= 0 ? "+" : "", eloChangeRef.current.delta))), online.current && goldChangeRef.current && goldChangeRef.current.delta > 0 && /* @__PURE__ */ React.createElement("div", { style: {
-  marginTop: 10,
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#64748b", marginBottom: 3, letterSpacing: "0.06em", fontWeight: 600 } }, t('eloChange')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 17, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, eloChangeRef.current.oldElo), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.newElo), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444" } }, eloChangeRef.current.delta >= 0 ? "+" : "", eloChangeRef.current.delta))), online.current && goldChangeRef.current && goldChangeRef.current.delta > 0 && /* @__PURE__ */ React.createElement("div", { style: {
+  marginTop: 6,
   marginBottom: 4,
   background: "rgba(245,158,11,0.12)",
   border: "1px solid rgba(245,158,11,0.35)",
   borderRadius: 10,
-  padding: "10px 20px",
+  padding: "7px 14px",
   textAlign: "center"
-} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#92400e", marginBottom: 4, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 18, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 12, color: "#fbbf24", style: { marginLeft: 3 } })))), online.current && xpChangeRef.current && /* @__PURE__ */ React.createElement(XpResultAnim, { xpChange: xpChangeRef.current }), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
+} }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#92400e", marginBottom: 3, letterSpacing: "0.06em", fontWeight: 600 } }, t('goldLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 17, fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#94a3b8" } }, goldChangeRef.current.oldGold), /* @__PURE__ */ React.createElement("span", { style: { color: "#475569", fontSize: 14 } }, "\u2192"), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24" } }, goldChangeRef.current.newGold), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#f59e0b" } }, "+", goldChangeRef.current.delta, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 12, color: "#fbbf24", style: { marginLeft: 3 } })))), online.current && xpChangeRef.current && /* @__PURE__ */ React.createElement(XpResultAnim, { xpChange: xpChangeRef.current }), /* @__PURE__ */ React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
       width: "100%",
       maxWidth: 280,
       background: shareShared ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.06)",
@@ -4828,12 +4829,12 @@ window.FortressApp = function Fortress() {
       fontWeight: 600,
       borderRadius: 10,
       cursor: "pointer",
-      marginBottom: 14,
+      marginBottom: 8,
       transition: "all 0.2s"
     } }, shareShared ? t('shareBtnDone') : t('shareBtn')),
     online.current && !isHost ? (
       // Gast: wartet auf Host, kann aber selbst ins Hauptmenü
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 280, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 14, fontStyle: "italic" } }, t('waitHost')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 280, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", fontSize: 13, fontStyle: "italic" } }, t('waitHost')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
         scoresRef.current = { 1: 0, 2: 0 };
         setScores({ 1: 0, 2: 0 });
         leaveOnline();
@@ -4842,12 +4843,12 @@ window.FortressApp = function Fortress() {
         background: "rgba(255,255,255,0.08)",
         color: "#cbd5e1",
         border: "1px solid rgba(255,255,255,0.12)",
-        padding: "13px",
+        padding: "11px",
         fontSize: 14,
         borderRadius: 10,
         cursor: "pointer"
       } }, t('mainMenu')))
-    ) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 280 } }, /* @__PURE__ */ React.createElement("button", { onClick: onlineNextRound2, style: {
+    ) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 280 } }, /* @__PURE__ */ React.createElement("button", { onClick: onlineNextRound2, style: {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -4855,13 +4856,13 @@ window.FortressApp = function Fortress() {
       background: "linear-gradient(135deg,#2563eb,#7c3aed)",
       color: "white",
       border: "1px solid rgba(124,58,237,0.5)",
-      padding: "16px",
-      fontSize: 16,
+      padding: "13px",
+      fontSize: 15,
       fontWeight: 700,
-      borderRadius: 14,
+      borderRadius: 12,
       cursor: "pointer",
-      boxShadow: "0 6px 26px rgba(59,130,246,0.3)"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 17 }), t('nextRound')), /* @__PURE__ */ React.createElement("button", { onClick: onlineNewGame2, style: {
+      boxShadow: "0 4px 20px rgba(59,130,246,0.3)"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 16 }), t('nextRound')), /* @__PURE__ */ React.createElement("button", { onClick: onlineNewGame2, style: {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -4869,11 +4870,11 @@ window.FortressApp = function Fortress() {
       background: "rgba(255,255,255,0.06)",
       color: "#cbd5e1",
       border: "1px solid rgba(255,255,255,0.12)",
-      padding: "13px",
+      padding: "11px",
       fontSize: 14,
-      borderRadius: 14,
+      borderRadius: 12,
       cursor: "pointer"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 16 }), t('newMap')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 15 }), t('newMap')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
       scoresRef.current = { 1: 0, 2: 0 };
       setScores({ 1: 0, 2: 0 });
       if (online.current) leaveOnline();
