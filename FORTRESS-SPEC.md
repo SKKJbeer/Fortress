@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.6)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.10.0)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -841,7 +841,71 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Der globale Canvas-Flip des Haupt-Canvas "hebt" den Pre-Flip wieder auf,
     sodass Berge (und andere gerichtete Hintergrund-Elemente) für P1 aufrecht
     erscheinen und korrekt zur Spielfeld-Orientierung passen.
-- **v3.7.6**: "Schnellspiel" → "Matchmaking" umbenannt (DE+EN).
-  - Button-Label: `"⚡ Schnellspiel ({n} Spieler)"` → `"⚡ Matchmaking ({n} Spieler)"` (DE)
-  - Button-Label: `"⚡ Quick Match ({n} Players)"` → `"⚡ Matchmaking ({n} Players)"` (EN)
-  - Name spiegelt die ELO-basierte Gegnersuche besser wider.
+- **v3.7.6**: "Schnellspiel"/"Quick Match" → "Matchmaking" umbenannt.
+  - DE: `"⚡ Schnellspiel ({n} Spieler)"` → `"⚡ Matchmaking ({n} Spieler)"`
+  - EN: `"⚡ Quick Match ({n} Players)"` → `"⚡ Matchmaking ({n} Players)"`
+- **v3.8.0**: Visual-Overhaul — Dark Glassmorphism & Icon-System.
+  - Neues Theme: tiefes Navy/Indigo statt Grün, Glas-Panels (backdrop-blur),
+    Neon-Akzente (Cyan/Violett/Blau). CSS-Variablen in `:root`.
+  - **Icon-System** (`Icon`-Komponente + `ICON_PATHS`): saubere Lucide-Strich-SVGs
+    als React-Inline-Komponente — ersetzt Deko-Emojis in der gesamten UI
+    (Menü, Online-Overlay, HUD, Phasen-Banner, Ergebnis-Screen, Quit-Dialog).
+  - Haupt-Buttons (LOKAL/ONLINE/Matchmaking/Erstellen/Beitreten) mit Icon +
+    Gradient + Neon-Glow. Spieler-HUD-Panels auf Glassmorphism mit Spielerfarben
+    (P1 Blau, P2 Rot, P3 Grün).
+  - Canvas: Wandfarben an Neon-Palette angeglichen, Terrain kühler/cinematischer,
+    Fluss mit Cyan-Glow. Phasen-Banner zeigt großes Icon statt Emoji.
+  - Emoji-Präfixe aus i18n-Strings entfernt (Tipps, Warnungen, Buttons).
+    Saubere Glyphen (✕ ← ✓ ♔♚♜) bleiben erhalten.
+  - Test: alle 87 Checks grün (Button-Texte unverändert → keine Test-Brüche).
+- **v3.8.1**: Kanonen-HP von 10 auf 15 erhöht.
+  - `CANNON_HP = 15` — eine Kanone hält jetzt 15 direkte Treffer aus, bevor
+    sie zerstört wird (vorher 10). HP-Balken skaliert automatisch.
+- **v3.9.0**: Canvas-Grafik-Overhaul — moderne Neon-Spielfeld-Optik.
+  - **Terrain**: tiefer Navy/Teal-Untergrund mit Lichtfeld von oben, Tech-Punktraster,
+    leuchtende Cyan-Flüsse (Glow + Uferschimmer), kristalline Berge mit Neon-Kantenlicht,
+    kühle Ambient-Partikel, stärkere Vignette (vorher Gras-Grün).
+  - **Mauern** (`drawWall`): schlanke beveled Neon-Tech-Blöcke — Glas-Gradient,
+    durchgehende Neon-Oberkante, Glanz-Highlight, Tiefen-Fase (vorher Backstein-Mörtel).
+  - **Kanonen** (`drawCannonFull`): Gunmetal-Geschütztürme mit Neon-Ring um die Basis,
+    glühende Mündung, Energiekern, pulsierender Ready-Glow, Neon-Wimpel (vorher flacher Kreis).
+  - **Festung** (`drawCastle`): schlanker dunkler Keep mit Neon-Dächern/Zinnen,
+    leuchtendem Wappen-Kern (Krone) und Neon-Tor (vorher Cartoon-Stein).
+  - **Schutt** (`drawRubble`): gebrochene Splitter mit glimmender Glut.
+  - **Geschosse**: leuchtende Energie-Orbs in Spielerfarbe (Blau/Rot/Grün) mit Glow.
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.9.1**: Fantasy-Avatar-System — 12 individuelle SVG-Charaktere ersetzen Emojis.
+  - `WAPPEN_SVG`: Objekt mit 12 einzigartigen Charakteren als inline-SVG (40×40 viewBox):
+    `vampir` (Vampirlord), `pestdoc` (Pestdoktor), `eismagie` (Eismagierin),
+    `schatten` (Schattenjäger), `sternmage` (Sternenzauberer), `golem` (Eisengolem),
+    `seehexe` (Seehexe), `feuergeist` (Feuergeist), `totenmage` (Totenmagier),
+    `sturmreiter` (Sturmreiter), `golddrache` (Golddrache), `phoenix` (Phönix).
+  - `WAPPEN = Object.keys(WAPPEN_SVG)` — Array der IDs (strings, rückwärtskompatibel).
+  - `WAPPEN_SRC`: precomputed data-URIs (`data:image/svg+xml,...`) für alle 12 Avatare.
+  - `WappenAvatar({ id, size })`: React-Komponente, rendert Avatar als `<img>` mit data-URI.
+    Fallback auf `vampir` wenn ID unbekannt (Rückwärtskompatibilität mit alten Profilen).
+  - Render-Stellen aktualisiert: Profilkarte, Profil-Editor-Buttons, Rangliste,
+    P1/P2/P3-Anzeigetafel im Spiel — alle nutzen jetzt `WappenAvatar`.
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.10.0**: XP- und Level-System eingeführt.
+  - **XP-Gewinn** (nur Online-Spiele): Niederlage +10 XP, Sieg +25 XP Basis.
+    ELO-Bonus bei Sieg: +0–5 XP (schwächerer Gegner), +10 XP (gleich stark),
+    +15–20 XP (stärkerer Gegner, ab +100 ELO-Differenz). Max. +20 Bonus.
+  - **Level-Formel**: XP bis nächstes Level = 100 + (Level × 25).
+    Level 1→2: 125 XP, Level 5→6: 225 XP, Level 10→11: 350 XP.
+    Unbegrenzte Level; Start: Level 1, 0 XP.
+  - **Neue Hilfsfunktionen**: `xpToNextLevel(level)`, `computeXpGain(won, myElo, opponentElos)`,
+    `applyXpGain(prof, xpGained)` → gibt `{level, xp, levelsGained}`.
+  - **Profil-Erweiterung**: `level`, `xp`, `unlockedRewards` in localStorage + Firebase.
+    `unlockedRewards: []` als Basis-Architektur für spätere freischaltbare Inhalte.
+  - **`xpChangeRef`**: neuer Ref (analog `eloChangeRef`/`goldChangeRef`).
+    Inhalt: `{ oldLevel, newLevel, oldXp, newXp, xpGained, levelsGained }`.
+  - **UI-Komponenten**:
+    - `XpBarUI({ level, xp })`: statische XP-Leiste (violett→cyan Gradient, 5px Höhe)
+      — in Profilkarte unterhalb Gold-Anzeige.
+    - `XpResultAnim({ xpChange })`: animierter XP-Reward-Screen auf Ergebnis-Bildschirm
+      — XP-Zahl hochzählen (easeOutCubic, bis 2,2s), Leiste füllt sich, Glow-Animation.
+      Bei Level-Up: "★ LEVEL UP! ★" Badge mit `lvlUpFlash`-Animation (0,55s spring).
+  - **CSS-Keyframes**: `lvlUpFlash`, `xpBarGlow`, `xpNumPop`.
+  - **Ergebnis-Bildschirm**: XpResultAnim erscheint nach Gold-Block (nur Online, wenn xpChangeRef gesetzt).
+  - Spielmechanik unverändert; alle 87 Tests grün.
