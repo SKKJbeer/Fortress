@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.22)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.23)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1107,3 +1107,7 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Bedingung**: Bauphase, ≤5 Sek., eigene Burg (online) bzw. irgendeine Burg (lokal) noch nicht geschlossen
 - **Endet sofort** wenn Burg geschlossen wird (reaktiv auf Grid-Änderungen via getFloodCache)
 - HUD-Text-Warnung aus v3.11.21 entfernt (Canvas-Glow reicht)
+
+### v3.11.23 — Timing-Anpassungen
+- **Burg-Warnung**: Schwellwert von 5 auf 8 Sekunden erhöht (mehr Vorwarnzeit)
+- **Schussrunde**: `SHOOT_TIME` von 30 auf 25 Sekunden reduziert (strafferes Gameplay)
