@@ -997,9 +997,9 @@ async function suiteProgression(browser) {
     // ── XP-Leiste im Menü ─────────────────────────────────────
     const xpOk = await page.evaluate(() => {
       const t = document.body.innerText;
-      return /LVL\s*\d/.test(t) && /XP/.test(t);
+      return /\d+\s*\/\s*\d+\s*XP/.test(t);
     });
-    xpOk ? ok('XP-Leiste (LVL + XP) im Menü ✓') : fail('XP-Leiste nicht gefunden');
+    xpOk ? ok('XP-Leiste (X / Y XP) im Menü ✓') : fail('XP-Leiste nicht gefunden');
 
     // ── Win-Rate-Anzeige (%) ──────────────────────────────────
     const winRateOk = await page.evaluate(() => {

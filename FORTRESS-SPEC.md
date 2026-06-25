@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.12)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.13)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1041,3 +1041,7 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Fix**: Einmalige retroaktive XP-Migration in `loadProfile()`: bei `level===1`, `xp===0`, `games>0` und fehlendem `historicalXpApplied`-Flag wird geschätztes XP berechnet (30 XP pro Sieg, 10 XP pro Niederlage für 2-Spieler + 3-Spieler-Spiele) und via `applyXpGain()` angewendet (inkl. Level-Ups)
 - **Persistenz**: `historicalXpApplied: true` wird in `fortress_profile` gespeichert — Migration läuft nur einmal
 - **saveProfileEditor**: `historicalXpApplied`-Flag wird beim Speichern des Profil-Editors erhalten
+
+### v3.11.13 — XP-Leiste: "LVL X"-Label entfernt
+- **Bug**: Im Hauptmenü stand neben dem LevelBadge ("L1") zusätzlich "LVL 1" im XpBarUI — wirkte wie zwei Zahlen nebeneinander ("1 ... 98")
+- **Fix**: "LVL X"-Label aus `XpBarUI` entfernt; nur noch "X / Y XP" rechts angezeigt — LevelBadge zeigt das Level bereits
