@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.9)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1013,3 +1013,11 @@ und beschiessen danach gegenseitig ihre Festungen.
   - `blitz`: Dunklerer Hintergrundschein, zusätzliche Entladungslinien
   - `trojanischespferd`: Verbesserte Pferdeaugen, Nasenlöcher-Details
   - `phoenix`: Flügelstruktur und Federn überarbeitet
+
+### v3.11.9 — Avatar-Icons aus Referenzbild extrahiert (verbessert)
+- **9 Icons** aus neuer Referenzdatei (bereinigtes UI-Mockup) extrahiert: saubere Kreise ohne Label-Text, korrekte Zentrierung mit Neon-Glow-Ring
+  - `skelett`, `waldhueter`, `eismagier`, `roboter`, `hexerin`, `kanone`, `frankenstein`, `feuerschaedel`, `phoenix`
+- **3 Icons** aus originaler Referenzdatei extrahiert (nicht im neuen Bild enthalten):
+  - `pestdoktor`, `blitz`, `trojanischespferd` — `cy=360`, `R=82`, kein Label-Text-Überlapp
+- **WAPPEN_SRC** komplett aktualisiert: alle 12 PNG-Data-URIs aus echten Referenzbildern (keine SVG-Nachbauten mehr)
+- Alle Icons 96×96px RGBA PNG mit Kreismaske, LANCZOS-Resampling
