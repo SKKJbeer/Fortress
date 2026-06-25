@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.15</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.16</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -395,6 +395,107 @@ const PHASE_BANNERS = {
   shoot:  { emoji: "\u{1F4A5}", title: "FEUER FREI!", sub: "Zieh von deiner Kanone weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
   cannon: { emoji: "\u{1F3AF}", title: "NEUE KANONE", sub: "Tippe auf eine freie 3\xD73-Fl\xE4che",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
 };
+// ── Game Event Bus ─────────────────────────────────────────────
+const createEventBus = () => {
+  const _listeners = {};
+  return {
+    on(event, cb) { if (!_listeners[event]) _listeners[event] = []; _listeners[event].push(cb); },
+    off(event, cb) { if (_listeners[event]) _listeners[event] = _listeners[event].filter(f => f !== cb); },
+    emit(event, data) { (_listeners[event] || []).forEach(cb => { try { cb(data); } catch(e) {} }); }
+  };
+};
+const GameEventBus = createEventBus();
+const GAME_EVENTS = {
+  GAME_PLAYED: 'GAME_PLAYED',
+  GAME_WON: 'GAME_WON',
+  BLOCK_DESTROYED: 'BLOCK_DESTROYED',
+  GOLD_EARNED: 'GOLD_EARNED',
+  ELO_CHANGED: 'ELO_CHANGED',
+  WIN_STREAK_CHANGED: 'WIN_STREAK_CHANGED'
+};
+const ACHIEVEMENTS = [
+  // Siege
+  { id:'first_win',  title:'Erste Festung zerstört', desc:'Gewinne dein erstes Online-Spiel',       icon:'⚔️',  cat:'siege',       target:1,     xp:50,   gold:25,  hidden:false },
+  { id:'wins_10',    title:'10 Siege',                desc:'Gewinne 10 Online-Spiele',               icon:'🏆',  cat:'siege',       target:10,    xp:100,  gold:50,  hidden:false },
+  { id:'wins_50',    title:'50 Siege',                desc:'Gewinne 50 Online-Spiele',               icon:'👑',  cat:'siege',       target:50,    xp:300,  gold:150, hidden:false },
+  { id:'wins_100',   title:'100 Siege',               desc:'Gewinne 100 Online-Spiele',              icon:'🌟',  cat:'siege',       target:100,   xp:500,  gold:300, hidden:false },
+  // Spiele
+  { id:'first_game', title:'Erstes Spiel',            desc:'Spiele dein erstes Online-Spiel',        icon:'🎮',  cat:'spiele',      target:1,     xp:30,   gold:20,  hidden:false },
+  { id:'games_25',   title:'25 Spiele',               desc:'Spiele 25 Online-Spiele',                icon:'🎯',  cat:'spiele',      target:25,    xp:100,  gold:50,  hidden:false },
+  { id:'games_100',  title:'100 Spiele',              desc:'Spiele 100 Online-Spiele',               icon:'🎖️', cat:'spiele',      target:100,   xp:250,  gold:125, hidden:false },
+  { id:'games_500',  title:'500 Spiele',              desc:'Spiele 500 Online-Spiele',               icon:'🏅',  cat:'spiele',      target:500,   xp:1000, gold:500, hidden:false },
+  // Zerstörung
+  { id:'blocks_100',  title:'100 Blöcke',    desc:'Zerstöre 100 feindliche Blöcke',  icon:'💥', cat:'zerstoerung', target:100,  xp:75,  gold:40,  hidden:false },
+  { id:'blocks_1000', title:'1000 Blöcke',   desc:'Zerstöre 1000 feindliche Blöcke', icon:'💣', cat:'zerstoerung', target:1000, xp:200, gold:100, hidden:false },
+  { id:'blocks_5000', title:'5000 Blöcke',   desc:'Zerstöre 5000 feindliche Blöcke', icon:'☢️', cat:'zerstoerung', target:5000, xp:600, gold:300, hidden:false },
+  // Gold
+  { id:'gold_500',   title:'500 Gold',   desc:'Verdiene insgesamt 500 Gold',   icon:'💰', cat:'gold', target:500,   xp:80,  gold:0, hidden:false },
+  { id:'gold_2000',  title:'2000 Gold',  desc:'Verdiene insgesamt 2000 Gold',  icon:'💎', cat:'gold', target:2000,  xp:200, gold:0, hidden:false },
+  { id:'gold_10000', title:'10000 Gold', desc:'Verdiene insgesamt 10000 Gold', icon:'👑', cat:'gold', target:10000, xp:750, gold:0, hidden:false },
+  // ELO
+  { id:'elo_1000', title:'1000 ELO', desc:'Erreiche 1000 ELO',  icon:'📊', cat:'elo', target:1000, xp:50,  gold:25,  hidden:false },
+  { id:'elo_1200', title:'1200 ELO', desc:'Erreiche 1200 ELO',  icon:'📈', cat:'elo', target:1200, xp:150, gold:75,  hidden:false },
+  { id:'elo_1400', title:'1400 ELO', desc:'Erreiche 1400 ELO',  icon:'🚀', cat:'elo', target:1400, xp:400, gold:200, hidden:false },
+  // Serien
+  { id:'streak_3',  title:'3 Siege in Folge',  desc:'Gewinne 3 Spiele in Folge',  icon:'🔥', cat:'serien', target:3,  xp:100, gold:50,  hidden:false },
+  { id:'streak_5',  title:'5 Siege in Folge',  desc:'Gewinne 5 Spiele in Folge',  icon:'⚡', cat:'serien', target:5,  xp:200, gold:100, hidden:false },
+  { id:'streak_10', title:'10 Siege in Folge', desc:'Gewinne 10 Spiele in Folge', icon:'🌠', cat:'serien', target:10, xp:500, gold:250, hidden:false },
+];
+// Takes profile AFTER stats/ELO/gold have been updated.
+// events: array of { type, ...data }
+// Returns { achievements, newlyUnlocked, xpGained, goldGained }
+function processAchievementEvents(profile, events) {
+  let achs = Array.isArray(profile.achievements) ? profile.achievements.map(a => ({...a})) : [];
+  let xpGained = 0, goldGained = 0;
+  const newlyUnlocked = [];
+
+  for (const evt of events) {
+    for (const def of ACHIEVEMENTS) {
+      const existing = achs.find(a => a.id === def.id);
+      if (existing && existing.unlocked) continue;
+      const curProgress = existing ? existing.progress : 0;
+      let newProgress = curProgress;
+
+      if (def.cat === 'siege' && evt.type === GAME_EVENTS.GAME_WON) {
+        newProgress = (profile.stats && profile.stats.wins || 0) + (profile.stats3 && profile.stats3.wins || 0);
+      } else if (def.cat === 'spiele' && evt.type === GAME_EVENTS.GAME_PLAYED) {
+        newProgress = (profile.stats && profile.stats.games || 0) + (profile.stats3 && profile.stats3.games || 0);
+      } else if (def.cat === 'zerstoerung' && evt.type === GAME_EVENTS.BLOCK_DESTROYED) {
+        newProgress = typeof profile.blocksDestroyed === 'number' ? profile.blocksDestroyed : 0;
+      } else if (def.cat === 'gold' && evt.type === GAME_EVENTS.GOLD_EARNED) {
+        newProgress = typeof profile.lifetimeGold === 'number' ? profile.lifetimeGold : 0;
+      } else if (def.cat === 'elo' && evt.type === GAME_EVENTS.ELO_CHANGED) {
+        newProgress = Math.max(
+          typeof profile.elo === 'number' ? profile.elo : 0,
+          typeof profile.elo3 === 'number' ? profile.elo3 : 0
+        );
+      } else if (def.cat === 'serien' && evt.type === GAME_EVENTS.WIN_STREAK_CHANGED) {
+        newProgress = typeof profile.winStreak === 'number' ? profile.winStreak : 0;
+      } else {
+        continue;
+      }
+
+      if (newProgress === curProgress && newProgress < def.target) continue;
+
+      const justUnlocked = newProgress >= def.target && !existing?.unlocked;
+      const entry = {
+        id: def.id,
+        progress: Math.min(newProgress, def.target),
+        unlocked: newProgress >= def.target,
+        unlockedAt: justUnlocked ? Date.now() : (existing?.unlockedAt || null)
+      };
+      const idx = achs.findIndex(a => a.id === def.id);
+      if (idx >= 0) achs[idx] = entry; else achs.push(entry);
+
+      if (justUnlocked) {
+        newlyUnlocked.push(def);
+        xpGained += def.xp;
+        goldGained += def.gold;
+      }
+    }
+  }
+  return { achievements: achs, newlyUnlocked, xpGained, goldGained };
+}
 const CANNON_HP = 15;
 const RELOAD_MS = 2500;
 const GRAV = 0.07;
@@ -1364,6 +1465,33 @@ window.FortressApp = function Fortress() {
     if (level >= 10) return { name: "gold",   label: "GOLD",     color: "#fbbf24", glow: "rgba(251,191,36,0.7)", border: "#ca8a04" };
     return              { name: "silver",  label: "SILBER",   color: "#94a3b8", glow: "rgba(148,163,184,0.5)", border: "#64748b" };
   }
+  function AchievementPopup({ item, onDone }) {
+    const [vis, setVis] = React.useState(false);
+    React.useEffect(() => {
+      const t1 = setTimeout(() => setVis(true), 50);
+      const t2 = setTimeout(() => setVis(false), 3200);
+      const t3 = setTimeout(() => onDone(), 3700);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }, []);
+    return React.createElement("div", { style: {
+      position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+      zIndex: 9999, pointerEvents: "none", textAlign: "center",
+      opacity: vis ? 1 : 0, transition: "opacity 0.4s ease",
+      background: "linear-gradient(135deg,rgba(124,58,237,0.97),rgba(2,132,199,0.97))",
+      border: "1px solid rgba(255,255,255,0.25)",
+      borderRadius: 16, padding: "12px 20px", minWidth: 240, maxWidth: 300,
+      boxShadow: "0 0 40px rgba(124,58,237,0.7),0 8px 32px rgba(0,0,0,0.6)",
+      backdropFilter: "blur(20px)"
+    } },
+      React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.12em", marginBottom: 4 } }, "🏆 ACHIEVEMENT"),
+      React.createElement("div", { style: { fontSize: 22, marginBottom: 4 } }, item.icon),
+      React.createElement("div", { style: { fontSize: 14, fontWeight: 900, color: "#fff", marginBottom: 6 } }, item.title),
+      React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "center" } },
+        item.xp > 0 && React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#a78bfa", background: "rgba(167,139,250,0.18)", padding: "2px 8px", borderRadius: 8 } }, "+" + item.xp + " XP"),
+        item.gold > 0 && React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#fbbf24", background: "rgba(251,191,36,0.18)", padding: "2px 8px", borderRadius: 8 } }, "+" + item.gold + " Gold")
+      )
+    );
+  }
   function LevelBadge({ level, size }) {
     const tier = getLevelTier(level);
     const isLg = size === "lg";
@@ -1604,7 +1732,10 @@ window.FortressApp = function Fortress() {
           achievements: Array.isArray(p.achievements) ? p.achievements : [],
           dailyTasks: Array.isArray(p.dailyTasks) ? p.dailyTasks : [],
           seasonXp: typeof p.seasonXp === "number" ? p.seasonXp : 0,
-          historicalXpApplied: p.historicalXpApplied === true
+          historicalXpApplied: p.historicalXpApplied === true,
+          winStreak: typeof p.winStreak === 'number' ? p.winStreak : 0,
+          blocksDestroyed: typeof p.blocksDestroyed === 'number' ? p.blocksDestroyed : 0,
+          lifetimeGold: typeof p.lifetimeGold === 'number' ? p.lifetimeGold : (typeof p.gold === 'number' ? Math.max(0, p.gold - 100) : 0)
         };
         if (!p.historicalXpApplied && prof.level === 1 && prof.xp === 0 && (prof.stats.games > 0 || prof.stats3.games > 0)) {
           const histXp = (prof.stats.wins || 0) * 30 + (prof.stats.losses || 0) * 10 + (prof.stats3.wins || 0) * 30 + (prof.stats3.losses || 0) * 10;
@@ -1628,7 +1759,9 @@ window.FortressApp = function Fortress() {
     }
     return null;
   }
+  const profileRef = React.useRef(null); // always holds latest profile
   const [profile, setProfile] = useState(() => loadProfile());
+  profileRef.current = profile;
   function saveProfile(p) {
     try {
       localStorage.setItem("fortress_profile", JSON.stringify(p));
@@ -1697,13 +1830,44 @@ window.FortressApp = function Fortress() {
     const xpGained = computeXpGain(won === true, myElo, opponents);
     const { level: newLevel, xp: newXp, levelsGained } = applyXpGain(profile, xpGained);
     xpChangeRef.current = { oldLevel: typeof profile.level === "number" ? profile.level : 1, newLevel, oldXp: typeof profile.xp === "number" ? profile.xp : 0, newXp, xpGained, levelsGained };
-    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, [peakEloKey]: newPeakElo, gold: newGold, level: newLevel, xp: newXp });
-    saveProfile(updated);
-    pushLeaderboard(updated);
+    // Win streak
+    const prevStreak = typeof profile.winStreak === 'number' ? profile.winStreak : 0;
+    const newWinStreak = won === true ? prevStreak + 1 : 0;
+    // Lifetime gold
+    const prevLifetimeGold = typeof profile.lifetimeGold === 'number' ? profile.lifetimeGold : 0;
+    const newLifetimeGold = prevLifetimeGold + goldEarned;
+    // Blocks destroyed accumulated from game
+    const prevBlocks = typeof profile.blocksDestroyed === 'number' ? profile.blocksDestroyed : 0;
+    const newBlocks = prevBlocks + blocksDestroyedThisGameRef.current;
+    blocksDestroyedThisGameRef.current = 0;
+    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, [peakEloKey]: newPeakElo, gold: newGold, level: newLevel, xp: newXp, winStreak: newWinStreak, lifetimeGold: newLifetimeGold, blocksDestroyed: newBlocks });
+    // Process achievements
+    const achEvents = [
+      { type: GAME_EVENTS.GAME_PLAYED },
+      ...(won === true ? [{ type: GAME_EVENTS.GAME_WON }] : []),
+      ...(goldEarned > 0 ? [{ type: GAME_EVENTS.GOLD_EARNED }] : []),
+      { type: GAME_EVENTS.ELO_CHANGED },
+      { type: GAME_EVENTS.WIN_STREAK_CHANGED }
+    ];
+    const achResult = processAchievementEvents(updated, achEvents);
+    let finalProfile = __spreadProps(__spreadValues({}, updated), { achievements: achResult.achievements });
+    if (achResult.xpGained > 0 || achResult.goldGained > 0) {
+      const { level: aLvl, xp: aXp } = applyXpGain(finalProfile, achResult.xpGained);
+      finalProfile = __spreadProps(__spreadValues({}, finalProfile), { level: aLvl, xp: aXp, gold: finalProfile.gold + achResult.goldGained });
+    }
+    if (achResult.newlyUnlocked.length > 0) {
+      setAchievementQueue(function(prev) { return prev.concat(achResult.newlyUnlocked); });
+    }
+    // Emit to event bus for future QuestManager
+    GameEventBus.emit(GAME_EVENTS.GAME_PLAYED, { won: won, mode: mode });
+    saveProfile(finalProfile);
+    pushLeaderboard(finalProfile);
   }
   const [editName, setEditName] = useState("");
   const [editWappen, setEditWappen] = useState("\u2654");
   const [editColor, setEditColor] = useState("#2563eb");
+  const [achievementQueue, setAchievementQueue] = React.useState([]);
+  const blocksDestroyedThisGameRef = React.useRef(0);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   function openProfileEditor() {
@@ -1733,7 +1897,10 @@ window.FortressApp = function Fortress() {
       achievements: Array.isArray(profile == null ? void 0 : profile.achievements) ? profile.achievements : [],
       dailyTasks: Array.isArray(profile == null ? void 0 : profile.dailyTasks) ? profile.dailyTasks : [],
       seasonXp: typeof (profile == null ? void 0 : profile.seasonXp) === "number" ? profile.seasonXp : 0,
-      historicalXpApplied: !!(profile == null ? void 0 : profile.historicalXpApplied)
+      historicalXpApplied: !!(profile == null ? void 0 : profile.historicalXpApplied),
+      winStreak: typeof (profile == null ? void 0 : profile.winStreak) === 'number' ? profile.winStreak : 0,
+      blocksDestroyed: typeof (profile == null ? void 0 : profile.blocksDestroyed) === 'number' ? profile.blocksDestroyed : 0,
+      lifetimeGold: typeof (profile == null ? void 0 : profile.lifetimeGold) === 'number' ? profile.lifetimeGold : 0
     };
     saveProfile(p);
     setShowProfileEditor(false);
@@ -2880,6 +3047,7 @@ window.FortressApp = function Fortress() {
     online.current = true;
     lastSeenPhase.current = null;
     statRecorded.current = false;
+    blocksDestroyedThisGameRef.current = 0;
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -3294,6 +3462,9 @@ window.FortressApp = function Fortress() {
     const castleClosedBefore = isCastleClosed(g, ep, castles.current[ep]);
     const newG = g.map((row) => [...row]);
     if (target === enemyWall) newG[hitR][hitC] = RUBBLE;
+    if (target === enemyWall && ball.owner === myRole.current) {
+      blocksDestroyedThisGameRef.current = (blocksDestroyedThisGameRef.current || 0) + 1;
+    }
     setGrid(newG);
     const castleClosedAfter = isCastleClosed(newG, ep, castles.current[ep]);
     if (castleClosedBefore && !castleClosedAfter && !warnedOpen.current[ep]) {
@@ -4278,7 +4449,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.15")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.16")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -4440,6 +4611,49 @@ window.FortressApp = function Fortress() {
       );
     })()
   ),
+  /* ══ ACHIEVEMENTS ══ */
+  /* @__PURE__ */ React.createElement("div", { style: {
+    background: "rgba(255,255,255,0.025)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 16, padding: "10px 12px", marginBottom: 12
+  } },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
+      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, "🏆 ACHIEVEMENTS"),
+      React.createElement("span", { style: { fontSize: 10, background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } },
+        (() => {
+          const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : [];
+          const unlocked = achs.filter(a => a.unlocked).length;
+          return unlocked + "/" + ACHIEVEMENTS.length;
+        })()
+      )
+    ),
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 } },
+      ACHIEVEMENTS.map((def) => {
+        const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : [];
+        const entry = achs.find(a => a.id === def.id);
+        const unlocked = entry && entry.unlocked;
+        const progress = entry ? entry.progress : 0;
+        const pct = Math.min(100, Math.round(progress / def.target * 100));
+        const isHidden = def.hidden && !unlocked;
+        return React.createElement("div", { key: def.id, style: {
+          background: unlocked ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)",
+          border: unlocked ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.05)",
+          borderRadius: 10, padding: "6px 4px",
+          textAlign: "center", opacity: unlocked ? 1 : 0.55,
+          transition: "all 0.2s"
+        }, title: isHidden ? "Geheimes Achievement" : def.desc },
+          React.createElement("div", { style: { fontSize: 18, marginBottom: 2 } }, isHidden ? "❓" : def.icon),
+          React.createElement("div", { style: { fontSize: 8, fontWeight: 700, color: unlocked ? "#a78bfa" : "#475569", lineHeight: 1.2, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+            isHidden ? "???" : def.title
+          ),
+          !unlocked && React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" } },
+            React.createElement("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg,#7c3aed,#22d3ee)", borderRadius: 2 } })
+          ),
+          unlocked && React.createElement("div", { style: { fontSize: 8, color: "#22d3ee" } }, "✓ Erhalten")
+        );
+      })
+    )
+  ),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
     width: "100%",
     background: "linear-gradient(135deg,#7c3aed,#0284c7)",
@@ -4534,6 +4748,10 @@ window.FortressApp = function Fortress() {
     onCollect: handleDailyCollect,
     onClose: () => setShowDailyModal(false),
     collected: dailyCollected
+  }), achievementQueue.length > 0 && React.createElement(AchievementPopup, {
+    key: achievementQueue[0].id + "_popup",
+    item: achievementQueue[0],
+    onDone: () => setAchievementQueue(function(prev) { return prev.slice(1); })
   }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,

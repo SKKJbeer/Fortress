@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.15)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.16)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1052,3 +1052,17 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.15 — Profil-Editor: Farbauswahl entfernt, Layout kompakter
 - **Farbauswahl entfernt**: Karte "🎨 FARBE" komplett entfernt — Avatar gibt visuelle Unterscheidung
 - **Kompakter**: Avatar im Header 96→72px, Avatare in Galerie 64→52px, Abstände reduziert — Editor passt auf einen Screen ohne Scrollen
+
+### v3.11.16 — Achievement-System implementiert
+- **GameEventBus**: Leichtgewichtiger In-App-Event-Bus (`createEventBus`) für lose Kopplung zwischen Spiellogik und Progressionssystem
+- **GAME_EVENTS**: Konstanten für `GAME_PLAYED`, `GAME_WON`, `BLOCK_DESTROYED`, `GOLD_EARNED`, `ELO_CHANGED`, `WIN_STREAK_CHANGED`
+- **ACHIEVEMENTS**: 20 Achievements in 6 Kategorien (Siege, Spiele, Zerstörung, Gold, ELO, Serien) mit XP- und Gold-Belohnungen
+- **processAchievementEvents()**: Pure-Funktion nimmt aktualisiertes Profil + Event-Array, gibt neue Achievement-Liste + neu freigeschaltete Achievements + XP/Gold-Gewinne zurück
+- **recordResult()**: Integration des Achievement-Systems — nach jedem Online-Spiel werden passende Events ausgelöst, Achievements verarbeitet, XP/Gold für neue Achievements vergeben
+- **Blockverfolgung**: `blocksDestroyedThisGameRef` zählt zerstörte feindliche Blöcke pro Spiel (in `impactAt()`), summiert in `recordResult()` zu `profile.blocksDestroyed`
+- **Win-Streak**: `profile.winStreak` wird bei Sieg erhöht, bei Niederlage auf 0 gesetzt
+- **Lifetime-Gold**: `profile.lifetimeGold` akkumuliert über alle Spiele (für Gold-Achievements)
+- **AchievementPopup**: Floating Toast am unteren Bildschirmrand (3,7s Anzeigedauer, Fade-In/Out) — zeigt Icon, Titel, XP- und Gold-Gewinn
+- **Achievement-Queue**: `achievementQueue`-State verhindert überlappende Popups — Achievements werden nacheinander angezeigt
+- **Profil-Editor**: Achievement-Grid (4 Spalten) im Profil-Editor mit Fortschrittsbalken für gesperrte und ✓-Badge für freigeschaltete Achievements
+- **Neue Profilfelder**: `winStreak`, `blocksDestroyed`, `lifetimeGold` in `loadProfile()` und `saveProfileEditor()` persistent
