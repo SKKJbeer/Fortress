@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.16)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.17)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1066,3 +1066,12 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Achievement-Queue**: `achievementQueue`-State verhindert überlappende Popups — Achievements werden nacheinander angezeigt
 - **Profil-Editor**: Achievement-Grid (4 Spalten) im Profil-Editor mit Fortschrittsbalken für gesperrte und ✓-Badge für freigeschaltete Achievements
 - **Neue Profilfelder**: `winStreak`, `blocksDestroyed`, `lifetimeGold` in `loadProfile()` und `saveProfileEditor()` persistent
+
+### v3.11.17 — Achievements als eigenes Menü
+- **Eigener Achievement-Button**: Neuer Trophäen-Button (🏆) direkt unter dem Profil-Bearbeiten-Button im Profilbereich des Hauptmenüs
+- **Badge-Counter**: Zeigt Anzahl freigeschalteter Achievements als goldenes Badge auf dem Trophäen-Button; Button wird golden hervorgehoben wenn Achievements vorhanden
+- **AchievementsModal**: Vollbild-Overlay mit allen 20 Achievements, gegliedert nach 6 Kategorien (Siege/Spiele/Zerstörung/Gold/ELO/Serien)
+- **Belohnungsanzeige**: Jedes Achievement zeigt explizit die Belohnung (+XP und/oder +Gold) als farbige Chips (lila für XP, gold für Gold)
+- **Fortschrittsbalken**: Für noch nicht freigeschaltete Achievements: Fortschrittsbalken mit X/Ziel-Anzeige und Prozentangabe
+- **Kategorie-Farbcodierung**: Jede Kategorie hat eine eigene Akzentfarbe (rot/blau/orange/gold/lila/grün)
+- **Profil-Editor bereinigt**: Achievement-Grid aus dem Profil-Editor entfernt (jetzt dediziertes Modal)

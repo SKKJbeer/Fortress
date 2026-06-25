@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.16</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.17</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1465,6 +1465,111 @@ window.FortressApp = function Fortress() {
     if (level >= 10) return { name: "gold",   label: "GOLD",     color: "#fbbf24", glow: "rgba(251,191,36,0.7)", border: "#ca8a04" };
     return              { name: "silver",  label: "SILBER",   color: "#94a3b8", glow: "rgba(148,163,184,0.5)", border: "#64748b" };
   }
+  function AchievementsModal({ profile: prof, onClose }) {
+    const achs = Array.isArray(prof && prof.achievements) ? prof.achievements : [];
+    const unlockedCount = achs.filter(a => a.unlocked).length;
+    const cats = [
+      { key: 'siege',       label: '⚔️ Siege',       color: '#f87171' },
+      { key: 'spiele',      label: '🎮 Spiele',       color: '#60a5fa' },
+      { key: 'zerstoerung', label: '💥 Zerstörung',   color: '#fb923c' },
+      { key: 'gold',        label: '💰 Gold',          color: '#fbbf24' },
+      { key: 'elo',         label: '📊 ELO',           color: '#a78bfa' },
+      { key: 'serien',      label: '🔥 Serien',        color: '#34d399' },
+    ];
+    return React.createElement("div", { style: {
+      position: "fixed", inset: 0, zIndex: 3000,
+      background: "rgba(2,6,15,0.85)", backdropFilter: "blur(18px)",
+      display: "flex", flexDirection: "column", alignItems: "center",
+      padding: "0 0 env(safe-area-inset-bottom,0)"
+    } },
+      React.createElement("div", { style: {
+        width: "100%", maxWidth: 480,
+        display: "flex", flexDirection: "column", height: "100%"
+      } },
+        React.createElement("div", { style: {
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "16px 18px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+          flexShrink: 0
+        } },
+          React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 18, fontWeight: 900, color: "#f1f5f9" } }, "🏆 Achievements"),
+            React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } },
+              unlockedCount + "/" + ACHIEVEMENTS.length + " freigeschaltet"
+            )
+          ),
+          React.createElement("button", { onClick: onClose, style: {
+            background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
+            color: "#94a3b8", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 13
+          } }, "✕")
+        ),
+        React.createElement("div", { style: { overflowY: "auto", flex: 1, padding: "12px 14px 20px" } },
+          cats.map(cat => {
+            const catAchs = ACHIEVEMENTS.filter(d => d.cat === cat.key);
+            return React.createElement("div", { key: cat.key, style: { marginBottom: 18 } },
+              React.createElement("div", { style: {
+                fontSize: 11, fontWeight: 800, color: cat.color, letterSpacing: "0.1em",
+                marginBottom: 8, paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.06)"
+              } }, cat.label),
+              catAchs.map(def => {
+                const entry = achs.find(a => a.id === def.id);
+                const unlocked = !!(entry && entry.unlocked);
+                const progress = entry ? entry.progress : 0;
+                const pct = Math.min(100, Math.round(progress / def.target * 100));
+                const isHidden = def.hidden && !unlocked;
+                return React.createElement("div", { key: def.id, style: {
+                  display: "flex", alignItems: "flex-start", gap: 12,
+                  background: unlocked ? "rgba(124,58,237,0.12)" : "rgba(255,255,255,0.03)",
+                  border: unlocked ? "1px solid rgba(124,58,237,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: 12, padding: "10px 12px", marginBottom: 8,
+                  opacity: unlocked ? 1 : 0.7
+                } },
+                  React.createElement("div", { style: {
+                    fontSize: 26, lineHeight: 1, flexShrink: 0, width: 36, textAlign: "center",
+                    filter: unlocked ? "none" : "grayscale(0.5)"
+                  } }, isHidden ? "❓" : def.icon),
+                  React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                    React.createElement("div", { style: {
+                      fontWeight: 800, fontSize: 13, color: unlocked ? "#e2e8f0" : "#94a3b8",
+                      marginBottom: 2
+                    } }, isHidden ? "???" : def.title),
+                    React.createElement("div", { style: { fontSize: 11, color: "#475569", marginBottom: 6 } },
+                      isHidden ? "Geheimes Achievement" : def.desc
+                    ),
+                    !unlocked && React.createElement("div", { style: { marginBottom: 6 } },
+                      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } },
+                        React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, progress + " / " + def.target),
+                        React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, pct + "%")
+                      ),
+                      React.createElement("div", { style: { height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" } },
+                        React.createElement("div", { style: {
+                          height: "100%", width: pct + "%",
+                          background: "linear-gradient(90deg," + cat.color + "99," + cat.color + ")",
+                          borderRadius: 2, transition: "width 0.4s ease"
+                        } })
+                      )
+                    ),
+                    unlocked && React.createElement("div", { style: { fontSize: 10, color: "#22d3ee", marginBottom: 6, fontWeight: 700 } }, "✓ Freigeschaltet"),
+                    React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
+                      def.xp > 0 && React.createElement("span", { style: {
+                        fontSize: 10, fontWeight: 700, color: "#a78bfa",
+                        background: "rgba(167,139,250,0.15)", padding: "2px 7px", borderRadius: 6,
+                        border: "1px solid rgba(167,139,250,0.25)"
+                      } }, "+" + def.xp + " XP"),
+                      def.gold > 0 && React.createElement("span", { style: {
+                        fontSize: 10, fontWeight: 700, color: "#fbbf24",
+                        background: "rgba(251,191,36,0.12)", padding: "2px 7px", borderRadius: 6,
+                        border: "1px solid rgba(251,191,36,0.25)"
+                      } }, "+" + def.gold + " Gold")
+                    )
+                  )
+                );
+              })
+            );
+          })
+        )
+      )
+    );
+  }
   function AchievementPopup({ item, onDone }) {
     const [vis, setVis] = React.useState(false);
     React.useEffect(() => {
@@ -1869,6 +1974,7 @@ window.FortressApp = function Fortress() {
   const [achievementQueue, setAchievementQueue] = React.useState([]);
   const blocksDestroyedThisGameRef = React.useRef(0);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   function openProfileEditor() {
     setEditName((profile == null ? void 0 : profile.name) || "");
@@ -4360,16 +4466,21 @@ window.FortressApp = function Fortress() {
     alignItems: "center",
     justifyContent: "center",
     boxShadow: `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
-  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 72 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    color: "#cbd5e1",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 13,
-    cursor: "pointer",
-    flexShrink: 0
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 }))), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
+  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 72 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
+    /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: "Profil bearbeiten", style: {
+      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+      color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
+    } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 })),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowAchievements(true), title: "Achievements", style: {
+      background: (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.08)"; })(),
+      border: (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.15)"; })(),
+      color: (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? "#fbbf24" : "#cbd5e1"; })(),
+      borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative"
+    } },
+      React.createElement(Icon, { name: "trophy", size: 16 }),
+      (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fbbf24", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, u) : null; })()
+    )
+  )), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
     ["crown", "#22d3ee", t('helpStartTitle'), t('helpStartDesc')],
     ["shield", "#4ade80", t('helpBuildTitle'), t('helpBuildDesc')],
     ["flame", "#f87171", t('helpShootTitle'), t('helpShootDesc')],
@@ -4449,7 +4560,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.16")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.17")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -4611,49 +4722,6 @@ window.FortressApp = function Fortress() {
       );
     })()
   ),
-  /* ══ ACHIEVEMENTS ══ */
-  /* @__PURE__ */ React.createElement("div", { style: {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 16, padding: "10px 12px", marginBottom: 12
-  } },
-    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, "🏆 ACHIEVEMENTS"),
-      React.createElement("span", { style: { fontSize: 10, background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } },
-        (() => {
-          const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : [];
-          const unlocked = achs.filter(a => a.unlocked).length;
-          return unlocked + "/" + ACHIEVEMENTS.length;
-        })()
-      )
-    ),
-    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 } },
-      ACHIEVEMENTS.map((def) => {
-        const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : [];
-        const entry = achs.find(a => a.id === def.id);
-        const unlocked = entry && entry.unlocked;
-        const progress = entry ? entry.progress : 0;
-        const pct = Math.min(100, Math.round(progress / def.target * 100));
-        const isHidden = def.hidden && !unlocked;
-        return React.createElement("div", { key: def.id, style: {
-          background: unlocked ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)",
-          border: unlocked ? "1px solid rgba(124,58,237,0.4)" : "1px solid rgba(255,255,255,0.05)",
-          borderRadius: 10, padding: "6px 4px",
-          textAlign: "center", opacity: unlocked ? 1 : 0.55,
-          transition: "all 0.2s"
-        }, title: isHidden ? "Geheimes Achievement" : def.desc },
-          React.createElement("div", { style: { fontSize: 18, marginBottom: 2 } }, isHidden ? "❓" : def.icon),
-          React.createElement("div", { style: { fontSize: 8, fontWeight: 700, color: unlocked ? "#a78bfa" : "#475569", lineHeight: 1.2, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
-            isHidden ? "???" : def.title
-          ),
-          !unlocked && React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" } },
-            React.createElement("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg,#7c3aed,#22d3ee)", borderRadius: 2 } })
-          ),
-          unlocked && React.createElement("div", { style: { fontSize: 8, color: "#22d3ee" } }, "✓ Erhalten")
-        );
-      })
-    )
-  ),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
     width: "100%",
     background: "linear-gradient(135deg,#7c3aed,#0284c7)",
@@ -4748,6 +4816,9 @@ window.FortressApp = function Fortress() {
     onCollect: handleDailyCollect,
     onClose: () => setShowDailyModal(false),
     collected: dailyCollected
+  }), showAchievements && React.createElement(AchievementsModal, {
+    profile: profile,
+    onClose: () => setShowAchievements(false)
   }), achievementQueue.length > 0 && React.createElement(AchievementPopup, {
     key: achievementQueue[0].id + "_popup",
     item: achievementQueue[0],
