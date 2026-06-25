@@ -1304,9 +1304,6 @@ window.FortressApp = function Fortress() {
   const playersList = () => numPlayersRef.current === 3 ? [1, 2, 3] : [1, 2];
   const [lang, setLang] = React.useState(() => localStorage.getItem('fortress_lang') || 'de');
   React.useEffect(() => { localStorage.setItem('fortress_lang', lang); }, [lang]);
-  const [showDailyModal, setShowDailyModal] = useState(false);
-  const [dailyCollectedState, setDailyCollectedState] = useState(false);
-  const [daily, setDaily] = useState(() => { try { return JSON.parse(localStorage.getItem('fortress_daily')) || {}; } catch { return {}; } });
   const t = (key, vars = {}) => {
     const str = (LANGS[lang] && LANGS[lang][key]) || (LANGS.de[key]) || key;
     return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? String(vars[k]) : '{' + k + '}');
@@ -1480,6 +1477,12 @@ window.FortressApp = function Fortress() {
   function msTillMidnight() {
     const n = new Date(); const m = new Date(n); m.setHours(24,0,0,0); return m - n;
   }
+  function loadDailyState() {
+    try { return JSON.parse(localStorage.getItem('fortress_daily')) || {}; } catch { return {}; }
+  }
+  function saveDailyState(d) {
+    try { localStorage.setItem('fortress_daily', JSON.stringify(d)); } catch (e) {}
+  }
   function getDailyCollectable(daily) {
     if (!daily || !daily.lastCollect) return true;
     const last = new Date(daily.lastCollect);
@@ -1612,18 +1615,6 @@ window.FortressApp = function Fortress() {
     } catch (e) {
     }
     setProfile(p);
-  }
-  function handleDailyCollect(reward) {
-    if (profile) {
-      const newGold = (typeof profile.gold === 'number' ? profile.gold : 100) + (reward.gold || 0);
-      saveProfile(Object.assign({}, profile, { gold: newGold }));
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    const newDaily = { lastCollect: Date.now(), streak: ((daily && daily.streak) || 0) + 1, lastStreakDay: today };
-    try { localStorage.setItem('fortress_daily', JSON.stringify(newDaily)); } catch (e) {}
-    setDaily(newDaily);
-    setDailyCollectedState(true);
-    setTimeout(() => { setShowDailyModal(false); setDailyCollectedState(false); }, 1400);
   }
   function eloDelta(current, opponent, score) {
     const expected = 1 / (1 + Math.pow(10, (opponent - current) / 400));
@@ -4216,7 +4207,7 @@ window.FortressApp = function Fortress() {
     padding: "12px",
     borderRadius: 12,
     backdropFilter: "blur(10px)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), getDailyCollectable(daily) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: "tages-belohnung", style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), showDailyModal && /* @__PURE__ */ React.createElement(DailyRewardModal, { daily: daily, onCollect: handleDailyCollect, onClose: () => setShowDailyModal(false), collected: dailyCollectedState }), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: "tages-belohnung", style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
