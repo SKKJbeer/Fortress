@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.17)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.18)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1075,3 +1075,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Fortschrittsbalken**: Für noch nicht freigeschaltete Achievements: Fortschrittsbalken mit X/Ziel-Anzeige und Prozentangabe
 - **Kategorie-Farbcodierung**: Jede Kategorie hat eine eigene Akzentfarbe (rot/blau/orange/gold/lila/grün)
 - **Profil-Editor bereinigt**: Achievement-Grid aus dem Profil-Editor entfernt (jetzt dediziertes Modal)
+
+### v3.11.18 — Rückwirkende Achievement-Freischaltung
+- **Retro-Migration beim Laden**: Beim ersten Öffnen nach Update werden alle Achievements einmalig rückwirkend geprüft und freigeschaltet, falls die aktuellen Profilwerte (Siege, Spiele, Gold, ELO, Blocks) die Bedingungen erfüllen
+- **Flag `achievementsRetroApplied`**: Verhindert wiederholtes Ausführen der Migration — läuft exakt einmal pro Profil
+- **XP+Gold für retro Achievements**: Bereits beim Laden werden XP und Gold für rückwirkend freigeschaltete Achievements gutgeschrieben
