@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.7</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -34,6 +34,11 @@
     @keyframes lvlUpFlash{0%{opacity:0;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}70%{transform:scale(0.96)}100%{opacity:1;transform:scale(1)}}
     @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}
     @keyframes xpNumPop{0%{opacity:0;transform:scale(0.7) translateY(6px)}60%{transform:scale(1.12) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+    @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+    @keyframes badgePop{0%{transform:scale(0.7);opacity:0.5}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+    @keyframes streakGlow{0%,100%{box-shadow:0 0 6px rgba(251,191,36,0.4)}50%{box-shadow:0 0 18px rgba(251,191,36,0.9)}}
+    @keyframes dailyBounceIn{0%{transform:scale(0.7) translateY(20px);opacity:0}60%{transform:scale(1.08) translateY(-4px)}100%{transform:scale(1) translateY(0);opacity:1}}
+    @keyframes collectBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
@@ -1117,6 +1122,14 @@ const LANGS = {
     shareCode: "Teile diesen Code mit deinem Mitspieler:",
     localTitle: "Lokal spielen",
     localSub: "Alle auf einem Ger\xE4t. Wie viele Spieler?",
+    lockedAt: "Ab Level {n}",
+    dailyTitle: "Tages-Belohnung",
+    dailyStreak: "{n} Tage Streak",
+    dailyCollect: "Abholen!",
+    dailyCollected: "✓ Abgeholt",
+    dailyNextIn: "N\xE4chste in {h}h {m}min",
+    dailyChest: "Bonus-Kiste!",
+    nextRewardAt: "N\xE4chster Avatar ab Level {n}",
   },
   en: {
     tagline: "2 PLAYERS \xB7 SIMULTANEOUS \xB7 ONE DEVICE",
@@ -1255,6 +1268,14 @@ const LANGS = {
     shareCode: "Share this code with your co-player:",
     localTitle: "Play Local",
     localSub: "All on one device. How many players?",
+    lockedAt: "From Level {n}",
+    dailyTitle: "Daily Reward",
+    dailyStreak: "{n} Day Streak",
+    dailyCollect: "Collect!",
+    dailyCollected: "✓ Collected",
+    dailyNextIn: "Next in {h}h {m}min",
+    dailyChest: "Bonus Chest!",
+    nextRewardAt: "Next avatar from Level {n}",
   }
 };
 window.FortressApp = function Fortress() {
@@ -1283,6 +1304,9 @@ window.FortressApp = function Fortress() {
   const playersList = () => numPlayersRef.current === 3 ? [1, 2, 3] : [1, 2];
   const [lang, setLang] = React.useState(() => localStorage.getItem('fortress_lang') || 'de');
   React.useEffect(() => { localStorage.setItem('fortress_lang', lang); }, [lang]);
+  const [showDailyModal, setShowDailyModal] = useState(false);
+  const [dailyCollectedState, setDailyCollectedState] = useState(false);
+  const [daily, setDaily] = useState(() => { try { return JSON.parse(localStorage.getItem('fortress_daily')) || {}; } catch { return {}; } });
   const t = (key, vars = {}) => {
     const str = (LANGS[lang] && LANGS[lang][key]) || (LANGS.de[key]) || key;
     return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? String(vars[k]) : '{' + k + '}');
@@ -1450,6 +1474,21 @@ window.FortressApp = function Fortress() {
       )
     );
   }
+  const DAILY_REWARDS = [
+    {gold:10},{gold:15},{gold:15},{gold:20},{gold:20},{gold:25},{gold:50,special:"chest"}
+  ];
+  function msTillMidnight() {
+    const n = new Date(); const m = new Date(n); m.setHours(24,0,0,0); return m - n;
+  }
+  function getDailyCollectable(daily) {
+    if (!daily || !daily.lastCollect) return true;
+    const last = new Date(daily.lastCollect);
+    const now = new Date();
+    return last.toDateString() !== now.toDateString();
+  }
+  function getDailyStreakIndex(daily) {
+    return Math.min(((daily && daily.streak) || 0) % 7, 6);
+  }
   function DailyRewardModal({ daily, onCollect, onClose, collected }) {
     const [collecting, setCollecting] = useState(false);
     const canCollect = getDailyCollectable(daily);
@@ -1568,6 +1607,18 @@ window.FortressApp = function Fortress() {
     } catch (e) {
     }
     setProfile(p);
+  }
+  function handleDailyCollect(reward) {
+    if (profile) {
+      const newGold = (typeof profile.gold === 'number' ? profile.gold : 100) + (reward.gold || 0);
+      saveProfile(Object.assign({}, profile, { gold: newGold }));
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const newDaily = { lastCollect: Date.now(), streak: ((daily && daily.streak) || 0) + 1, lastStreakDay: today };
+    try { localStorage.setItem('fortress_daily', JSON.stringify(newDaily)); } catch (e) {}
+    setDaily(newDaily);
+    setDailyCollectedState(true);
+    setTimeout(() => { setShowDailyModal(false); setDailyCollectedState(false); }, 1400);
   }
   function eloDelta(current, opponent, score) {
     const expected = 1 / (1 + Math.pow(10, (opponent - current) / 400));
@@ -4082,7 +4133,7 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 28 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 })), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 28 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.15)",
     color: "#cbd5e1",
@@ -4119,7 +4170,7 @@ window.FortressApp = function Fortress() {
     padding: "12px",
     borderRadius: 12,
     backdropFilter: "blur(10px)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), getDailyCollectable(daily) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: "tages-belohnung", style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), showDailyModal && /* @__PURE__ */ React.createElement(DailyRewardModal, { daily: daily, onCollect: handleDailyCollect, onClose: () => setShowDailyModal(false), collected: dailyCollectedState }), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -4171,7 +4222,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(5,8,15,0.94)",
     display: "flex",
     alignItems: "center",
