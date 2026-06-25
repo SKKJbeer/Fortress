@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.10)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.11)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1025,3 +1025,13 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.10 — Avatar-Anzeige vergrößert
 - **Hauptmenü Profilkarte**: Avatar von 28px → 72px, kreisförmig mit Neon-Glow (`box-shadow` in Spieler-Farbe), Hintergrundbox entfernt
 - **Profil-Editor Avatar-Picker**: Freie und gesperrte Icons von 48px → 64px
+
+### v3.11.11 — Profil-Editor Komplett-Redesign (Premium Mobile Game Style)
+- **Header-Karte**: Avatar 96px, Name-Input inline, LevelBadge groß, Tier-Label, XP-Fortschrittsbalken mit animiertem Glow
+- **Avatar-Galerie**: Glasmorphismus-Karte mit Sektion "AVATAR GALERIE" (freie Icons) und "GESPERRT" (gesperrte Icons)
+  - Ausgewählter Avatar: `scale(1.12)` + weiß-neon Doppel-Glow-Ring
+  - Gesperrte Avatare: gedimmt (opacity 0.35) + 🔒-Overlay mit Level-Anforderung ("L5", "L10" etc.)
+  - Nächster freischaltbarer Avatar: Motivations-Banner mit Wappen-Vorschau und Level-Abstand
+- **Farb-Picker**: Neon-Farbkugeln mit radialen Gradienten und Glow-Effekt bei Auswahl
+- **Buttons**: Speichern mit Neon-Lila→Cyan-Gradient, Abbrechen transparent mit gedämpftem Text
+- **Design**: Dunkles Glasmorphismus-Layout (wie Brawl Stars / Clash Royale), border-radius:16px Karten

@@ -1116,7 +1116,7 @@ async function suiteProgression(browser) {
     });
 
     await page.waitForTimeout(300);
-    const hasWappenLabel = await page.evaluate(() => /WAPPEN|AVATARE/i.test(document.body.innerText));
+    const hasWappenLabel = await page.evaluate(() => /WAPPEN|AVATAR/i.test(document.body.innerText));
     hasWappenLabel ? ok('Profil-Editor öffnet sich ✓') : fail('Profil-Editor öffnet sich nicht');
 
     if (hasWappenLabel) {
@@ -1170,8 +1170,8 @@ async function suiteProgression(browser) {
         const skelettSrcOk = !!(skelettImg && (skelettImg.getAttribute('src') || '').startsWith('data:image/'));
         // Sektions-Labels
         const divTexts = Array.from(document.querySelectorAll('div')).map(d => (d.textContent || '').trim());
-        const hasAktiv  = divTexts.includes('AKTIVE AVATARE');
-        const hasGesperrt = divTexts.includes('GESPERRTE AVATARE');
+        const hasAktiv  = divTexts.some(t => /AVATAR GALERIE/i.test(t));
+        const hasGesperrt = divTexts.some(t => /GESPERRT/i.test(t));
         return { count: imgs.length, circularCount, skelettSrcOk, hasAktiv, hasGesperrt };
       });
       avatarRender.count >= 4
@@ -1184,11 +1184,11 @@ async function suiteProgression(browser) {
         ? ok('Skelett-Avatar: data-URI korrekt geladen ✓')
         : fail('Skelett-Avatar: kein img-Element oder src fehlt');
       avatarRender.hasAktiv
-        ? ok('Profil-Editor: "AKTIVE AVATARE" Sektion vorhanden ✓')
-        : fail('Profil-Editor: "AKTIVE AVATARE" Label fehlt');
+        ? ok('Profil-Editor: "AVATAR GALERIE" Sektion vorhanden ✓')
+        : fail('Profil-Editor: "AVATAR GALERIE" Label fehlt');
       avatarRender.hasGesperrt
-        ? ok('Profil-Editor: "GESPERRTE AVATARE" Sektion vorhanden ✓')
-        : fail('Profil-Editor: "GESPERRTE AVATARE" Label fehlt');
+        ? ok('Profil-Editor: "GESPERRT" Sektion vorhanden ✓')
+        : fail('Profil-Editor: "GESPERRT" Label fehlt');
     }
 
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Progressionssystem: Keine JS-Fehler ✓');
