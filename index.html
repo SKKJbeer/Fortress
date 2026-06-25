@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.18</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.19</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3065,6 +3065,7 @@ window.FortressApp = function Fortress() {
     const cands = [];
     for (const [id, tk] of Object.entries(data)) {
       if (id === SESSION_ID || !tk) continue;
+      if (tk.pid && my.pid && tk.pid === my.pid) continue; // selber Spieler, anderer Tab/Session
       if (tk.status !== "waiting") continue;
       if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
         fb.delete(`${qn}/${id}`);
@@ -3136,6 +3137,7 @@ window.FortressApp = function Fortress() {
       wappen: (profile == null ? void 0 : profile.wappen) || "♔",
       color: (profile == null ? void 0 : profile.color) || "#2563eb",
       elo: myEloForMode(np),
+      pid: (profile == null ? void 0 : profile.id) || SESSION_ID,
       ts: now,
       hb: now,
       status: "waiting",
@@ -3155,6 +3157,18 @@ window.FortressApp = function Fortress() {
     mmPendingCandidates.current = {};
     if (mmCancelDisconnect.current) mmCancelDisconnect.current();
     mmCancelDisconnect.current = fb.onDisconnectRemove(`${qn}/${SESSION_ID}`);
+    // Alte eigene Tickets bereinigen (z.B. von einem anderen Tab oder nach Absturz)
+    const myPid = (profile == null ? void 0 : profile.id) || null;
+    if (myPid) {
+      const snap = await fb.get(qn);
+      if (snap) {
+        for (const [oldId, oldTk] of Object.entries(snap)) {
+          if (oldId !== SESSION_ID && oldTk && oldTk.pid === myPid) {
+            fb.delete(`${qn}/${oldId}`);
+          }
+        }
+      }
+    }
     setMmElapsed(0);
     setMpScreen("matchmaking");
     if (mmChannel.current) mmChannel.current.stop();
@@ -4584,7 +4598,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.18")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.19")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

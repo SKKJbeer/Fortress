@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.18)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.19)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1080,3 +1080,9 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Retro-Migration beim Laden**: Beim ersten Öffnen nach Update werden alle Achievements einmalig rückwirkend geprüft und freigeschaltet, falls die aktuellen Profilwerte (Siege, Spiele, Gold, ELO, Blocks) die Bedingungen erfüllen
 - **Flag `achievementsRetroApplied`**: Verhindert wiederholtes Ausführen der Migration — läuft exakt einmal pro Profil
 - **XP+Gold für retro Achievements**: Bereits beim Laden werden XP und Gold für rückwirkend freigeschaltete Achievements gutgeschrieben
+
+### v3.11.19 — Matchmaking Self-Match-Bug behoben
+- **Root Cause**: `SESSION_ID` ist pro Tab/Page-Load zufällig generiert — zwei Tabs des gleichen Spielers (oder ein nicht bereinigtes altes Ticket nach Absturz/Reload) hatten unterschiedliche `SESSION_ID`s aber identische Spieler-Identität; der bisherige Self-Filter (`id === SESSION_ID`) hat das nicht erkannt
+- **Fix 1**: `pid` (Spieler-Profil-ID aus `fortress_profile`) wird jetzt ins Matchmaking-Ticket geschrieben
+- **Fix 2**: In `mmTryFindMatch()` werden Kandidaten mit identischer `pid` gefiltert — verhindert Match mit eigenem alten Tab/Session
+- **Fix 3**: Beim Start von Matchmaking werden alle eigenen alten Queue-Einträge (gleiche `pid`, anderer Session-Key) aus Firebase gelöscht — bereinigt Zombie-Tickets von abgestürzten Tabs
