@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.3)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.4)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -946,6 +946,12 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Bug-Fix**: `DailyRewardModal` zeigte nach dem Abholen kurz den Countdown statt "✓ Abgeholt".
   - **Root Cause**: Gleicher Remount-Mechanismus wie v3.11.2 — `collected`-State in der Komponente wurde bei FortressApp-Re-Render (durch `setDailyState`/`saveProfile`) zurückgesetzt.
   - **Fix**: `collected`-State in `FortressApp` gehoben als `dailyCollected`. `DailyRewardModal` erhält es als Prop. `handleDailyCollect` setzt `setDailyCollected(true)` synchron, schließt Modal nach 1400ms.
+### v3.11.4 — Daily Reward: Kalender-Tag-Check + Neues Profil Fix
+- **Bug 1 (24h-Sperre zu streng)**: `getDailyCollectable` prüfte striktes 24h-Fenster (`Date.now() - lastCollect >= 86400000`). Wer um 22 Uhr sammelte, bekam erst am nächsten Tag um 22 Uhr wieder etwas — nicht intuitiv.
+  - **Fix**: Kalender-Tag-Check: `lastCollect.date < heute`. Einmal pro Kalendertag abholbar. Neue Hilfsfunktion `msTillMidnight()` berechnet Zeit bis Mitternacht für den Countdown im Modal.
+- **Bug 2 (neues Profil)**: `useEffect([], [])` lief beim ersten Mount, wenn `profile = null` (neues Konto / Profil-Editor offen). Early-Return → 1200ms-Timer nie gestartet. Nach Profil-Erstellung ändert sich `profile`, aber leerer Deps-Array verhinderte Re-Run → Modal erschien nie automatisch.
+  - **Fix**: `profile?.id` als Dependency. Effekt läuft wenn Profil von `null` auf einen Wert wechselt.
+
 - **Test-Erweiterung** (`test_fortress.js`):
   - `PROFILE_INIT` aktualisiert: alle neuen Felder (level, xp, peakElo, peakElo3, unlockedRewards, achievements, dailyTasks, seasonXp). `fortress_daily` mit aktuellem Timestamp → verhindert Auto-Show in unrelated Tests.
   - Neue Suite `suiteProgression`: 14 Tests für LevelBadge, XP-Leiste, Win-Rate %, ELO-Anzeige, CSS-Keyframes, Tages-Belohnungs-Button, Modal-Kalender, Abhol-Flow, Gold-Update, Streak-Persistenz, gesperrte Avatare, Basis-Avatare frei, Level-Overlay.
