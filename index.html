@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.11</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.12</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1604,8 +1604,19 @@ window.FortressApp = function Fortress() {
           peakElo3: typeof p.peakElo3 === "number" ? p.peakElo3 : (typeof p.elo3 === "number" ? p.elo3 : 1000),
           achievements: Array.isArray(p.achievements) ? p.achievements : [],
           dailyTasks: Array.isArray(p.dailyTasks) ? p.dailyTasks : [],
-          seasonXp: typeof p.seasonXp === "number" ? p.seasonXp : 0
+          seasonXp: typeof p.seasonXp === "number" ? p.seasonXp : 0,
+          historicalXpApplied: p.historicalXpApplied === true
         };
+        if (!p.historicalXpApplied && prof.level === 1 && prof.xp === 0 && (prof.stats.games > 0 || prof.stats3.games > 0)) {
+          const histXp = (prof.stats.wins || 0) * 30 + (prof.stats.losses || 0) * 10 + (prof.stats3.wins || 0) * 30 + (prof.stats3.losses || 0) * 10;
+          if (histXp > 0) {
+            const migrated = applyXpGain(prof, histXp);
+            prof.level = migrated.level;
+            prof.xp = migrated.xp;
+            prof.historicalXpApplied = true;
+            needsSave = true;
+          }
+        }
         if (needsSave) {
           try {
             localStorage.setItem("fortress_profile", JSON.stringify(prof));
@@ -1722,7 +1733,8 @@ window.FortressApp = function Fortress() {
       peakElo3: typeof (profile == null ? void 0 : profile.peakElo3) === "number" ? profile.peakElo3 : (typeof (profile == null ? void 0 : profile.elo3) === "number" ? profile.elo3 : 1000),
       achievements: Array.isArray(profile == null ? void 0 : profile.achievements) ? profile.achievements : [],
       dailyTasks: Array.isArray(profile == null ? void 0 : profile.dailyTasks) ? profile.dailyTasks : [],
-      seasonXp: typeof (profile == null ? void 0 : profile.seasonXp) === "number" ? profile.seasonXp : 0
+      seasonXp: typeof (profile == null ? void 0 : profile.seasonXp) === "number" ? profile.seasonXp : 0,
+      historicalXpApplied: !!(profile == null ? void 0 : profile.historicalXpApplied)
     };
     saveProfile(p);
     setShowProfileEditor(false);
@@ -4267,7 +4279,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.11")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.12")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

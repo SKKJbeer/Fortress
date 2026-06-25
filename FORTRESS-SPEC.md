@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.11)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.12)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1035,3 +1035,9 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Farb-Picker**: Neon-Farbkugeln mit radialen Gradienten und Glow-Effekt bei Auswahl
 - **Buttons**: Speichern mit Neon-Lila→Cyan-Gradient, Abbrechen transparent mit gedämpftem Text
 - **Design**: Dunkles Glasmorphismus-Layout (wie Brawl Stars / Clash Royale), border-radius:16px Karten
+
+### v3.11.12 — XP-Migrationsfix für Altdaten
+- **Bug**: Spieler mit vor v3.11.0 gespielten Online-Spielen hatten `level: 1, xp: 0` obwohl ELO/Stats korrekt gespeichert waren
+- **Fix**: Einmalige retroaktive XP-Migration in `loadProfile()`: bei `level===1`, `xp===0`, `games>0` und fehlendem `historicalXpApplied`-Flag wird geschätztes XP berechnet (30 XP pro Sieg, 10 XP pro Niederlage für 2-Spieler + 3-Spieler-Spiele) und via `applyXpGain()` angewendet (inkl. Level-Ups)
+- **Persistenz**: `historicalXpApplied: true` wird in `fortress_profile` gespeichert — Migration läuft nur einmal
+- **saveProfileEditor**: `historicalXpApplied`-Flag wird beim Speichern des Profil-Editors erhalten
