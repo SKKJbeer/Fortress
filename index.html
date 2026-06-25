@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.21</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.22</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -40,6 +40,7 @@
     @keyframes dailyBounceIn{0%{transform:scale(0.7) translateY(20px);opacity:0}60%{transform:scale(1.08) translateY(-4px)}100%{transform:scale(1) translateY(0);opacity:1}}
     @keyframes collectBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     @keyframes urgencyPulse{0%,100%{opacity:0.72}50%{opacity:1}}
+    @keyframes dangerGlow{0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,0.25),0 8px 40px rgba(0,0,0,0.7)}50%{box-shadow:0 0 0 3px rgba(239,68,68,0.85),0 0 50px rgba(239,68,68,0.45),0 8px 40px rgba(0,0,0,0.7)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
@@ -4466,6 +4467,11 @@ window.FortressApp = function Fortress() {
     beginSetup();
   }
   const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
+  const buildUrgencyOpen = phase === "build" && timer <= 5 && timer > 0 && (() => {
+    const fc = getFloodCache();
+    const checkP = online.current ? (myRole.current >= 1 ? [myRole.current] : playersList()) : playersList();
+    return checkP.some(p => !eliminated.current[p] && !fc.castleClosed[p]);
+  })();
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
     background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
     minHeight: "100dvh",
@@ -4599,7 +4605,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.21")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.22")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -5417,25 +5423,7 @@ window.FortressApp = function Fortress() {
     textShadow: timer <= 5 ? `0 0 18px ${timerColor}` : "0 0 5px rgba(200,180,100,0.25)",
     fontVariantNumeric: "tabular-nums",
     lineHeight: 1
-  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#64748b" } }, t('roundLabel'), round)), (() => {
-    if (phase !== "build" || timer > 5 || timer <= 0) return null;
-    const fc = getFloodCache();
-    const allP = playersList();
-    const checkP = online.current ? (myRole.current >= 1 ? [myRole.current] : allP) : allP;
-    const openP = checkP.filter(p => !eliminated.current[p] && !fc.castleClosed[p]);
-    if (openP.length === 0) return null;
-    const pLabels = { 1: "P1", 2: "P2", 3: "P3" };
-    return React.createElement("div", { style: {
-      fontSize: 9, fontWeight: 800, color: "#ef4444",
-      animation: "urgencyPulse 0.5s ease-in-out infinite",
-      textAlign: "center", marginTop: 2, lineHeight: 1.3,
-      textShadow: "0 0 8px rgba(239,68,68,0.8)"
-    } },
-      "⚠️ " + (!online.current && openP.length > 1
-        ? openP.map(p => pLabels[p]).join("+") + " Burg offen!"
-        : "Burg offen!")
-    );
-  })(), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { marginTop: 5, background: "rgba(15,23,42,0.7)", border: "1px solid rgba(100,116,139,0.22)", color: "#4a5568", borderRadius: 8, padding: "5px 0 6px", fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: "0.09em", textTransform: "uppercase", lineHeight: 1, display: "block", width: "100%", textAlign: "center" } }, t('endBtnText'))), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#64748b" } }, t('roundLabel'), round)), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { marginTop: 5, background: "rgba(15,23,42,0.7)", border: "1px solid rgba(100,116,139,0.22)", color: "#4a5568", borderRadius: 8, padding: "5px 0 6px", fontSize: 9, fontWeight: 800, cursor: "pointer", letterSpacing: "0.09em", textTransform: "uppercase", lineHeight: 1, display: "block", width: "100%", textAlign: "center" } }, t('endBtnText'))), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
     background: "linear-gradient(160deg, rgba(239,68,68,0.20), rgba(127,29,29,0.30))",
@@ -5480,10 +5468,11 @@ window.FortressApp = function Fortress() {
   } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
-    border: "1px solid rgba(255,255,255,0.07)",
+    border: buildUrgencyOpen ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.07)",
     borderRadius: 6,
     overflow: "hidden",
-    boxShadow: "0 8px 40px rgba(0,0,0,0.7)",
+    boxShadow: buildUrgencyOpen ? undefined : "0 8px 40px rgba(0,0,0,0.7)",
+    animation: buildUrgencyOpen ? "dangerGlow 0.6s ease-in-out infinite" : undefined,
     position: "relative"
   } }, /* @__PURE__ */ React.createElement(
     "canvas",

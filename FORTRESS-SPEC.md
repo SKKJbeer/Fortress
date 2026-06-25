@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.21)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.22)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1099,3 +1099,11 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Fix**: Warnung nicht mehr als fixes Overlay am unteren Bildschirmrand (hat Spielfläche verdeckt)
 - **Neu**: Kompakte Warnung direkt im HUD-Timer-Bereich — erscheint zwischen Countdown und Beenden-Button, blockiert keine Spielfläche
 - **Format**: "⚠️ Burg offen!" (pulsiert via `urgencyPulse`) — bei lokal mehreren offenen Burgen: "⚠️ P1+P2 Burg offen!"
+
+### v3.11.22 — Build-Warnung als Spielfeld-Glow (game-industry-standard)
+- **Design**: Pulsierender roter Glow-Rahmen um das Spielfeld (wie FPS Low-Health-Vignette, Minecraft-Damage-Flash usw.) — kein Overlay, kein Text, kein Blocking
+- **Keyframe `dangerGlow`**: 0.6s Puls — Canvas-Border wechselt von rgba(239,68,68,0.25) zu 0.85 Opazität + 50px roter Außenglow
+- **Canvas-Border** wechselt gleichzeitig von weiß (0.07) zu rot (0.5) für verstärkten Kontrast
+- **Bedingung**: Bauphase, ≤5 Sek., eigene Burg (online) bzw. irgendeine Burg (lokal) noch nicht geschlossen
+- **Endet sofort** wenn Burg geschlossen wird (reaktiv auf Grid-Änderungen via getFloodCache)
+- HUD-Text-Warnung aus v3.11.21 entfernt (Canvas-Glow reicht)
