@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.19)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.20)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1086,3 +1086,11 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Fix 1**: `pid` (Spieler-Profil-ID aus `fortress_profile`) wird jetzt ins Matchmaking-Ticket geschrieben
 - **Fix 2**: In `mmTryFindMatch()` werden Kandidaten mit identischer `pid` gefiltert — verhindert Match mit eigenem alten Tab/Session
 - **Fix 3**: Beim Start von Matchmaking werden alle eigenen alten Queue-Einträge (gleiche `pid`, anderer Session-Key) aus Firebase gelöscht — bereinigt Zombie-Tickets von abgestürzten Tabs
+
+### v3.11.20 — Bauphase Letzte-5-Sekunden-Warnung
+- **Build-Urgency-Overlay**: Zeigt in den letzten 5 Sekunden der Bauphase ein pulsierendes rotes Overlay an ("⚠️ BURG OFFEN — Schließe deine Mauern!"), wenn die eigene Burg noch nicht vollständig ummauert ist
+- **Countdown**: Overlay zeigt die verbleibenden Sekunden in Echtzeit
+- **Nur wenn nötig**: Overlay verschwindet sofort wenn die Burg geschlossen wird
+- **Online-Modus**: Prüft nur die eigene Burg (nicht die der Gegner)
+- **Lokal-Modus**: Prüft alle Spieler — bei mehreren offenen Burgen wird "Offen: P1, P2" angezeigt
+- **CSS-Animation**: `urgencyPulse` — Glow-Puls zwischen 0.88 und 1.0 Opazität im 0.45s-Takt
