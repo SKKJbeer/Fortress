@@ -25,26 +25,17 @@ const PROFILE_INIT = `
     localStorage.setItem('fortress_profile', JSON.stringify({
       id: 'test_bot_001',
       name: 'TestBot',
-      wappen: 'vampir',
+      wappen: 'skelett',
       color: '#2563eb',
-      stats: { wins: 3, losses: 1, games: 4 },
-      stats3: { wins: 0, losses: 0, games: 0 },
-      elo: 1050,
-      elo3: 1000,
-      gold: 175,
-      level: 1,
-      xp: 40,
-      peakElo: 1100,
-      peakElo3: 1000,
-      unlockedRewards: [],
-      achievements: [],
-      dailyTasks: [],
-      seasonXp: 0
+      stats: { wins: 5, losses: 2, games: 7 },
+      stats3: { wins: 1, losses: 0, games: 1 },
+      elo: 1050, elo3: 1000,
+      peakElo: 1050, peakElo3: 1000,
+      gold: 175, level: 1, xp: 40,
+      unlockedRewards: [], achievements: [], dailyTasks: [], seasonXp: 0
     }));
     localStorage.setItem('fortress_daily', JSON.stringify({
-      lastCollect: Date.now() - 1000,
-      streak: 1,
-      lastStreakDay: new Date().toISOString().slice(0, 10)
+      lastCollect: ${Date.now()}, streak: 1, lastStreakDay: new Date().toISOString().slice(0,10)
     }));
   } catch(e) {}
 `;
@@ -287,6 +278,20 @@ async function suiteNavHUD(browser, playerCount) {
       return /runde|round/i.test(t) || /R\s*\d/.test(t);
     });
     roundOk ? ok('Runden-Anzeige ✓') : fail('Runden-Anzeige fehlt');
+
+    // WappenAvatar im HUD: kreisrundes SVG-img
+    const hudAvatarOk = await page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
+        const src = img.getAttribute('src') || '';
+        const style = window.getComputedStyle(img);
+        const rect = img.getBoundingClientRect();
+        return src.startsWith('data:image/svg+xml') && style.borderRadius === '50%' && rect.width > 0;
+      });
+      return imgs.length;
+    });
+    hudAvatarOk >= 1
+      ? ok(`HUD: ${hudAvatarOk} Avatar-SVG(s) kreisrund sichtbar ✓`)
+      : fail('HUD: kein kreisrundes Avatar-SVG im HUD');
 
     // Beenden-Button-Detail
     const qi = await page.evaluate(() => {
@@ -1111,31 +1116,31 @@ async function suiteProgression(browser) {
     });
 
     await page.waitForTimeout(300);
-    const hasWappenLabel = await page.evaluate(() => /WAPPEN/i.test(document.body.innerText));
+    const hasWappenLabel = await page.evaluate(() => /WAPPEN|AVATARE/i.test(document.body.innerText));
     hasWappenLabel ? ok('Profil-Editor öffnet sich ✓') : fail('Profil-Editor öffnet sich nicht');
 
     if (hasWappenLabel) {
       // Gesperrte Avatare: Level 1 → sternmage(L5), golem(L10), etc. müssen gesperrt sein
       const lockInfo = await page.evaluate(() => {
-        const lockedBtns = Array.from(document.querySelectorAll('button')).filter(b => {
+        const lockedEls = Array.from(document.querySelectorAll('button,div')).filter(b => {
           const title = b.getAttribute('title') || '';
           return /Level|Ab Level/i.test(title) && /\d+/.test(title);
         });
-        const freeAvatars = ['vampir', 'pestdoc', 'eismagie', 'schatten'];
-        const lockedTitles = lockedBtns.map(b => b.getAttribute('title'));
+        const freeAvatars = ['skelett', 'waldhueter', 'eismagier', 'roboter'];
+        const lockedTitles = lockedEls.map(b => b.getAttribute('title'));
         const freeOk = freeAvatars.every(a => {
           const btn = Array.from(document.querySelectorAll('button')).find(b =>
             b.getAttribute('title') === a);
           return btn && parseFloat(window.getComputedStyle(btn).opacity) > 0.9;
         });
-        return { lockedCount: lockedBtns.length, lockedTitles: lockedTitles.slice(0, 4), freeOk };
+        return { lockedCount: lockedEls.length, lockedTitles: lockedTitles.slice(0, 4), freeOk };
       });
 
       lockInfo.lockedCount >= 8
         ? ok(`Profil-Editor: ${lockInfo.lockedCount} gesperrte Avatare (ab Level 5–50) ✓`)
         : fail(`Profil-Editor: zu wenige gesperrte Avatare (${lockInfo.lockedCount})`);
       lockInfo.freeOk
-        ? ok('Profil-Editor: 4 Basis-Avatare (vampir/pestdoc/eismagie/schatten) frei ✓')
+        ? ok('Profil-Editor: 4 Basis-Avatare (skelett/waldhueter/eismagier/roboter) frei ✓')
         : fail('Profil-Editor: Basis-Avatare nicht korrekt als frei markiert');
 
       // Avatar-Overlays mit "L5", "L10" etc.
@@ -1145,6 +1150,45 @@ async function suiteProgression(browser) {
           parseInt(s.textContent.trim().slice(1), 10) >= 5);
       });
       overlayOk ? ok('Profil-Editor: Level-Overlay (L5+) auf gesperrten Avataren ✓') : fail('Profil-Editor: Level-Overlay fehlt');
+
+      // ── Avatar-Grafiken: SVG-Rendering & Darstellung ──────────────
+      const avatarRender = await page.evaluate(() => {
+        // Alle sichtbaren SVG-data-URI imgs (Avatar-Grafiken)
+        const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
+          const src = img.getAttribute('src') || '';
+          const rect = img.getBoundingClientRect();
+          return src.startsWith('data:image/svg+xml') && rect.width > 0 && rect.height > 0;
+        });
+        // Kreisrunde Darstellung (borderRadius 50%)
+        const circularCount = imgs.filter(img =>
+          window.getComputedStyle(img).borderRadius === '50%'
+        ).length;
+        // Skelett-Avatar-Button mit korrektem SVG-src
+        const skelettBtn = Array.from(document.querySelectorAll('button')).find(b =>
+          b.getAttribute('title') === 'skelett');
+        const skelettImg = skelettBtn ? skelettBtn.querySelector('img') : null;
+        const skelettSrcOk = !!(skelettImg && (skelettImg.getAttribute('src') || '').startsWith('data:image/svg+xml,'));
+        // Sektions-Labels
+        const divTexts = Array.from(document.querySelectorAll('div')).map(d => (d.textContent || '').trim());
+        const hasAktiv  = divTexts.includes('AKTIVE AVATARE');
+        const hasGesperrt = divTexts.includes('GESPERRTE AVATARE');
+        return { count: imgs.length, circularCount, skelettSrcOk, hasAktiv, hasGesperrt };
+      });
+      avatarRender.count >= 4
+        ? ok(`Profil-Editor: ${avatarRender.count} Avatar-SVGs gerendert ✓`)
+        : fail(`Profil-Editor: zu wenige Avatar-SVGs (${avatarRender.count})`);
+      avatarRender.circularCount >= 4
+        ? ok(`Profil-Editor: ${avatarRender.circularCount} Avatare kreisrund (50%) ✓`)
+        : fail(`Profil-Editor: Avatare nicht kreisrund (${avatarRender.circularCount} von ${avatarRender.count})`);
+      avatarRender.skelettSrcOk
+        ? ok('Skelett-Avatar: SVG data-URI korrekt geladen ✓')
+        : fail('Skelett-Avatar: kein img-Element oder SVG-src fehlt');
+      avatarRender.hasAktiv
+        ? ok('Profil-Editor: "AKTIVE AVATARE" Sektion vorhanden ✓')
+        : fail('Profil-Editor: "AKTIVE AVATARE" Label fehlt');
+      avatarRender.hasGesperrt
+        ? ok('Profil-Editor: "GESPERRTE AVATARE" Sektion vorhanden ✓')
+        : fail('Profil-Editor: "GESPERRTE AVATARE" Label fehlt');
     }
 
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Progressionssystem: Keine JS-Fehler ✓');

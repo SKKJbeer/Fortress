@@ -1,6 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.5)
-
-> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -971,3 +969,33 @@ und beschiessen danach gegenseitig ihre Festungen.
   - **Teilen-Button**: Tertiäre Ghost-Variante (kleiner, dezenter)
   - **Abstandsreduzierung**: gap: 8 zwischen Karten (von separaten marginTop/marginBottom)
 - **Bugfix**: Doppelter Ergebnis-Block entfernt — alter `if (screen === "result")` Block war nach dem Redesign unreachable aber strukturell vorhanden → JS-Syntaxfehler (`Unexpected token '}'`). Alter Block (137 Zeilen) vollständig entfernt.
+
+### v3.11.6 — Avatar-Redesign: Neue Charaktere + Profil-Editor Redesign
+- **12 neue Avatare** mit deutschen Namen ersetzen die alten Fantasy-Avatare:
+  - Frei (Level 1): SKELETT (lila Schädel), WALDHÜTER (grüner Waldgeist), EISMAGIER (Schneeflocke), ROBOTER (orange Augen)
+  - Level 5: HEXERIN, Level 10: KANONE, Level 15: FRANKENSTEIN, Level 20: FEUERSCHÄDEL
+  - Level 25: PESTDOKTOR, Level 30: BLITZ, Level 40: TROJANISCHES PFERD, Level 50: PHÖNIX
+- **Neue SVG-Artwork**: Jeder Avatar hat 3-lagige farbige Glow-Ringe (äußerer Glow/mittlerer Ring/scharfer Ring), kreisförmig statt eckig
+- **`WappenAvatar`**: `borderRadius: 6` → `borderRadius: '50%'` (kreisrund)
+- **`WAPPEN_GLOW`**: Neue Konstante — Avatar-Key → Glow-Farbe (für Profil-Editor Auswahl-Ringe)
+- **`WAPPEN_MIGRATION`**: Migriert alte Keys (vampir/pestdoc/eismagie/schatten/...) automatisch auf neue Keys beim Profilladen
+- **Profil-Editor Avatar-Grid** redesigned: Zwei Sektionen
+  - **AKTIVE AVATARE**: Freigeschaltete Avatare mit farbigem Glow-Ring (WAPPEN_GLOW); ausgewählter Avatar leuchtet mit weißem Ring + verstärktem Glow
+  - **GESPERRTE AVATARE**: Graustufige, abgedunkelte Avatare mit Schloss-Emoji 🔒 und Level-Anforderung
+- **Fallback-Wappen**: `"vampir"` → `"skelett"` in HUD, Leaderboard, Ergebnis-Screen
+
+### v3.11.7 — Tages-Belohnung, CSS-Keyframes, LevelBadge & Win-Rate
+- **Tages-Belohnungs-System**: `DailyRewardModal`-Komponente jetzt vollständig eingebunden:
+  - `DAILY_REWARDS` (7 Einträge: Tag 1–7, letzter Tag = 50G + Sonderkiste)
+  - Hilfsfunktionen: `getDailyCollectable()`, `getDailyStreakIndex()`, `msTillMidnight()`
+  - Tages-Belohnungs-Button im Menü (sichtbar wenn heute noch nicht abgeholt, `streakGlow`-Animation)
+  - Modal zeigt Streak-Kalender T1–T7, Goldbelohnung, "Abholen!"-Button
+  - Abholen erhöht Gold im Profil und speichert Streak in `fortress_daily` localStorage
+  - Modal schließt sich automatisch nach "✓ Abgeholt"-Bestätigung (1.4s Delay)
+- **CSS-Keyframes** in `<style>`-Block hinzugefügt (zuvor nur referenziert, nie definiert):
+  - `confettiFall`, `badgePop`, `streakGlow`, `dailyBounceIn`, `collectBounce`
+- **LevelBadge** wird jetzt im Menü-Profil-Bereich neben der XP-Leiste angezeigt ("L1")
+- **Win-Rate** im Menü sichtbar: Prozentzahl (Siege / Spiele) in der Stats-Zeile
+- **Übersetzungen** ergänzt (de + en): `lockedAt`, `dailyTitle`, `dailyStreak`, `dailyCollect`, `dailyCollected`, `dailyNextIn`, `dailyChest`, `nextRewardAt`
+- **Tests**: `suiteProgression` nun vollständig grün (114 ✅ 0 ❌)
+  - `hasWappenLabel`-Check auf `/WAPPEN|AVATARE/i` erweitert

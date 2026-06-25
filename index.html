@@ -9,9 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.5</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.7</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -36,11 +34,11 @@
     @keyframes lvlUpFlash{0%{opacity:0;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}70%{transform:scale(0.96)}100%{opacity:1;transform:scale(1)}}
     @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}
     @keyframes xpNumPop{0%{opacity:0;transform:scale(0.7) translateY(6px)}60%{transform:scale(1.12) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
-    @keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(180px) rotate(720deg)}}
-    @keyframes dailyBounceIn{0%{opacity:0;transform:scale(0.7) translateY(20px)}60%{transform:scale(1.05) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
-    @keyframes badgePop{0%{transform:scale(0)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+    @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+    @keyframes badgePop{0%{transform:scale(0.7);opacity:0.5}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
     @keyframes streakGlow{0%,100%{box-shadow:0 0 6px rgba(251,191,36,0.4)}50%{box-shadow:0 0 18px rgba(251,191,36,0.9)}}
-    @keyframes collectBounce{0%{transform:scale(1)}30%{transform:scale(1.15)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
+    @keyframes dailyBounceIn{0%{transform:scale(0.7) translateY(20px);opacity:0}60%{transform:scale(1.08) translateY(-4px)}100%{transform:scale(1) translateY(0);opacity:1}}
+    @keyframes collectBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
@@ -1124,22 +1122,14 @@ const LANGS = {
     shareCode: "Teile diesen Code mit deinem Mitspieler:",
     localTitle: "Lokal spielen",
     localSub: "Alle auf einem Ger\xE4t. Wie viele Spieler?",
-    levelBadgeSilver: "Silber",
-    levelBadgeGold: "Gold",
-    levelBadgePlatin: "Platin",
-    levelBadgeLegend: "Legendär",
+    lockedAt: "Ab Level {n}",
     dailyTitle: "Tages-Belohnung",
-    dailyStreak: "Streak: {n} Tag(e)",
+    dailyStreak: "{n} Tage Streak",
     dailyCollect: "Abholen!",
     dailyCollected: "✓ Abgeholt",
-    dailyNextIn: "Nächste in {h}h {m}m",
-    dailyComeBack: "Morgen wiederkommen!",
-    dailyChest: "Legendäre Kiste",
-    winRate: "Winrate",
-    peakElo: "Peak ELO",
-    lockedAt: "Ab Level {n}",
-    nextRewardAt: "Nächste Belohnung: Level {n}",
-    dailyRewardBtn: "Tages-Belohnung",
+    dailyNextIn: "N\xE4chste in {h}h {m}min",
+    dailyChest: "Bonus-Kiste!",
+    nextRewardAt: "N\xE4chster Avatar ab Level {n}",
   },
   en: {
     tagline: "2 PLAYERS \xB7 SIMULTANEOUS \xB7 ONE DEVICE",
@@ -1278,22 +1268,14 @@ const LANGS = {
     shareCode: "Share this code with your co-player:",
     localTitle: "Play Local",
     localSub: "All on one device. How many players?",
-    levelBadgeSilver: "Silver",
-    levelBadgeGold: "Gold",
-    levelBadgePlatin: "Platinum",
-    levelBadgeLegend: "Legendary",
+    lockedAt: "From Level {n}",
     dailyTitle: "Daily Reward",
-    dailyStreak: "Streak: {n} day(s)",
+    dailyStreak: "{n} Day Streak",
     dailyCollect: "Collect!",
     dailyCollected: "✓ Collected",
-    dailyNextIn: "Next in {h}h {m}m",
-    dailyComeBack: "Come back tomorrow!",
-    dailyChest: "Legendary Chest",
-    winRate: "Win Rate",
-    peakElo: "Peak ELO",
-    lockedAt: "From Level {n}",
-    nextRewardAt: "Next reward: Level {n}",
-    dailyRewardBtn: "Daily Reward",
+    dailyNextIn: "Next in {h}h {m}min",
+    dailyChest: "Bonus Chest!",
+    nextRewardAt: "Next avatar from Level {n}",
   }
 };
 window.FortressApp = function Fortress() {
@@ -1322,37 +1304,52 @@ window.FortressApp = function Fortress() {
   const playersList = () => numPlayersRef.current === 3 ? [1, 2, 3] : [1, 2];
   const [lang, setLang] = React.useState(() => localStorage.getItem('fortress_lang') || 'de');
   React.useEffect(() => { localStorage.setItem('fortress_lang', lang); }, [lang]);
+  const [showDailyModal, setShowDailyModal] = useState(false);
+  const [dailyCollectedState, setDailyCollectedState] = useState(false);
+  const [daily, setDaily] = useState(() => { try { return JSON.parse(localStorage.getItem('fortress_daily')) || {}; } catch { return {}; } });
   const t = (key, vars = {}) => {
     const str = (LANGS[lang] && LANGS[lang][key]) || (LANGS.de[key]) || key;
     return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? String(vars[k]) : '{' + k + '}');
   };
   // ── Fantasy-Avatar-System ─────────────────────────────────────────────────
-  // 12 einzigartige Charaktere als inline-SVG (Medallion-Stil, 40x40 viewBox)
+  // 12 Charaktere als inline-SVG (Medallion-Stil, 40x40 viewBox) mit Glow-Ringen
   const WAPPEN_SVG = {
-    vampir:    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#1a0525"/><path d="M2 32 C5 18 11 15 16 22 Q18 24 20 22 Q22 24 24 22 C29 15 35 18 38 32 Q30 24 20 26 Q10 24 2 32Z" fill="#4a0080" opacity="0.95"/><path d="M13 25 L9 40 L20 34 L31 40 L27 25Z" fill="#2a004a"/><ellipse cx="20" cy="18" rx="7" ry="8" fill="#efd8ec"/><path d="M13 13 Q15 7 20 10 Q25 7 27 13 Q25 10 23 12 Q21 10 20 11 Q19 10 17 12 Q15 10 13 13Z" fill="#1a0030"/><ellipse cx="17" cy="18" rx="2" ry="2.4" fill="#cc0022"/><ellipse cx="23" cy="18" rx="2" ry="2.4" fill="#cc0022"/><circle cx="17" cy="18" r="1" fill="#ff4455"/><circle cx="23" cy="18" r="1" fill="#ff4455"/><polygon points="17.5,23 16.2,28 18.8,28" fill="white" opacity="0.95"/><polygon points="22.5,23 21.2,28 23.8,28" fill="white" opacity="0.95"/></svg>',
-    pestdoc:   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#181005"/><path d="M11 26 L9 40 L31 40 L29 26Z" fill="#2a1c08"/><ellipse cx="20" cy="10" rx="14" ry="3" fill="#211600"/><rect x="13" y="2" width="14" height="9" rx="1.5" fill="#211600"/><ellipse cx="20" cy="18" rx="7" ry="5" fill="#7a6830"/><path d="M16 16 Q18 13 20 13 Q22 13 24 16 L22.5 21 Q21 28 20 33 Q19 28 17.5 21Z" fill="#4a3510"/><circle cx="15.5" cy="15" r="4.2" fill="#090909"/><circle cx="15.5" cy="15" r="3.2" fill="#081508" opacity="0.9"/><circle cx="14.2" cy="13.7" r="1" fill="#44ee66" opacity="0.7"/><circle cx="24.5" cy="15" r="4.2" fill="#090909"/><circle cx="24.5" cy="15" r="3.2" fill="#081508" opacity="0.9"/><circle cx="23.2" cy="13.7" r="1" fill="#44ee66" opacity="0.7"/><line x1="19.5" y1="15" x2="20.5" y2="15" stroke="#211600" stroke-width="2"/></svg>',
-    eismagie:  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#020c1a"/><circle cx="20" cy="20" r="14" fill="#00aaff" opacity="0.07"/><line x1="20" y1="4" x2="20" y2="36" stroke="#88ddff" stroke-width="1.5" opacity="0.8"/><line x1="4.6" y1="12" x2="35.4" y2="28" stroke="#88ddff" stroke-width="1.5" opacity="0.8"/><line x1="4.6" y1="28" x2="35.4" y2="12" stroke="#88ddff" stroke-width="1.5" opacity="0.8"/><line x1="20" y1="7" x2="17" y2="11" stroke="#88ddff" stroke-width="0.9"/><line x1="20" y1="7" x2="23" y2="11" stroke="#88ddff" stroke-width="0.9"/><line x1="31.2" y1="13.5" x2="27.8" y2="14.5" stroke="#88ddff" stroke-width="0.9"/><line x1="31.2" y1="13.5" x2="29.5" y2="17" stroke="#88ddff" stroke-width="0.9"/><line x1="31.2" y1="26.5" x2="27.8" y2="25.5" stroke="#88ddff" stroke-width="0.9"/><line x1="31.2" y1="26.5" x2="29.5" y2="23" stroke="#88ddff" stroke-width="0.9"/><line x1="20" y1="33" x2="17" y2="29" stroke="#88ddff" stroke-width="0.9"/><line x1="20" y1="33" x2="23" y2="29" stroke="#88ddff" stroke-width="0.9"/><line x1="8.8" y1="26.5" x2="12.2" y2="25.5" stroke="#88ddff" stroke-width="0.9"/><line x1="8.8" y1="26.5" x2="10.5" y2="23" stroke="#88ddff" stroke-width="0.9"/><line x1="8.8" y1="13.5" x2="12.2" y2="14.5" stroke="#88ddff" stroke-width="0.9"/><line x1="8.8" y1="13.5" x2="10.5" y2="17" stroke="#88ddff" stroke-width="0.9"/><polygon points="20,15 24.3,17.5 24.3,22.5 20,25 15.7,22.5 15.7,17.5" fill="#00bbff" opacity="0.75"/><circle cx="20" cy="20" r="3.5" fill="#ddf6ff" opacity="0.95"/><circle cx="18.8" cy="19" r="1.2" fill="white" opacity="0.8"/><polygon points="14,8 16,3 18,8 20,2 22,8 24,3 26,8" fill="#aae8ff" opacity="0.75"/></svg>',
-    schatten:  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#030306"/><path d="M6 40 Q8 18 20 10 Q32 18 34 40Z" fill="#09091a" opacity="0.85"/><ellipse cx="20" cy="23" rx="12" ry="13" fill="#050508" opacity="0.9"/><ellipse cx="14.5" cy="22" rx="3.5" ry="2.5" fill="#ffaa22" opacity="0.95"/><ellipse cx="25.5" cy="22" rx="3.5" ry="2.5" fill="#ffaa22" opacity="0.95"/><ellipse cx="14.5" cy="22" rx="2.2" ry="1.6" fill="#ffdd55"/><ellipse cx="25.5" cy="22" rx="2.2" ry="1.6" fill="#ffdd55"/><ellipse cx="14.5" cy="22" rx="0.9" ry="1.4" fill="#220800"/><ellipse cx="25.5" cy="22" rx="0.9" ry="1.4" fill="#220800"/><circle cx="13.8" cy="21.2" r="0.5" fill="#fff" opacity="0.5"/><circle cx="24.8" cy="21.2" r="0.5" fill="#fff" opacity="0.5"/><line x1="9" y1="33" x2="31" y2="33" stroke="#666" stroke-width="1.2" opacity="0.35"/><polygon points="29.5,31 33,33 29.5,35" fill="#888" opacity="0.35"/></svg>',
-    sternmage: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#07041a"/><circle cx="7" cy="8" r="0.8" fill="#fff" opacity="0.8"/><circle cx="32" cy="5" r="0.6" fill="#ffeeaa" opacity="0.7"/><circle cx="6" cy="24" r="0.7" fill="#ccbbff" opacity="0.7"/><circle cx="35" cy="27" r="0.9" fill="#aaccff" opacity="0.7"/><circle cx="12" cy="34" r="0.5" fill="#ffffaa" opacity="0.6"/><circle cx="33" cy="17" r="0.5" fill="#fff" opacity="0.6"/><polygon points="20,2 11,22 29,22" fill="#280868"/><rect x="11" y="21" width="18" height="3.5" rx="1.2" fill="#3d14a0"/><path d="M15.5 8 Q19 3.5 21 9 Q18.5 7 16 8.5 Q16 8 15.5 8Z" fill="#ffd700"/><polygon points="26,8 26.6,10 28.4,10 27,11 27.5,13 26,12 24.5,13 25,11 23.6,10 25.4,10" fill="#ffcc00" opacity="0.9"/><path d="M14 26 Q16 32 20 35 Q24 32 26 26 Q24 29 20 30 Q16 29 14 26Z" fill="#e8e0c0" opacity="0.85"/><ellipse cx="20" cy="25" rx="5.5" ry="4" fill="#f0e0c8"/><ellipse cx="17.5" cy="24" rx="1.2" ry="1" fill="#2a1a00"/><ellipse cx="22.5" cy="24" rx="1.2" ry="1" fill="#2a1a00"/></svg>',
-    golem:     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#060908"/><rect x="8" y="28" width="24" height="13" rx="2.5" fill="#263026"/><rect x="15" y="24" width="10" height="5.5" fill="#324032"/><rect x="8.5" y="9" width="23" height="16" rx="3.5" fill="#2a3428"/><line x1="8.5" y1="15" x2="31.5" y2="15" stroke="#18221a" stroke-width="0.8"/><circle cx="11" cy="11" r="1.2" fill="#4a604a"/><circle cx="29" cy="11" r="1.2" fill="#4a604a"/><circle cx="11" cy="23" r="1.2" fill="#4a604a"/><circle cx="29" cy="23" r="1.2" fill="#4a604a"/><circle cx="20" cy="17" r="6" fill="#0a0900"/><circle cx="20" cy="17" r="5" fill="#bb6600" opacity="0.85"/><circle cx="20" cy="17" r="3.2" fill="#ff9900"/><circle cx="20" cy="17" r="1.5" fill="#ffee00"/><circle cx="18.5" cy="15.7" r="0.7" fill="#fff" opacity="0.6"/><rect x="12.5" y="21.5" width="15" height="2.5" rx="1.2" fill="#18221a"/><rect x="14" y="22" width="2.5" height="1.2" rx="0.4" fill="#1a1a0a" opacity="0.5"/><rect x="18" y="22" width="2.5" height="1.2" rx="0.4" fill="#1a1a0a" opacity="0.5"/><rect x="22" y="22" width="2.5" height="1.2" rx="0.4" fill="#1a1a0a" opacity="0.5"/></svg>',
-    seehexe:   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#030e0a"/><path d="M9 40 Q11 28 10 20" fill="none" stroke="#0a6040" stroke-width="3" stroke-linecap="round"/><path d="M9 40 Q12 30 13 22" fill="none" stroke="#0d7050" stroke-width="2.5" stroke-linecap="round"/><path d="M17 40 Q19 30 17 22" fill="none" stroke="#0a6040" stroke-width="3" stroke-linecap="round"/><path d="M23 40 Q21 30 23 22" fill="none" stroke="#0a6040" stroke-width="3" stroke-linecap="round"/><path d="M31 40 Q29 28 30 20" fill="none" stroke="#0a6040" stroke-width="3" stroke-linecap="round"/><path d="M31 40 Q28 30 27 22" fill="none" stroke="#0d7050" stroke-width="2.5" stroke-linecap="round"/><path d="M13 23 L11 40 L29 40 L27 23Z" fill="#053a1a"/><ellipse cx="20" cy="17" rx="7" ry="7.5" fill="#2a6a3a"/><path d="M13 12 L14 7 L16.5 12 L18.5 6.5 L20 12 L21.5 6.5 L23.5 12 L26 7 L27 12" fill="none" stroke="#c8d8c0" stroke-width="1.5" stroke-linejoin="round"/><ellipse cx="17" cy="17" rx="2.2" ry="2.4" fill="#00ddaa"/><ellipse cx="23" cy="17" rx="2.2" ry="2.4" fill="#00ddaa"/><ellipse cx="17" cy="17" rx="1.1" ry="1.3" fill="#006644"/><ellipse cx="23" cy="17" rx="1.1" ry="1.3" fill="#006644"/><line x1="34" y1="5" x2="34" y2="30" stroke="#80a888" stroke-width="1.5"/><path d="M31 8 L34 5 L37 8" fill="none" stroke="#80a888" stroke-width="1.3" stroke-linejoin="round"/><line x1="31" y1="8" x2="31" y2="14" stroke="#80a888" stroke-width="1.2"/><line x1="37" y1="8" x2="37" y2="14" stroke="#80a888" stroke-width="1.2"/></svg>',
-    feuergeist:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#1a0400"/><path d="M20 38 C8 32 3 22 7 12 C9 6 15 3 20 2 C25 3 31 6 33 12 C37 22 32 32 20 38Z" fill="#cc2200" opacity="0.9"/><path d="M20 34 C11 28 9 20 12 13 C14 8 17 6 20 5.5 C23 6 26 8 28 13 C31 20 29 28 20 34Z" fill="#ff5500"/><path d="M20 30 C14 26 13 20 15 15 C16.5 11 18.5 10 20 10 C21.5 10 23.5 11 25 15 C27 20 26 26 20 30Z" fill="#ffaa00"/><ellipse cx="20" cy="20" rx="6" ry="7" fill="#eee8d8" opacity="0.95"/><ellipse cx="16.5" cy="19" rx="2.3" ry="2.8" fill="#1a0400"/><ellipse cx="23.5" cy="19" rx="2.3" ry="2.8" fill="#1a0400"/><ellipse cx="16.5" cy="19" rx="1.4" ry="1.8" fill="#ff5500" opacity="0.8"/><ellipse cx="23.5" cy="19" rx="1.4" ry="1.8" fill="#ff5500" opacity="0.8"/><ellipse cx="20" cy="22.5" rx="1.2" ry="0.9" fill="#1a0400" opacity="0.7"/><path d="M15.5 25 L16.5 28 L18 25 L19.5 28 L20.5 25 L22 28 L23.5 25 L24.5 28" fill="none" stroke="#eee8d8" stroke-width="0.8"/></svg>',
-    totenmage: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050508"/><path d="M10 40 L12 23 L20 18 L28 23 L30 40Z" fill="#0c0c1c"/><path d="M12 14 Q14 4 20 6 Q26 4 28 14 Q26 8 20 10 Q14 8 12 14Z" fill="#0c0c1c"/><ellipse cx="20" cy="18" rx="8.5" ry="9.5" fill="#ddd8cc"/><ellipse cx="20" cy="25" rx="6" ry="4.5" fill="#c8c4b8"/><ellipse cx="16" cy="17" rx="3" ry="3.3" fill="#001400"/><ellipse cx="24" cy="17" rx="3" ry="3.3" fill="#001400"/><ellipse cx="16" cy="17" rx="1.9" ry="2.2" fill="#00bb22" opacity="0.9"/><ellipse cx="24" cy="17" rx="1.9" ry="2.2" fill="#00bb22" opacity="0.9"/><circle cx="16" cy="17" r="0.9" fill="#00ff44"/><circle cx="24" cy="17" r="0.9" fill="#00ff44"/><path d="M18.5 21.5 L20 20 L21.5 21.5 L20 22.5Z" fill="#0a0a0a" opacity="0.6"/><rect x="15" y="25" width="2.5" height="3.5" rx="0.6" fill="#d8d4c8"/><rect x="18.8" y="25" width="2.5" height="4" rx="0.6" fill="#d8d4c8"/><rect x="22.5" y="25" width="2.5" height="3.5" rx="0.6" fill="#d8d4c8"/><circle cx="33" cy="11" r="4.5" fill="#002200"/><circle cx="33" cy="11" r="3.5" fill="#00aa22" opacity="0.7"/><circle cx="31.8" cy="9.8" r="1.3" fill="#44ff66" opacity="0.9"/><line x1="33" y1="15.5" x2="33" y2="36" stroke="#3a3a4a" stroke-width="1.6"/></svg>',
-    sturmreiter:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#040816"/><path d="M2 20 Q8 13 15 17 Q16 12 22 12 Q28 12 28 17 Q35 13 38 20 Q30 18 20 18 Q10 18 2 20Z" fill="#1a1e2c" opacity="0.9"/><path d="M3 26 Q10 18 17 22 Q17 17 24 17 Q30 17 29 22 Q36 18 38 26 Q30 24 20 24 Q10 24 3 26Z" fill="#12162a"/><polygon points="23,3 16,23 22,23 18.5,39 30,17 23,17" fill="#ffe010"/><polygon points="23,3 16,23 22,23 18.5,39 30,17 23,17" fill="#fff" opacity="0.25"/><line x1="27" y1="9" x2="34" y2="6" stroke="#aade00" stroke-width="1.1" opacity="0.7"/><line x1="13" y1="16" x2="6" y2="12" stroke="#aade00" stroke-width="1.1" opacity="0.7"/><line x1="20" y1="32" x2="13" y2="38" stroke="#aade00" stroke-width="1" opacity="0.6"/><circle cx="20" cy="20" r="13" fill="#ffee00" opacity="0.04"/></svg>',
-    golddrache:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#0d0a02"/><path d="M5 38 Q7 27 12 23 L15 21 L14 38Z" fill="#8a6520"/><path d="M12 23 Q15 15 26 14 Q36 14 38 20 Q39 26 34 29 Q29 33 19 31 Q11 30 12 23Z" fill="#c88830"/><path d="M23 14 Q25 7 28 9 Q27 11 26 14Z" fill="#886218"/><path d="M27.5 14 Q30 8 32 11 Q30.5 12.5 29.5 14Z" fill="#786018"/><path d="M14 22 Q16 20 18 22" fill="none" stroke="#a07020" stroke-width="0.9" opacity="0.7"/><path d="M18 22 Q20 20 22 22" fill="none" stroke="#a07020" stroke-width="0.9" opacity="0.7"/><path d="M22 22 Q24 20 26 22" fill="none" stroke="#a07020" stroke-width="0.9" opacity="0.7"/><path d="M15 26 Q17 24 19 26" fill="none" stroke="#a07020" stroke-width="0.9" opacity="0.7"/><path d="M19 26 Q21 24 23 26" fill="none" stroke="#a07020" stroke-width="0.9" opacity="0.7"/><circle cx="30" cy="20" r="4" fill="#0a0800"/><circle cx="30" cy="20" r="3" fill="#cc8800"/><circle cx="30" cy="20" r="1.8" fill="#ffcc00"/><ellipse cx="30" cy="20" rx="0.6" ry="2.2" fill="#0a0400"/><circle cx="28.8" cy="18.8" r="0.6" fill="#fff" opacity="0.65"/><path d="M36 23 Q38 21 39 23 Q38 24.5 37 23Z" fill="#aaa" opacity="0.4"/><path d="M36.5 26 Q39 24 39 26.5 Q38 27 37 26Z" fill="#aaa" opacity="0.3"/><polygon points="35.5,23 38,21.5 38,24" fill="#c88830"/><polygon points="34,28 33,31 35,30" fill="#dde8cc" opacity="0.7"/></svg>',
-    phoenix:   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#1a0300"/><path d="M14 40 Q16 30 20 26 Q24 30 26 40Z" fill="#cc2200"/><path d="M8 38 Q11 26 20 24 Q29 26 32 38Z" fill="#aa1400" opacity="0.7"/><path d="M2 26 Q4 14 11 11 Q8 18 11 23 Q6 20 2 26Z" fill="#cc4400"/><path d="M4 21 Q7 9 15 7 Q10 16 15 21Z" fill="#ee6600"/><path d="M3 15 Q7 5 15 5 Q9 12 12 17Z" fill="#ffaa00" opacity="0.8"/><path d="M38 26 Q36 14 29 11 Q32 18 29 23 Q34 20 38 26Z" fill="#cc4400"/><path d="M36 21 Q33 9 25 7 Q30 16 25 21Z" fill="#ee6600"/><path d="M37 15 Q33 5 25 5 Q31 12 28 17Z" fill="#ffaa00" opacity="0.8"/><path d="M15 30 Q17 20 20 14 Q23 20 25 30 Q22 26 20 26 Q18 26 15 30Z" fill="#ff6600"/><ellipse cx="20" cy="13" rx="5.5" ry="5.5" fill="#ff8800"/><path d="M18 9 Q17 3 20 5 Q23 3 22 9Z" fill="#ffd700"/><path d="M15.5 10 Q12 4 16.5 7 L16 10Z" fill="#ff8800"/><path d="M24.5 10 Q28 4 23.5 7 L24 10Z" fill="#ff8800"/><circle cx="18" cy="14" r="2.2" fill="#ffd700"/><circle cx="18" cy="14" r="1.1" fill="#0a0800"/><circle cx="17.2" cy="13.3" r="0.55" fill="#fff" opacity="0.8"/><polygon points="22.5,13.5 27,12.5 22.5,11.5" fill="#ffd700"/><ellipse cx="20" cy="20" rx="4.5" ry="7" fill="#ffdd00" opacity="0.18"/></svg>'
-  };
+    skelett:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#130222"/><circle cx="20" cy="20" r="19" fill="none" stroke="#cc00ff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#cc00ff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#cc00ff" stroke-width="1" opacity="0.9"/><path d="M5 40Q8 21 20 15Q32 21 35 40Z" fill="#200038"/><path d="M14 13Q16 4 20 7Q24 4 26 13Q22 8 20 10Q18 8 14 13Z" fill="#200038"/><ellipse cx="20" cy="21" rx="8.5" ry="9.5" fill="#ddd0e8"/><ellipse cx="15.5" cy="19.5" rx="3.2" ry="3.5" fill="#07000c"/><ellipse cx="24.5" cy="19.5" rx="3.2" ry="3.5" fill="#07000c"/><ellipse cx="15.5" cy="19.5" rx="1.5" ry="1.8" fill="#9900cc" opacity="0.7"/><ellipse cx="24.5" cy="19.5" rx="1.5" ry="1.8" fill="#9900cc" opacity="0.7"/><path d="M18.5 24L20 22.5L21.5 24Z" fill="#bbaacc" opacity="0.4"/><rect x="15.8" y="25.5" width="2.2" height="3" rx="0.4" fill="#ede5f8"/><rect x="18.7" y="25.5" width="2.6" height="3" rx="0.4" fill="#ede5f8"/><rect x="21.8" y="25.5" width="2.2" height="3" rx="0.4" fill="#ede5f8"/><polygon points="17,28.5 15.8,28.5 16.3,32.5" fill="#ede5f8"/><polygon points="23,28.5 24.2,28.5 23.7,32.5" fill="#ede5f8"/></svg>',
+    waldhueter:       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#081006"/><circle cx="20" cy="20" r="19" fill="none" stroke="#22ff44" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#22ff44" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#22ff44" stroke-width="1" opacity="0.9"/><path d="M7 40Q9 26 20 21Q31 26 33 40Z" fill="#0e1c0a"/><ellipse cx="20" cy="20" rx="9.5" ry="10.5" fill="#285218"/><ellipse cx="20" cy="16" rx="9" ry="8" fill="#2e6020"/><path d="M11 16Q12 8 16 9Q15 13 17 15Q20 11 23 15Q25 13 24 9Q28 8 29 16Q25 12 20 14Q15 12 11 16Z" fill="#1e4a14"/><ellipse cx="15" cy="18.5" rx="3.5" ry="3.5" fill="#0a0e06"/><ellipse cx="15" cy="18.5" rx="2.5" ry="2.5" fill="#dd8800" opacity="0.9"/><ellipse cx="15" cy="18.5" rx="1.5" ry="1.5" fill="#ffcc00"/><ellipse cx="25" cy="18.5" rx="3.5" ry="3.5" fill="#0a0e06"/><ellipse cx="25" cy="18.5" rx="2.5" ry="2.5" fill="#dd8800" opacity="0.9"/><ellipse cx="25" cy="18.5" rx="1.5" ry="1.5" fill="#ffcc00"/><ellipse cx="14.8" cy="18" rx="0.7" ry="1" fill="#221400"/><ellipse cx="24.8" cy="18" rx="0.7" ry="1" fill="#221400"/><path d="M14.5 24Q20 22 25.5 24" stroke="#1a3a10" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M15 27Q20 29 25 27" stroke="#1a3a10" stroke-width="1.5" fill="none"/></svg>',
+    eismagier:        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#020c1a"/><circle cx="20" cy="20" r="19" fill="none" stroke="#00ccff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#00ccff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#00ccff" stroke-width="1" opacity="0.9"/><g stroke="#88ddff" stroke-linecap="round"><line x1="20" y1="5" x2="20" y2="35" stroke-width="1.5"/><line x1="5.4" y1="12.5" x2="34.6" y2="27.5" stroke-width="1.5"/><line x1="5.4" y1="27.5" x2="34.6" y2="12.5" stroke-width="1.5"/><line x1="20" y1="5" x2="17" y2="9.5" stroke-width="0.9"/><line x1="20" y1="5" x2="23" y2="9.5" stroke-width="0.9"/><line x1="34.6" y1="12.5" x2="30.7" y2="13.5" stroke-width="0.9"/><line x1="34.6" y1="12.5" x2="33" y2="16.5" stroke-width="0.9"/><line x1="34.6" y1="27.5" x2="30.7" y2="26.5" stroke-width="0.9"/><line x1="34.6" y1="27.5" x2="33" y2="23.5" stroke-width="0.9"/><line x1="20" y1="35" x2="17" y2="30.5" stroke-width="0.9"/><line x1="20" y1="35" x2="23" y2="30.5" stroke-width="0.9"/><line x1="5.4" y1="27.5" x2="9.3" y2="26.5" stroke-width="0.9"/><line x1="5.4" y1="27.5" x2="7" y2="23.5" stroke-width="0.9"/><line x1="5.4" y1="12.5" x2="9.3" y2="13.5" stroke-width="0.9"/><line x1="5.4" y1="12.5" x2="7" y2="16.5" stroke-width="0.9"/></g><polygon points="20,15 24.3,17.5 24.3,22.5 20,25 15.7,22.5 15.7,17.5" fill="#00bbff" opacity="0.75"/><circle cx="20" cy="20" r="3.5" fill="#ddf6ff" opacity="0.95"/><circle cx="18.8" cy="19" r="1.2" fill="#fff" opacity="0.8"/></svg>',
+    roboter:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050508"/><circle cx="20" cy="20" r="19" fill="none" stroke="#8899aa" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#8899aa" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#8899aa" stroke-width="1" opacity="0.9"/><ellipse cx="20" cy="25" rx="12" ry="12" fill="#141620"/><ellipse cx="20" cy="18" rx="11" ry="9.5" fill="#1e2030"/><path d="M9 18Q9 8 20 7Q31 8 31 18Z" fill="#282a3a"/><ellipse cx="14" cy="20" rx="4.5" ry="3.8" fill="#07070d"/><ellipse cx="14" cy="20" rx="3.8" ry="3.2" fill="#ff9900" opacity="0.95"/><ellipse cx="14" cy="20" rx="2.5" ry="2" fill="#ffdd44"/><ellipse cx="13.5" cy="19.2" rx="0.8" ry="1.2" fill="#1a0500"/><circle cx="15" cy="18.5" r="0.5" fill="#fff" opacity="0.45"/><ellipse cx="26" cy="20" rx="4.5" ry="3.8" fill="#07070d"/><ellipse cx="26" cy="20" rx="3.8" ry="3.2" fill="#ff9900" opacity="0.95"/><ellipse cx="26" cy="20" rx="2.5" ry="2" fill="#ffdd44"/><ellipse cx="25.5" cy="19.2" rx="0.8" ry="1.2" fill="#1a0500"/><circle cx="27" cy="18.5" r="0.5" fill="#fff" opacity="0.45"/><rect x="15" y="28" width="10" height="4" rx="2" fill="#141625"/><line x1="17" y1="30" x2="23" y2="30" stroke="#0a0c1a" stroke-width="0.8"/></svg>',
+    hexerin:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#07041a"/><circle cx="20" cy="20" r="19" fill="none" stroke="#bb00ff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#bb00ff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#bb00ff" stroke-width="1" opacity="0.9"/><circle cx="8" cy="9" r="0.8" fill="#fff" opacity="0.6"/><circle cx="33" cy="7" r="0.6" fill="#ffddff" opacity="0.6"/><circle cx="5" cy="27" r="0.7" fill="#ccbbff" opacity="0.5"/><path d="M8 40Q11 24 20 18Q29 24 32 40Z" fill="#0f0024"/><polygon points="20,4 17,29 23,29" fill="#240050"/><ellipse cx="20" cy="9" rx="14" ry="4" fill="#240050"/><path d="M15 5.5L13 2Q20 0 27 2L25 5.5Z" fill="#1a003a"/><path d="M14 9Q20 5 26 9" stroke="#1a003a" stroke-width="2" fill="none"/><ellipse cx="28" cy="7" rx="2.5" ry="2.5" fill="none" stroke="#ddaaff" stroke-width="0.9" opacity="0.8"/><path d="M16 7Q19 3.5 21 8Q18.5 6 16 7.5Z" fill="#ffd700" opacity="0.85"/><ellipse cx="20" cy="26" rx="5.5" ry="4" fill="#e8d0f8"/><ellipse cx="17.5" cy="25.5" rx="1.3" ry="1.2" fill="#1a0040"/><ellipse cx="22.5" cy="25.5" rx="1.3" ry="1.2" fill="#1a0040"/><circle cx="24" cy="22" r="1.5" fill="#080010"/><path d="M22.5 21.5Q24 20.5 25.5 22Q24 21 22.5 21.5Z" fill="#fff" opacity="0.3"/></svg>',
+    kanone:           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#04080e"/><circle cx="20" cy="20" r="19" fill="none" stroke="#0099ff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#0099ff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#0099ff" stroke-width="1" opacity="0.9"/><ellipse cx="20" cy="26" rx="13" ry="12" fill="#0a1620"/><rect x="9" y="11" width="22" height="17" rx="3" fill="#0d2040"/><rect x="7" y="16" width="4" height="8" rx="1.5" fill="#0a1832"/><rect x="29" y="16" width="4" height="8" rx="1.5" fill="#0a1832"/><rect x="9" y="11" width="22" height="5" rx="1" fill="#0f2850"/><line x1="9" y1="16" x2="31" y2="16" stroke="#0a1840" stroke-width="0.8"/><ellipse cx="20" cy="21" rx="7.5" ry="7.5" fill="#050d1c"/><ellipse cx="20" cy="21" rx="6.8" ry="6.8" fill="#cc5500" opacity="0.9"/><ellipse cx="20" cy="21" rx="5.2" ry="5.2" fill="#ff8800"/><ellipse cx="20" cy="21" rx="3.3" ry="3.3" fill="#ffcc00"/><circle cx="18.5" cy="19.5" r="1.2" fill="#fff" opacity="0.5"/><ellipse cx="20" cy="21" rx="1" ry="2.8" fill="#060300"/><rect x="11" y="27" width="5" height="3" rx="1" fill="#09182e"/><rect x="24" y="27" width="5" height="3" rx="1" fill="#09182e"/></svg>',
+    frankenstein:     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050d04"/><circle cx="20" cy="20" r="19" fill="none" stroke="#00ff44" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#00ff44" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#00ff44" stroke-width="1" opacity="0.9"/><path d="M8 40Q10 26 20 21Q30 26 32 40Z" fill="#0a1808"/><ellipse cx="20" cy="21" rx="9.5" ry="10" fill="#2e6522"/><rect x="10.5" y="10" width="19" height="11" rx="2" fill="#2a6020"/><rect x="10.5" y="10" width="19" height="3.5" rx="1" fill="#1e4a16"/><ellipse cx="7.5" cy="25" rx="3.5" ry="2" fill="#1e4a16"/><ellipse cx="32.5" cy="25" rx="3.5" ry="2" fill="#1e4a16"/><rect x="4.5" y="24" width="6" height="2" rx="0.5" fill="#aabb00" opacity="0.9"/><rect x="29.5" y="24" width="6" height="2" rx="0.5" fill="#aabb00" opacity="0.9"/><path d="M14 12 Q17 11 20 11.5 Q23 11 26 12" stroke="#1a3e12" stroke-width="1.5" fill="none"/><ellipse cx="15" cy="19.5" rx="3.5" ry="3.5" fill="#04080a"/><ellipse cx="15" cy="19.5" rx="2.5" ry="2.5" fill="#ff3300" opacity="0.9"/><ellipse cx="25" cy="19.5" rx="3.5" ry="3.5" fill="#04080a"/><ellipse cx="25" cy="19.5" rx="2.5" ry="2.5" fill="#ff3300" opacity="0.9"/><path d="M14 25Q20 23 26 25" stroke="#1a3a12" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+    feuerschaedel:    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#1a0300"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ff5500" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ff5500" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ff5500" stroke-width="1" opacity="0.9"/><path d="M20 37C8 30 3 19 7 10C9 4 15 2 20 2C25 2 31 4 33 10C37 19 32 30 20 37Z" fill="#cc2200" opacity="0.9"/><path d="M20 33C12 27 10 17 13 11C15 7 18 5 20 5C22 5 25 7 27 11C30 17 28 27 20 33Z" fill="#ff5500"/><path d="M20 27C15 24 14 17 16 12C17.5 9 19 8 20 8C21 8 22.5 9 24 12C26 17 25 24 20 27Z" fill="#ffaa00"/><ellipse cx="20" cy="20" rx="6" ry="7" fill="#ede8d8" opacity="0.96"/><ellipse cx="16.5" cy="19" rx="2.5" ry="3" fill="#1a0300"/><ellipse cx="23.5" cy="19" rx="2.5" ry="3" fill="#1a0300"/><ellipse cx="16.5" cy="19" rx="1.5" ry="2" fill="#ff5500" opacity="0.85"/><ellipse cx="23.5" cy="19" rx="1.5" ry="2" fill="#ff5500" opacity="0.85"/><rect x="16.8" y="25" width="1.8" height="2.5" rx="0.3" fill="#ede8d8"/><rect x="19" y="25" width="2" height="2.5" rx="0.3" fill="#ede8d8"/><rect x="21.4" y="25" width="1.8" height="2.5" rx="0.3" fill="#ede8d8"/></svg>',
+    pestdoktor:       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050508"/><circle cx="20" cy="20" r="19" fill="none" stroke="#00cc33" stroke-width="3" opacity="0.15"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#00cc33" stroke-width="1.8" opacity="0.4"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#00cc33" stroke-width="1" opacity="0.8"/><path d="M5 40Q8 22 20 16Q32 22 35 40Z" fill="#0a0a1a"/><path d="M13 14Q15 4 20 7Q25 4 27 14Q23 8 20 10Q17 8 13 14Z" fill="#0a0a1a"/><ellipse cx="20" cy="21.5" rx="8.5" ry="9.5" fill="#d8d4cc"/><ellipse cx="15.5" cy="19.5" rx="3.3" ry="3.5" fill="#001600"/><ellipse cx="24.5" cy="19.5" rx="3.3" ry="3.5" fill="#001600"/><ellipse cx="15.5" cy="19.5" rx="2" ry="2.3" fill="#00cc33" opacity="0.95"/><ellipse cx="24.5" cy="19.5" rx="2" ry="2.3" fill="#00cc33" opacity="0.95"/><circle cx="15.5" cy="19.5" r="0.9" fill="#00ff44"/><circle cx="24.5" cy="19.5" r="0.9" fill="#00ff44"/><ellipse cx="20" cy="24" rx="4.5" ry="3.5" fill="#ccc8c0"/><rect x="15.5" y="24.5" width="2" height="3.5" rx="0.5" fill="#d4d0c8"/><rect x="19" y="24.5" width="2.5" height="4" rx="0.5" fill="#d4d0c8"/><rect x="22.5" y="24.5" width="2" height="3.5" rx="0.5" fill="#d4d0c8"/></svg>',
+    blitz:            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#03060f"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ffcc00" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ffcc00" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ffcc00" stroke-width="1" opacity="0.9"/><path d="M4 21Q8 14 15 18Q15 12 22 12Q29 12 29 18Q36 14 38 21Q30 18 20 18Q10 18 4 21Z" fill="#1a1e2c"/><path d="M4 27Q9 19 17 23Q17 18 24 18Q30 18 29 23Q36 19 38 27Q30 24 20 24Q10 24 4 27Z" fill="#10142a"/><polygon points="23,4 16,24 22,24 18.5,38 30,18 23,18" fill="#ffe010"/><polygon points="23,4 16,24 22,24 18.5,38 30,18 23,18" fill="#ffffff" opacity="0.22"/><line x1="26" y1="10" x2="33" y2="7" stroke="#aade00" stroke-width="1.1" opacity="0.6"/><line x1="13" y1="17" x2="6" y2="13" stroke="#aade00" stroke-width="1.1" opacity="0.6"/><line x1="19" y1="31" x2="13" y2="37" stroke="#aade00" stroke-width="0.9" opacity="0.5"/></svg>',
+    trojanischespferd:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#0c0900"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ffaa00" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ffaa00" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ffaa00" stroke-width="1" opacity="0.9"/><path d="M7 40Q9 28 20 23Q31 28 33 40Z" fill="#1a1006"/><ellipse cx="20" cy="23" rx="10.5" ry="11" fill="#c07820"/><ellipse cx="20" cy="17" rx="8.5" ry="8" fill="#d09030"/><path d="M15 11Q14 5 16.5 8Q15 4 19 8Q19.5 3 20 8Q20.5 3 21 8Q25 4 24 8Q26.5 5 25 11Z" fill="#d4a030"/><path d="M26.5 11Q29 8 30.5 12Q28 11 26.5 11Z" fill="#d4a030"/><path d="M13 22Q15.5 20 18 22" fill="none" stroke="#a06818" stroke-width="0.9"/><path d="M18 22Q20.5 20 23 22" fill="none" stroke="#a06818" stroke-width="0.9"/><path d="M23 22Q25.5 20 28 22" fill="none" stroke="#a06818" stroke-width="0.9"/><circle cx="28.5" cy="19" r="3.5" fill="#0a0800"/><circle cx="28.5" cy="19" r="2.5" fill="#cc8800"/><circle cx="28.5" cy="19" r="1.5" fill="#ffcc00"/><ellipse cx="28.5" cy="19" rx="0.5" ry="1.8" fill="#0a0400"/><circle cx="27.2" cy="18" r="0.6" fill="#fff" opacity="0.6"/><path d="M33 20Q37 19 38 22Q36 22 35 21Z" fill="#c07820"/></svg>',
+    phoenix:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#190200"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ff4400" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ff4400" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ff4400" stroke-width="1" opacity="0.9"/><path d="M14 40Q16 30 20 26Q24 30 26 40Z" fill="#cc2200"/><path d="M8 38Q11 26 20 24Q29 26 32 38Z" fill="#aa1400" opacity="0.7"/><path d="M2 26Q4 14 11 11Q8 18 11 23Q6 20 2 26Z" fill="#cc4400"/><path d="M4 21Q7 9 15 7Q10 16 15 21Z" fill="#ee6600"/><path d="M3 15Q7 5 15 5Q9 12 12 17Z" fill="#ffaa00" opacity="0.8"/><path d="M38 26Q36 14 29 11Q32 18 29 23Q34 20 38 26Z" fill="#cc4400"/><path d="M36 21Q33 9 25 7Q30 16 25 21Z" fill="#ee6600"/><path d="M37 15Q33 5 25 5Q31 12 28 17Z" fill="#ffaa00" opacity="0.8"/><path d="M15 30Q17 20 20 14Q23 20 25 30Q22 26 20 26Q18 26 15 30Z" fill="#ff6600"/><ellipse cx="20" cy="14" rx="5.5" ry="5.5" fill="#ff8800"/><path d="M18 10Q17 4 20 6Q23 4 22 10Z" fill="#ffd700"/><path d="M15.5 11Q12 5 16.5 8L16 11Z" fill="#ff8800"/><path d="M24.5 11Q28 5 23.5 8L24 11Z" fill="#ff8800"/><circle cx="18" cy="14" r="2.2" fill="#ffd700"/><circle cx="18" cy="14" r="1.1" fill="#0a0800"/><circle cx="17.2" cy="13.3" r="0.6" fill="#fff" opacity="0.8"/><polygon points="22.5,13.5 27,12 22.5,11" fill="#ffd700"/></svg>',  };
   const WAPPEN = Object.keys(WAPPEN_SVG);
   // Precompute data-URIs einmal beim Laden (kein encodeURIComponent im Render-Loop)
   const WAPPEN_SRC = {};
   for (const [id, svg] of Object.entries(WAPPEN_SVG)) {
     WAPPEN_SRC[id] = 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
+  // Glow-Farbe je Avatar (für Profil-Editor Auswahl-Ringe)
+  const WAPPEN_GLOW = {
+    skelett:'#cc00ff', waldhueter:'#22ff44', eismagier:'#00ccff', roboter:'#8899aa',
+    hexerin:'#bb00ff', kanone:'#0099ff',
+    frankenstein:'#00ff44', feuerschaedel:'#ff5500', pestdoktor:'#00cc33',
+    blitz:'#ffcc00', trojanischespferd:'#ffaa00', phoenix:'#ff4400',
+  };
+  // Migration: alte Avatar-Keys → neue Keys
+  const WAPPEN_MIGRATION = {
+    vampir:'skelett', pestdoc:'waldhueter', eismagie:'eismagier', schatten:'roboter',
+    sternmage:'hexerin', golem:'kanone', seehexe:'frankenstein', feuergeist:'feuerschaedel',
+    totenmage:'pestdoktor', sturmreiter:'blitz', golddrache:'trojanischespferd',
+  };
   // Avatar-Unlock-System: Erste 4 sofort verfügbar, restliche 8 per Level
   const AVATAR_UNLOCKS = {
-    vampir:      1, pestdoc:    1, eismagie:   1, schatten:    1,
-    sternmage:   5, golem:     10, seehexe:   15, feuergeist: 20,
-    totenmage:  25, sturmreiter:30, golddrache:40, phoenix:    50,
+    skelett:1, waldhueter:1, eismagier:1, roboter:1,
+    hexerin:5, kanone:10, frankenstein:15, feuerschaedel:20,
+    pestdoktor:25, blitz:30, trojanischespferd:40, phoenix:50,
   };
   function getLevelTier(level) {
     if (level >= 50) return { name: "legend", label: "LEGENDÄR", color: "#a78bfa", glow: "rgba(167,139,250,0.7)", border: "#7c3aed" };
@@ -1406,9 +1403,8 @@ window.FortressApp = function Fortress() {
     }, ...particles);
   }
   function WappenAvatar({ id, size = 36 }) {
-    const src = WAPPEN_SRC[id] || WAPPEN_SRC.vampir;
-    return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: 6, imageRendering: 'auto' } });
-  }
+    const src = WAPPEN_SRC[id] || WAPPEN_SRC.skelett;
+    return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
   // Statische XP-Leiste (Profil-Karte, Profil-Editor)
   function XpBarUI({ level, xp }) {
     const needed = xpToNextLevel(level);
@@ -1463,8 +1459,7 @@ window.FortressApp = function Fortress() {
           React.createElement("span", null, "Level " + xpChange.newLevel),
           React.createElement("span", null, xpChange.newXp + " / " + needed)
         ),
-        React.createElement("div", { style: { height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 6, overflow: "hidden", position: "relative" } },
-          React.createElement("div", { style: {
+        React.createElement("div", { style: { height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 6, overflow: "hidden", position: "relative" } },          React.createElement("div", { style: {
             position: "absolute", top: 0, left: 0, height: "100%",
             width: pct + "%",
             background: "linear-gradient(90deg,#7c3aed,#22d3ee)",
@@ -1478,6 +1473,21 @@ window.FortressApp = function Fortress() {
         t('nextRewardAt', { n: nextUnlockEntry[1] })
       )
     );
+  }
+  const DAILY_REWARDS = [
+    {gold:10},{gold:15},{gold:15},{gold:20},{gold:20},{gold:25},{gold:50,special:"chest"}
+  ];
+  function msTillMidnight() {
+    const n = new Date(); const m = new Date(n); m.setHours(24,0,0,0); return m - n;
+  }
+  function getDailyCollectable(daily) {
+    if (!daily || !daily.lastCollect) return true;
+    const last = new Date(daily.lastCollect);
+    const now = new Date();
+    return last.toDateString() !== now.toDateString();
+  }
+  function getDailyStreakIndex(daily) {
+    return Math.min(((daily && daily.streak) || 0) % 7, 6);
   }
   function DailyRewardModal({ daily, onCollect, onClose, collected }) {
     const [collecting, setCollecting] = useState(false);
@@ -1542,9 +1552,7 @@ window.FortressApp = function Fortress() {
         }, t('dailyCollect'))
       )
     );
-  }
-  const PROFILE_COLORS = [
-    { name: "Blau", hex: "#2563eb" },
+  }  const PROFILE_COLORS = [    { name: "Blau", hex: "#2563eb" },
     { name: "Rot", hex: "#dc2626" },
     { name: "Gr\xFCn", hex: "#059669" },
     { name: "Lila", hex: "#7c3aed" },
@@ -1568,7 +1576,7 @@ window.FortressApp = function Fortress() {
         const prof = {
           id,
           name: p.name || "",
-          wappen: p.wappen || "\u2654",
+          wappen: (p.wappen && WAPPEN_MIGRATION[p.wappen] ? WAPPEN_MIGRATION[p.wappen] : (p.wappen && WAPPEN_SRC[p.wappen] ? p.wappen : "skelett")),
           color: p.color || "#2563eb",
           // ELO-Wertung (Start 1000). stats/stats3 = Siege/Niederlagen je Modus.
           elo: typeof p.elo === "number" ? p.elo : 1e3,
@@ -1605,46 +1613,18 @@ window.FortressApp = function Fortress() {
     }
     setProfile(p);
   }
-  // ── Daily Reward System ───────────────────────────────────────────────────
-  const DAILY_REWARDS = [
-    { day: 1, gold: 25,  xp: 0,  special: null },
-    { day: 2, gold: 35,  xp: 0,  special: null },
-    { day: 3, gold: 50,  xp: 0,  special: null },
-    { day: 4, gold: 75,  xp: 0,  special: null },
-    { day: 5, gold: 100, xp: 0,  special: null },
-    { day: 6, gold: 150, xp: 0,  special: null },
-    { day: 7, gold: 200, xp: 50, special: "chest" },
-  ];
-  function loadDailyState() {
-    try {
-      const raw = localStorage.getItem("fortress_daily");
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-    return { lastCollect: 0, streak: 0, lastStreakDay: "" };
+  function handleDailyCollect(reward) {
+    if (profile) {
+      const newGold = (typeof profile.gold === 'number' ? profile.gold : 100) + (reward.gold || 0);
+      saveProfile(Object.assign({}, profile, { gold: newGold }));
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const newDaily = { lastCollect: Date.now(), streak: ((daily && daily.streak) || 0) + 1, lastStreakDay: today };
+    try { localStorage.setItem('fortress_daily', JSON.stringify(newDaily)); } catch (e) {}
+    setDaily(newDaily);
+    setDailyCollectedState(true);
+    setTimeout(() => { setShowDailyModal(false); setDailyCollectedState(false); }, 1400);
   }
-  function saveDailyState(d) {
-    try { localStorage.setItem("fortress_daily", JSON.stringify(d)); } catch (e) {}
-  }
-  function getDailyCollectable(daily) {
-    if (!daily.lastCollect) return true;
-    const lastDate = new Date(daily.lastCollect).toISOString().slice(0, 10);
-    const todayDate = new Date().toISOString().slice(0, 10);
-    return lastDate < todayDate;
-  }
-  function msTillMidnight() {
-    const now = new Date();
-    const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0);
-    return Math.max(0, midnight.getTime() - now.getTime());
-  }
-  function getDailyStreakIndex(daily) {
-    return Math.min((daily.streak || 0) % 7, 6);
-  }
-  // ── Architektur-Vorbereitung: Datenstrukturen (noch keine UI) ────────────
-  // Achievements: { id, name, desc, icon, check: (profile, context) => bool }
-  // Daily Tasks: { id, desc, goal, reward: {gold, xp}, type: "wins"|"games"|"xp" }
-  // Season: { id, name, startMs, endMs, rewards: [{level, item}] }
-  // Social: profile.friends = [playerId, ...] (future Firebase feature)
   function eloDelta(current, opponent, score) {
     const expected = 1 / (1 + Math.pow(10, (opponent - current) / 400));
     return 32 * (score - expected);
@@ -4199,22 +4179,16 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     fontSize: 24,
     boxShadow: `0 2px 12px ${profile.color}66`
-  } }, React.createElement("div", { style: { position: "relative" } },
-    React.createElement(WappenAvatar, { id: profile.wappen, size: 28 }),
-    React.createElement("div", { style: { position: "absolute", bottom: -6, right: -6 } },
-      React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 })
-    )
-  )), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins / Math.max(1, profile.stats.games) * 100), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), typeof profile.peakElo === "number" && profile.peakElo > (typeof profile.elo === "number" ? profile.elo : 1000) && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#64748b", marginTop: 1 } }, t('peakElo') + ": " + profile.peakElo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 } },
-    /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
-      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-      color: "#cbd5e1", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 })),
-    getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyRewardBtn'), style: {
-      background: "rgba(251,191,36,0.18)", border: "1px solid rgba(251,191,36,0.5)",
-      color: "#fbbf24", borderRadius: 8, padding: "8px 12px", fontSize: 13, cursor: "pointer",
-      animation: "streakGlow 2s ease infinite"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }))
-  )), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
+  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 28 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, style: {
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "#cbd5e1",
+    borderRadius: 8,
+    padding: "8px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+    flexShrink: 0
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 }))), showHelp && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14, fontSize: 11.5 } }, [
     ["crown", "#22d3ee", t('helpStartTitle'), t('helpStartDesc')],
     ["shield", "#4ade80", t('helpBuildTitle'), t('helpBuildDesc')],
     ["flame", "#f87171", t('helpShootTitle'), t('helpShootDesc')],
@@ -4242,7 +4216,7 @@ window.FortressApp = function Fortress() {
     padding: "12px",
     borderRadius: 12,
     backdropFilter: "blur(10px)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), showHelp ? t('hideHelp') : t('howToPlay'), /* @__PURE__ */ React.createElement(Icon, { name: showHelp ? "chevronUp" : "chevronDown", size: 14, style: { opacity: 0.7 } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), getDailyCollectable(daily) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: "tages-belohnung", style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), showDailyModal && /* @__PURE__ */ React.createElement(DailyRewardModal, { daily: daily, onCollect: handleDailyCollect, onClose: () => setShowDailyModal(false), collected: dailyCollectedState }), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -4294,9 +4268,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed",
-    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(5,8,15,0.94)",
     display: "flex",
     alignItems: "center",
@@ -4331,30 +4303,37 @@ window.FortressApp = function Fortress() {
         marginBottom: 16
       }
     }
-  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "WAPPEN"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, justifyContent: "center" } }, WAPPEN.map((w) => {
+  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#64748b", textAlign: "left", marginBottom: 8, letterSpacing: "0.1em" } }, "AKTIVE AVATARE"),
+  /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, justifyContent: "center" } }, WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
+    const glowColor = WAPPEN_GLOW[w] || "#888";
+    const isSel = editWappen === w;
+    return /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
+      width: 48, height: 48, borderRadius: "50%", cursor: "pointer",
+      background: "transparent", border: "none", padding: 0, position: "relative", flexShrink: 0,
+      boxShadow: isSel ? "0 0 0 2px #fff,0 0 0 4px " + glowColor + ",0 0 12px " + glowColor : "0 0 0 2px " + glowColor + "55",
+      outline: "none"
+    }, title: w },
+      /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 48 })
+    );
+  })),
+  /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569", textAlign: "left", marginBottom: 8, letterSpacing: "0.1em" } }, "GESPERRTE AVATARE"),
+  /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, justifyContent: "center" } }, WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
     const reqLevel = AVATAR_UNLOCKS[w] || 1;
-    const curLevel = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1;
-    const locked = reqLevel > curLevel;
-    return /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => !locked && setEditWappen(w), style: {
-      width: 40, height: 40, fontSize: 20, borderRadius: 8,
-      cursor: locked ? "not-allowed" : "pointer",
-      background: editWappen === w ? editColor : locked ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
-      border: editWappen === w ? "2px solid #fff" : locked ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(255,255,255,0.12)",
-      position: "relative", overflow: "hidden", opacity: locked ? 0.45 : 1
-    }, title: locked ? t('lockedAt', { n: reqLevel }) : w },
-      React.createElement(WappenAvatar, { id: w, size: 28 }),
-      locked && React.createElement("div", { style: {
+    return /* @__PURE__ */ React.createElement("div", { key: w, style: {
+      width: 48, height: 48, borderRadius: "50%", position: "relative", flexShrink: 0,
+      filter: "grayscale(1) brightness(0.35)", cursor: "not-allowed"
+    }, title: t("lockedAt", { n: reqLevel }) },
+      /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 48 }),
+      /* @__PURE__ */ React.createElement("div", { style: {
         position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        background: "rgba(2,6,15,0.65)", fontSize: 7, color: "#94a3b8", gap: 1
+        alignItems: "center", justifyContent: "center", borderRadius: "50%",
+        background: "rgba(2,6,15,0.5)", gap: 1
       } },
-        React.createElement(Icon, { name: "key", size: 10, color: "#64748b" }),
-        React.createElement("span", null, "L" + reqLevel)
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10 } }, "🔒"),
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 7, color: "#64748b", fontWeight: 700 } }, "L" + reqLevel)
       )
     );
-  })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('profileColorLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {
-    width: 34,
-    height: 34,
+  })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('profileColorLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {    width: 34,    height: 34,
     borderRadius: "50%",
     cursor: "pointer",
     background: c.hex,
@@ -4436,9 +4415,7 @@ window.FortressApp = function Fortress() {
       alignItems: "center",
       justifyContent: "center",
       fontSize: 18
-    } }, React.createElement(WappenAvatar, { id: e.wappen || "vampir", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, "\u{1F3C6} ", e.wins, " S \xB7 \u{1F480} ", e.losses, " N \xB7 ", e.games, " Sp.")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));
-  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
-    marginTop: 12,
+    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, "\u{1F3C6} ", e.wins, " S \xB7 \u{1F480} ", e.losses, " N \xB7 ", e.games, " Sp.")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {    marginTop: 12,
     background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
     border: "1px solid rgba(255,255,255,0.12)",
@@ -4742,7 +4719,7 @@ window.FortressApp = function Fortress() {
     // Spieleridentität für Header-Chip
     const myPI = online.current && playerInfo.current ? playerInfo.current[myRole.current] : null;
     const myName = myPI ? myPI.name : (profile ? profile.name : null);
-    const myWap = (myPI ? myPI.wappen : null) || (profile ? profile.wappen : null) || "vampir";
+    const myWap = (myPI ? myPI.wappen : null) || (profile ? profile.wappen : null) || "skelett";
     // Einheitlicher Karten-Stil (ELO / Gold / XP)
     const card = (r, g, b) => ({
       background: "rgba(" + r + "," + g + "," + b + ",0.09)",
@@ -4754,8 +4731,7 @@ window.FortressApp = function Fortress() {
     });
     const LABEL = { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 };
     return React.createElement("div", { style: {
-      background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",
-      minHeight: "100dvh",
+      background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",      minHeight: "100dvh",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -4996,9 +4972,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[1].wappen : "vampir", size: 20 }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {
-    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",
-    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
     boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
     padding: "1px 6px",
@@ -5027,12 +5001,10 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "schatten", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
     border: "1px solid rgba(16,185,129,0.45)",
-    borderRadius: 12,
-    padding: "4px 14px",
-    display: "flex",
+    borderRadius: 12,    padding: "4px 14px",    display: "flex",
     alignItems: "center",
     gap: 8,
     backdropFilter: "blur(12px)",
