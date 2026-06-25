@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.4)
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.5)
 
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
@@ -955,3 +955,19 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Test-Erweiterung** (`test_fortress.js`):
   - `PROFILE_INIT` aktualisiert: alle neuen Felder (level, xp, peakElo, peakElo3, unlockedRewards, achievements, dailyTasks, seasonXp). `fortress_daily` mit aktuellem Timestamp → verhindert Auto-Show in unrelated Tests.
   - Neue Suite `suiteProgression`: 14 Tests für LevelBadge, XP-Leiste, Win-Rate %, ELO-Anzeige, CSS-Keyframes, Tages-Belohnungs-Button, Modal-Kalender, Abhol-Flow, Gold-Update, Streak-Persistenz, gesperrte Avatare, Basis-Avatare frei, Level-Overlay.
+
+### v3.11.5 — Match-End-Screen Redesign
+- **Visuelles Redesign** des Ergebnis-Bildschirms (Clash Royale / Brawl Stars Stil):
+  - **Hintergrund**: Dunkles radial-gradient (`#180f30 → #06080f`) statt flachem Dunkelblau
+  - **Online-Chip**: Zeigt jetzt Spieler-Avatar (15px `WappenAvatar`) + Spielername statt "Rotes Königreich"
+  - **Pokal**: 70px Icon (von 44px), goldener Radial-Glow-Halo dahinter (180×90px, `rgba(251,191,36,0.32)`, blur 8px)
+  - **Siegestext**: 30px, fontWeight 900, starker textShadow (von 24px/800)
+  - **Score-Box**: Inline-flex mit glühenden Spielerfarben (60a5fa/f87171/34d399 + textShadow je Farbe)
+  - **Einheitliche Karten-Fabrik `card(r,g,b)`**: Gleiche borderRadius (14), padding (11px 18px), boxShadow für ELO / Gold / XP
+  - **ELO-Karte**: Grün bei Gewinn (`card(74,222,128)`), Rot bei Verlust (`card(239,68,68)`). Alte ELO 20px grau → neue ELO 28px farbig + Delta-Pill mit Hintergrund
+  - **Gold-Karte**: `card(251,191,36)`, gleiche Struktur, Gold-Zahl 28px
+  - **XP-Karte**: `XpResultAnim` angepasst — Card-Style vereinheitlicht (borderRadius 14, padding 11px 18px, boxShadow), XP-Zahl 28px (von 20px), Fortschrittsbalken 10px (von 9px)
+  - **Button-Hierarchie**: Primär (gradient, 15px padding, 16px font) → Sekundär (ghost) → Tertiär (transparent text); Gast: Status-Info-Box + Ghost "Hauptmenü"
+  - **Teilen-Button**: Tertiäre Ghost-Variante (kleiner, dezenter)
+  - **Abstandsreduzierung**: gap: 8 zwischen Karten (von separaten marginTop/marginBottom)
+- **Bugfix**: Doppelter Ergebnis-Block entfernt — alter `if (screen === "result")` Block war nach dem Redesign unreachable aber strukturell vorhanden → JS-Syntaxfehler (`Unexpected token '}'`). Alter Block (137 Zeilen) vollständig entfernt.
