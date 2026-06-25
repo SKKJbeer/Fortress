@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.20)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.21)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1094,3 +1094,8 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Online-Modus**: Prüft nur die eigene Burg (nicht die der Gegner)
 - **Lokal-Modus**: Prüft alle Spieler — bei mehreren offenen Burgen wird "Offen: P1, P2" angezeigt
 - **CSS-Animation**: `urgencyPulse` — Glow-Puls zwischen 0.88 und 1.0 Opazität im 0.45s-Takt
+
+### v3.11.21 — Build-Warnung in HUD verlegt (kein Blocking)
+- **Fix**: Warnung nicht mehr als fixes Overlay am unteren Bildschirmrand (hat Spielfläche verdeckt)
+- **Neu**: Kompakte Warnung direkt im HUD-Timer-Bereich — erscheint zwischen Countdown und Beenden-Button, blockiert keine Spielfläche
+- **Format**: "⚠️ Burg offen!" (pulsiert via `urgencyPulse`) — bei lokal mehreren offenen Burgen: "⚠️ P1+P2 Burg offen!"
