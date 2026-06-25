@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -999,3 +999,17 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Übersetzungen** ergänzt (de + en): `lockedAt`, `dailyTitle`, `dailyStreak`, `dailyCollect`, `dailyCollected`, `dailyNextIn`, `dailyChest`, `nextRewardAt`
 - **Tests**: `suiteProgression` nun vollständig grün (114 ✅ 0 ❌)
   - `hasWappenLabel`-Check auf `/WAPPEN|AVATARE/i` erweitert
+
+### v3.11.8 — Avatar-Grafiken überarbeitet
+- **Alle 12 WAPPEN_SVG-Einträge** neu gestaltet, um dem Referenzbild besser zu entsprechen:
+  - `skelett`: Dunkle Kapuze/Robe hinter dem Totenkopf (Sensenmann-Stil)
+  - `waldhueter`: Verbesserte Blattdetails, Pupillenreflex in den Bernsteinaugen
+  - `roboter`: Antenne oben, klar rechteckiger Kopf mit Ohrplatten
+  - `hexerin`: Spitzer Hexenhut + Totenkopf-Gesicht mit lila Augen + Zähnen
+  - `kanone`: Einzelnes großes zentrales Orange-Auge, deutlichere Roboterrahmung
+  - `frankenstein`: Flacher Kopf, größere gelb-grüne Halsschrauben, Strichlinie als Naht
+  - `feuerschaedel`: Dramatischere geschichtete Flammen (rot → orange → gelb)
+  - `pestdoktor`: Dunkle Kapuze + grüne Leuchtbrillen + **langer Schnabelmasken-Keil** (Hauptmerkmal)
+  - `blitz`: Dunklerer Hintergrundschein, zusätzliche Entladungslinien
+  - `trojanischespferd`: Verbesserte Pferdeaugen, Nasenlöcher-Details
+  - `phoenix`: Flügelstruktur und Federn überarbeitet
