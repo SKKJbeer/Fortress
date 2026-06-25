@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.14)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.13)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1045,6 +1045,3 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.13 — XP-Leiste: "LVL X"-Label entfernt
 - **Bug**: Im Hauptmenü stand neben dem LevelBadge ("L1") zusätzlich "LVL 1" im XpBarUI — wirkte wie zwei Zahlen nebeneinander ("1 ... 98")
 - **Fix**: "LVL X"-Label aus `XpBarUI` entfernt; nur noch "X / Y XP" rechts angezeigt — LevelBadge zeigt das Level bereits
-
-### v3.11.14 — "Wie spielt man?"-Anleitung aus Hauptmenü entfernt
-- **Änderung**: "Wie spielt man?"-Button und aufklappbarer Anleitungsbereich komplett entfernt — mehr Platz für Spielinhalt
