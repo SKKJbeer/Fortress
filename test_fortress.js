@@ -279,19 +279,19 @@ async function suiteNavHUD(browser, playerCount) {
     });
     roundOk ? ok('Runden-Anzeige ✓') : fail('Runden-Anzeige fehlt');
 
-    // WappenAvatar im HUD: kreisrundes SVG-img
+    // WappenAvatar im HUD: kreisrundes img (SVG oder PNG)
     const hudAvatarOk = await page.evaluate(() => {
       const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
         const src = img.getAttribute('src') || '';
         const style = window.getComputedStyle(img);
         const rect = img.getBoundingClientRect();
-        return src.startsWith('data:image/svg+xml') && style.borderRadius === '50%' && rect.width > 0;
+        return src.startsWith('data:image/') && style.borderRadius === '50%' && rect.width > 0;
       });
       return imgs.length;
     });
     hudAvatarOk >= 1
-      ? ok(`HUD: ${hudAvatarOk} Avatar-SVG(s) kreisrund sichtbar ✓`)
-      : fail('HUD: kein kreisrundes Avatar-SVG im HUD');
+      ? ok(`HUD: ${hudAvatarOk} Avatar-Grafik(en) kreisrund sichtbar ✓`)
+      : fail('HUD: kein kreisrundes Avatar-Bild im HUD');
 
     // Beenden-Button-Detail
     const qi = await page.evaluate(() => {
@@ -1151,23 +1151,23 @@ async function suiteProgression(browser) {
       });
       overlayOk ? ok('Profil-Editor: Level-Overlay (L5+) auf gesperrten Avataren ✓') : fail('Profil-Editor: Level-Overlay fehlt');
 
-      // ── Avatar-Grafiken: SVG-Rendering & Darstellung ──────────────
+      // ── Avatar-Grafiken: Rendering & Darstellung ──────────────
       const avatarRender = await page.evaluate(() => {
-        // Alle sichtbaren SVG-data-URI imgs (Avatar-Grafiken)
+        // Alle sichtbaren data-URI imgs (Avatar-Grafiken, SVG oder PNG)
         const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
           const src = img.getAttribute('src') || '';
           const rect = img.getBoundingClientRect();
-          return src.startsWith('data:image/svg+xml') && rect.width > 0 && rect.height > 0;
+          return src.startsWith('data:image/') && rect.width > 0 && rect.height > 0;
         });
         // Kreisrunde Darstellung (borderRadius 50%)
         const circularCount = imgs.filter(img =>
           window.getComputedStyle(img).borderRadius === '50%'
         ).length;
-        // Skelett-Avatar-Button mit korrektem SVG-src
+        // Skelett-Avatar-Button mit korrektem data-URI src
         const skelettBtn = Array.from(document.querySelectorAll('button')).find(b =>
           b.getAttribute('title') === 'skelett');
         const skelettImg = skelettBtn ? skelettBtn.querySelector('img') : null;
-        const skelettSrcOk = !!(skelettImg && (skelettImg.getAttribute('src') || '').startsWith('data:image/svg+xml,'));
+        const skelettSrcOk = !!(skelettImg && (skelettImg.getAttribute('src') || '').startsWith('data:image/'));
         // Sektions-Labels
         const divTexts = Array.from(document.querySelectorAll('div')).map(d => (d.textContent || '').trim());
         const hasAktiv  = divTexts.includes('AKTIVE AVATARE');
@@ -1175,14 +1175,14 @@ async function suiteProgression(browser) {
         return { count: imgs.length, circularCount, skelettSrcOk, hasAktiv, hasGesperrt };
       });
       avatarRender.count >= 4
-        ? ok(`Profil-Editor: ${avatarRender.count} Avatar-SVGs gerendert ✓`)
-        : fail(`Profil-Editor: zu wenige Avatar-SVGs (${avatarRender.count})`);
+        ? ok(`Profil-Editor: ${avatarRender.count} Avatar-Grafiken gerendert ✓`)
+        : fail(`Profil-Editor: zu wenige Avatar-Grafiken (${avatarRender.count})`);
       avatarRender.circularCount >= 4
         ? ok(`Profil-Editor: ${avatarRender.circularCount} Avatare kreisrund (50%) ✓`)
         : fail(`Profil-Editor: Avatare nicht kreisrund (${avatarRender.circularCount} von ${avatarRender.count})`);
       avatarRender.skelettSrcOk
-        ? ok('Skelett-Avatar: SVG data-URI korrekt geladen ✓')
-        : fail('Skelett-Avatar: kein img-Element oder SVG-src fehlt');
+        ? ok('Skelett-Avatar: data-URI korrekt geladen ✓')
+        : fail('Skelett-Avatar: kein img-Element oder src fehlt');
       avatarRender.hasAktiv
         ? ok('Profil-Editor: "AKTIVE AVATARE" Sektion vorhanden ✓')
         : fail('Profil-Editor: "AKTIVE AVATARE" Label fehlt');
