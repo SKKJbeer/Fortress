@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.14)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.15)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1048,3 +1048,7 @@ und beschiessen danach gegenseitig ihre Festungen.
 
 ### v3.11.14 — In-Game-Erklärungstext unten entfernt
 - **Änderung**: Hilfstexte (`tipCannon`, `tipSetup`, `tipShoot`) am unteren Spielfeldrand entfernt — mehr Platz für das Spielfeld
+
+### v3.11.15 — Profil-Editor: Farbauswahl entfernt, Layout kompakter
+- **Farbauswahl entfernt**: Karte "🎨 FARBE" komplett entfernt — Avatar gibt visuelle Unterscheidung
+- **Kompakter**: Avatar im Header 96→72px, Avatare in Galerie 64→52px, Abstände reduziert — Editor passt auf einen Screen ohne Scrollen

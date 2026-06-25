@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.14</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.15</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -4278,7 +4278,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.14")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.15")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -4291,7 +4291,7 @@ window.FortressApp = function Fortress() {
     background: "linear-gradient(160deg,#09152a,#110826)",
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 20,
-    padding: "22px 16px 20px",
+    padding: "14px 14px 14px",
     maxWidth: 400,
     width: "100%",
     textAlign: "center"
@@ -4301,16 +4301,16 @@ window.FortressApp = function Fortress() {
     background: "linear-gradient(160deg,rgba(255,255,255,0.065),rgba(255,255,255,0.02))",
     border: "1px solid " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "33",
     borderRadius: 18,
-    padding: "22px 16px 16px",
-    marginBottom: 12
+    padding: "12px 14px 12px",
+    marginBottom: 10
   } },
     /* @__PURE__ */ React.createElement("div", { style: {
-      width: 96, height: 96, borderRadius: "50%",
-      margin: "0 auto 14px",
+      width: 72, height: 72, borderRadius: "50%",
+      margin: "0 auto 10px",
       display: "flex", alignItems: "center", justifyContent: "center",
-      boxShadow: "0 0 28px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "66,0 0 60px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "22"
+      boxShadow: "0 0 20px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "66,0 0 40px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "22"
     } },
-      /* @__PURE__ */ React.createElement(WappenAvatar, { id: editWappen || "skelett", size: 96 })
+      /* @__PURE__ */ React.createElement(WappenAvatar, { id: editWappen || "skelett", size: 72 })
     ),
     /* @__PURE__ */ React.createElement("input", {
       value: editName,
@@ -4318,24 +4318,24 @@ window.FortressApp = function Fortress() {
       placeholder: t('profileNamePlaceholder'),
       style: {
         width: "100%", boxSizing: "border-box",
-        textAlign: "center", fontSize: 22, fontWeight: 900,
-        padding: "4px 8px",
+        textAlign: "center", fontSize: 18, fontWeight: 900,
+        padding: "3px 8px",
         border: "none",
         borderBottom: "2px solid " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "55",
         background: "transparent",
         color: "#f1f5f9",
         letterSpacing: "0.02em",
         outline: "none",
-        marginBottom: 12
+        marginBottom: 8
       }
     }),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 } },
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 } },
       /* @__PURE__ */ React.createElement(LevelBadge, { level: typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1, size: "lg" }),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: "0.06em" } },
         getLevelTier(typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1).label
       )
     ),
-    /* @__PURE__ */ React.createElement("div", { style: { height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 4, overflow: "hidden", position: "relative", marginBottom: 4 } },
+    /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden", position: "relative", marginBottom: 3 } },
       /* @__PURE__ */ React.createElement("div", { style: {
         position: "absolute", top: 0, left: 0, height: "100%",
         width: (() => { const l = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1; const x = typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0; return Math.min(100, x / xpToNextLevel(l) * 100) + "%"; })(),
@@ -4353,48 +4353,48 @@ window.FortressApp = function Fortress() {
     background: "rgba(255,255,255,0.025)",
     border: "1px solid rgba(255,255,255,0.07)",
     borderRadius: 16,
-    padding: "14px 12px",
+    padding: "10px 12px",
     marginBottom: 12
   } },
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, "✨ AVATAR GALERIE"),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, background: "rgba(124,58,237,0.2)", color: "#a78bfa", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } },
         WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + "/" + WAPPEN.length
       )
     ),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 14 } },
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 10 } },
       WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
         const glowColor = WAPPEN_GLOW[w] || "#888";
         const isSel = editWappen === w;
         return /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
-          width: 64, height: 64, borderRadius: "50%", cursor: "pointer",
+          width: 52, height: 52, borderRadius: "50%", cursor: "pointer",
           background: "transparent", border: "none", padding: 0,
           position: "relative", flexShrink: 0,
-          boxShadow: isSel ? "0 0 0 3px #fff,0 0 0 5px " + glowColor + ",0 0 24px " + glowColor : "0 0 0 2px " + glowColor + "44",
+          boxShadow: isSel ? "0 0 0 3px #fff,0 0 0 5px " + glowColor + ",0 0 18px " + glowColor : "0 0 0 2px " + glowColor + "44",
           outline: "none",
           transform: isSel ? "scale(1.12)" : "scale(1)",
           transition: "all 0.18s cubic-bezier(.36,1.6,.56,1)"
         }, title: w },
-          /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 64 })
+          /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 52 })
         );
       })
     ),
-    /* @__PURE__ */ React.createElement("div", { style: { height: 1, background: "rgba(255,255,255,0.07)", margin: "0 0 12px" } }),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 10 } },
+    /* @__PURE__ */ React.createElement("div", { style: { height: 1, background: "rgba(255,255,255,0.07)", margin: "0 0 8px" } }),
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 } },
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#475569", letterSpacing: "0.08em" } }, "🔒 GESPERRT"),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "#334155", fontWeight: 600 } },
         "(" + WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + ")"
       )
     ),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 12 } },
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 10 } },
       WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
         const reqLevel = AVATAR_UNLOCKS[w] || 1;
         return /* @__PURE__ */ React.createElement("div", { key: w, style: {
-          width: 64, height: 64, borderRadius: "50%",
+          width: 52, height: 52, borderRadius: "50%",
           position: "relative", flexShrink: 0, cursor: "not-allowed"
         }, title: t("lockedAt", { n: reqLevel }) },
-          /* @__PURE__ */ React.createElement("div", { style: { filter: "grayscale(0.75) brightness(0.45)", width: 64, height: 64 } },
-            /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 64 })
+          /* @__PURE__ */ React.createElement("div", { style: { filter: "grayscale(0.75) brightness(0.45)", width: 52, height: 52 } },
+            /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 52 })
           ),
           /* @__PURE__ */ React.createElement("div", { style: {
             position: "absolute", inset: 0,
@@ -4439,35 +4439,6 @@ window.FortressApp = function Fortress() {
         )
       );
     })()
-  ),
-  /* ══ FARBEN ══ */
-  /* @__PURE__ */ React.createElement("div", { style: {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 16,
-    padding: "14px 12px",
-    marginBottom: 16
-  } },
-    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em", textAlign: "left", marginBottom: 12 } },
-      "🎨 " + t('profileColorLabel')
-    ),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" } },
-      PROFILE_COLORS.map((c) => {
-        const isSel = editColor === c.hex;
-        return /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {
-          width: isSel ? 44 : 38, height: isSel ? 44 : 38,
-          borderRadius: "50%", cursor: "pointer",
-          background: "radial-gradient(circle at 33% 33%," + c.hex + "ff," + c.hex + "77)",
-          border: isSel ? "2.5px solid rgba(255,255,255,0.9)" : "2px solid rgba(255,255,255,0.1)",
-          boxShadow: isSel ? "0 0 0 2px " + c.hex + ",0 0 20px " + c.hex + "aa,0 0 40px " + c.hex + "33" : "0 2px 8px " + c.hex + "44,inset 0 1px 0 rgba(255,255,255,0.25)",
-          outline: "none", transition: "all 0.18s",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          position: "relative", flexShrink: 0
-        }, title: c.name },
-          isSel && /* @__PURE__ */ React.createElement("span", { style: { color: "#fff", fontSize: 18, fontWeight: 900, textShadow: "0 1px 4px rgba(0,0,0,0.8)" } }, "✓")
-        );
-      })
-    )
   ),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
     width: "100%",
