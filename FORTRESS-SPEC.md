@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.9)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.10)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1021,3 +1021,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   - `pestdoktor`, `blitz`, `trojanischespferd` — `cy=360`, `R=82`, kein Label-Text-Überlapp
 - **WAPPEN_SRC** komplett aktualisiert: alle 12 PNG-Data-URIs aus echten Referenzbildern (keine SVG-Nachbauten mehr)
 - Alle Icons 96×96px RGBA PNG mit Kreismaske, LANCZOS-Resampling
+
+### v3.11.10 — Avatar-Anzeige vergrößert
+- **Hauptmenü Profilkarte**: Avatar von 28px → 72px, kreisförmig mit Neon-Glow (`box-shadow` in Spieler-Farbe), Hintergrundbox entfernt
+- **Profil-Editor Avatar-Picker**: Freie und gesperrte Icons von 48px → 64px
