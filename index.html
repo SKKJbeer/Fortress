@@ -9,8 +9,7 @@
   <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.7.6</title>
-  <style>
+  <title>FORTRESS v3.11.6</title>  <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100dvh;background:#050d05;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
     #root{height:100%}
@@ -1144,8 +1143,236 @@ window.FortressApp = function Fortress() {
     const str = (LANGS[lang] && LANGS[lang][key]) || (LANGS.de[key]) || key;
     return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? String(vars[k]) : '{' + k + '}');
   };
-  const WAPPEN = ["\u2654", "\u265A", "\u2694\uFE0F", "\u{1F6E1}\uFE0F", "\u{1F3F0}", "\u{1F451}", "\u{1F409}", "\u{1F985}", "\u{1F981}", "\u{1F43A}", "\u2B50", "\u{1F525}"];
-  const PROFILE_COLORS = [
+  // ── Fantasy-Avatar-System ─────────────────────────────────────────────────
+  // 12 Charaktere als inline-SVG (Medallion-Stil, 40x40 viewBox) mit Glow-Ringen
+  const WAPPEN_SVG = {
+    skelett:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#130222"/><circle cx="20" cy="20" r="19" fill="none" stroke="#cc00ff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#cc00ff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#cc00ff" stroke-width="1" opacity="0.9"/><path d="M5 40Q8 21 20 15Q32 21 35 40Z" fill="#200038"/><path d="M14 13Q16 4 20 7Q24 4 26 13Q22 8 20 10Q18 8 14 13Z" fill="#200038"/><ellipse cx="20" cy="21" rx="8.5" ry="9.5" fill="#ddd0e8"/><ellipse cx="15.5" cy="19.5" rx="3.2" ry="3.5" fill="#07000c"/><ellipse cx="24.5" cy="19.5" rx="3.2" ry="3.5" fill="#07000c"/><ellipse cx="15.5" cy="19.5" rx="1.5" ry="1.8" fill="#9900cc" opacity="0.7"/><ellipse cx="24.5" cy="19.5" rx="1.5" ry="1.8" fill="#9900cc" opacity="0.7"/><path d="M18.5 24L20 22.5L21.5 24Z" fill="#bbaacc" opacity="0.4"/><rect x="15.8" y="25.5" width="2.2" height="3" rx="0.4" fill="#ede5f8"/><rect x="18.7" y="25.5" width="2.6" height="3" rx="0.4" fill="#ede5f8"/><rect x="21.8" y="25.5" width="2.2" height="3" rx="0.4" fill="#ede5f8"/><polygon points="17,28.5 15.8,28.5 16.3,32.5" fill="#ede5f8"/><polygon points="23,28.5 24.2,28.5 23.7,32.5" fill="#ede5f8"/></svg>',
+    waldhueter:       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#081006"/><circle cx="20" cy="20" r="19" fill="none" stroke="#22ff44" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#22ff44" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#22ff44" stroke-width="1" opacity="0.9"/><path d="M7 40Q9 26 20 21Q31 26 33 40Z" fill="#0e1c0a"/><ellipse cx="20" cy="20" rx="9.5" ry="10.5" fill="#285218"/><ellipse cx="20" cy="16" rx="9" ry="8" fill="#2e6020"/><path d="M11 16Q12 8 16 9Q15 13 17 15Q20 11 23 15Q25 13 24 9Q28 8 29 16Q25 12 20 14Q15 12 11 16Z" fill="#1e4a14"/><ellipse cx="15" cy="18.5" rx="3.5" ry="3.5" fill="#0a0e06"/><ellipse cx="15" cy="18.5" rx="2.5" ry="2.5" fill="#dd8800" opacity="0.9"/><ellipse cx="15" cy="18.5" rx="1.5" ry="1.5" fill="#ffcc00"/><ellipse cx="25" cy="18.5" rx="3.5" ry="3.5" fill="#0a0e06"/><ellipse cx="25" cy="18.5" rx="2.5" ry="2.5" fill="#dd8800" opacity="0.9"/><ellipse cx="25" cy="18.5" rx="1.5" ry="1.5" fill="#ffcc00"/><ellipse cx="14.8" cy="18" rx="0.7" ry="1" fill="#221400"/><ellipse cx="24.8" cy="18" rx="0.7" ry="1" fill="#221400"/><path d="M14.5 24Q20 22 25.5 24" stroke="#1a3a10" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M15 27Q20 29 25 27" stroke="#1a3a10" stroke-width="1.5" fill="none"/></svg>',
+    eismagier:        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#020c1a"/><circle cx="20" cy="20" r="19" fill="none" stroke="#00ccff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#00ccff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#00ccff" stroke-width="1" opacity="0.9"/><g stroke="#88ddff" stroke-linecap="round"><line x1="20" y1="5" x2="20" y2="35" stroke-width="1.5"/><line x1="5.4" y1="12.5" x2="34.6" y2="27.5" stroke-width="1.5"/><line x1="5.4" y1="27.5" x2="34.6" y2="12.5" stroke-width="1.5"/><line x1="20" y1="5" x2="17" y2="9.5" stroke-width="0.9"/><line x1="20" y1="5" x2="23" y2="9.5" stroke-width="0.9"/><line x1="34.6" y1="12.5" x2="30.7" y2="13.5" stroke-width="0.9"/><line x1="34.6" y1="12.5" x2="33" y2="16.5" stroke-width="0.9"/><line x1="34.6" y1="27.5" x2="30.7" y2="26.5" stroke-width="0.9"/><line x1="34.6" y1="27.5" x2="33" y2="23.5" stroke-width="0.9"/><line x1="20" y1="35" x2="17" y2="30.5" stroke-width="0.9"/><line x1="20" y1="35" x2="23" y2="30.5" stroke-width="0.9"/><line x1="5.4" y1="27.5" x2="9.3" y2="26.5" stroke-width="0.9"/><line x1="5.4" y1="27.5" x2="7" y2="23.5" stroke-width="0.9"/><line x1="5.4" y1="12.5" x2="9.3" y2="13.5" stroke-width="0.9"/><line x1="5.4" y1="12.5" x2="7" y2="16.5" stroke-width="0.9"/></g><polygon points="20,15 24.3,17.5 24.3,22.5 20,25 15.7,22.5 15.7,17.5" fill="#00bbff" opacity="0.75"/><circle cx="20" cy="20" r="3.5" fill="#ddf6ff" opacity="0.95"/><circle cx="18.8" cy="19" r="1.2" fill="#fff" opacity="0.8"/></svg>',
+    roboter:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050508"/><circle cx="20" cy="20" r="19" fill="none" stroke="#8899aa" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#8899aa" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#8899aa" stroke-width="1" opacity="0.9"/><ellipse cx="20" cy="25" rx="12" ry="12" fill="#141620"/><ellipse cx="20" cy="18" rx="11" ry="9.5" fill="#1e2030"/><path d="M9 18Q9 8 20 7Q31 8 31 18Z" fill="#282a3a"/><ellipse cx="14" cy="20" rx="4.5" ry="3.8" fill="#07070d"/><ellipse cx="14" cy="20" rx="3.8" ry="3.2" fill="#ff9900" opacity="0.95"/><ellipse cx="14" cy="20" rx="2.5" ry="2" fill="#ffdd44"/><ellipse cx="13.5" cy="19.2" rx="0.8" ry="1.2" fill="#1a0500"/><circle cx="15" cy="18.5" r="0.5" fill="#fff" opacity="0.45"/><ellipse cx="26" cy="20" rx="4.5" ry="3.8" fill="#07070d"/><ellipse cx="26" cy="20" rx="3.8" ry="3.2" fill="#ff9900" opacity="0.95"/><ellipse cx="26" cy="20" rx="2.5" ry="2" fill="#ffdd44"/><ellipse cx="25.5" cy="19.2" rx="0.8" ry="1.2" fill="#1a0500"/><circle cx="27" cy="18.5" r="0.5" fill="#fff" opacity="0.45"/><rect x="15" y="28" width="10" height="4" rx="2" fill="#141625"/><line x1="17" y1="30" x2="23" y2="30" stroke="#0a0c1a" stroke-width="0.8"/></svg>',
+    hexerin:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#07041a"/><circle cx="20" cy="20" r="19" fill="none" stroke="#bb00ff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#bb00ff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#bb00ff" stroke-width="1" opacity="0.9"/><circle cx="8" cy="9" r="0.8" fill="#fff" opacity="0.6"/><circle cx="33" cy="7" r="0.6" fill="#ffddff" opacity="0.6"/><circle cx="5" cy="27" r="0.7" fill="#ccbbff" opacity="0.5"/><path d="M8 40Q11 24 20 18Q29 24 32 40Z" fill="#0f0024"/><polygon points="20,4 17,29 23,29" fill="#240050"/><ellipse cx="20" cy="9" rx="14" ry="4" fill="#240050"/><path d="M15 5.5L13 2Q20 0 27 2L25 5.5Z" fill="#1a003a"/><path d="M14 9Q20 5 26 9" stroke="#1a003a" stroke-width="2" fill="none"/><ellipse cx="28" cy="7" rx="2.5" ry="2.5" fill="none" stroke="#ddaaff" stroke-width="0.9" opacity="0.8"/><path d="M16 7Q19 3.5 21 8Q18.5 6 16 7.5Z" fill="#ffd700" opacity="0.85"/><ellipse cx="20" cy="26" rx="5.5" ry="4" fill="#e8d0f8"/><ellipse cx="17.5" cy="25.5" rx="1.3" ry="1.2" fill="#1a0040"/><ellipse cx="22.5" cy="25.5" rx="1.3" ry="1.2" fill="#1a0040"/><circle cx="24" cy="22" r="1.5" fill="#080010"/><path d="M22.5 21.5Q24 20.5 25.5 22Q24 21 22.5 21.5Z" fill="#fff" opacity="0.3"/></svg>',
+    kanone:           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#04080e"/><circle cx="20" cy="20" r="19" fill="none" stroke="#0099ff" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#0099ff" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#0099ff" stroke-width="1" opacity="0.9"/><ellipse cx="20" cy="26" rx="13" ry="12" fill="#0a1620"/><rect x="9" y="11" width="22" height="17" rx="3" fill="#0d2040"/><rect x="7" y="16" width="4" height="8" rx="1.5" fill="#0a1832"/><rect x="29" y="16" width="4" height="8" rx="1.5" fill="#0a1832"/><rect x="9" y="11" width="22" height="5" rx="1" fill="#0f2850"/><line x1="9" y1="16" x2="31" y2="16" stroke="#0a1840" stroke-width="0.8"/><ellipse cx="20" cy="21" rx="7.5" ry="7.5" fill="#050d1c"/><ellipse cx="20" cy="21" rx="6.8" ry="6.8" fill="#cc5500" opacity="0.9"/><ellipse cx="20" cy="21" rx="5.2" ry="5.2" fill="#ff8800"/><ellipse cx="20" cy="21" rx="3.3" ry="3.3" fill="#ffcc00"/><circle cx="18.5" cy="19.5" r="1.2" fill="#fff" opacity="0.5"/><ellipse cx="20" cy="21" rx="1" ry="2.8" fill="#060300"/><rect x="11" y="27" width="5" height="3" rx="1" fill="#09182e"/><rect x="24" y="27" width="5" height="3" rx="1" fill="#09182e"/></svg>',
+    frankenstein:     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050d04"/><circle cx="20" cy="20" r="19" fill="none" stroke="#00ff44" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#00ff44" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#00ff44" stroke-width="1" opacity="0.9"/><path d="M8 40Q10 26 20 21Q30 26 32 40Z" fill="#0a1808"/><ellipse cx="20" cy="21" rx="9.5" ry="10" fill="#2e6522"/><rect x="10.5" y="10" width="19" height="11" rx="2" fill="#2a6020"/><rect x="10.5" y="10" width="19" height="3.5" rx="1" fill="#1e4a16"/><ellipse cx="7.5" cy="25" rx="3.5" ry="2" fill="#1e4a16"/><ellipse cx="32.5" cy="25" rx="3.5" ry="2" fill="#1e4a16"/><rect x="4.5" y="24" width="6" height="2" rx="0.5" fill="#aabb00" opacity="0.9"/><rect x="29.5" y="24" width="6" height="2" rx="0.5" fill="#aabb00" opacity="0.9"/><path d="M14 12 Q17 11 20 11.5 Q23 11 26 12" stroke="#1a3e12" stroke-width="1.5" fill="none"/><ellipse cx="15" cy="19.5" rx="3.5" ry="3.5" fill="#04080a"/><ellipse cx="15" cy="19.5" rx="2.5" ry="2.5" fill="#ff3300" opacity="0.9"/><ellipse cx="25" cy="19.5" rx="3.5" ry="3.5" fill="#04080a"/><ellipse cx="25" cy="19.5" rx="2.5" ry="2.5" fill="#ff3300" opacity="0.9"/><path d="M14 25Q20 23 26 25" stroke="#1a3a12" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+    feuerschaedel:    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#1a0300"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ff5500" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ff5500" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ff5500" stroke-width="1" opacity="0.9"/><path d="M20 37C8 30 3 19 7 10C9 4 15 2 20 2C25 2 31 4 33 10C37 19 32 30 20 37Z" fill="#cc2200" opacity="0.9"/><path d="M20 33C12 27 10 17 13 11C15 7 18 5 20 5C22 5 25 7 27 11C30 17 28 27 20 33Z" fill="#ff5500"/><path d="M20 27C15 24 14 17 16 12C17.5 9 19 8 20 8C21 8 22.5 9 24 12C26 17 25 24 20 27Z" fill="#ffaa00"/><ellipse cx="20" cy="20" rx="6" ry="7" fill="#ede8d8" opacity="0.96"/><ellipse cx="16.5" cy="19" rx="2.5" ry="3" fill="#1a0300"/><ellipse cx="23.5" cy="19" rx="2.5" ry="3" fill="#1a0300"/><ellipse cx="16.5" cy="19" rx="1.5" ry="2" fill="#ff5500" opacity="0.85"/><ellipse cx="23.5" cy="19" rx="1.5" ry="2" fill="#ff5500" opacity="0.85"/><rect x="16.8" y="25" width="1.8" height="2.5" rx="0.3" fill="#ede8d8"/><rect x="19" y="25" width="2" height="2.5" rx="0.3" fill="#ede8d8"/><rect x="21.4" y="25" width="1.8" height="2.5" rx="0.3" fill="#ede8d8"/></svg>',
+    pestdoktor:       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#050508"/><circle cx="20" cy="20" r="19" fill="none" stroke="#00cc33" stroke-width="3" opacity="0.15"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#00cc33" stroke-width="1.8" opacity="0.4"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#00cc33" stroke-width="1" opacity="0.8"/><path d="M5 40Q8 22 20 16Q32 22 35 40Z" fill="#0a0a1a"/><path d="M13 14Q15 4 20 7Q25 4 27 14Q23 8 20 10Q17 8 13 14Z" fill="#0a0a1a"/><ellipse cx="20" cy="21.5" rx="8.5" ry="9.5" fill="#d8d4cc"/><ellipse cx="15.5" cy="19.5" rx="3.3" ry="3.5" fill="#001600"/><ellipse cx="24.5" cy="19.5" rx="3.3" ry="3.5" fill="#001600"/><ellipse cx="15.5" cy="19.5" rx="2" ry="2.3" fill="#00cc33" opacity="0.95"/><ellipse cx="24.5" cy="19.5" rx="2" ry="2.3" fill="#00cc33" opacity="0.95"/><circle cx="15.5" cy="19.5" r="0.9" fill="#00ff44"/><circle cx="24.5" cy="19.5" r="0.9" fill="#00ff44"/><ellipse cx="20" cy="24" rx="4.5" ry="3.5" fill="#ccc8c0"/><rect x="15.5" y="24.5" width="2" height="3.5" rx="0.5" fill="#d4d0c8"/><rect x="19" y="24.5" width="2.5" height="4" rx="0.5" fill="#d4d0c8"/><rect x="22.5" y="24.5" width="2" height="3.5" rx="0.5" fill="#d4d0c8"/></svg>',
+    blitz:            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#03060f"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ffcc00" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ffcc00" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ffcc00" stroke-width="1" opacity="0.9"/><path d="M4 21Q8 14 15 18Q15 12 22 12Q29 12 29 18Q36 14 38 21Q30 18 20 18Q10 18 4 21Z" fill="#1a1e2c"/><path d="M4 27Q9 19 17 23Q17 18 24 18Q30 18 29 23Q36 19 38 27Q30 24 20 24Q10 24 4 27Z" fill="#10142a"/><polygon points="23,4 16,24 22,24 18.5,38 30,18 23,18" fill="#ffe010"/><polygon points="23,4 16,24 22,24 18.5,38 30,18 23,18" fill="#ffffff" opacity="0.22"/><line x1="26" y1="10" x2="33" y2="7" stroke="#aade00" stroke-width="1.1" opacity="0.6"/><line x1="13" y1="17" x2="6" y2="13" stroke="#aade00" stroke-width="1.1" opacity="0.6"/><line x1="19" y1="31" x2="13" y2="37" stroke="#aade00" stroke-width="0.9" opacity="0.5"/></svg>',
+    trojanischespferd:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#0c0900"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ffaa00" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ffaa00" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ffaa00" stroke-width="1" opacity="0.9"/><path d="M7 40Q9 28 20 23Q31 28 33 40Z" fill="#1a1006"/><ellipse cx="20" cy="23" rx="10.5" ry="11" fill="#c07820"/><ellipse cx="20" cy="17" rx="8.5" ry="8" fill="#d09030"/><path d="M15 11Q14 5 16.5 8Q15 4 19 8Q19.5 3 20 8Q20.5 3 21 8Q25 4 24 8Q26.5 5 25 11Z" fill="#d4a030"/><path d="M26.5 11Q29 8 30.5 12Q28 11 26.5 11Z" fill="#d4a030"/><path d="M13 22Q15.5 20 18 22" fill="none" stroke="#a06818" stroke-width="0.9"/><path d="M18 22Q20.5 20 23 22" fill="none" stroke="#a06818" stroke-width="0.9"/><path d="M23 22Q25.5 20 28 22" fill="none" stroke="#a06818" stroke-width="0.9"/><circle cx="28.5" cy="19" r="3.5" fill="#0a0800"/><circle cx="28.5" cy="19" r="2.5" fill="#cc8800"/><circle cx="28.5" cy="19" r="1.5" fill="#ffcc00"/><ellipse cx="28.5" cy="19" rx="0.5" ry="1.8" fill="#0a0400"/><circle cx="27.2" cy="18" r="0.6" fill="#fff" opacity="0.6"/><path d="M33 20Q37 19 38 22Q36 22 35 21Z" fill="#c07820"/></svg>',
+    phoenix:          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#190200"/><circle cx="20" cy="20" r="19" fill="none" stroke="#ff4400" stroke-width="3" opacity="0.2"/><circle cx="20" cy="20" r="18.4" fill="none" stroke="#ff4400" stroke-width="1.8" opacity="0.55"/><circle cx="20" cy="20" r="17.8" fill="none" stroke="#ff4400" stroke-width="1" opacity="0.9"/><path d="M14 40Q16 30 20 26Q24 30 26 40Z" fill="#cc2200"/><path d="M8 38Q11 26 20 24Q29 26 32 38Z" fill="#aa1400" opacity="0.7"/><path d="M2 26Q4 14 11 11Q8 18 11 23Q6 20 2 26Z" fill="#cc4400"/><path d="M4 21Q7 9 15 7Q10 16 15 21Z" fill="#ee6600"/><path d="M3 15Q7 5 15 5Q9 12 12 17Z" fill="#ffaa00" opacity="0.8"/><path d="M38 26Q36 14 29 11Q32 18 29 23Q34 20 38 26Z" fill="#cc4400"/><path d="M36 21Q33 9 25 7Q30 16 25 21Z" fill="#ee6600"/><path d="M37 15Q33 5 25 5Q31 12 28 17Z" fill="#ffaa00" opacity="0.8"/><path d="M15 30Q17 20 20 14Q23 20 25 30Q22 26 20 26Q18 26 15 30Z" fill="#ff6600"/><ellipse cx="20" cy="14" rx="5.5" ry="5.5" fill="#ff8800"/><path d="M18 10Q17 4 20 6Q23 4 22 10Z" fill="#ffd700"/><path d="M15.5 11Q12 5 16.5 8L16 11Z" fill="#ff8800"/><path d="M24.5 11Q28 5 23.5 8L24 11Z" fill="#ff8800"/><circle cx="18" cy="14" r="2.2" fill="#ffd700"/><circle cx="18" cy="14" r="1.1" fill="#0a0800"/><circle cx="17.2" cy="13.3" r="0.6" fill="#fff" opacity="0.8"/><polygon points="22.5,13.5 27,12 22.5,11" fill="#ffd700"/></svg>',
+  };
+  const WAPPEN = Object.keys(WAPPEN_SVG);
+  // Precompute data-URIs einmal beim Laden (kein encodeURIComponent im Render-Loop)
+  const WAPPEN_SRC = {};
+  for (const [id, svg] of Object.entries(WAPPEN_SVG)) {
+    WAPPEN_SRC[id] = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+  // Glow-Farbe je Avatar (für Profil-Editor Auswahl-Ringe)
+  const WAPPEN_GLOW = {
+    skelett:'#cc00ff', waldhueter:'#22ff44', eismagier:'#00ccff', roboter:'#8899aa',
+    hexerin:'#bb00ff', kanone:'#0099ff',
+    frankenstein:'#00ff44', feuerschaedel:'#ff5500', pestdoktor:'#00cc33',
+    blitz:'#ffcc00', trojanischespferd:'#ffaa00', phoenix:'#ff4400',
+  };
+  // Migration: alte Avatar-Keys → neue Keys
+  const WAPPEN_MIGRATION = {
+    vampir:'skelett', pestdoc:'waldhueter', eismagie:'eismagier', schatten:'roboter',
+    sternmage:'hexerin', golem:'kanone', seehexe:'frankenstein', feuergeist:'feuerschaedel',
+    totenmage:'pestdoktor', sturmreiter:'blitz', golddrache:'trojanischespferd',
+  };
+  // Avatar-Unlock-System: Erste 4 sofort verfügbar, restliche 8 per Level
+  const AVATAR_UNLOCKS = {
+    skelett:1, waldhueter:1, eismagier:1, roboter:1,
+    hexerin:5, kanone:10, frankenstein:15, feuerschaedel:20,
+    pestdoktor:25, blitz:30, trojanischespferd:40, phoenix:50,
+  };
+  function getLevelTier(level) {
+    if (level >= 50) return { name: "legend", label: "LEGENDÄR", color: "#a78bfa", glow: "rgba(167,139,250,0.7)", border: "#7c3aed" };
+    if (level >= 25) return { name: "platin", label: "PLATIN",   color: "#22d3ee", glow: "rgba(34,211,238,0.7)",  border: "#0891b2" };
+    if (level >= 10) return { name: "gold",   label: "GOLD",     color: "#fbbf24", glow: "rgba(251,191,36,0.7)", border: "#ca8a04" };
+    return              { name: "silver",  label: "SILBER",   color: "#94a3b8", glow: "rgba(148,163,184,0.5)", border: "#64748b" };
+  }
+  function LevelBadge({ level, size }) {
+    const tier = getLevelTier(level);
+    const isLg = size === "lg";
+    return React.createElement("div", {
+      style: {
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(135deg," + tier.border + "cc," + tier.border + "55)",
+        border: "1.5px solid " + tier.border,
+        borderRadius: isLg ? 8 : 6,
+        padding: isLg ? "3px 8px" : "2px 5px",
+        fontSize: isLg ? 12 : 9,
+        fontWeight: 900,
+        color: tier.color,
+        letterSpacing: "0.04em",
+        boxShadow: "0 0 8px " + tier.glow,
+        flexShrink: 0,
+        animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both"
+      }
+    }, "L" + level);
+  }
+  function ConfettiBurst({ active }) {
+    if (!active) return null;
+    const colors = ["#fbbf24","#a78bfa","#22d3ee","#f87171","#4ade80","#60a5fa","#fb923c","#e879f9"];
+    const particles = Array.from({ length: 20 }, (_, i) => {
+      const color = colors[i % colors.length];
+      const left = 10 + (i / 19) * 80;
+      const delay = (i * 0.05).toFixed(2);
+      const dur = (0.8 + (i * 0.037) % 0.6).toFixed(2);
+      const sz = 4 + (i % 3) * 2;
+      return React.createElement("div", {
+        key: i,
+        style: {
+          position: "absolute", left: left + "%", top: "0%",
+          width: sz, height: sz * (i % 2 === 0 ? 2 : 1),
+          borderRadius: i % 3 === 0 ? "50%" : 1,
+          background: color,
+          animation: "confettiFall " + dur + "s " + delay + "s ease-in both",
+          pointerEvents: "none"
+        }
+      });
+    });
+    return React.createElement("div", {
+      style: { position: "relative", height: 0, overflow: "visible", pointerEvents: "none" }
+    }, ...particles);
+  }
+  function WappenAvatar({ id, size = 36 }) {
+    const src = WAPPEN_SRC[id] || WAPPEN_SRC.skelett;
+    return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });
+  }
+  // Statische XP-Leiste (Profil-Karte, Profil-Editor)
+  function XpBarUI({ level, xp }) {
+    const needed = xpToNextLevel(level);
+    const pct = Math.min(100, xp / needed * 100);
+    return React.createElement("div", { style: { marginTop: 5 } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 } },
+        React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#a78bfa", letterSpacing: "0.05em" } }, "LVL " + level),
+        React.createElement("span", { style: { fontSize: 9, color: "#475569" } }, xp + " / " + needed + " XP")
+      ),
+      React.createElement("div", { style: { height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden", position: "relative" } },
+        React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(90deg,#7c3aed,#22d3ee)", borderRadius: 3, boxShadow: "0 0 6px rgba(124,58,237,0.7)", transition: "width 0.4s ease" } })
+      )
+    );
+  }
+  // Animierter XP-Reward-Screen nach Online-Spiel
+  function XpResultAnim({ xpChange }) {
+    const [started, setStarted] = useState(false);
+    const [showLvlUp, setShowLvlUp] = useState(false);
+    useEffect(() => {
+      const t1 = setTimeout(() => setStarted(true), 350);
+      const t2 = xpChange.newLevel > xpChange.oldLevel
+        ? setTimeout(() => setShowLvlUp(true), 1100)
+        : null;
+      return () => { clearTimeout(t1); if (t2) clearTimeout(t2); };
+    }, []);
+    const needed = xpToNextLevel(xpChange.newLevel);
+    const startPct = Math.min(100, xpChange.oldXp / xpToNextLevel(xpChange.oldLevel) * 100);
+    const endPct = Math.min(100, xpChange.newXp / needed * 100);
+    const pct = started ? endPct : startPct;
+    const nextUnlockEntry = Object.entries(AVATAR_UNLOCKS).filter(([, lvl]) => lvl > xpChange.newLevel).sort(([, a], [, b]) => a - b)[0];
+    return React.createElement("div", { style: { marginTop: 0, marginBottom: 0 } },
+      showLvlUp && React.createElement(ConfettiBurst, { active: true }),
+      showLvlUp && React.createElement("div", { style: {
+        background: "linear-gradient(135deg,rgba(251,191,36,0.15),rgba(167,139,250,0.15))",
+        border: "1.5px solid rgba(251,191,36,0.6)",
+        borderRadius: 14, padding: "8px 16px", marginBottom: 8,
+        textAlign: "center",
+        animation: "lvlUpFlash 0.55s cubic-bezier(.36,1.6,.56,1) both",
+        boxShadow: "0 2px 18px rgba(251,191,36,0.15)"
+      } },
+        React.createElement("div", { style: { fontSize: 16, fontWeight: 900, color: "#fbbf24", letterSpacing: "0.18em", textShadow: "0 0 18px rgba(251,191,36,0.8)" } }, "★ LEVEL UP! ★"),
+        React.createElement("div", { style: { fontSize: 12, color: "#a78bfa", marginTop: 3, fontWeight: 700 } }, "Level " + xpChange.oldLevel + " → Level " + xpChange.newLevel)
+      ),
+      React.createElement("div", { style: {
+        background: "rgba(167,139,250,0.09)", border: "1px solid rgba(167,139,250,0.28)",
+        borderRadius: 14, padding: "11px 18px", textAlign: "center",
+        boxShadow: "0 2px 18px rgba(167,139,250,0.12)"
+      } },
+        React.createElement("div", { style: { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
+        React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: "0 0 16px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 6 } },
+          React.createElement("span", null, "Level " + xpChange.newLevel),
+          React.createElement("span", null, xpChange.newXp + " / " + needed)
+        ),
+        React.createElement("div", { style: { height: 10, background: "rgba(255,255,255,0.06)", borderRadius: 6, overflow: "hidden", position: "relative" } },
+          React.createElement("div", { style: {
+            position: "absolute", top: 0, left: 0, height: "100%",
+            width: pct + "%",
+            background: "linear-gradient(90deg,#7c3aed,#22d3ee)",
+            borderRadius: 6,
+            boxShadow: "0 0 14px rgba(124,58,237,0.8)",
+            transition: started ? "width 1s cubic-bezier(0.34,1.1,0.64,1)" : "none"
+          } })
+        )
+      ),
+      nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: "#64748b", textAlign: "center", fontStyle: "italic" } },
+        t('nextRewardAt', { n: nextUnlockEntry[1] })
+      )
+    );
+  }
+  function DailyRewardModal({ daily, onCollect, onClose, collected }) {
+    const [collecting, setCollecting] = useState(false);
+    const canCollect = getDailyCollectable(daily);
+    const streakIdx = getDailyStreakIndex(daily);
+    const reward = DAILY_REWARDS[streakIdx];
+    const msLeft = msTillMidnight();
+    const hLeft = Math.floor(msLeft / 3600000);
+    const mLeft = Math.floor((msLeft % 3600000) / 60000);
+    function handleCollect() {
+      if (!canCollect || collecting || collected) return;
+      setCollecting(true);
+      setTimeout(() => onCollect(reward, streakIdx), 350);
+    }
+    const days = DAILY_REWARDS.map((r, i) => {
+      const isPast = i < streakIdx;
+      const isCurrent = i === streakIdx;
+      return React.createElement("div", { key: i, style: {
+        flex: 1, textAlign: "center",
+        background: isCurrent ? "rgba(251,191,36,0.18)" : isPast ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",
+        border: "1px solid " + (isCurrent ? "rgba(251,191,36,0.6)" : isPast ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.08)"),
+        borderRadius: 8, padding: "6px 2px",
+        animation: isCurrent ? "streakGlow 2s ease infinite" : "none"
+      } },
+        React.createElement("div", { style: { fontSize: 8, color: "#64748b", marginBottom: 2 } }, "T" + (i + 1)),
+        React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: isCurrent ? "#fbbf24" : isPast ? "#4ade80" : "#475569" } },
+          isPast ? "✓" : r.special === "chest" ? "★" : "+" + r.gold + "G"
+        )
+      );
+    });
+    return React.createElement("div", {
+      style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.94)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 20 }
+    },
+      React.createElement("div", { style: {
+        background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(251,191,36,0.3)",
+        borderRadius: 16, padding: 24, maxWidth: 360, width: "100%", textAlign: "center",
+        animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both"
+      } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } },
+          React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: "#475569", cursor: "pointer" } },
+            React.createElement(Icon, { name: "x", size: 18 })
+          )
+        ),
+        React.createElement("div", { style: { marginBottom: 4, color: "#fbbf24", display: "flex", justifyContent: "center" } },
+          React.createElement(Icon, { name: "zap", size: 28, color: "#fbbf24" })
+        ),
+        React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
+        React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+        React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
+        collected
+          ? React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#4ade80", marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
+          : canCollect
+            ? React.createElement("div", { style: { marginBottom: 12 } },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#fbbf24" } }, "+" + reward.gold + " Gold"),
+                reward.xp > 0 && React.createElement("div", { style: { fontSize: 14, color: "#a78bfa", marginTop: 4 } }, "+" + reward.xp + " XP"),
+                reward.special === "chest" && React.createElement("div", { style: { fontSize: 12, color: "#22d3ee", marginTop: 4 } }, t('dailyChest'))
+              )
+            : React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
+        canCollect && !collected && React.createElement("button", {
+          onClick: handleCollect,
+          style: { width: "100%", background: "linear-gradient(135deg,#ca8a04,#fbbf24)", color: "#0a0a0a", border: "none", padding: "15px", fontSize: 16, fontWeight: 900, borderRadius: 12, cursor: "pointer", boxShadow: "0 4px 20px rgba(251,191,36,0.4)" }
+        }, t('dailyCollect'))
+      )
+    );
+  }  const PROFILE_COLORS = [
     { name: "Blau", hex: "#2563eb" },
     { name: "Rot", hex: "#dc2626" },
     { name: "Gr\xFCn", hex: "#059669" },
@@ -1170,7 +1397,7 @@ window.FortressApp = function Fortress() {
         const prof = {
           id,
           name: p.name || "",
-          wappen: p.wappen || "\u2654",
+          wappen: (p.wappen && WAPPEN_MIGRATION[p.wappen] ? WAPPEN_MIGRATION[p.wappen] : (p.wappen && WAPPEN_SRC[p.wappen] ? p.wappen : "skelett")),
           color: p.color || "#2563eb",
           // ELO-Wertung (Start 1000). stats/stats3 = Siege/Niederlagen je Modus.
           elo: typeof p.elo === "number" ? p.elo : 1e3,
@@ -3713,8 +3940,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "\u2694\uFE0F FORTRESS \xB7 Version 3.7.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed",
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",
     inset: 0,
     background: "rgba(5,8,15,0.94)",
     display: "flex",
@@ -3750,16 +3976,37 @@ window.FortressApp = function Fortress() {
         marginBottom: 16
       }
     }
-  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, "WAPPEN"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, justifyContent: "center" } }, WAPPEN.map((w) => /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
-    width: 40,
-    height: 40,
-    fontSize: 20,
-    borderRadius: 8,
-    cursor: "pointer",
-    background: editWappen === w ? editColor : "rgba(255,255,255,0.06)",
-    border: editWappen === w ? "2px solid #fff" : "1px solid rgba(255,255,255,0.12)"
-  } }, w))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('profileColorLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {
-    width: 34,
+  ), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#64748b", textAlign: "left", marginBottom: 8, letterSpacing: "0.1em" } }, "AKTIVE AVATARE"),
+  /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, justifyContent: "center" } }, WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
+    const glowColor = WAPPEN_GLOW[w] || "#888";
+    const isSel = editWappen === w;
+    return /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
+      width: 48, height: 48, borderRadius: "50%", cursor: "pointer",
+      background: "transparent", border: "none", padding: 0, position: "relative", flexShrink: 0,
+      boxShadow: isSel ? "0 0 0 2px #fff,0 0 0 4px " + glowColor + ",0 0 12px " + glowColor : "0 0 0 2px " + glowColor + "55",
+      outline: "none"
+    }, title: w },
+      /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 48 })
+    );
+  })),
+  /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569", textAlign: "left", marginBottom: 8, letterSpacing: "0.1em" } }, "GESPERRTE AVATARE"),
+  /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, justifyContent: "center" } }, WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
+    const reqLevel = AVATAR_UNLOCKS[w] || 1;
+    return /* @__PURE__ */ React.createElement("div", { key: w, style: {
+      width: 48, height: 48, borderRadius: "50%", position: "relative", flexShrink: 0,
+      filter: "grayscale(1) brightness(0.35)", cursor: "not-allowed"
+    }, title: t("lockedAt", { n: reqLevel }) },
+      /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 48 }),
+      /* @__PURE__ */ React.createElement("div", { style: {
+        position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", borderRadius: "50%",
+        background: "rgba(2,6,15,0.5)", gap: 1
+      } },
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10 } }, "🔒"),
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 7, color: "#64748b", fontWeight: 700 } }, "L" + reqLevel)
+      )
+    );
+  })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('profileColorLabel')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22, justifyContent: "center" } }, PROFILE_COLORS.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.hex, onClick: () => setEditColor(c.hex), style: {    width: 34,
     height: 34,
     borderRadius: "50%",
     cursor: "pointer",
@@ -3842,8 +4089,7 @@ window.FortressApp = function Fortress() {
       alignItems: "center",
       justifyContent: "center",
       fontSize: 18
-    } }, e.wappen || "\u2654"), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, "\u{1F3C6} ", e.wins, " S \xB7 \u{1F480} ", e.losses, " N \xB7 ", e.games, " Sp.")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));
-  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && " (Du)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, "\u{1F3C6} ", e.wins, " S \xB7 \u{1F480} ", e.losses, " N \xB7 ", e.games, " Sp.")), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
     marginTop: 12,
     background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
@@ -4100,9 +4346,23 @@ window.FortressApp = function Fortress() {
     const myKingdom = myRole.current === 3 ? t('p3Kingdom') : myRole.current === 2 ? t('p2Kingdom') : t('p1Kingdom');
     const iWon = online.current ? info.winner === myRole.current : isWin;
     const drawn = !isWin;
-    return /* @__PURE__ */ React.createElement("div", { style: {
-      background: "radial-gradient(ellipse,#131a2e 0%,#06080f 100%)",
-      minHeight: "100dvh",
+    const wonState = online.current ? iWon : isWin;
+    // Spieleridentität für Header-Chip
+    const myPI = online.current && playerInfo.current ? playerInfo.current[myRole.current] : null;
+    const myName = myPI ? myPI.name : (profile ? profile.name : null);
+    const myWap = (myPI ? myPI.wappen : null) || (profile ? profile.wappen : null) || "skelett";
+    // Einheitlicher Karten-Stil (ELO / Gold / XP)
+    const card = (r, g, b) => ({
+      background: "rgba(" + r + "," + g + "," + b + ",0.09)",
+      border: "1px solid rgba(" + r + "," + g + "," + b + ",0.28)",
+      borderRadius: 14,
+      padding: "11px 18px",
+      boxShadow: "0 2px 18px rgba(" + r + "," + g + "," + b + ",0.12)",
+      textAlign: "center"
+    });
+    const LABEL = { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 };
+    return React.createElement("div", { style: {
+      background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",      minHeight: "100dvh",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -4273,8 +4533,7 @@ window.FortressApp = function Fortress() {
     gap: 6,
     boxShadow: "0 2px 14px rgba(30,70,200,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[1].wappen : "\u2654"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {
-    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "28%" } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",
     border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
     boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
@@ -4303,11 +4562,10 @@ window.FortressApp = function Fortress() {
     gap: 6,
     boxShadow: "0 2px 14px rgba(200,30,30,0.45), inset 0 1px 0 rgba(255,220,100,0.10)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, online.current ? playerInfo.current[2].wappen : "\u265A"))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg, rgba(5,80,50,0.88), rgba(3,50,30,0.92))",
-    border: "1px solid rgba(160,140,70,0.65)",
-    borderRadius: 10,
-    padding: "4px 14px",
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
+    border: "1px solid rgba(16,185,129,0.45)",
+    borderRadius: 12,    padding: "4px 14px",
     display: "flex",
     alignItems: "center",
     gap: 8,

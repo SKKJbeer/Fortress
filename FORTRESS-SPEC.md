@@ -1,5 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.7.6)
-
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.6)
 > Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
@@ -841,7 +840,147 @@ und beschiessen danach gegenseitig ihre Festungen.
   - Der globale Canvas-Flip des Haupt-Canvas "hebt" den Pre-Flip wieder auf,
     sodass Berge (und andere gerichtete Hintergrund-Elemente) für P1 aufrecht
     erscheinen und korrekt zur Spielfeld-Orientierung passen.
-- **v3.7.6**: "Schnellspiel" → "Matchmaking" umbenannt (DE+EN).
-  - Button-Label: `"⚡ Schnellspiel ({n} Spieler)"` → `"⚡ Matchmaking ({n} Spieler)"` (DE)
-  - Button-Label: `"⚡ Quick Match ({n} Players)"` → `"⚡ Matchmaking ({n} Players)"` (EN)
-  - Name spiegelt die ELO-basierte Gegnersuche besser wider.
+- **v3.7.6**: "Schnellspiel"/"Quick Match" → "Matchmaking" umbenannt.
+  - DE: `"⚡ Schnellspiel ({n} Spieler)"` → `"⚡ Matchmaking ({n} Spieler)"`
+  - EN: `"⚡ Quick Match ({n} Players)"` → `"⚡ Matchmaking ({n} Players)"`
+- **v3.8.0**: Visual-Overhaul — Dark Glassmorphism & Icon-System.
+  - Neues Theme: tiefes Navy/Indigo statt Grün, Glas-Panels (backdrop-blur),
+    Neon-Akzente (Cyan/Violett/Blau). CSS-Variablen in `:root`.
+  - **Icon-System** (`Icon`-Komponente + `ICON_PATHS`): saubere Lucide-Strich-SVGs
+    als React-Inline-Komponente — ersetzt Deko-Emojis in der gesamten UI
+    (Menü, Online-Overlay, HUD, Phasen-Banner, Ergebnis-Screen, Quit-Dialog).
+  - Haupt-Buttons (LOKAL/ONLINE/Matchmaking/Erstellen/Beitreten) mit Icon +
+    Gradient + Neon-Glow. Spieler-HUD-Panels auf Glassmorphism mit Spielerfarben
+    (P1 Blau, P2 Rot, P3 Grün).
+  - Canvas: Wandfarben an Neon-Palette angeglichen, Terrain kühler/cinematischer,
+    Fluss mit Cyan-Glow. Phasen-Banner zeigt großes Icon statt Emoji.
+  - Emoji-Präfixe aus i18n-Strings entfernt (Tipps, Warnungen, Buttons).
+    Saubere Glyphen (✕ ← ✓ ♔♚♜) bleiben erhalten.
+  - Test: alle 87 Checks grün (Button-Texte unverändert → keine Test-Brüche).
+- **v3.8.1**: Kanonen-HP von 10 auf 15 erhöht.
+  - `CANNON_HP = 15` — eine Kanone hält jetzt 15 direkte Treffer aus, bevor
+    sie zerstört wird (vorher 10). HP-Balken skaliert automatisch.
+- **v3.9.0**: Canvas-Grafik-Overhaul — moderne Neon-Spielfeld-Optik.
+  - **Terrain**: tiefer Navy/Teal-Untergrund mit Lichtfeld von oben, Tech-Punktraster,
+    leuchtende Cyan-Flüsse (Glow + Uferschimmer), kristalline Berge mit Neon-Kantenlicht,
+    kühle Ambient-Partikel, stärkere Vignette (vorher Gras-Grün).
+  - **Mauern** (`drawWall`): schlanke beveled Neon-Tech-Blöcke — Glas-Gradient,
+    durchgehende Neon-Oberkante, Glanz-Highlight, Tiefen-Fase (vorher Backstein-Mörtel).
+  - **Kanonen** (`drawCannonFull`): Gunmetal-Geschütztürme mit Neon-Ring um die Basis,
+    glühende Mündung, Energiekern, pulsierender Ready-Glow, Neon-Wimpel (vorher flacher Kreis).
+  - **Festung** (`drawCastle`): schlanker dunkler Keep mit Neon-Dächern/Zinnen,
+    leuchtendem Wappen-Kern (Krone) und Neon-Tor (vorher Cartoon-Stein).
+  - **Schutt** (`drawRubble`): gebrochene Splitter mit glimmender Glut.
+  - **Geschosse**: leuchtende Energie-Orbs in Spielerfarbe (Blau/Rot/Grün) mit Glow.
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.9.1**: Fantasy-Avatar-System — 12 individuelle SVG-Charaktere ersetzen Emojis.
+  - `WAPPEN_SVG`: Objekt mit 12 einzigartigen Charakteren als inline-SVG (40×40 viewBox):
+    `vampir` (Vampirlord), `pestdoc` (Pestdoktor), `eismagie` (Eismagierin),
+    `schatten` (Schattenjäger), `sternmage` (Sternenzauberer), `golem` (Eisengolem),
+    `seehexe` (Seehexe), `feuergeist` (Feuergeist), `totenmage` (Totenmagier),
+    `sturmreiter` (Sturmreiter), `golddrache` (Golddrache), `phoenix` (Phönix).
+  - `WAPPEN = Object.keys(WAPPEN_SVG)` — Array der IDs (strings, rückwärtskompatibel).
+  - `WAPPEN_SRC`: precomputed data-URIs (`data:image/svg+xml,...`) für alle 12 Avatare.
+  - `WappenAvatar({ id, size })`: React-Komponente, rendert Avatar als `<img>` mit data-URI.
+    Fallback auf `vampir` wenn ID unbekannt (Rückwärtskompatibilität mit alten Profilen).
+  - Render-Stellen aktualisiert: Profilkarte, Profil-Editor-Buttons, Rangliste,
+    P1/P2/P3-Anzeigetafel im Spiel — alle nutzen jetzt `WappenAvatar`.
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.10.0**: XP- und Level-System eingeführt.
+  - **XP-Gewinn** (nur Online-Spiele): Niederlage +10 XP, Sieg +25 XP Basis.
+    ELO-Bonus bei Sieg: +0–5 XP (schwächerer Gegner), +10 XP (gleich stark),
+    +15–20 XP (stärkerer Gegner, ab +100 ELO-Differenz). Max. +20 Bonus.
+  - **Level-Formel**: XP bis nächstes Level = 100 + (Level × 25).
+    Level 1→2: 125 XP, Level 5→6: 225 XP, Level 10→11: 350 XP.
+    Unbegrenzte Level; Start: Level 1, 0 XP.
+  - **Neue Hilfsfunktionen**: `xpToNextLevel(level)`, `computeXpGain(won, myElo, opponentElos)`,
+    `applyXpGain(prof, xpGained)` → gibt `{level, xp, levelsGained}`.
+  - **Profil-Erweiterung**: `level`, `xp`, `unlockedRewards` in localStorage + Firebase.
+    `unlockedRewards: []` als Basis-Architektur für spätere freischaltbare Inhalte.
+  - **`xpChangeRef`**: neuer Ref (analog `eloChangeRef`/`goldChangeRef`).
+    Inhalt: `{ oldLevel, newLevel, oldXp, newXp, xpGained, levelsGained }`.
+  - **UI-Komponenten**:
+    - `XpBarUI({ level, xp })`: statische XP-Leiste (violett→cyan Gradient, 5px Höhe)
+      — in Profilkarte unterhalb Gold-Anzeige.
+    - `XpResultAnim({ xpChange })`: animierter XP-Reward-Screen auf Ergebnis-Bildschirm
+      — XP-Zahl hochzählen (easeOutCubic, bis 2,2s), Leiste füllt sich, Glow-Animation.
+      Bei Level-Up: "★ LEVEL UP! ★" Badge mit `lvlUpFlash`-Animation (0,55s spring).
+  - **CSS-Keyframes**: `lvlUpFlash`, `xpBarGlow`, `xpNumPop`.
+  - **Ergebnis-Bildschirm**: XpResultAnim erscheint nach Gold-Block (nur Online, wenn xpChangeRef gesetzt).
+  - Spielmechanik unverändert; alle 87 Tests grün.
+- **v3.10.1**: Matchmaking-Icon: 🤡-Emoji durch neon-cyan Radar/Crosshair-SVG ersetzt.
+  - `@keyframes jesterdance` entfernt, ersetzt durch `@keyframes radarSpin` (360°-Rotation, 3s linear).
+  - Matchmaking-Wartescreen zeigt jetzt rotierendes `target`-Icon (Lucide, 48px, #22d3ee)
+    mit Drop-Shadow-Glow statt clown-Emoji.
+
+### v3.11.0 — Langzeit-Progressionssystem
+- **LevelBadge**: Tier-farbige Level-Anzeige neben Avatar (Silber L1-9, Gold L10-24, Platin L25-49, Legendär L50+)
+- **getLevelTier()**: Hilfsfunktion für Tier-Farben und Glow-Effekte
+- **ConfettiBurst**: CSS-Konfetti-Animation bei Level-Up (20 Partikel, deterministische Timings)
+- **XpResultAnim**: Konfetti + "Nächste Belohnung"-Vorschau nach Level-Up
+- **AVATAR_UNLOCKS**: 4 Basis-Avatare gratis, 8 weitere ab Level 5/10/15/20/25/30/40/50
+- **DailyRewardModal**: Tägliche Belohnung mit 7-Tage-Streak-Kalender (Tag 1–7: 25/35/50/75/100/150/200G, Tag 7 +50XP + Legendäre Kiste)
+- **Profil-Karte**: LevelBadge auf Avatar-Overlay, Win-Rate-Anzeige, Peak-ELO-Zeile, Tages-Belohnung-Button mit Glow
+- **Avatar-Editor**: Gesperrte Avatare ausgegraut mit Schloss-Symbol und Level-Anforderung
+- **Peak ELO**: Tracking in `recordResult`, gespeichert in `peakElo`/`peakElo3`, im Leaderboard
+- **Neue CSS-Keyframes**: `confettiFall`, `dailyBounceIn`, `badgePop`, `streakGlow`, `collectBounce`
+- **localStorage**: Neuer Key `fortress_daily` für Streak-System; Profil erweitert um `peakElo`, `peakElo3`, `achievements[]`, `dailyTasks[]`, `seasonXp`
+- **Architektur-Vorbereitung**: Datenstrukturen für Achievements, Daily Tasks, Season-System, Social Features (Kommentare im Code)
+- **i18n**: Neue Strings für Tier-Labels, Daily Reward, Win-Rate, Peak ELO, Avatar-Lock-Hinweise
+
+### v3.11.1 — Ergebnis-Bildschirm iPhone-Fix
+- **Problem**: Ergebnis-Bildschirm wurde auf iPhone 15 (390×844) am unteren Rand abgeschnitten.
+- **Fix**: ~120px Gesamt-Höhe reduziert:
+  - Äußeres Padding auf 14px/20px reduziert + `overflowY: auto` hinzugefügt
+  - Trophy-Icon auf 44px verkleinert
+  - Score-Margin auf 10px reduziert
+  - Alle Abstände kompaktiert
+
+### v3.11.2 — XP-Animation Infinite-Loop-Fix
+- **Problem**: `XpResultAnim`-Komponente ging in eine Endlosschleife, weil sie innerhalb von `FortressApp` definiert ist — jedes Re-Render von `FortressApp` erzeugt eine neue Funktionsreferenz → React unmountet/remountet die Komponente → `setInterval` startet neu.
+- **Root Cause**: Online-Spiele → Firebase-Push → `applyState` → `setUiTick(t=>t+1)` → FortressApp Re-Render → Loop.
+- **Fix**: `setInterval`-basierte Animation durch CSS-Transition ersetzt. `useState(started)` togglet nach 350ms → Balken animiert via `transition: "width 1s cubic-bezier(0.34,1.1,0.64,1)"`. Kein laufendes Interval → immun gegen Remounting.
+
+### v3.11.3 — DailyRewardModal Bug-Fix + Test-Erweiterung
+- **Bug-Fix**: `DailyRewardModal` zeigte nach dem Abholen kurz den Countdown statt "✓ Abgeholt".
+  - **Root Cause**: Gleicher Remount-Mechanismus wie v3.11.2 — `collected`-State in der Komponente wurde bei FortressApp-Re-Render (durch `setDailyState`/`saveProfile`) zurückgesetzt.
+  - **Fix**: `collected`-State in `FortressApp` gehoben als `dailyCollected`. `DailyRewardModal` erhält es als Prop. `handleDailyCollect` setzt `setDailyCollected(true)` synchron, schließt Modal nach 1400ms.
+### v3.11.4 — Daily Reward: Kalender-Tag-Check + Neues Profil Fix
+- **Bug 1 (24h-Sperre zu streng)**: `getDailyCollectable` prüfte striktes 24h-Fenster (`Date.now() - lastCollect >= 86400000`). Wer um 22 Uhr sammelte, bekam erst am nächsten Tag um 22 Uhr wieder etwas — nicht intuitiv.
+  - **Fix**: Kalender-Tag-Check: `lastCollect.date < heute`. Einmal pro Kalendertag abholbar. Neue Hilfsfunktion `msTillMidnight()` berechnet Zeit bis Mitternacht für den Countdown im Modal.
+- **Bug 2 (neues Profil)**: `useEffect([], [])` lief beim ersten Mount, wenn `profile = null` (neues Konto / Profil-Editor offen). Early-Return → 1200ms-Timer nie gestartet. Nach Profil-Erstellung ändert sich `profile`, aber leerer Deps-Array verhinderte Re-Run → Modal erschien nie automatisch.
+  - **Fix**: `profile?.id` als Dependency. Effekt läuft wenn Profil von `null` auf einen Wert wechselt.
+
+- **Test-Erweiterung** (`test_fortress.js`):
+  - `PROFILE_INIT` aktualisiert: alle neuen Felder (level, xp, peakElo, peakElo3, unlockedRewards, achievements, dailyTasks, seasonXp). `fortress_daily` mit aktuellem Timestamp → verhindert Auto-Show in unrelated Tests.
+  - Neue Suite `suiteProgression`: 14 Tests für LevelBadge, XP-Leiste, Win-Rate %, ELO-Anzeige, CSS-Keyframes, Tages-Belohnungs-Button, Modal-Kalender, Abhol-Flow, Gold-Update, Streak-Persistenz, gesperrte Avatare, Basis-Avatare frei, Level-Overlay.
+
+### v3.11.5 — Match-End-Screen Redesign
+- **Visuelles Redesign** des Ergebnis-Bildschirms (Clash Royale / Brawl Stars Stil):
+  - **Hintergrund**: Dunkles radial-gradient (`#180f30 → #06080f`) statt flachem Dunkelblau
+  - **Online-Chip**: Zeigt jetzt Spieler-Avatar (15px `WappenAvatar`) + Spielername statt "Rotes Königreich"
+  - **Pokal**: 70px Icon (von 44px), goldener Radial-Glow-Halo dahinter (180×90px, `rgba(251,191,36,0.32)`, blur 8px)
+  - **Siegestext**: 30px, fontWeight 900, starker textShadow (von 24px/800)
+  - **Score-Box**: Inline-flex mit glühenden Spielerfarben (60a5fa/f87171/34d399 + textShadow je Farbe)
+  - **Einheitliche Karten-Fabrik `card(r,g,b)`**: Gleiche borderRadius (14), padding (11px 18px), boxShadow für ELO / Gold / XP
+  - **ELO-Karte**: Grün bei Gewinn (`card(74,222,128)`), Rot bei Verlust (`card(239,68,68)`). Alte ELO 20px grau → neue ELO 28px farbig + Delta-Pill mit Hintergrund
+  - **Gold-Karte**: `card(251,191,36)`, gleiche Struktur, Gold-Zahl 28px
+  - **XP-Karte**: `XpResultAnim` angepasst — Card-Style vereinheitlicht (borderRadius 14, padding 11px 18px, boxShadow), XP-Zahl 28px (von 20px), Fortschrittsbalken 10px (von 9px)
+  - **Button-Hierarchie**: Primär (gradient, 15px padding, 16px font) → Sekundär (ghost) → Tertiär (transparent text); Gast: Status-Info-Box + Ghost "Hauptmenü"
+  - **Teilen-Button**: Tertiäre Ghost-Variante (kleiner, dezenter)
+  - **Abstandsreduzierung**: gap: 8 zwischen Karten (von separaten marginTop/marginBottom)
+- **Bugfix**: Doppelter Ergebnis-Block entfernt — alter `if (screen === "result")` Block war nach dem Redesign unreachable aber strukturell vorhanden → JS-Syntaxfehler (`Unexpected token '}'`). Alter Block (137 Zeilen) vollständig entfernt.
+
+### v3.11.6 — Avatar-Redesign: Neue Charaktere + Profil-Editor Redesign
+- **12 neue Avatare** mit deutschen Namen ersetzen die alten Fantasy-Avatare:
+  - Frei (Level 1): SKELETT (lila Schädel), WALDHÜTER (grüner Waldgeist), EISMAGIER (Schneeflocke), ROBOTER (orange Augen)
+  - Level 5: HEXERIN, Level 10: KANONE, Level 15: FRANKENSTEIN, Level 20: FEUERSCHÄDEL
+  - Level 25: PESTDOKTOR, Level 30: BLITZ, Level 40: TROJANISCHES PFERD, Level 50: PHÖNIX
+- **Neue SVG-Artwork**: Jeder Avatar hat 3-lagige farbige Glow-Ringe (äußerer Glow/mittlerer Ring/scharfer Ring), kreisförmig statt eckig
+- **`WappenAvatar`**: `borderRadius: 6` → `borderRadius: '50%'` (kreisrund)
+- **`WAPPEN_GLOW`**: Neue Konstante — Avatar-Key → Glow-Farbe (für Profil-Editor Auswahl-Ringe)
+- **`WAPPEN_MIGRATION`**: Migriert alte Keys (vampir/pestdoc/eismagie/schatten/...) automatisch auf neue Keys beim Profilladen
+- **Profil-Editor Avatar-Grid** redesigned: Zwei Sektionen
+  - **AKTIVE AVATARE**: Freigeschaltete Avatare mit farbigem Glow-Ring (WAPPEN_GLOW); ausgewählter Avatar leuchtet mit weißem Ring + verstärktem Glow
+  - **GESPERRTE AVATARE**: Graustufige, abgedunkelte Avatare mit Schloss-Emoji 🔒 und Level-Anforderung
+- **Fallback-Wappen**: `"vampir"` → `"skelett"` in HUD, Leaderboard, Ergebnis-Screen
