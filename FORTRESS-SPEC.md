@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.26)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.27)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1111,6 +1111,12 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.23 — Timing-Anpassungen
 - **Burg-Warnung**: Schwellwert von 5 auf 8 Sekunden erhöht (mehr Vorwarnzeit)
 - **Schussrunde**: `SHOOT_TIME` von 30 auf 25 Sekunden reduziert (strafferes Gameplay)
+
+### v3.11.27 — Matchmaking-Fix: Name+Wappen-Filter entfernt (zu aggressiv)
+- **Root Cause v3.11.24-Regression**: Name+Wappen-Vergleich im Zombie-Cleanup löschte Tickets ANDERER Spieler — alle Avatare kommen mehrfach vor, somit räumte jeder neue Spieler die Queue für sich ab
+- **Behobene Logik**: Zombie-Cleanup und Self-Match-Filter wieder auf `pid`-only reduziert
+- `pid` (=`profile.id` aus localStorage) identifiziert eindeutig den eigenen Browser — kein False-Positive bei anderen Spielern mit gleichem Avatar
+- `await Promise.all(dels)` aus v3.11.24 bleibt erhalten — verhindert Race-Condition mit eigenem Zombie-Ticket
 
 ### v3.11.26 — Beenden-Button: Inline mit Phasen-Badge
 - Beenden-Button aus eigenem HUD-Block entfernt — spart eine ganze Zeile Höhe
