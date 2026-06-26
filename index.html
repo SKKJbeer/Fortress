@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#02060f"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.24</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.11.25</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2407,8 +2407,8 @@ window.FortressApp = function Fortress() {
     function fit() {
       const topH = (scoreBarRef.current ? scoreBarRef.current.offsetHeight : 0) + (row3Ref.current ? row3Ref.current.offsetHeight + 4 : 0);
       const bottomH = bottomBarRef.current ? bottomBarRef.current.offsetHeight : 0;
-      const chrome = topH + bottomH + 16;
-      const vw = window.innerWidth - 8;
+      const chrome = topH + bottomH + 8;
+      const vw = window.innerWidth - 2;
       const vh = window.innerHeight - chrome;
       const scale = Math.min(vw / W, vh / H, 1.4);
       setViewSize({ w: Math.floor(W * scale), h: Math.floor(H * scale) });
@@ -4625,7 +4625,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.24")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.25")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -5411,7 +5411,7 @@ window.FortressApp = function Fortress() {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "8px 4px 4px",
+    padding: "5px 2px 3px",
     boxSizing: "border-box",
     gap: 4
   } }, /* @__PURE__ */ React.createElement("div", { style: {
@@ -5419,8 +5419,8 @@ window.FortressApp = function Fortress() {
     minWidth: 0,
     background: "linear-gradient(160deg, rgba(59,130,246,0.20), rgba(30,58,138,0.30))",
     border: "1px solid rgba(59,130,246,0.45)",
-    borderRadius: 12,
-    padding: "5px 8px",
+    borderRadius: 14,
+    padding: "4px 6px",
     display: "flex",
     alignItems: "center",
     gap: 6,
@@ -5437,7 +5437,7 @@ window.FortressApp = function Fortress() {
     display: "inline-block",
     marginBottom: 1
   } }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 900,
     color: timerColor,
     textShadow: timer <= 5 ? `0 0 18px ${timerColor}` : "0 0 5px rgba(200,180,100,0.25)",
@@ -5448,8 +5448,8 @@ window.FortressApp = function Fortress() {
     minWidth: 0,
     background: "linear-gradient(160deg, rgba(239,68,68,0.20), rgba(127,29,29,0.30))",
     border: "1px solid rgba(239,68,68,0.45)",
-    borderRadius: 12,
-    padding: "5px 8px",
+    borderRadius: 14,
+    padding: "4px 6px",
     display: "flex",
     alignItems: "center",
     gap: 6,
@@ -5459,7 +5459,7 @@ window.FortressApp = function Fortress() {
   } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
     border: "1px solid rgba(16,185,129,0.45)",
-    borderRadius: 12,    padding: "4px 14px",    display: "flex",
+    borderRadius: 14,    padding: "2px 10px",    display: "flex",
     alignItems: "center",
     gap: 8,
     backdropFilter: "blur(12px)",
@@ -5489,7 +5489,7 @@ window.FortressApp = function Fortress() {
     width: viewSize.w,
     height: viewSize.h,
     border: buildUrgencyOpen ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 6,
+    borderRadius: 14,
     overflow: "hidden",
     boxShadow: buildUrgencyOpen ? undefined : "0 8px 40px rgba(0,0,0,0.7)",
     animation: buildUrgencyOpen ? "dangerGlow 0.6s ease-in-out infinite" : undefined,
@@ -5522,14 +5522,14 @@ window.FortressApp = function Fortress() {
   } }, phase === "build" ? React.createElement(React.Fragment, null,
     (!online.current || myRole.current === 1) && React.createElement("div", {
       onPointerDown: (e) => { e.preventDefault(); e.stopPropagation(); rotatePiece(1); },
-      style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "4px 3px", background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", borderRadius: 10, cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 42 }
+      style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "2px 3px", background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", borderRadius: 10, cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 36 }
     }, (() => {
       const p = pieces.current[1]; if (!p) return null;
       const cells = p.cells;
       const maxR = Math.max(...cells.map(([r]) => r));
       const maxC = Math.max(...cells.map(([, c]) => c));
-      const BOX = 32;
-      const dot = Math.max(5, Math.min(8, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
+      const BOX = 24;
+      const dot = Math.max(4, Math.min(7, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
       return React.createElement("div", { style: { width: BOX, height: BOX, display: "flex", alignItems: "center", justifyContent: "center" } },
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`, gridTemplateRows: `repeat(${maxR + 1}, ${dot}px)`, gap: 1 } },
           Array.from({ length: (maxR + 1) * (maxC + 1) }).map((_, i) => {
@@ -5539,17 +5539,17 @@ window.FortressApp = function Fortress() {
           })
         )
       );
-    })(), React.createElement("span", { style: { fontSize: 7, color: "#60a5fa", opacity: 0.55, letterSpacing: "0.07em" } }, "\u21BB DREHEN")),
+    })()),
     (!online.current || myRole.current === 2) && React.createElement("div", {
       onPointerDown: (e) => { e.preventDefault(); e.stopPropagation(); rotatePiece(2); },
-      style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "4px 3px", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.28)", borderRadius: 10, cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 42 }
+      style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "2px 3px", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.28)", borderRadius: 10, cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 36 }
     }, (() => {
       const p = pieces.current[2]; if (!p) return null;
       const cells = p.cells;
       const maxR = Math.max(...cells.map(([r]) => r));
       const maxC = Math.max(...cells.map(([, c]) => c));
-      const BOX = 32;
-      const dot = Math.max(5, Math.min(8, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
+      const BOX = 24;
+      const dot = Math.max(4, Math.min(7, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
       return React.createElement("div", { style: { width: BOX, height: BOX, display: "flex", alignItems: "center", justifyContent: "center" } },
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`, gridTemplateRows: `repeat(${maxR + 1}, ${dot}px)`, gap: 1 } },
           Array.from({ length: (maxR + 1) * (maxC + 1) }).map((_, i) => {
@@ -5559,17 +5559,17 @@ window.FortressApp = function Fortress() {
           })
         )
       );
-    })(), React.createElement("span", { style: { fontSize: 7, color: "#f87171", opacity: 0.55, letterSpacing: "0.07em" } }, "\u21BB DREHEN")),
+    })()),
     (!online.current && numPlayers === 3 || online.current && myRole.current === 3) && React.createElement("div", {
       onPointerDown: (e) => { e.preventDefault(); e.stopPropagation(); rotatePiece(3); },
-      style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "4px 3px", background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.28)", borderRadius: 10, cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 42 }
+      style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "2px 3px", background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.28)", borderRadius: 10, cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 36 }
     }, (() => {
       const p = pieces.current[3]; if (!p) return null;
       const cells = p.cells;
       const maxR = Math.max(...cells.map(([r]) => r));
       const maxC = Math.max(...cells.map(([, c]) => c));
-      const BOX = 32;
-      const dot = Math.max(5, Math.min(8, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
+      const BOX = 24;
+      const dot = Math.max(4, Math.min(7, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
       return React.createElement("div", { style: { width: BOX, height: BOX, display: "flex", alignItems: "center", justifyContent: "center" } },
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`, gridTemplateRows: `repeat(${maxR + 1}, ${dot}px)`, gap: 1 } },
           Array.from({ length: (maxR + 1) * (maxC + 1) }).map((_, i) => {
@@ -5579,7 +5579,7 @@ window.FortressApp = function Fortress() {
           })
         )
       );
-    })(), React.createElement("span", { style: { fontSize: 7, color: "#34d399", opacity: 0.55, letterSpacing: "0.07em" } }, "\u21BB DREHEN"))
+    })())
   ) : null), showQuitConfirm && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,

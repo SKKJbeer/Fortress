@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.24)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.25)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1111,6 +1111,14 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.23 — Timing-Anpassungen
 - **Burg-Warnung**: Schwellwert von 5 auf 8 Sekunden erhöht (mehr Vorwarnzeit)
 - **Schussrunde**: `SHOOT_TIME` von 30 auf 25 Sekunden reduziert (strafferes Gameplay)
+
+### v3.11.25 — In-Game UI Redesign (Feldoptimierung)
+- **Canvas größer**: `vw = innerWidth - 2` (war -8) und `chrome -= 8` (Padding 16→8) → +6px Breite, mehr Höhe
+- **Canvas-Rahmen**: `borderRadius: 14` (war 6) — passt zum Menü-Design
+- **Score-Bar**: kompakteres Padding (8px→5px oben), Spielerkarten `borderRadius: 14`, `padding: 4px 6px`
+- **Timer**: `fontSize: 30` (war 28) — prominenter im HUD
+- **P3-Leiste**: `borderRadius: 14`, `padding: 2px 10px` (war 4px 14px)
+- **Drehen-Buttons**: kompaktes Layout ohne Text-Label (war "↻ DREHEN"), BOX 32→24, minHeight 42→36, padding 2px statt 4px — mehr Platz für Spielfeld
 
 ### v3.11.24 — Matchmaking Selbst-Match Fix (3-Layer)
 - **Race-Condition**: Zombie-Ticket-Löschungen werden jetzt geawaited (`Promise.all`) bevor die Firebase-Subscription startet — verhindert, dass `mmTryFindMatch()` das Zombie-Ticket noch sieht

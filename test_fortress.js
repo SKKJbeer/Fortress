@@ -448,17 +448,30 @@ async function suiteMechanics(browser) {
     }
     ok('Canvas-Tap dreht Stück in Bauphase ✓');
 
-    // Drehen-Panel
-    const panelOk = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('span')).some(s => (s.textContent || '').includes('DREHEN'))
-    );
-    panelOk ? ok('Stück-Vorschau-Panel mit ↻ DREHEN sichtbar ✓') : fail('Stück-Vorschau-Panel fehlt');
+    // Drehen-Panel (kompaktes Layout ohne Text-Label seit v3.11.25)
+    const panelOk = await page.evaluate(() => {
+      // Rotate buttons: div with cursor:pointer containing a gridTemplateColumns preview
+      const divs = Array.from(document.querySelectorAll('div'));
+      return divs.some(d =>
+        d.style.cursor === 'pointer' &&
+        d.style.touchAction === 'manipulation' &&
+        d.style.borderRadius === '10px' &&
+        d.querySelector('div[style*="grid-template-columns"]')
+      );
+    });
+    panelOk ? ok('Stück-Vorschau-Panel sichtbar ✓') : fail('Stück-Vorschau-Panel fehlt');
 
     // Panel-Tap dreht
     const panelTap = await page.evaluate(() => {
-      const lbl = Array.from(document.querySelectorAll('span')).find(s => s.textContent.includes('DREHEN'));
-      if (!lbl) return false;
-      lbl.parentElement?.dispatchEvent(new PointerEvent('pointerdown',
+      const divs = Array.from(document.querySelectorAll('div'));
+      const btn = divs.find(d =>
+        d.style.cursor === 'pointer' &&
+        d.style.touchAction === 'manipulation' &&
+        d.style.borderRadius === '10px' &&
+        d.querySelector('div[style*="grid-template-columns"]')
+      );
+      if (!btn) return false;
+      btn.dispatchEvent(new PointerEvent('pointerdown',
         { bubbles: true, cancelable: true, isPrimary: true, pointerId: 99 }));
       return true;
     });
