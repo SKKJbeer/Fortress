@@ -6,10 +6,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Fortress"/>
   <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#02060f"/>
+  <meta name="theme-color" content="#050d05"/>
   <link rel="manifest" href="manifest.json"/>
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23050d05'/%3E%3Crect x='80' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='160' y='140' width='60' height='70' rx='6' fill='%234ade80'/%3E%3Crect x='292' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='372' y='140' width='60' height='70' rx='6' fill='%23f87171'/%3E%3Crect x='70' y='190' width='100' height='190' rx='10' fill='%232563eb'/%3E%3Crect x='342' y='190' width='100' height='190' rx='10' fill='%23dc2626'/%3E%3Crect x='186' y='210' width='140' height='170' rx='8' fill='%23cbd5e1'/%3E%3Crect x='236' y='310' width='40' height='70' rx='20' fill='%23451a03'/%3E%3Cline x1='256' y1='80' x2='256' y2='420' stroke='%2338bdf8' stroke-width='16' stroke-linecap='round'/%3E%3Cline x1='180' y1='240' x2='332' y2='240' stroke='%2338bdf8' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E"/>
-  <title>FORTRESS v3.11.28</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
+  <title>FORTRESS v3.12.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -379,6 +381,11 @@ function sanitizeAction(raw) {
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
   if (a.tx !== void 0 && (typeof a.tx !== "number" || a.tx < 0 || a.tx > W * 2)) return null;
   if (a.ty !== void 0 && (typeof a.ty !== "number" || a.ty < 0 || a.ty > H * 2)) return null;
+  if (a.angle !== void 0 && (typeof a.angle !== "number" || !isFinite(a.angle))) return null;
+  if (a.elo !== void 0 && (typeof a.elo !== "number" || !isFinite(a.elo) || a.elo < 1 || a.elo > 9999)) return null;
+  if (a.name !== void 0) a.name = String(a.name).slice(0, 30);
+  if (a.wappen !== void 0) a.wappen = String(a.wappen).slice(0, 10);
+  if (a.color !== void 0 && !/^#[0-9a-f]{6}$/i.test(String(a.color))) delete a.color;
   return a;
 }
 const CELL = 14;
@@ -2403,6 +2410,7 @@ window.FortressApp = function Fortress() {
   const pointers = useRef(/* @__PURE__ */ new Map());
   const activeDrag = useRef({ 1: null, 2: null });
   const activeBuild = useRef({ 1: null, 2: null });
+  const fitTimerRef = useRef(null);
   useEffect(() => {
     function fit() {
       const topH = (scoreBarRef.current ? scoreBarRef.current.offsetHeight : 0) + (row3Ref.current ? row3Ref.current.offsetHeight + 4 : 0);
@@ -2412,7 +2420,8 @@ window.FortressApp = function Fortress() {
       const vh = window.innerHeight - chrome;
       const scale = Math.min(vw / W, vh / H, 1.4);
       setViewSize({ w: Math.floor(W * scale), h: Math.floor(H * scale) });
-      setTimeout(() => {
+      clearTimeout(fitTimerRef.current);
+      fitTimerRef.current = setTimeout(() => {
         if (canvasRef.current) canvasRect.current = canvasRef.current.getBoundingClientRect();
       }, 50);
     }
@@ -2426,6 +2435,7 @@ window.FortressApp = function Fortress() {
     if (scoreBarRef.current) ro.observe(scoreBarRef.current);
     if (bottomBarRef.current) ro.observe(bottomBarRef.current);
     return () => {
+      clearTimeout(fitTimerRef.current);
       window.removeEventListener("resize", fit);
       window.removeEventListener("scroll", onScroll, true);
       ro.disconnect();
@@ -2531,7 +2541,7 @@ window.FortressApp = function Fortress() {
         statRecorded.current = true;
         const w = s.resultInfo.winner;
         const myWin = w === myRole.current ? true : w === null ? null : false;
-        recordResult(myWin, s.resultInfo.numPlayers || 2);
+        recordResult(myWin, s.resultInfo.numPlayers || numPlayersRef.current || 2);
       }
       const newScreen = s.screen || "game";
       if (newScreen !== screenRef.current) {
@@ -2560,15 +2570,7 @@ window.FortressApp = function Fortress() {
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
         if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
         if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
-        const incoming = s.balls || [];
-        const localBalls = balls.current || [];
-        if (incoming.length === 0) {
-          balls.current = [];
-        } else if (localBalls.length === 0) {
-          balls.current = incoming;
-        } else {
-          if (incoming.length > localBalls.length) balls.current = incoming;
-        }
+        balls.current = s.balls || [];
         explosions.current = s.explosions || [];
         lastShot.current = s.lastShot || { 1: -99999, 2: -99999, 3: -99999 };
         reloadProgRef.current = {
@@ -2701,9 +2703,10 @@ window.FortressApp = function Fortress() {
     if (a.n && a.n <= (guestActionApplied.current[actingPlayer] || 0)) return;
     guestActionApplied.current[actingPlayer] = a.n || 0;
     const p = actingPlayer;
-    if (a.type === "place") placePiece(p, a.r, a.c);
-    else if (a.type === "cannon") placeCannon(p, a.r, a.c);
-    else if (a.type === "fire") fireMortar(p, a.tx, a.ty);
+    const ph = phase_r.current;
+    if (a.type === "place" && ph === "build") placePiece(p, a.r, a.c);
+    else if (a.type === "cannon" && (ph === "setup" || ph === "cannon")) placeCannon(p, a.r, a.c);
+    else if (a.type === "fire" && ph === "shoot") fireMortar(p, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[p] = a.angle;
     else if (a.type === "rotate") pieces.current[p].cells = rotateCW(pieces.current[p].cells);
     pushState(true);
@@ -3470,8 +3473,8 @@ window.FortressApp = function Fortress() {
     const g = grid.current;
     let ready;
     if (phase_r.current === "shoot" && frozenReady.current[player]) {
-      const frozenIds = frozenReady.current[player];
-      ready = cannons.current[player].filter((c) => frozenIds.includes(c.id) && c.hp > 0);
+      const frozenIds = new Set(frozenReady.current[player]);
+      ready = cannons.current[player].filter((c) => frozenIds.has(c.id) && c.hp > 0);
     } else {
       ready = closedCannons(g, player, cannons.current[player]);
     }
@@ -3509,11 +3512,12 @@ window.FortressApp = function Fortress() {
         trail: []
       });
       const angle = Math.atan2(ty - sy, tx - sx);
+      const pCap = particles.current.length < 350;
       for (let i = 0; i < 10; i++) {
         const a = angle + (Math.random() - 0.5) * 0.9;
         const s = 1.5 + Math.random() * 3.5;
         const smoke = i >= 6;
-        particles.current.push({
+        if (pCap) particles.current.push({
           x: sx + Math.cos(angle) * CELL * 2.2,
           y: sy + Math.sin(angle) * CELL * 2.2,
           vx: Math.cos(a) * s,
@@ -3537,11 +3541,12 @@ window.FortressApp = function Fortress() {
     const target = g[hitR][hitC];
     explosions.current.push({ x: ball.tx, y: ball.ty, frame: 0 });
     shakeRef.current = Math.max(shakeRef.current, 7);
+    const pCap = particles.current.length < 350;
     for (let i = 0; i < 20; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = 1.5 + Math.random() * 4.5;
       const fire = Math.random() < 0.6;
-      particles.current.push({
+      if (pCap) particles.current.push({
         x: hitC * CELL + CELL / 2,
         y: hitR * CELL + CELL / 2,
         vx: Math.cos(a) * s,
@@ -3597,11 +3602,12 @@ window.FortressApp = function Fortress() {
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
           explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
           shakeRef.current = Math.max(shakeRef.current, 14);
+          const pCapC = particles.current.length < 350;
           for (let i = 0; i < 26; i++) {
             const a = Math.random() * Math.PI * 2;
             const s = 2.5 + Math.random() * 5.5;
             const fire = Math.random() < 0.65;
-            particles.current.push({
+            if (pCapC) particles.current.push({
               x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2,
               vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2.5,
               life: fire ? 26 : 38, maxLife: fire ? 26 : 38,
@@ -4625,7 +4631,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.11.28")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

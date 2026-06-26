@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.28)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1145,3 +1145,38 @@ und beschiessen danach gegenseitig ihre Festungen.
 - **Cross-Device-Filter** in `mmTryFindMatch`: Zusätzlich zu pid-Check nun auch Name+Wappen-Vergleich — filtert selben Spieler auf zwei Geräten (unterschiedliche `localStorage`-IDs)
 - **Startup-Cleanup** erweitert: bereinigt jetzt auch Tickets mit gleichem Name+Wappen (nicht nur gleicher pid)
 - **Defense-in-Depth** in `mmClaimAndMatch`: Letzte Sicherung — Kandidaten mit gleichem Name+Wappen oder pid werden vor dem Claim erkannt, Zombie-Ticket gelöscht, Match abgebrochen
+
+### v3.12.0 — App Store Release Preparation (TWA/Google Play)
+
+#### PWA & Manifest
+- `manifest.json`: vollständig überarbeitet — `name`, `short_name`, `description`, `start_url`, `scope`, `display: standalone`, `orientation: portrait`, `background_color`/`theme_color: #050d05`, `lang: de`, `categories: ["games"]`
+- Icons jetzt mit `purpose: "any"` und `purpose: "maskable"` für Android Adaptive Icons
+- `screenshots`-Feld vorbereitet (menu.png, game.png bei 390×844 für Play-Store-Listing)
+- `theme-color` Meta-Tag: `#050d05` (war `#02060f` — jetzt konsistent mit manifest.json)
+- `apple-touch-icon`: zeigt auf `icon-192.png` (war inline SVG — funktioniert in iOS Safari nicht korrekt)
+- `<link rel="icon">` Einträge für 192×192 und 512×512 PNG hinzugefügt
+
+#### Service Worker
+- `sw.js`: Cache-Key `fortress-v3.12.0` (war statisch `fortress-v1` — stale Assets konnten nicht geräumt werden)
+
+#### Neue Dateien
+- `privacy.html`: Datenschutzerklärung auf Deutsch (Pflicht für Google Play Store) — deckt localStorage, Firebase Realtime Database, keine Werbung/Tracking ab
+- `.well-known/assetlinks.json`: Template für Digital Asset Links (TWA-Domainverknüpfung) — Platzhalter für App-Paketname und SHA256-Fingerprint nach Bubblewrap-Setup
+- `firebase-security-rules.json`: Dokumentation empfohlener Firebase Security Rules — leaderboard (name ≤30 Zeichen, elo 0–9999), queue (status+ts), games (createdAt) — muss manuell in Firebase Console eingetragen werden
+
+#### Sicherheit & Robustheit
+- `sanitizeAction()`: Erweiterte Validierung — `tx`/`ty` müssen `number` im Spielfeldbereich sein, `angle` muss finite sein, `elo` nur 1–9999, `name` auf 30 Zeichen geclipt, `wappen` auf 10 Zeichen geclipt, `color` muss `#rrggbb` sein sonst gelöscht
+- `handleGuestAction()`: Phase-Gating — `place` nur in `build`, `cannon` nur in `setup`/`cannon`, `fire` nur in `shoot`; verhindert Late-Action-Exploits
+
+#### Bug-Fixes
+- Ball-Merge (Gast): `balls.current = s.balls || []` — Host ist immer autoritativ (war: Längenvergleich konnte neue Bälle verpassen wenn gleichzeitig Ball ablief und neuer abgefeuert wurde)
+- ELO `numPlayers`-Fallback: `|| numPlayersRef.current || 2` — schützt vor `undefined` im resultInfo
+- `fit()` useEffect: `fitTimerRef` für clearTimeout im Cleanup — kein Timer-Leak bei Unmount
+- `fireMortar` frozenIds: `new Set(frozenReady.current[player])` + `.has()` statt `.filter().find()` — O(1) statt O(n²) bei großen Kanonen-Arrays
+- Partikel-Cap: `particles.current.length < 350` vor allen drei Partikel-Loops (fireMortar, impactAt-Einschlag, impactAt-Kanonenvernichtung) — verhindert unbegrenztes Wachstum bei langen Spielen
+
+#### Noch manuell zu erledigen (nach Bubblewrap-APK)
+- `.well-known/assetlinks.json`: App-Paketname + SHA256-Fingerprint eintragen
+- Firebase Console: Security Rules aus `firebase-security-rules.json` aktivieren
+- `screenshots/` Verzeichnis mit echten Spielscreenshots füllen (390×844 PNG)
+- Icon-PNGs mit vollflächigem Hintergrund (ohne abgerundete Ecken) neu generieren für Maskable-Safe-Zone

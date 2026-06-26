@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FORTRESS — Datenschutzerklärung</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 0 auto; padding: 24px 16px; color: #1e293b; line-height: 1.6; }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+    h2 { color: #1e293b; margin-top: 32px; }
+    a  { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Datenschutzerklärung — FORTRESS</h1>
+  <p><strong>Stand:</strong> Juni 2026 &nbsp;|&nbsp; <strong>App-Version:</strong> 3.12.0</p>
+
+  <h2>1. Verantwortlicher</h2>
+  <p>
+    FORTRESS wird als Open-Source-Hobbyprojekt betrieben.<br/>
+    Kontakt: <a href="https://github.com/SKKJbeer/Fortress/issues">GitHub Issues</a>
+  </p>
+
+  <h2>2. Welche Daten werden gespeichert?</h2>
+
+  <h3>2.1 Lokal auf deinem Gerät (localStorage)</h3>
+  <p>Das Spiel speichert folgende Daten <strong>ausschließlich auf deinem Gerät</strong>:</p>
+  <ul>
+    <li>Spielername und gewählter Avatar (Wappen)</li>
+    <li>Spielstatistiken (Siege, Niederlagen, ELO-Wertung)</li>
+    <li>Level, Erfahrungspunkte (XP) und Gold</li>
+    <li>Freigeschaltete Achievements</li>
+    <li>Tägliche Belohnungs-Streak</li>
+  </ul>
+  <p>Diese Daten verlassen dein Gerät nicht, solange du kein Online-Spiel spielst.</p>
+
+  <h3>2.2 Online-Spielbetrieb (Firebase Realtime Database)</h3>
+  <p>Wenn du ein Online-Spiel startest oder der Bestenliste beitrittst, werden folgende Daten temporär in der Google Firebase Realtime Database gespeichert:</p>
+  <ul>
+    <li><strong>Spielstatus</strong>: Spielfeld, Phase, Runde, Punkte (nur während eines aktiven Spiels, danach automatisch gelöscht)</li>
+    <li><strong>Matchmaking-Warteschlange</strong>: Spielername, Avatar-Kennung, ELO-Wertung, Zeitstempel (nur während der Suche, max. ~60 Sekunden)</li>
+    <li><strong>Bestenliste</strong>: Spielername, Avatar, ELO-Wertung, Siege, Level (dauerhaft, bis du dein Profil zurücksetzt)</li>
+  </ul>
+  <p>Es werden <strong>keine echten Namen, E-Mail-Adressen oder Kontodaten</strong> gespeichert. Spielernamen wählst du selbst (Pseudonym empfohlen).</p>
+
+  <h2>3. Firebase / Google</h2>
+  <p>
+    Die Firebase Realtime Database wird von Google LLC betrieben. Durch das Spielen im Online-Modus gelten zusätzlich
+    <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Googles Datenschutzbestimmungen für Firebase</a>.
+    Google kann Metadaten (IP-Adresse, Zeitstempel) im Rahmen des Datenbankbetriebs verarbeiten.
+  </p>
+
+  <h2>4. Keine Werbung, kein Tracking</h2>
+  <p>FORTRESS enthält <strong>keine Werbung</strong>, kein Analytics und kein Tracking. Es werden keine Daten an Dritte (außer Firebase für Online-Spielbetrieb) weitergegeben.</p>
+
+  <h2>5. Kinder</h2>
+  <p>Das Spiel richtet sich nicht spezifisch an Kinder unter 13 Jahren. Es werden keine personenbezogenen Daten von Minderjährigen wissentlich erhoben.</p>
+
+  <h2>6. Deine Rechte</h2>
+  <p>Du kannst deine Daten jederzeit löschen:</p>
+  <ul>
+    <li><strong>Lokale Daten</strong>: Browsereinstellungen → Websitedaten löschen → fortress (oder App-Daten löschen)</li>
+    <li><strong>Bestenliste</strong>: Profil im Spiel zurücksetzen (löscht deinen Eintrag aus der Firebase-Bestenliste)</li>
+  </ul>
+
+  <h2>7. Änderungen dieser Erklärung</h2>
+  <p>Wesentliche Änderungen werden im <a href="https://github.com/SKKJbeer/Fortress/releases">Changelog auf GitHub</a> angekündigt.</p>
+
+  <hr/>
+  <p><a href="/Fortress/">← Zurück zum Spiel</a></p>
+</body>
+</html>
