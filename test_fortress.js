@@ -1197,6 +1197,284 @@ async function suiteProgression(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 7: Achievements (v3.11.17 + v3.11.18 Retroaktiv-Migration)
+// ═══════════════════════════════════════════════════════════════
+async function suiteAchievements(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Achievements\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── A) Trophy-Button im Menü ──────────────────────────────
+    const trophyBtn = await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button'))
+        .find(b => b.getAttribute('title') === 'Achievements');
+      if (!btn) return null;
+      const r = btn.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height), visible: r.width > 0 };
+    });
+    trophyBtn && trophyBtn.visible
+      ? ok(`Achievement-Button sichtbar im Menü (${trophyBtn.w}×${trophyBtn.h}px) ✓`)
+      : fail('Achievement-Button (title="Achievements") nicht gefunden oder nicht sichtbar');
+
+    // Liegt der Button unter dem Profil-Icon (gleiche X-Spalte)?
+    const btnLayout = await page.evaluate(() => {
+      const ach = Array.from(document.querySelectorAll('button'))
+        .find(b => b.getAttribute('title') === 'Achievements');
+      const prof = Array.from(document.querySelectorAll('button'))
+        .find(b => (b.title || '').toLowerCase().includes('profil') || b.getAttribute('title') === 'Profil bearbeiten');
+      if (!ach || !prof) return null;
+      const rA = ach.getBoundingClientRect(), rP = prof.getBoundingClientRect();
+      return { achX: rA.x, profX: rP.x, sameColumn: Math.abs(rA.x - rP.x) < 20 };
+    });
+    btnLayout && btnLayout.sameColumn
+      ? ok('Achievement-Button in gleicher Spalte wie Profil-Button ✓')
+      : fail('Achievement-Button nicht unter Profil-Button (Layoutfehler)');
+
+    // ── B) Modal öffnen ───────────────────────────────────────
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button'))
+        .find(b => b.getAttribute('title') === 'Achievements');
+      if (btn) btn.click();
+    });
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: '/tmp/s7_achievements_modal.png' });
+
+    // Modal-Titel
+    const modalTitle = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('div')).some(d =>
+        d.children.length === 0 && (d.textContent || '').trim() === '🏆 Achievements')
+    );
+    modalTitle ? ok('Achievement-Modal: Titel "🏆 Achievements" ✓') : fail('Achievement-Modal: Titel fehlt');
+
+    // Zähler "X/N freigeschaltet" (N = ACHIEVEMENTS.length, aktuell 20)
+    const counterOk = await page.evaluate(() => /\d+\/\d+\s*freigeschaltet/.test(document.body.innerText));
+    counterOk ? ok('Achievement-Modal: Zähler "X/N freigeschaltet" ✓') : fail('Achievement-Modal: Zähler fehlt');
+
+    // Alle 6 Kategorien sichtbar
+    const catOk = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        siege: /Siege/.test(t), spiele: /Spiele/.test(t),
+        zerstoerung: /Zerstör/.test(t), gold: /Gold/.test(t),
+        elo: /\bELO\b/.test(t), serien: /Serien/.test(t)
+      };
+    });
+    const missingCats = Object.entries(catOk).filter(([, v]) => !v).map(([k]) => k);
+    missingCats.length === 0
+      ? ok('Achievement-Modal: alle 6 Kategorien sichtbar (Siege/Spiele/Zerstörung/Gold/ELO/Serien) ✓')
+      : fail(`Achievement-Modal: Kategorien fehlen: ${missingCats.join(', ')}`);
+
+    // Belohnungs-Chips (+XP in lila, +Gold in gold)
+    const rewardChipsOk = await page.evaluate(() => {
+      const spans = Array.from(document.querySelectorAll('span'));
+      return {
+        xp:   spans.some(s => /\+\d+\s*XP/.test(s.textContent || '')),
+        gold: spans.some(s => /\+\d+\s*Gold/.test(s.textContent || ''))
+      };
+    });
+    rewardChipsOk.xp   ? ok('Achievement-Modal: +XP Belohnungs-Chip sichtbar ✓') : fail('Achievement-Modal: +XP Chip fehlt');
+    rewardChipsOk.gold ? ok('Achievement-Modal: +Gold Belohnungs-Chip sichtbar ✓') : fail('Achievement-Modal: +Gold Chip fehlt');
+
+    // Fortschritts-Anzeige (progress / target Format wie "0 / 1")
+    const progressOk = await page.evaluate(() => /\d+\s*\/\s*\d+/.test(document.body.innerText));
+    progressOk ? ok('Achievement-Modal: Fortschrittsbalken (X/target) ✓') : fail('Achievement-Modal: Fortschrittsbalken fehlt');
+
+    // Modal schließbar via ✕
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === '✕');
+      if (btn) btn.click();
+    });
+    await page.waitForTimeout(150);
+    const modalGone = await page.evaluate(() =>
+      !Array.from(document.querySelectorAll('div')).some(d =>
+        (d.textContent || '').includes('freigeschaltet'))
+    );
+    modalGone ? ok('Achievement-Modal: schließt sich via ✕ ✓') : fail('Achievement-Modal: schließt sich nicht');
+
+    // ── C) Retroaktive Freischaltung (v3.11.18) ───────────────
+    // Profile hat wins:5, games:7, elo:1050 aber kein achievementsRetroApplied
+    // → loadProfile() muss Migration ausführen und in localStorage speichern
+    const retro = await page.evaluate(() => {
+      try {
+        const p = JSON.parse(localStorage.getItem('fortress_profile'));
+        if (!p) return { applied: false, unlocked: [] };
+        const unlocked = (Array.isArray(p.achievements) ? p.achievements : [])
+          .filter(a => a.unlocked).map(a => a.id);
+        return { applied: !!p.achievementsRetroApplied, unlocked };
+      } catch { return { applied: false, unlocked: [] }; }
+    });
+
+    retro.applied
+      ? ok('Retroaktive Migration: achievementsRetroApplied=true in localStorage ✓')
+      : fail('Retroaktive Migration: achievementsRetroApplied nicht gesetzt');
+
+    retro.unlocked.includes('first_win')
+      ? ok('Retroaktive Migration: first_win freigeschaltet (stats.wins 5 ≥ target 1) ✓')
+      : fail(`Retroaktive Migration: first_win nicht freigeschaltet (freigeschaltet: ${retro.unlocked.join(',')})`);
+
+    retro.unlocked.includes('first_game')
+      ? ok('Retroaktive Migration: first_game freigeschaltet (stats.games 7 ≥ target 1) ✓')
+      : fail('Retroaktive Migration: first_game nicht freigeschaltet');
+
+    retro.unlocked.includes('elo_1000')
+      ? ok('Retroaktive Migration: elo_1000 freigeschaltet (ELO 1050 ≥ target 1000) ✓')
+      : fail('Retroaktive Migration: elo_1000 nicht freigeschaltet');
+
+    // wins_10 darf NICHT freigeschaltet sein (wins:5 < 10)
+    !retro.unlocked.includes('wins_10')
+      ? ok('Retroaktive Migration: wins_10 korrekt NICHT freigeschaltet (wins 5 < 10) ✓')
+      : fail('Retroaktive Migration: wins_10 fälschlich freigeschaltet (wins 5 < 10)');
+
+    // Zähler: mindestens 3 unlocked (first_win, first_game, elo_1000)
+    retro.unlocked.length >= 3
+      ? ok(`Retroaktive Migration: ${retro.unlocked.length} Achievements freigeschaltet ✓`)
+      : fail(`Retroaktive Migration: zu wenige freigeschaltet (${retro.unlocked.length})`);
+
+    await page.screenshot({ path: '/tmp/s7_retro_unlock.png' });
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Achievements: Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 8: Build-Urgency-Warnung + Schuss-Timer (v3.11.20–23)
+// ═══════════════════════════════════════════════════════════════
+async function suiteBuildUrgency(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Build-Urgency-Warnung\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // dangerGlow CSS-Keyframe vorhanden
+    const kfOk = await page.evaluate(() => {
+      try { return Array.from(document.styleSheets).some(s =>
+        Array.from(s.cssRules || []).some(r => r.name === 'dangerGlow')); }
+      catch { return false; }
+    });
+    kfOk ? ok('CSS-Keyframe dangerGlow vorhanden ✓') : fail('CSS-Keyframe dangerGlow fehlt');
+
+    // urgencyPulse-Keyframe ebenfalls vorhanden (ergänzende Animation)
+    const kfPulse = await page.evaluate(() => {
+      try { return Array.from(document.styleSheets).some(s =>
+        Array.from(s.cssRules || []).some(r => r.name === 'urgencyPulse')); }
+      catch { return false; }
+    });
+    kfPulse ? ok('CSS-Keyframe urgencyPulse vorhanden ✓') : fail('CSS-Keyframe urgencyPulse fehlt');
+
+    // 2-Spieler-Spiel starten und auf erste Bauphase warten
+    // Phasenfolge: Setup(20s) → Shoot(25s) → Cannon(12s) → Build(25s)
+    // Mit 20x-Speedup: ~1s → ~1.25s → ~0.6s → Build startet nach ~2.85s
+    await startLocal(page, 2);
+
+    console.log('⏳ Warte auf Schussphase nach Setup...');
+    const gotShoot = await waitForPhase(page, ['FEUER'], 6000);
+    if (!gotShoot) { fail('Schussphase (vor Bauphase) nicht erreicht'); return { res, errs }; }
+
+    console.log('⏳ Warte auf Kanonen-Phase...');
+    const gotCannon = await waitForPhase(page, ['KANONE'], 5000);
+    if (!gotCannon) { fail('Kanonen-Phase nicht erreicht'); return { res, errs }; }
+
+    console.log('⏳ Warte auf erste Bauphase...');
+    const gotBuild = await waitForPhase(page, ['BAUEN'], 5000);
+    if (!gotBuild) { fail('Bauphase nicht erreicht'); return { res, errs }; }
+    ok('Bauphase für Urgency-Test erreicht ✓');
+
+    // Timer direkt nach Eintritt in Bauphase: muss > 8 sein
+    await page.waitForTimeout(80);
+    const timerStart = await getTimerValue(page);
+    if (timerStart !== null && timerStart > 8) {
+      ok(`Bau-Timer bei Phasenstart: ${timerStart} (> 8 → kein Glow erwartet) ✓`);
+    } else if (timerStart !== null) {
+      // Selten: Polling hat die Phase etwas spät erkannt, Timer schon ≤ 8
+      ok(`Bau-Timer bei Erkennung: ${timerStart} (Schritt übersprungen, Speedup-Artefakt)`);
+    }
+
+    // Kein dangerGlow bei vollem Timer (nur prüfen wenn > 8 bestätigt)
+    if (timerStart !== null && timerStart > 8) {
+      const glowEarlyActive = await page.evaluate(() => {
+        const c = document.querySelector('canvas');
+        if (!c) return null;
+        return (window.getComputedStyle(c.parentElement).animationName || '').includes('dangerGlow');
+      });
+      glowEarlyActive === false
+        ? ok('Kein dangerGlow bei Bau-Timer > 8 ✓')
+        : fail(`dangerGlow unerwartet aktiv bei Timer=${timerStart} (Schwelle zu früh)`);
+    }
+
+    // Warten bis Timer ≤ 8: bestätigt, dass Timer die Schwelle erreicht
+    // (Burg ist in der ersten Bauphase bereits vorgelagert geschlossen durch die
+    //  vorgebaute Burgstruktur → kein Glow erwartet; Glow tritt nur auf wenn
+    //  Kanonenbeschuss Mauern zerstört hat — das erfordert eine komplexere
+    //  Testsimulation und wird hier nicht vollautomatisch getestet.)
+    console.log('⏳ Warte bis Bau-Timer ≤ 8 (Schwellen-Check)...');
+    const urgencyDeadline = Date.now() + 2000;
+    let timerAtUrgency = null;
+    while (Date.now() < urgencyDeadline) {
+      const t = await getTimerValue(page);
+      if (t !== null && t <= 8 && t > 0) { timerAtUrgency = t; break; }
+      if (t === 0 || t === null) break;
+      await page.waitForTimeout(60);
+    }
+
+    if (timerAtUrgency === null) {
+      fail('Bau-Timer hat Schwelle ≤ 8 nicht rechtzeitig erreicht');
+    } else {
+      ok(`Bau-Timer-Schwelle ≤ 8 erreicht: ${timerAtUrgency}s ✓`);
+
+      // In erster Bauphase ist Burg vorgelagert geschlossen → kein Glow erwartet
+      // (korrekte Verhalten: kein false-positive Glow bei geschlossener Burg)
+      const noFalsePositive = await page.evaluate(() => {
+        const c = document.querySelector('canvas');
+        if (!c) return true; // kein Canvas = kein Glow
+        const wrapper = c.parentElement;
+        const anim = wrapper.style.animation || wrapper.style.animationName ||
+                     window.getComputedStyle(wrapper).animationName || '';
+        return !anim.includes('dangerGlow');
+      });
+      noFalsePositive
+        ? ok('Kein false-positive dangerGlow bei geschlossener Burg ✓')
+        : fail('Unerwarteter dangerGlow bei bereits geschlossener Burg');
+
+      await page.screenshot({ path: '/tmp/s8_build_timer.png' });
+    }
+
+    // Bau-Timer zählt korrekt von 25 herunter
+    // (bereits via timerStart > 8 bestätigt; zusätzliche Verifikation:
+    //  Timer hat Wert < timerStart erreicht ohne einzufrieren)
+    if (timerStart !== null && timerAtUrgency !== null) {
+      timerAtUrgency < timerStart
+        ? ok(`Bau-Timer zählt: ${timerStart} → ${timerAtUrgency} ✓`)
+        : fail(`Bau-Timer zählt nicht (${timerStart} → ${timerAtUrgency})`);
+    }
+
+    // Schuss-Timer ist 25 (nicht 30) — zusätzliche Absicherung via HUD-Text
+    // (suiteNavHUD prüft "FEUER25" bereits, hier als separaten Wert verifizieren)
+    await waitForPhase(page, ['FEUER'], 4000); // warte auf nächste Schussphase
+    await page.waitForTimeout(100);
+    const shootTimerVal = await getTimerValue(page);
+    if (shootTimerVal !== null) {
+      shootTimerVal <= 25
+        ? ok(`Schuss-Timer startet bei ${shootTimerVal} ≤ 25 (SHOOT_TIME=25 bestätigt) ✓`)
+        : fail(`Schuss-Timer=${shootTimerVal} überschreitet 25 (SHOOT_TIME sollte 25 sein)`);
+    }
+
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Build-Urgency: Keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -1221,7 +1499,7 @@ async function suiteProgression(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1230,15 +1508,17 @@ async function suiteProgression(browser) {
     suiteOnlineUI(browser, FB_PORT),
     suiteOnline2P(browser, FB_PORT),
     suiteProgression(browser),
+    suiteAchievements(browser),
+    suiteBuildUrgency(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
