@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.23)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.24)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1111,3 +1111,9 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.23 — Timing-Anpassungen
 - **Burg-Warnung**: Schwellwert von 5 auf 8 Sekunden erhöht (mehr Vorwarnzeit)
 - **Schussrunde**: `SHOOT_TIME` von 30 auf 25 Sekunden reduziert (strafferes Gameplay)
+
+### v3.11.24 — Matchmaking Selbst-Match Fix (3-Layer)
+- **Race-Condition**: Zombie-Ticket-Löschungen werden jetzt geawaited (`Promise.all`) bevor die Firebase-Subscription startet — verhindert, dass `mmTryFindMatch()` das Zombie-Ticket noch sieht
+- **Cross-Device-Filter** in `mmTryFindMatch`: Zusätzlich zu pid-Check nun auch Name+Wappen-Vergleich — filtert selben Spieler auf zwei Geräten (unterschiedliche `localStorage`-IDs)
+- **Startup-Cleanup** erweitert: bereinigt jetzt auch Tickets mit gleichem Name+Wappen (nicht nur gleicher pid)
+- **Defense-in-Depth** in `mmClaimAndMatch`: Letzte Sicherung — Kandidaten mit gleichem Name+Wappen oder pid werden vor dem Claim erkannt, Zombie-Ticket gelöscht, Match abgebrochen
