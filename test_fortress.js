@@ -61,7 +61,8 @@ async function jsClick(page, parts) {
   return page.evaluate((parts) => {
     for (const b of document.querySelectorAll('button')) {
       const t = (b.textContent || '').trim();
-      if (parts.some(p => t.includes(p))) { b.click(); return t; }
+      const title = b.title || '';
+      if (parts.some(p => t.includes(p) || title.includes(p))) { b.click(); return t; }
     }
     return null;
   }, parts);
@@ -70,7 +71,8 @@ async function findBtn(page, parts) {
   return page.evaluate((parts) => {
     for (const b of document.querySelectorAll('button')) {
       const t = (b.textContent || '').trim();
-      if (parts.some(p => t.includes(p))) return t;
+      const title = b.title || '';
+      if (parts.some(p => t.includes(p) || title.includes(p))) return t;
     }
     return null;
   }, parts);
@@ -258,7 +260,7 @@ async function suiteNavHUD(browser, playerCount) {
       return {
         timer: /\b\d{1,2}\b/.test(text),
         phase: text.includes('BAUEN') || text.includes('FEUER') || text.includes('START') || text.includes('KANONE'),
-        quit:  Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('beenden')),
+        quit:  Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('beenden') || b.title.includes('beenden') || b.textContent.trim() === '✕'),
       };
     });
     hud.timer ? ok('Timer im HUD ✓')        : fail('Timer im HUD fehlt');
@@ -296,7 +298,7 @@ async function suiteNavHUD(browser, playerCount) {
     // Beenden-Button-Detail
     const qi = await page.evaluate(() => {
       for (const b of document.querySelectorAll('button')) {
-        if (b.textContent.includes('beenden')) {
+        if (b.textContent.includes('beenden') || b.title.includes('beenden') || b.textContent.trim() === '✕') {
           const r = b.getBoundingClientRect(), st = window.getComputedStyle(b);
           return { x: r.x, y: r.y, w: r.width, h: r.height, pos: st.position, bg: st.background };
         }
@@ -538,11 +540,11 @@ async function suiteQuitUX(browser) {
     const allBtns = await page.evaluate(() =>
       Array.from(document.querySelectorAll('button')).map(b => {
         const r = b.getBoundingClientRect(), st = window.getComputedStyle(b);
-        return { text: (b.textContent || '').trim(), x: r.x, y: r.y, w: r.width, h: r.height,
+        return { text: (b.textContent || '').trim(), title: b.title || '', x: r.x, y: r.y, w: r.width, h: r.height,
                  pos: st.position, bg: st.background };
       })
     );
-    const quit = allBtns.find(b => b.text.toLowerCase().includes('beenden'));
+    const quit = allBtns.find(b => b.text.toLowerCase().includes('beenden') || b.title.includes('beenden') || b.text.trim() === '✕');
     if (!quit) { fail('Beenden-Button nicht gefunden'); return { res, errs }; }
 
     ok(`Beenden-Button: "${quit.text}" | ${Math.round(quit.w)}×${Math.round(quit.h)}px`);
@@ -946,7 +948,7 @@ async function suiteOnline2P(browser, fbPort) {
       const t = document.body.innerText;
       return {
         timer: /\d{2}/.test(t),
-        quit:  Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('beenden')),
+        quit:  Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('beenden') || b.title.includes('beenden') || b.textContent.trim() === '✕'),
         // Online HUD zeigt "TestBot (Du)" für den Host; offline "P1"/"P2"
         score: /Du/.test(t) || (/P1/.test(t) && /P2/.test(t)),
       };

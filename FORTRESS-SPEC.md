@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.25)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.26)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1111,6 +1111,13 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.23 — Timing-Anpassungen
 - **Burg-Warnung**: Schwellwert von 5 auf 8 Sekunden erhöht (mehr Vorwarnzeit)
 - **Schussrunde**: `SHOOT_TIME` von 30 auf 25 Sekunden reduziert (strafferes Gameplay)
+
+### v3.11.26 — Beenden-Button: Inline mit Phasen-Badge
+- Beenden-Button aus eigenem HUD-Block entfernt — spart eine ganze Zeile Höhe
+- Neues Layout: Phase-Badge und `✕`-Button erscheinen nebeneinander in einer Flex-Zeile
+- `✕` statt "✕ beenden" als kompaktes Icon, `title="beenden"` für Accessibility
+- Darunter: nur noch der große Timer — HUD insgesamt deutlich kompakter
+- Mittelspalte: `maxWidth: 30%` (war 28%) für mehr Spielraum
 
 ### v3.11.25 — In-Game UI Redesign (Feldoptimierung)
 - **Canvas größer**: `vw = innerWidth - 2` (war -8) und `chrome -= 8` (Padding 16→8) → +6px Breite, mehr Höhe
