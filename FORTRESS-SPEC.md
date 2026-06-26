@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.27)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.11.28)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1111,6 +1111,13 @@ und beschiessen danach gegenseitig ihre Festungen.
 ### v3.11.23 — Timing-Anpassungen
 - **Burg-Warnung**: Schwellwert von 5 auf 8 Sekunden erhöht (mehr Vorwarnzeit)
 - **Schussrunde**: `SHOOT_TIME` von 30 auf 25 Sekunden reduziert (strafferes Gameplay)
+
+### v3.11.28 — Online-Warn Fix: Benachrichtigungen nur beim richtigen Spieler
+- **Bug**: "Keine schussbereite Kanone"-Warnung erschien beim Host, auch wenn ein Gast schoss
+- **Root Cause**: Host führt `fireMortar()` für alle Spieler aus (autoritäre Architektur) — `showWarn()` zeigte immer auf dem Host-Screen
+- **Fix 1 (primär)**: Gast prüft Kanonenbereitschaft lokal aus `frozenReady` bevor er `fire`-Action sendet — Warnung erscheint direkt beim Gast, Action wird gar nicht erst verschickt
+- **Fix 2 (defense-in-depth)**: In `fireMortar` — Warnung nur zeigen wenn `!online || player === myRole.current` (kein fremder Spieler)
+- Andere `showWarn`-Aufrufe (Burg geöffnet, Spieler ausgeschieden, Kanone zerstört) sind globale Infos und bleiben für alle Spieler sichtbar
 
 ### v3.11.27 — Matchmaking-Fix: Name+Wappen-Filter entfernt (zu aggressiv)
 - **Root Cause v3.11.24-Regression**: Name+Wappen-Vergleich im Zombie-Cleanup löschte Tickets ANDERER Spieler — alle Avatare kommen mehrfach vor, somit räumte jeder neue Spieler die Queue für sich ab
