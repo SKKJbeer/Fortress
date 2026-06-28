@@ -1553,6 +1553,69 @@ async function suiteOnboarding(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+async function suiteSound(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Sound & Haptik\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── SFX-Engine global vorhanden ───────────────────────────
+    const sfxOk = await page.evaluate(() => typeof SFX === 'object' && SFX !== null &&
+      typeof SFX.shoot === 'function' && typeof SFX.impact === 'function' &&
+      typeof SFX.win === 'function' && typeof SFX.vibrate === 'function');
+    sfxOk ? ok('SFX-Engine (shoot/impact/win/vibrate) global verfügbar ✓') : fail('SFX-Engine fehlt');
+
+    // ── SFX-Aufrufe werfen keine Fehler (auch ohne echtes Audio) ─
+    const callsOk = await page.evaluate(() => {
+      try { SFX.shoot(); SFX.impact(); SFX.destroy(); SFX.cannon(); SFX.win(); SFX.lose(); SFX.vibrate(10); SFX.resume(); return true; }
+      catch (e) { return false; }
+    });
+    callsOk ? ok('Alle SFX-Methoden laufen fehlerfrei ✓') : fail('SFX-Methode wirft Fehler');
+
+    // ── Sound- & Vibrations-Toggle im Menü ────────────────────
+    const toggles = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const sound = btns.some(b => /🔊|🔇/.test(b.textContent || '') || (b.title || '') === 'Sound');
+      const vib   = btns.some(b => /📳|📴/.test(b.textContent || '') || (b.title || '') === 'Vibration');
+      return { sound, vib };
+    });
+    toggles.sound ? ok('Sound-Toggle im Menü sichtbar ✓') : fail('Sound-Toggle fehlt');
+    toggles.vib ? ok('Vibrations-Toggle im Menü sichtbar ✓') : fail('Vibrations-Toggle fehlt');
+
+    // ── Toggle schaltet SFX.enabled + localStorage ────────────
+    await jsClick(page, ['Sound']);
+    await page.waitForTimeout(120);
+    const offState = await page.evaluate(() => ({
+      enabled: SFX.enabled,
+      ls: (() => { try { return localStorage.getItem('fortress_sound'); } catch { return null; } })()
+    }));
+    (offState.enabled === false && offState.ls === '0')
+      ? ok('Sound-Toggle deaktiviert SFX + speichert localStorage (=0) ✓')
+      : fail(`Sound-Toggle schaltet nicht (enabled=${offState.enabled}, ls=${offState.ls})`);
+
+    await jsClick(page, ['Sound']);
+    await page.waitForTimeout(120);
+    const onState = await page.evaluate(() => ({
+      enabled: SFX.enabled,
+      ls: (() => { try { return localStorage.getItem('fortress_sound'); } catch { return null; } })()
+    }));
+    (onState.enabled === true && onState.ls === '1')
+      ? ok('Sound-Toggle reaktiviert SFX + speichert localStorage (=1) ✓')
+      : fail(`Sound-Toggle reaktiviert nicht (enabled=${onState.enabled}, ls=${onState.ls})`);
+
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Sound: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Sound-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -1577,7 +1640,7 @@ async function suiteOnboarding(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1589,15 +1652,16 @@ async function suiteOnboarding(browser) {
     suiteAchievements(browser),
     suiteBuildUrgency(browser),
     suiteOnboarding(browser),
+    suiteSound(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

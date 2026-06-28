@@ -133,6 +133,8 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_profile` | Profil inkl. `level, xp, gold, peakElo, peakElo3, achievements[], dailyTasks[], seasonXp, unlockedRewards[]` |
 | `fortress_daily` | `{ lastCollect: timestamp, streak: number, lastStreakDay: "YYYY-MM-DD" }` |
 | `fortress_onboarded` | `'1'` = Tutorial/Onboarding gesehen (seit v3.12.1). Fehlt der Key → `OnboardingModal` zeigt sich automatisch beim ersten Menüstart. |
+| `fortress_sound` | `'1'`/`'0'` = Sound-Effekte an/aus (seit v3.12.2, Default an). Steuert `SFX.enabled`. |
+| `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 
 ### Neue Konstanten
 - `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)
@@ -180,6 +182,8 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_profile` | Profil inkl. `level, xp, gold, peakElo, peakElo3, achievements[], dailyTasks[], seasonXp, unlockedRewards[]` |
 | `fortress_daily` | `{ lastCollect: timestamp, streak: number, lastStreakDay: "YYYY-MM-DD" }` |
 | `fortress_onboarded` | `'1'` = Tutorial/Onboarding gesehen (seit v3.12.1). Fehlt der Key → `OnboardingModal` zeigt sich automatisch beim ersten Menüstart. |
+| `fortress_sound` | `'1'`/`'0'` = Sound-Effekte an/aus (seit v3.12.2, Default an). Steuert `SFX.enabled`. |
+| `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 
 ### Neue Konstanten
 - `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)

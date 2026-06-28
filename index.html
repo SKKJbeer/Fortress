@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.12.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.12.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -124,6 +124,77 @@ const ICON_PATHS = {
   globe:       ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20"],
   coins:       ["M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z", "M18.09 10.37A6 6 0 1 1 10.34 18", "M7 6h1v4", "m16.71 13.88.7.71-2.82 2.82"],
   hourglass:   ["M5 22h14", "M5 2h14", "M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22", "M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"],
+};
+// ── Sound & Haptik (Web Audio API, prozedural — keine Asset-Dateien, offline/TWA-tauglich) ──
+const SFX = {
+  ctx: null,
+  enabled: true,
+  haptics: true,
+  _ensure() {
+    if (this.ctx) return this.ctx;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    } catch (e) {}
+    return this.ctx;
+  },
+  resume() {
+    try { const c = this._ensure(); if (c && c.state === "suspended") c.resume().catch(() => {}); } catch (e) {}
+  },
+  _tone(o) {
+    if (!this.enabled) return;
+    const c = this._ensure();
+    if (!c) return;
+    try {
+      const { freq = 440, type = "sine", dur = 0.15, vol = 0.2, freqEnd = null, delay = 0 } = o || {};
+      const t0 = c.currentTime + delay;
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (freqEnd != null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + dur);
+      gain.gain.setValueAtTime(1e-4, t0);
+      gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(1e-4, t0 + dur);
+      osc.connect(gain).connect(c.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  },
+  _noise(o) {
+    if (!this.enabled) return;
+    const c = this._ensure();
+    if (!c) return;
+    try {
+      const { dur = 0.2, vol = 0.2, delay = 0, filterFreq = 1000 } = o || {};
+      const t0 = c.currentTime + delay;
+      const len = Math.max(1, Math.floor(c.sampleRate * dur));
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const gain = c.createGain();
+      gain.gain.setValueAtTime(vol, t0);
+      gain.gain.exponentialRampToValueAtTime(1e-4, t0 + dur);
+      const filter = c.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(filterFreq, t0);
+      src.connect(filter).connect(gain).connect(c.destination);
+      src.start(t0);
+      src.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  },
+  vibrate(p) {
+    if (!this.haptics) return;
+    try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {}
+  },
+  shoot() { this._tone({ freq: 320, freqEnd: 90, type: "sawtooth", dur: 0.18, vol: 0.16 }); this._noise({ dur: 0.12, vol: 0.10, filterFreq: 800 }); this.vibrate(15); },
+  impact() { this._noise({ dur: 0.25, vol: 0.20, filterFreq: 600 }); this._tone({ freq: 120, freqEnd: 40, type: "square", dur: 0.2, vol: 0.10 }); this.vibrate(25); },
+  destroy() { this._noise({ dur: 0.4, vol: 0.26, filterFreq: 500 }); this._tone({ freq: 90, freqEnd: 30, type: "sawtooth", dur: 0.35, vol: 0.16 }); this.vibrate([30, 40, 60]); },
+  cannon() { this._tone({ freq: 680, freqEnd: 880, type: "triangle", dur: 0.1, vol: 0.12 }); this.vibrate(10); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => this._tone({ freq: f, type: "triangle", dur: 0.18, vol: 0.2, delay: i * 0.12 })); this.vibrate([20, 40, 20, 40, 60]); },
+  lose() { [392, 330, 262, 196].forEach((f, i) => this._tone({ freq: f, type: "sawtooth", dur: 0.22, vol: 0.15, delay: i * 0.14 })); this.vibrate([80, 60, 120]); }
 };
 function Icon(props) {
   const { name, size = 16, color, style = {} } = props || {};
@@ -2084,6 +2155,16 @@ window.FortressApp = function Fortress() {
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
+  const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem('fortress_sound') !== '0'; } catch (e) { return true; } });
+  const [hapticsOn, setHapticsOn] = useState(() => { try { return localStorage.getItem('fortress_haptics') !== '0'; } catch (e) { return true; } });
+  useEffect(() => { SFX.enabled = soundOn; try { localStorage.setItem('fortress_sound', soundOn ? '1' : '0'); } catch (e) {} }, [soundOn]);
+  useEffect(() => { SFX.haptics = hapticsOn; try { localStorage.setItem('fortress_haptics', hapticsOn ? '1' : '0'); } catch (e) {} }, [hapticsOn]);
+  // AudioContext erst nach User-Geste starten (Browser-Autoplay-Policy)
+  useEffect(() => {
+    const r = () => SFX.resume();
+    window.addEventListener('pointerdown', r);
+    return () => window.removeEventListener('pointerdown', r);
+  }, []);
   function openTutorial() { setOnboardStep(0); setShowOnboarding(true); }
   function finishOnboarding() {
     try { localStorage.setItem('fortress_onboarded', '1'); } catch (e) {}
@@ -2242,6 +2323,14 @@ window.FortressApp = function Fortress() {
       return () => clearTimeout(timer);
     }
   }, [profile?.id]);
+  // Sieg-/Niederlage-Sound beim Erscheinen des Ergebnisbildschirms
+  useEffect(() => {
+    if (screen !== "result") return;
+    const info = resultInfo || {};
+    const won = online.current ? info.winner === myRole.current : !!info.winner;
+    const timer = setTimeout(() => { won ? SFX.win() : SFX.lose(); }, 250);
+    return () => clearTimeout(timer);
+  }, [screen, resultInfo]);
   const [lbRaw, setLbRaw] = useState(null);
   const [lbMode, setLbMode] = useState(2);
   async function openLeaderboard() {
@@ -2497,6 +2586,8 @@ window.FortressApp = function Fortress() {
   const balls = useRef([]);
   const explosions = useRef([]);
   const particles = useRef([]);
+  const prevExplCount = useRef(0);
+  const prevBigCount = useRef(0);
   const shakeRef = useRef(0);
   const reload = useRef({ 1: 1, 2: 1 });
   const lastShot = useRef({ 1: -99999, 2: -99999 });
@@ -3576,6 +3667,7 @@ window.FortressApp = function Fortress() {
       return false;
     }
     lastShot.current[player] = now;
+    SFX.shoot();
     ready.forEach((cn, index) => {
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
@@ -3969,7 +4061,7 @@ window.FortressApp = function Fortress() {
             const frozenIds = frozenReady.current[player] || [];
             const readyCannons = cannons.current[player].filter(c => frozenIds.includes(c.id) && c.hp > 0);
             if (readyCannons.length === 0) { showWarn(t('warnNoCannonReady')); }
-            else sendAction({ type: "fire", tx: tgt.tx, ty: tgt.ty });
+            else { SFX.shoot(); sendAction({ type: "fire", tx: tgt.tx, ty: tgt.ty }); }
           } else {
             fireMortar(player, tgt.tx, tgt.ty);
             if (online.current) pushState(true);
@@ -4459,6 +4551,15 @@ window.FortressApp = function Fortress() {
     }
     ctx.globalAlpha = 1;
     explosions.current = explosions.current.filter((e2) => e2.frame < 22);
+    // Sound bei neuen Explosionen (funktioniert geräteübergreifend, da explosions synchronisiert sind)
+    const explNow = explosions.current.length;
+    const bigNow = explosions.current.filter((e2) => e2.big).length;
+    if (explNow > prevExplCount.current) {
+      if (bigNow > prevBigCount.current) SFX.destroy();
+      else SFX.impact();
+    }
+    prevExplCount.current = explNow;
+    prevBigCount.current = bigNow;
     for (const ex of explosions.current) {
       const t = ex.frame / 22;
       const rr = t * CELL * (ex.big ? 6 : 2.8);
@@ -4660,7 +4761,7 @@ window.FortressApp = function Fortress() {
     padding: "12px",
     borderRadius: 12,
     backdropFilter: "blur(10px)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), t('tutorialBtn')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: "tages-belohnung", style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "book", size: 16 }), t('tutorialBtn')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, soundOn ? "\u{1F50A}" : "\u{1F507}"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, hapticsOn ? "\u{1F4F3}" : "\u{1F4F4}")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: "tages-belohnung", style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -4712,7 +4813,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

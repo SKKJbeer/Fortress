@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1210,3 +1210,34 @@ und beschiessen danach gegenseitig ihre Festungen.
   keine JS-Fehler. Gesamt jetzt **148 Tests grün**.
 - `test_fortress.js` PROFILE_INIT setzt `fortress_onboarded='1'`, damit das Auto-Popup
   andere Suites nicht blockiert.
+
+### v3.12.2 — Sound & Haptik (prozedurale SFX + Vibration)
+
+#### Sound-Engine (global `SFX`)
+- Web Audio API, **rein prozedural** — keine Asset-Dateien (offline-/TWA-tauglich, ZERO Cost).
+- Oszillatoren (`_tone`) + gefilterter Rausch-Buffer (`_noise`) erzeugen alle Klänge live.
+- AudioContext wird lazy beim ersten Bedarf erzeugt und erst nach User-Geste resumed
+  (Browser-Autoplay-Policy) — globaler `pointerdown`-Listener ruft `SFX.resume()`.
+- Alle Methoden in try/catch gekapselt — wirft nie, auch ohne Audio-Hardware/headless.
+
+#### Sound-Events
+- `SFX.shoot()` — beim Abfeuern (in `fireMortar` für Host/lokal; im Gast-Sende-Zweig fürs eigene Gerät)
+- `SFX.impact()` / `SFX.destroy()` — **render-loop-getrieben** über Explosions-Zähler-Delta
+  (`prevExplCount`/`prevBigCount`). Da `explosions` synchronisiert sind, hören **alle Geräte**
+  (Host + Gäste + lokal) Einschläge; `big`-Explosionen (Kanone zerstört) → `destroy()`.
+- `SFX.win()` / `SFX.lose()` — beim Erscheinen des Ergebnisbildschirms (useEffect auf `screen`/`resultInfo`),
+  Sieg-Arpeggio aufsteigend bzw. Niederlage absteigend.
+
+#### Haptik (Vibration)
+- `SFX.vibrate(pattern)` via `navigator.vibrate` (Android/Chrome; iOS Safari ignoriert es still).
+- Schuss=15ms, Einschlag=25ms, Zerstörung=[30,40,60], Sieg/Niederlage als Muster.
+
+#### UI & Einstellungen
+- Zwei Toggle-Chips im Menü (neben DE/EN): 🔊/🔇 Sound und 📳/📴 Vibration.
+- Persistenz: localStorage `fortress_sound` und `fortress_haptics` (`'1'`/`'0'`, Default an).
+- Vibrations-Toggle gibt beim Aktivieren ein kurzes Test-Vibrieren.
+
+#### Tests
+- Neue Suite `suiteSound` (7 Checks): SFX-Engine vorhanden, alle Methoden fehlerfrei,
+  beide Toggles sichtbar, Toggle schaltet `SFX.enabled` + localStorage (0/1), keine JS-Fehler.
+  Gesamt jetzt **155 Tests grün**.
