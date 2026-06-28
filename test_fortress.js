@@ -37,6 +37,9 @@ const PROFILE_INIT = `
     localStorage.setItem('fortress_daily', JSON.stringify({
       lastCollect: ${Date.now()}, streak: 1, lastStreakDay: new Date().toISOString().slice(0,10)
     }));
+    // Onboarding-Flag setzen, damit die Tutorial-Modal sich NICHT automatisch
+    // öffnet (würde unrelated Tests blockieren). Eigener Test setzt es gezielt zurück.
+    localStorage.setItem('fortress_onboarded', '1');
   } catch(e) {}
 `;
 
@@ -1490,6 +1493,66 @@ async function suiteBuildUrgency(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+async function suiteOnboarding(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Onboarding / Tutorial\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  // fortress_onboarded entfernen, damit das Tutorial automatisch erscheint
+  await page.addInitScript(`try { localStorage.removeItem('fortress_onboarded'); } catch(e) {}`);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── Auto-Popup bei Erstkontakt ────────────────────────────
+    const appeared = await page.waitForFunction(
+      () => /Willkommen bei FORTRESS|Welcome to FORTRESS/.test(document.body.innerText),
+      { timeout: 4000 }
+    ).then(() => true).catch(() => false);
+    appeared ? ok('Onboarding erscheint automatisch bei Erstkontakt ✓') : fail('Onboarding-Auto-Popup fehlt');
+
+    // ── "Weiter"-Navigation vorhanden ─────────────────────────
+    const hasNext = await page.evaluate(() => /Weiter|Next/.test(document.body.innerText));
+    hasNext ? ok('Tutorial-Navigation "Weiter" vorhanden ✓') : fail('Tutorial-Navigation fehlt');
+
+    // ── Durchklicken bis zum letzten Slide (Welcome + 4 Steps) ─
+    for (let i = 0; i < 4; i++) {
+      await jsClick(page, ['Weiter', 'Next']);
+      await page.waitForTimeout(120);
+    }
+    const lastSlide = await page.evaluate(() => /Ziel des Spiels|Goal of the game/.test(document.body.innerText));
+    lastSlide ? ok('Durchklicken erreicht letzten Slide (Ziel des Spiels) ✓') : fail('Letzter Slide nicht erreicht');
+
+    // ── Abschluss "Los geht's" schließt + setzt Flag ──────────
+    await jsClick(page, ["Los geht", "Let's go"]);
+    await page.waitForTimeout(200);
+    const closed = await page.evaluate(() => !/Willkommen bei FORTRESS|Ziel des Spiels|Welcome to FORTRESS|Goal of the game/.test(document.body.innerText));
+    closed ? ok('Tutorial schließt nach Abschluss ✓') : fail('Tutorial schließt nicht');
+    const flag = await page.evaluate(() => { try { return localStorage.getItem('fortress_onboarded'); } catch { return null; } });
+    flag === '1' ? ok('fortress_onboarded=1 in localStorage gesetzt ✓') : fail('Onboarding-Flag nicht gesetzt');
+
+    // ── Re-Open via Menü-Button "Wie spielt man?" ─────────────
+    await jsClick(page, ['Wie spielt man', 'How to play']);
+    await page.waitForTimeout(250);
+    const reopened = await page.evaluate(() => /Willkommen bei FORTRESS|Welcome to FORTRESS/.test(document.body.innerText));
+    reopened ? ok('Tutorial via Menü-Button erneut öffenbar ✓') : fail('Tutorial-Menü-Button öffnet nicht');
+
+    // ── "Überspringen" schließt ───────────────────────────────
+    await jsClick(page, ['Überspringen', 'Skip']);
+    await page.waitForTimeout(200);
+    const skipped = await page.evaluate(() => !/Willkommen bei FORTRESS|Welcome to FORTRESS/.test(document.body.innerText));
+    skipped ? ok('"Überspringen" schließt das Tutorial ✓') : fail('Überspringen schließt nicht');
+
+    errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Onboarding: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Onboarding-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -1514,7 +1577,7 @@ async function suiteBuildUrgency(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1525,15 +1588,16 @@ async function suiteBuildUrgency(browser) {
     suiteProgression(browser),
     suiteAchievements(browser),
     suiteBuildUrgency(browser),
+    suiteOnboarding(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1180,3 +1180,33 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Firebase Console: Security Rules aus `firebase-security-rules.json` aktivieren
 - `screenshots/` Verzeichnis mit echten Spielscreenshots füllen (390×844 PNG)
 - Icon-PNGs mit vollflächigem Hintergrund (ohne abgerundete Ecken) neu generieren für Maskable-Safe-Zone
+
+### v3.12.1 — Onboarding / Tutorial (Erstkontakt-Anleitung)
+
+#### Neue Komponente
+- `OnboardingModal({ step, setStep, onFinish })`: 5-Slide-Tutorial (Willkommen + 4 Schritte:
+  Kanonen platzieren → Mauern bauen → Feuer frei → Spielziel). Icon-Kreis, Titel, Text,
+  Fortschritts-Dots (anklickbar) und Weiter/Zurück/Überspringen-Navigation. Style passt
+  zum Menü-Design (gleiches Modal-Gradient + `dailyBounceIn`-Animation).
+
+#### Verhalten
+- **Auto-Popup bei Erstkontakt**: erscheint 600ms nach Menüstart, wenn `localStorage`-Key
+  `fortress_onboarded` nicht gesetzt ist. Hat Vorrang vor dem Daily-Reward-Modal (dieses
+  zeigt sich erst, wenn `fortress_onboarded` gesetzt ist).
+- **Abschluss** ("Los geht's!" oder "Überspringen") setzt `fortress_onboarded='1'` →
+  erscheint nie wieder automatisch.
+- **Jederzeit erneut öffenbar** über den Menü-Button „Wie spielt man?".
+
+#### Geändert
+- Menü-Button „Wie spielt man?" öffnet jetzt das interaktive Tutorial statt der alten,
+  eingeklappten 2×2-Hilfe-Kachel-Ansicht (kompakter, einsteigerfreundlicher).
+- Neue localStorage-Key: `fortress_onboarded` (`'1'` = Tutorial gesehen).
+- Neue i18n-Keys (de/en): `tutorialBtn`, `onbSkip/onbNext/onbBack/onbStart`,
+  `onbWelcomeTitle/Text`, `onbStep1–4Title/Text`.
+
+#### Tests
+- Neue Suite `suiteOnboarding` (8 Checks): Auto-Popup, Navigation, Durchklicken bis
+  letzter Slide, Abschluss schließt + setzt Flag, Re-Open via Menü, Überspringen schließt,
+  keine JS-Fehler. Gesamt jetzt **148 Tests grün**.
+- `test_fortress.js` PROFILE_INIT setzt `fortress_onboarded='1'`, damit das Auto-Popup
+  andere Suites nicht blockiert.
