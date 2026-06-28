@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.12.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.12.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1228,6 +1228,9 @@ const LANGS = {
     warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
     warnVerlassen: "{name} hat das Spiel verlassen",
     warnHostAntwortetNicht: "Host antwortet nicht — Verbindung unterbrochen?",
+    connLostTitle: "Verbindung instabil",
+    connLostSub: "Verbindung zum Spiel wird wiederhergestellt…",
+    connReconnect: "Erneut verbinden",
     warnCode6: "Bitte 6-stelligen Code eingeben.",
     warnSpielNichtGefunden: "Spiel nicht gefunden — Code pr\xFCfen.",
     warnSpielVoll3: "Dieses Spiel ist bereits voll (3 Spieler).",
@@ -1389,6 +1392,9 @@ const LANGS = {
     warnAusgeschieden: "{names} eliminated — castle open!",
     warnVerlassen: "{name} left the game",
     warnHostAntwortetNicht: "Host not responding — connection lost?",
+    connLostTitle: "Connection unstable",
+    connLostSub: "Reconnecting to the game…",
+    connReconnect: "Reconnect",
     warnCode6: "Please enter a 6-character code.",
     warnSpielNichtGefunden: "Game not found — check code.",
     warnSpielVoll3: "This game is already full (3 players).",
@@ -2675,6 +2681,29 @@ window.FortressApp = function Fortress() {
   const lastSeenPhase = useRef(null);
   const playerInfo = useRef({ 1: { name: t('playerFallback', {n: 1}), wappen: "\u2654", color: "#2563eb" }, 2: { name: t('playerFallback', {n: 2}), wappen: "\u265A", color: "#dc2626" } });
   const lastStateAt = useRef(0);
+  // ── Verbindungsstatus / Reconnect ──────────────────────────────────────────
+  const [connLost, setConnLost] = useState(false);
+  const connLostRef = useRef(false);
+  const pushFails = useRef(0);
+  const resubAttempted = useRef(false);
+  const connWatchdog = useRef(null);
+  function setConn(lost) {
+    if (connLostRef.current === lost) return;
+    connLostRef.current = lost;
+    setConnLost(lost);
+  }
+  function resubscribeGuestState() {
+    // Stoppt den State-Listener und baut ihn neu auf, um Firebase zu einem
+    // sofortigen Reconnect zu bewegen (onValue liefert den letzten Stand erneut).
+    if (!online.current || myRole.current === 1 || !mpCodeRef.current) return;
+    try { if (mpChannel.current && mpChannel.current.stop) mpChannel.current.stop(); } catch (e) {}
+    mpChannel.current = fb.subscribe(`games/${mpCodeRef.current}/state`, (stateStr) => {
+      lastStateAt.current = Date.now();
+      setConn(false);
+      resubAttempted.current = false;
+      try { applyState(JSON.parse(stateStr)); } catch (e) { dbg.current.lastErr = "applyState: " + e.message; }
+    });
+  }
   function applyState(raw) {
     let s;
     try {
@@ -2781,6 +2810,7 @@ window.FortressApp = function Fortress() {
       lastPush.current = now;
       const s2 = serializeState();
       const ok2 = await fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s2), updatedAt: now });
+      hostPushResult(ok2);
       dbgBump("statesPush", ok2 === false ? "PUSH FEHLER: " + _fbError : "push ok (force)");
       return;
     }
@@ -2795,7 +2825,18 @@ window.FortressApp = function Fortress() {
     lastPush.current = now;
     const s = serializeState();
     const ok = await fb.patch(`games/${mpCodeRef.current}`, { state: JSON.stringify(s), updatedAt: now });
+    hostPushResult(ok);
     dbgBump("statesPush", ok === false ? "PUSH FEHLER: " + _fbError : "push ok");
+  }
+  // Host-Verbindungsstatus aus Push-Ergebnissen ableiten: 3 Fehler in Folge → Banner.
+  function hostPushResult(ok) {
+    if (ok === false) {
+      pushFails.current++;
+      if (pushFails.current >= 3) setConn(true);
+    } else {
+      pushFails.current = 0;
+      setConn(false);
+    }
   }
   async function sendAction(action) {
     if (!online.current || myRole.current === 1) return;
@@ -2948,9 +2989,13 @@ window.FortressApp = function Fortress() {
       mpChannel2.current = null;
     }
     lastStateAt.current = Date.now();
+    setConn(false);
+    resubAttempted.current = false;
     if (role !== 1) {
       mpChannel.current = fb.subscribe(`games/${code}/state`, (stateStr) => {
         lastStateAt.current = Date.now();
+        setConn(false);
+        resubAttempted.current = false;
         dbgBump("statesRecv", "state empfangen (" + (typeof stateStr === "string" ? stateStr.length : "?") + "B)");
         try {
           applyState(JSON.parse(stateStr));
@@ -2958,14 +3003,23 @@ window.FortressApp = function Fortress() {
           dbg.current.lastErr = "applyState: " + e.message;
         }
       });
+      // Verbindungs-Watchdog: nach 6s ohne State → "verbunden?"-Banner + einmaliger
+      // Reconnect-Versuch. Banner verschwindet automatisch sobald wieder State fließt.
       const timeoutCheck = setInterval(() => {
         if (!online.current) {
           clearInterval(timeoutCheck);
           return;
         }
-        if (Date.now() - lastStateAt.current > 15e3)
-          showWarn(t('warnHostAntwortetNicht'));
-      }, 5e3);
+        const stale = Date.now() - lastStateAt.current;
+        if (stale > 6e3) {
+          setConn(true);
+          if (!resubAttempted.current) {
+            resubAttempted.current = true;
+            resubscribeGuestState();
+          }
+        }
+      }, 2e3);
+      connWatchdog.current = timeoutCheck;
       const origStop = mpChannel.current.stop;
       mpChannel.current.stop = () => {
         clearInterval(timeoutCheck);
@@ -3437,6 +3491,13 @@ window.FortressApp = function Fortress() {
       clearInterval(joinPollRef.current);
       joinPollRef.current = null;
     }
+    if (connWatchdog.current) {
+      clearInterval(connWatchdog.current);
+      connWatchdog.current = null;
+    }
+    pushFails.current = 0;
+    resubAttempted.current = false;
+    setConn(false);
     joinedGuests.current = { 2: false, 3: false };
     guestActionApplied.current = { 2: 0, 3: 0 };
   }
@@ -4813,7 +4874,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -5069,7 +5130,26 @@ window.FortressApp = function Fortress() {
     onCollect: handleDailyCollect,
     onClose: () => setShowDailyModal(false),
     collected: dailyCollected
-  }), showOnboarding && React.createElement(OnboardingModal, {
+  }), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
+  }, /* @__PURE__ */ React.createElement("div", {
+    style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(30,16,8,0.94)", border: "1px solid rgba(251,146,60,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
+  },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(251,146,60,0.35)", borderTopColor: "#fb923c", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
+    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fdba74", lineHeight: 1.2 } }, t('connLostTitle')),
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fed7aa", opacity: 0.85, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('connLostSub'))
+    ),
+    /* @__PURE__ */ React.createElement("button", {
+      onClick: () => {
+        lastStateAt.current = Date.now();
+        resubAttempted.current = false;
+        pushFails.current = 0;
+        if (myRole.current === 1) pushState(true); else resubscribeGuestState();
+      },
+      style: { flexShrink: 0, background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.5)", color: "#fdba74", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }
+    }, t('connReconnect'))
+  )), showOnboarding && React.createElement(OnboardingModal, {
     step: onboardStep,
     setStep: setOnboardStep,
     onFinish: finishOnboarding

@@ -960,6 +960,13 @@ async function suiteOnline2P(browser, fbPort) {
     hostHud.quit  ? ok('Host HUD: Beenden-Button ✓') : fail('Host HUD: kein Beenden-Button');
     hostHud.score ? ok('Host HUD: Spieler-Labels (P1/P2) ✓') : fail('Host HUD: Spieler-Labels fehlen');
 
+    // ── Reconnect-Banner darf bei aktiver Verbindung NICHT erscheinen ──
+    const bannerH = await pH.evaluate(() => /Verbindung instabil|Connection unstable/.test(document.body.innerText));
+    const bannerG = await pG.evaluate(() => /Verbindung instabil|Connection unstable/.test(document.body.innerText));
+    (!bannerH && !bannerG)
+      ? ok('Kein falscher Reconnect-Banner bei aktiver Verbindung (Host+Gast) ✓')
+      : fail(`Reconnect-Banner false-positive (Host=${bannerH}, Gast=${bannerG})`);
+
     // ── JS-Fehler ─────────────────────────────────────────────
     errs1.length === 0 ? ok('Host: Keine JS-Fehler ✓') : errs1.forEach(e => fail(`Host JS: ${e.slice(0,80)}`));
     errs2.length === 0 ? ok('Gast: Keine JS-Fehler ✓') : errs2.forEach(e => fail(`Gast JS: ${e.slice(0,80)}`));

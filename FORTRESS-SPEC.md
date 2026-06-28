@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1241,3 +1241,40 @@ und beschiessen danach gegenseitig ihre Festungen.
 - Neue Suite `suiteSound` (7 Checks): SFX-Engine vorhanden, alle Methoden fehlerfrei,
   beide Toggles sichtbar, Toggle schaltet `SFX.enabled` + localStorage (0/1), keine JS-Fehler.
   Gesamt jetzt **155 Tests grün**.
+
+### v3.12.3 — Reconnect / Verbindungsstatus (Online-Robustheit)
+
+#### Verbindungs-Banner mit Auto-Recovery
+- Neuer Status-State `connLost` + `connLostRef`. Ein nicht-blockierendes Banner oben im
+  Spielbildschirm zeigt „Verbindung instabil — wird wiederhergestellt…" mit Spinner und
+  „Erneut verbinden"-Button (nur bei `online && screen==="game"`).
+- `setConn(lost)` aktualisiert State nur bei echter Änderung (kein Re-Render-Spam).
+
+#### Gast-Seite (Watchdog + Reconnect)
+- Watchdog-Intervall von 5s auf **2s** verkürzt, Schwelle von 15s auf **6s**.
+- Bei >6s ohne State: Banner an + **einmaliger automatischer Reconnect** via
+  `resubscribeGuestState()` (stoppt den `onValue`-Listener und baut ihn neu auf →
+  Firebase liefert den letzten Stand erneut). `resubAttempted`-Flag verhindert Thrashing.
+- Sobald wieder State fließt: Banner verschwindet automatisch, Flags zurückgesetzt.
+- Der frühere transiente `warnHostAntwortetNicht`-Toast wird durch das persistente,
+  selbstheilende Banner ersetzt.
+
+#### Host-Seite (Push-Fehler-Erkennung)
+- `hostPushResult(ok)` wertet jedes `fb.patch`-Ergebnis aus: 3 Fehlschläge in Folge →
+  Banner an; erster Erfolg → Banner aus, `pushFails` zurückgesetzt.
+
+#### „Erneut verbinden"-Button
+- Gast → `resubscribeGuestState()`, Host → `pushState(true)` (Force-Push).
+- Setzt `lastStateAt`, `resubAttempted`, `pushFails` zurück.
+
+#### Cleanup
+- Beim Verlassen/Stoppen: `connWatchdog`-Intervall geleert, `connLost`/Flags zurückgesetzt.
+
+#### i18n
+- Neue de/en-Keys: `connLostTitle`, `connLostSub`, `connReconnect`.
+
+#### Tests
+- Online-2-Spieler-Suite prüft zusätzlich: **kein falscher Reconnect-Banner** bei aktiver
+  Verbindung (Host + Gast). Gesamt jetzt **156 Tests grün**.
+- Hinweis: Der echte 6s-Reconnect-Pfad ist netzwerk-/wallclock-abhängig und wird manuell
+  getestet; die Suite sichert den False-Positive-Fall ab.
