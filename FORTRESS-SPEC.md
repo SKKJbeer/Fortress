@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.13.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1394,3 +1394,38 @@ waren hartkodiert auf Deutsch und blieben im englischen UI deutsch. Jetzt durchg
 - Neue Suite `suiteI18n`: lädt das UI auf Englisch (`fortress_lang='en'`) und prüft, dass
   Menü + Achievements (Zähler, Kategorien, Titel/Beschreibung) englisch sind und kein
   deutscher Resttext erscheint. Gesamt jetzt **163 Tests grün**.
+
+### v3.13.0 — Bot-/KI-Gegner (Einzelspieler, „Übung gegen Bot")
+
+Erste Empfehlung aus der Gameplay-Analyse: ein lokaler Einzelspieler-Modus gegen eine KI —
+behebt die „kein Online-Gegner = Sackgasse"-Situation und dient als praktisches Onboarding.
+
+#### Einstieg & Steuerung
+- Neuer Button **„Übung gegen Bot"** (EN „Practice vs Bot") oben im Lokal-Untermenü.
+- Mensch = P1, KI = P2. Im Bot-Modus gehen ALLE Touch-Eingaben an P1 (`botMode.current`
+  in `onPointerDown`).
+- **Zählt NICHT für ELO/Stats/Leaderboard** (lokal, `online.current=false` → `recordResult`
+  ist online-gegated). Bewusst, damit Übung die Wertung nicht verfälscht.
+
+#### KI-Architektur (rein clientseitig, kostenlos)
+- `botMode`-Ref + Intervall (`setInterval(botTick, 600)`), gestartet via `useEffect([screen])`
+  nur wenn `screen==='game' && botMode && !online`.
+- Die KI nutzt dieselben Spielfunktionen wie ein Mensch: `placeCannon`/`placePiece`/`fireMortar`.
+- **Setup/Kanonenphase** (`botPlaceOneCannon`): sucht eingemauerte (innere) 3×3-Plätze nahe der
+  eigenen Burg via `computeOutsideMapForCannons` (nur dort sind Kanonen schussbereit), platziert
+  das gesamte Budget.
+- **Bauphase** (`botBuild`): erkennt offene Burg via `computeOutsideMap`, sammelt Leck-Frontier-
+  Zellen (außen-erreichbar, leer, baubar, an geschütztes Feld grenzend), füllt die der Burg
+  nächsten zuerst → baut emergent einen engen Schutzring um die Burg (re-versiegelt nach Treffern).
+  Probiert pro Zelle bis zu 4 Rotationen, Erkennung des Platzierens über Grid-Identitätswechsel.
+- **Schussphase** (`botShoot`): zielt mit `RELOAD_MS`-Takt auf die gegnerische Burgmitte
+  (`castles.current[1]`) mit kleiner Streuung (`botDifficulty`-Ref als Tuning-Hook für spätere
+  Schwierigkeitsgrade). Die 100%-genaue Leitkanone bohrt sich über Runden zur Burg durch.
+
+#### Tests
+- Neue Suite `suiteBot`: Bot-Button sichtbar, Spielstart, **Bot platziert nachweislich selbst
+  Kanonen** (Toast-Beleg, da der Test-Mensch nichts platziert), stabiler voller Phasenzyklus,
+  keine JS-Fehler. Gesamt **169 Tests grün**.
+
+#### Offen / nächster Schritt
+- Schwierigkeitsgrade (Easy/Normal/Hard) über `botDifficulty` + Tick-Tempo + Bau-Aggressivität.

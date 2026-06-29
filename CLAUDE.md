@@ -104,6 +104,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `phase_r.current` | string | Aktuelle Phase (setup/build/shoot/cannon/result) |
 | `numPlayersRef.current` | number | 2 oder 3 |
 | `myRole.current` | number | 0=Menü, 1=Host, 2=Gast2, 3=Gast3 |
+| `botMode.current` | bool | Bot-/KI-Modus aktiv (seit v3.13.0): Mensch=P1, KI=P2, lokal, zählt nicht für ELO. KI-Tick `botTick` via `setInterval(600)` in `useEffect([screen])`. |
 | `online.current` | bool | Online-Modus aktiv |
 | `frozenReady.current` | `{1:[],2:[],3:[]}` | Eingefrorne schussbereite Kanonen-IDs je Spieler |
 | `pieces.current` | `{1:{cells,ghostR,ghostC}, ...}` | Aktuelle Bauteile |

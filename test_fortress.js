@@ -1670,6 +1670,56 @@ async function suiteI18n(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+async function suiteBot(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Bot-Modus (KI-Gegner)\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── Lokal-Untermenü öffnen, Bot-Button prüfen ─────────────
+    await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+    await page.waitForTimeout(250);
+    const botBtn = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).some(b => /gegen Bot|vs Bot/i.test(b.textContent || '')));
+    botBtn ? ok('Bot-Button im Lokal-Menü sichtbar ✓') : fail('Bot-Button fehlt');
+
+    // ── Bot-Spiel starten ─────────────────────────────────────
+    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
+    canvas ? ok('Bot-Spiel gestartet (Canvas sichtbar) ✓') : fail('Bot-Spiel startet nicht');
+    if (!canvas) return { res, errs };
+
+    // ── Beweis: Bot (P2) platziert Kanonen (Toast erscheint) ──
+    // Der Test-„Mensch" platziert nichts → jeder Kanonen-Toast stammt vom Bot.
+    let placed = false;
+    const deadline = Date.now() + 7000;
+    while (Date.now() < deadline) {
+      if (await page.evaluate(() => /Kanone[^]*platziert/i.test(document.body.innerText))) { placed = true; break; }
+      await page.waitForTimeout(100);
+    }
+    placed ? ok('Bot (P2) platziert selbstständig Kanonen ✓') : fail('Bot platziert keine Kanonen (KI inaktiv?)');
+
+    // ── Stabil über mehrere Phasen (KI-Tick läuft in allen Phasen) ──
+    const sawShoot = await waitForPhase(page, ['FEUER'], 6000);
+    sawShoot ? ok('Bot-Spiel erreicht Schussphase ✓') : fail('Schussphase nicht erreicht');
+    await waitForPhase(page, ['KANONE'], 6000);
+    await waitForPhase(page, ['BAUEN'], 6000);
+    const shoot2 = await waitForPhase(page, ['FEUER'], 8000);
+    shoot2 ? ok('Bot-Spiel läuft über vollen Phasenzyklus stabil ✓') : fail('2. Phasenzyklus nicht erreicht (Freeze?)');
+
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Bot: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Bot-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -1694,7 +1744,7 @@ async function suiteI18n(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd, rI18n] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1708,15 +1758,16 @@ async function suiteI18n(browser) {
     suiteOnboarding(browser),
     suiteSound(browser),
     suiteI18n(browser),
+    suiteBot(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
