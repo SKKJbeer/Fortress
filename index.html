@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.12.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.12.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -55,14 +55,29 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     try {
       const app = initializeApp({
         databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "fortress-cbe30",
       });
       const db = getDatabase(app);
-      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect };
+      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, uid: null };
       window.dispatchEvent(new Event("fb-ready"));
+      // Anonyme Authentifizierung (kostenlos im Spark-Plan). BEST EFFORT:
+      // Ist "Anonymous" in der Firebase-Console noch NICHT aktiviert, schlägt der
+      // Login fehl → uid bleibt null → das Spiel läuft unverändert mit der lokalen
+      // Profil-ID weiter (kein Bruch). Erst nach Aktivierung + neuen Rules greift die Bindung.
+      try {
+        const auth = getAuth(app);
+        window.__fb.auth = auth;
+        onAuthStateChanged(auth, (user) => {
+          window.__fb.uid = user ? user.uid : null;
+          window.dispatchEvent(new Event("fb-auth"));
+        });
+        signInAnonymously(auth).catch((e) => { window.__fbAuthError = e && (e.code || e.message); });
+      } catch (e) { window.__fbAuthError = e && e.message; }
     } catch (e) {
       console.error("Firebase init failed:", e);
       window.__fbError = e.message;
@@ -239,6 +254,16 @@ let _pushWindow = 0;
 function sdk() {
   return typeof window !== "undefined" && window.__fb ? window.__fb : null;
 }
+// Auth-UID der anonymen Firebase-Session (null wenn Auth nicht aktiv/verfügbar).
+function authUid() {
+  const s = sdk();
+  return s && s.uid ? s.uid : null;
+}
+// Schreib-Schlüssel für identitätsgebundene Nodes (Leaderboard): bevorzugt die
+// Auth-UID, fällt sonst auf die lokale Profil-ID zurück (Übergangsphase ohne Rules).
+function writeId(localId) {
+  return authUid() || localId;
+}
 const fb = {
   // Einmalig Wert schreiben (PUT-Äquivalent)
   async set(path, data) {
@@ -363,6 +388,21 @@ const fb = {
       return { committed: false, value: null };
     }
   },
+  // Wie subscribe, aber liefert AUCH den Null-/Gelöscht-Fall an den Consumer:
+  // onData(data, exists). Nötig um zu erkennen, wenn der Host den Spielknoten löscht.
+  subscribeRaw(path, onData) {
+    const s = sdk();
+    if (!s) {
+      _fbError = "SDK nicht geladen";
+      return { stop: () => {} };
+    }
+    const nodeRef = s.ref(s.db, path);
+    const cb = s.onValue(nodeRef, (snap) => {
+      const exists = snap.exists();
+      onData(exists ? snap.val() : null, exists);
+    }, (err) => { _fbError = err.message; });
+    return { stop: () => { try { s.off(nodeRef, "value", cb); } catch (e) {} } };
+  },
   // Registriert serverseitiges Auto-Löschen falls die Verbindung abbricht
   // (Tab geschlossen, Crash, Netzwerkausfall) — ohne Cloud Functions.
   // Gibt eine Cancel-Funktion zurück.
@@ -400,6 +440,12 @@ async function getFirebase() {
   if (!s) {
     _fbError = typeof window !== "undefined" && window.__fbError ? "Firebase-Fehler: " + window.__fbError : "Firebase SDK konnte nicht geladen werden (Internet?)";
     return null;
+  }
+  // Auf anonyme Auth warten (best effort, max ~3s) — nötig sobald die auth-gebundenen
+  // Rules aktiv sind. Ist Anonymous-Auth nicht aktiviert, bleibt uid null und wir
+  // fahren trotzdem fort (offene Rules der Übergangsphase).
+  if (s.auth && !s.uid) {
+    for (let i = 0; i < 30 && !s.uid; i++) await new Promise((r) => setTimeout(r, 100));
   }
   try {
     await s.set(s.ref(s.db, "games/ping"), { createdAt: Date.now() });
@@ -1228,6 +1274,8 @@ const LANGS = {
     warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
     warnVerlassen: "{name} hat das Spiel verlassen",
     warnHostAntwortetNicht: "Host antwortet nicht — Verbindung unterbrochen?",
+    warnHostEnded: "Host hat das Spiel beendet — zurück im Menü.",
+    warnHostLost: "Verbindung zum Host verloren — zurück im Menü.",
     connLostTitle: "Verbindung instabil",
     connLostSub: "Verbindung zum Spiel wird wiederhergestellt…",
     connReconnect: "Erneut verbinden",
@@ -1392,6 +1440,8 @@ const LANGS = {
     warnAusgeschieden: "{names} eliminated — castle open!",
     warnVerlassen: "{name} left the game",
     warnHostAntwortetNicht: "Host not responding — connection lost?",
+    warnHostEnded: "Host ended the game — back to menu.",
+    warnHostLost: "Lost connection to host — back to menu.",
     connLostTitle: "Connection unstable",
     connLostSub: "Reconnecting to the game…",
     connReconnect: "Reconnect",
@@ -2284,7 +2334,7 @@ window.FortressApp = function Fortress() {
       }
       const s2 = p.stats || { wins: 0, losses: 0, games: 0 };
       const s3 = p.stats3 || { wins: 0, losses: 0, games: 0 };
-      await fb.set(`leaderboard/${p.id}`, {
+      await fb.set(`leaderboard/${writeId(p.id)}`, {
         name: p.name,
         wappen: p.wappen,
         color: p.color,
@@ -2408,9 +2458,10 @@ window.FortressApp = function Fortress() {
         games3: Math.max(...mine.map((e) => e.games3 || 0)),
         updatedAt: Date.now()
       };
-      await fb.set(`leaderboard/${profile.id}`, merged);
+      const myKey = writeId(profile.id);
+      await fb.set(`leaderboard/${myKey}`, merged);
       for (const e of mine) {
-        if (e.id !== profile.id) await fb.delete(`leaderboard/${e.id}`);
+        if (e.id !== myKey) await fb.delete(`leaderboard/${e.id}`);
       }
       saveProfile(__spreadProps(__spreadValues({}, profile), {
         stats: { wins: merged.wins, losses: merged.losses, games: merged.games },
@@ -2687,22 +2738,45 @@ window.FortressApp = function Fortress() {
   const pushFails = useRef(0);
   const resubAttempted = useRef(false);
   const connWatchdog = useRef(null);
+  const gameDisconnectCancel = useRef(null);
+  const everGotState = useRef(false);
+  const disconnectEnding = useRef(false);
   function setConn(lost) {
     if (connLostRef.current === lost) return;
     connLostRef.current = lost;
     setConnLost(lost);
+  }
+  // Gemeinsamer Gast-State-Handler: erkennt Löschung des Spielknotens (exists=false)
+  // als sauberes Host-Spielende. Wird von startPolling und resubscribeGuestState genutzt.
+  function guestStateHandler(stateStr, exists) {
+    if (exists === false) {
+      // Host hat das Spiel beendet/gelöscht — nur reagieren wenn das Spiel lief.
+      if (everGotState.current) endOnlineDisconnected('warnHostEnded');
+      return;
+    }
+    if (stateStr == null) return;
+    lastStateAt.current = Date.now();
+    everGotState.current = true;
+    setConn(false);
+    resubAttempted.current = false;
+    dbgBump("statesRecv", "state empfangen (" + (typeof stateStr === "string" ? stateStr.length : "?") + "B)");
+    try { applyState(JSON.parse(stateStr)); } catch (e) { dbg.current.lastErr = "applyState: " + e.message; }
+  }
+  // H-C: Gast verlässt sauber das Online-Spiel wenn der Host verschwindet
+  // (Knoten gelöscht ODER Hard-Timeout). Kehrt ins Menü zurück mit Hinweis.
+  function endOnlineDisconnected(reasonKey) {
+    if (disconnectEnding.current) return;
+    disconnectEnding.current = true;
+    leaveOnline();
+    showWarn(t(reasonKey));
+    setTimeout(() => { disconnectEnding.current = false; }, 1500);
   }
   function resubscribeGuestState() {
     // Stoppt den State-Listener und baut ihn neu auf, um Firebase zu einem
     // sofortigen Reconnect zu bewegen (onValue liefert den letzten Stand erneut).
     if (!online.current || myRole.current === 1 || !mpCodeRef.current) return;
     try { if (mpChannel.current && mpChannel.current.stop) mpChannel.current.stop(); } catch (e) {}
-    mpChannel.current = fb.subscribe(`games/${mpCodeRef.current}/state`, (stateStr) => {
-      lastStateAt.current = Date.now();
-      setConn(false);
-      resubAttempted.current = false;
-      try { applyState(JSON.parse(stateStr)); } catch (e) { dbg.current.lastErr = "applyState: " + e.message; }
-    });
+    mpChannel.current = fb.subscribeRaw(`games/${mpCodeRef.current}/state`, guestStateHandler);
   }
   function applyState(raw) {
     let s;
@@ -2991,26 +3065,24 @@ window.FortressApp = function Fortress() {
     lastStateAt.current = Date.now();
     setConn(false);
     resubAttempted.current = false;
+    everGotState.current = false;
+    disconnectEnding.current = false;
     if (role !== 1) {
-      mpChannel.current = fb.subscribe(`games/${code}/state`, (stateStr) => {
-        lastStateAt.current = Date.now();
-        setConn(false);
-        resubAttempted.current = false;
-        dbgBump("statesRecv", "state empfangen (" + (typeof stateStr === "string" ? stateStr.length : "?") + "B)");
-        try {
-          applyState(JSON.parse(stateStr));
-        } catch (e) {
-          dbg.current.lastErr = "applyState: " + e.message;
-        }
-      });
+      mpChannel.current = fb.subscribeRaw(`games/${code}/state`, guestStateHandler);
       // Verbindungs-Watchdog: nach 6s ohne State → "verbunden?"-Banner + einmaliger
       // Reconnect-Versuch. Banner verschwindet automatisch sobald wieder State fließt.
+      // Nach 30s ohne State → H-C: Host gilt als verloren, sauber zurück ins Menü.
       const timeoutCheck = setInterval(() => {
         if (!online.current) {
           clearInterval(timeoutCheck);
           return;
         }
         const stale = Date.now() - lastStateAt.current;
+        if (stale > 30e3 && everGotState.current) {
+          clearInterval(timeoutCheck);
+          endOnlineDisconnected('warnHostLost');
+          return;
+        }
         if (stale > 6e3) {
           setConn(true);
           if (!resubAttempted.current) {
@@ -3066,6 +3138,9 @@ window.FortressApp = function Fortress() {
     mmPendingCandidates.current = {};
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
+    // H-A: Serverseitiges Auto-Löschen des Spielknotens falls der Host abbricht
+    // (Tab zu / Crash / Netz weg) — verhindert verwaiste Spiele in der DB.
+    try { gameDisconnectCancel.current = fb.onDisconnectRemove(`games/${code}`); } catch (e) {}
     setMpCode(code);
     setMpScreen("waiting");
     startPolling(code, 1);
@@ -3295,6 +3370,8 @@ window.FortressApp = function Fortress() {
       await releaseAll();
       return;
     }
+    // H-A: Auto-Löschen des Spielknotens bei Host-Disconnect (siehe hostCreateGame).
+    try { gameDisconnectCancel.current = fb.onDisconnectRemove(`games/${code}`); } catch (e) {}
     // Rollen vergeben: Kandidaten bekommen Rolle 2, 3, …; ich selbst Rolle 1.
     const pendingPaths = {};
     let role = 2;
@@ -3471,6 +3548,11 @@ window.FortressApp = function Fortress() {
     }
   }
   function cleanupGame(code, wasHost) {
+    // Geplantes Auto-Löschen (onDisconnect) abbestellen — sauberes Leave löscht selbst.
+    if (gameDisconnectCancel.current) {
+      try { gameDisconnectCancel.current(); } catch (e) {}
+      gameDisconnectCancel.current = null;
+    }
     if (wasHost && code) {
       setTimeout(() => {
         try {
@@ -3497,6 +3579,7 @@ window.FortressApp = function Fortress() {
     }
     pushFails.current = 0;
     resubAttempted.current = false;
+    everGotState.current = false;
     setConn(false);
     joinedGuests.current = { 2: false, 3: false };
     guestActionApplied.current = { 2: 0, 3: 0 };
@@ -4874,7 +4957,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

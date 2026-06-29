@@ -76,6 +76,9 @@ index.html direkt editieren
 ## Online-Multiplayer-Architektur
 
 - **Firebase Schema**: `/games/{code}/` → `{ state, guestAction2, guestAction3, numPlayers, createdAt, updatedAt }`
+- **Anonymous Auth (seit v3.12.4)**: `signInAnonymously` best-effort; `window.__fb.uid` via `onAuthStateChanged`. Helfer `authUid()` / `writeId(localId)`. Leaderboard-Schlüssel = `writeId(p.id)` (= `auth.uid`, sonst Profil-ID). Ist Anon-Auth in der Console nicht aktiv → `uid=null` → Fallback, kein Bruch. `firebase-security-rules.json` enthält die auth-gebundenen Rules + Aktivierungsreihenfolge (erst Code, dann Auth aktivieren, dann Rules publishen).
+- **Host-onDisconnect (seit v3.12.4)**: `fb.onDisconnectRemove('games/'+code)` beim Create → keine verwaisten Spiele bei Host-Crash; in `cleanupGame` abbestellt (`gameDisconnectCancel`).
+- **Gast-Disconnect-Ende (seit v3.12.4)**: `fb.subscribeRaw` + `guestStateHandler` erkennen Knoten-Löschung (`exists=false`, nach `everGotState`) → `warnHostEnded`; Watchdog-Hardtimeout 30s → `warnHostLost` via `endOnlineDisconnected`.
 - **Host (P1) ist autoritativ**: berechnet alles, pusht State
 - **Gäste**: senden Actions, rendern empfangenen State via `applyState()`
 - **Session-Token**: `hostSessionRef` verhindert State-Verwechslung bei mehreren Spielen

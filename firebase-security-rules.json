@@ -1,43 +1,61 @@
 {
   "_README": [
-    "Diese Datei enthält empfohlene Firebase Realtime Database Security Rules.",
-    "Sie müssen manuell in der Firebase Console unter:",
-    "  Realtime Database → Rules → Einfügen → Veröffentlichen",
-    "eingetragen werden.",
+    "FORTRESS — Firebase Realtime Database Security Rules (Stufe 0, kostenlos / Spark-Plan).",
     "",
-    "Aktuell sind KEINE Rules aktiv (alles öffentlich les-/schreibbar).",
-    "Diese Rules sind ein pragmatischer Kompromiss ohne Firebase Auth:",
-    "  - Leaderboard: jeder kann seinen eigenen Eintrag schreiben (Client-Trust-Modell)",
-    "  - Queue: jeder kann seine eigene Session schreiben, alle lesen",
-    "  - Games: jeder kann lesen/schreiben (nötig für Host-Gast-Architektur)",
-    "Vollständige Sicherheit erfordert Firebase Auth + Cloud Functions (Blaze-Plan)."
+    "Diese Rules binden Schreibzugriffe an eine anonyme Firebase-Auth-Identität.",
+    "Sie schliessen die schlimmsten Integritaetsloecher OHNE Server/Blaze:",
+    "  - Leaderboard: nur der Eigentuemer (auth.uid === Schluessel) darf seinen Eintrag schreiben",
+    "  - Queue + Games: nur authentifizierte Clients duerfen schreiben (kein anonymer REST-Abuse)",
+    "  - Games: KEIN Listing der Collection mehr (Massen-Enumeration/Scraping unterbunden)",
+    "",
+    "WICHTIG — REIHENFOLGE DER AKTIVIERUNG (sonst bricht das Live-Spiel):",
+    "  1. Zuerst die neue index.html (v3.12.4+) deployen. Sie meldet sich anonym an und",
+    "     schreibt das Leaderboard unter auth.uid — funktioniert aber AUCH noch mit den",
+    "     alten offenen Rules (Uebergangsphase, kein Bruch).",
+    "  2. In der Firebase-Console: Build > Authentication > Sign-in method >",
+    "     'Anonymous' AKTIVIEREN.",
+    "  3. Kurz testen, dass Online-Spiel + Leaderboard mit aktivierter Anon-Auth laufen.",
+    "  4. ERST DANN diese Rules unter Realtime Database > Rules einfuegen & veroeffentlichen",
+    "     (nur den 'rules'-Block unten, ohne dieses _README-Feld).",
+    "",
+    "Hinweis: Bestehende Leaderboard-Eintraege mit alter localStorage-ID werden einmalig",
+    "verwaist (neuer Schluessel = auth.uid). Das ist akzeptabel (ELO ist vorlaeufig/advisory).",
+    "",
+    "Was diese Rules NICHT loesen (braucht spaeter Blaze + Server):",
+    "  - Echte ELO-Integritaet (Client berechnet ELO weiterhin selbst)",
+    "  - Verifiziertes Spielergebnis (Host-autoritative P2P-Architektur)",
+    "  - Connection-Flood-DoS (braucht App Check)"
   ],
   "rules": {
     "leaderboard": {
       ".read": true,
       "$playerId": {
-        ".write": true,
+        ".write": "auth != null && auth.uid === $playerId",
         ".validate": "newData.hasChildren(['name','elo']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999"
       }
     },
     "queue2": {
       ".read": true,
       "$sessionId": {
-        ".write": true,
+        ".write": "auth != null",
         ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())"
       }
     },
     "queue3": {
       ".read": true,
       "$sessionId": {
-        ".write": true,
+        ".write": "auth != null",
         ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())"
       }
     },
     "games": {
-      ".read": true,
+      "ping": {
+        ".read": true,
+        ".write": "auth != null"
+      },
       "$gameCode": {
-        ".write": true,
+        ".read": true,
+        ".write": "auth != null",
         ".validate": "newData == null || newData.hasChildren(['createdAt'])"
       }
     }

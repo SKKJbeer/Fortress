@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1278,3 +1278,53 @@ und beschiessen danach gegenseitig ihre Festungen.
   Verbindung (Host + Gast). Gesamt jetzt **156 Tests grün**.
 - Hinweis: Der echte 6s-Reconnect-Pfad ist netzwerk-/wallclock-abhängig und wird manuell
   getestet; die Suite sichert den False-Positive-Fall ab.
+
+### v3.12.4 — Multiplayer-Härtung „Stufe 0" (Anonymous Auth + Reconnect, Zero-Cost)
+
+Basierend auf dem Security-/Netzwerk-Review des Multiplayer-Modus. Alle Maßnahmen
+bleiben im kostenlosen Spark-Plan (kein Server, kein Blaze).
+
+#### Anonymous Auth (Vorbereitung für auth-gebundene Rules)
+- Firebase-Auth-SDK (`firebase-auth.js`) im ES-Module-Init ergänzt; `signInAnonymously`
+  als **Best-Effort** — ist „Anonymous" in der Console nicht aktiviert, bleibt `uid` null
+  und das Spiel läuft unverändert mit der lokalen Profil-ID weiter (kein Bruch).
+- `window.__fb.uid` wird via `onAuthStateChanged` gepflegt; Helfer `authUid()` / `writeId(localId)`.
+- **Leaderboard-Schreibschlüssel** ist jetzt `writeId(p.id)` = `auth.uid` (sonst Profil-ID).
+  Damit kann die strikte Rule `auth.uid === $playerId` greifen → niemand überschreibt mehr
+  fremde Leaderboard-Einträge. Gilt auch für `cleanupMyDuplicates`.
+- `getFirebase()` wartet best-effort bis ~3s auf die Auth-UID, bevor Online-Aktionen laufen
+  (nötig sobald die auth-gebundenen Rules aktiv sind).
+
+#### Security Rules (Datei, manuell zu aktivieren)
+- `firebase-security-rules.json` neu: Leaderboard nur eigentümer-schreibbar (`auth.uid===$id`),
+  Queue/Games nur für authentifizierte Clients schreibbar, **kein Collection-Listing** von
+  `games` mehr (Massen-Enumeration/Scraping unterbunden). Enthält dokumentierte
+  Aktivierungs-Reihenfolge (erst Code deployen → Anon-Auth aktivieren → testen → Rules publishen).
+
+#### H-A — Verwaiste Spiele verhindert
+- `fb.onDisconnectRemove('games/'+code)` beim Host-Create (`hostCreateGame` + `mmClaimAndMatch`)
+  → Firebase löscht den Spielknoten serverseitig bei Host-Abbruch (Tab zu / Crash / Netz weg).
+- In `cleanupGame` wird die onDisconnect-Registrierung bei sauberem Leave abbestellt
+  (`gameDisconnectCancel`-Ref), damit nichts doppelt gelöscht wird.
+
+#### H-C — Gast hängt nicht mehr ewig bei Host-Disconnect
+- Neuer `fb.subscribeRaw` liefert auch den Gelöscht-Fall (`onData(data, exists)`).
+- Gemeinsamer `guestStateHandler`: erkennt Knoten-Löschung (`exists===false`, nur nach
+  erstem gültigen State via `everGotState`) → sauberes Ende `warnHostEnded`.
+- Watchdog-Eskalation: nach **30s** ohne State → `endOnlineDisconnected('warnHostLost')` →
+  sauber zurück ins Menü mit Hinweis (statt ewigem „Verbindung instabil"-Banner).
+- `endOnlineDisconnected` ist gegen Mehrfachauslösung geschützt (`disconnectEnding`).
+- Neue i18n-Keys (de/en): `warnHostEnded`, `warnHostLost`.
+
+#### Service Worker
+- Cache-Key `fortress-v3.12.4` — stellt sicher, dass wiederkehrende Spieler den
+  auth-fähigen Build erhalten, BEVOR die neuen Rules aktiviert werden.
+
+#### Tests
+- Online-2-Spieler-Suite läuft weiter grün über den neuen `subscribeRaw`/`guestStateHandler`-Pfad.
+  Gesamt **156 Tests grün**.
+
+#### Bewusst NICHT in Stufe 0 (braucht später Blaze + Server)
+- Echte ELO-Integrität (Client rechnet ELO weiter selbst), verifiziertes Spielergebnis
+  (Host-autoritative P2P-Architektur), Connection-Flood-DoS (App Check). Leaderboard bleibt
+  bis dahin „vorläufig/advisory".
