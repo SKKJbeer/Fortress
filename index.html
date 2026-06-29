@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.12.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.12.7</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -42,6 +42,7 @@
     @keyframes dailyBounceIn{0%{transform:scale(0.7) translateY(20px);opacity:0}60%{transform:scale(1.08) translateY(-4px)}100%{transform:scale(1) translateY(0);opacity:1}}
     @keyframes collectBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     @keyframes urgencyPulse{0%,100%{opacity:0.72}50%{opacity:1}}
+    @keyframes closePulse{0%,100%{transform:scale(1);opacity:0.85;text-shadow:0 0 6px rgba(239,68,68,0.6)}50%{transform:scale(1.22);opacity:1;text-shadow:0 0 16px rgba(239,68,68,0.95)}}
     @keyframes dangerGlow{0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,0.25),0 8px 40px rgba(0,0,0,0.7)}50%{box-shadow:0 0 0 3px rgba(239,68,68,0.85),0 0 50px rgba(239,68,68,0.45),0 8px 40px rgba(0,0,0,0.7)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
@@ -4846,10 +4847,11 @@ window.FortressApp = function Fortress() {
   const buildUrgencyOpen = Object.keys(urgentPlayers).length > 0;
   // Schriftzug in der Spieler-Namensbox als Ergänzung zum pochenden Rand.
   const closeWarnSpan = (align) => /* @__PURE__ */ React.createElement("span", { style: {
-    fontSize: 10.5, color: "#fecaca", fontWeight: 900, letterSpacing: "0.01em",
-    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
-    flex: "1 1 auto", textAlign: align || "left", textShadow: "0 0 8px rgba(239,68,68,0.7)",
-    animation: "urgencyPulse 0.5s ease-in-out infinite"
+    fontSize: 14, color: "#fee2e2", fontWeight: 900, letterSpacing: "0.02em",
+    whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", display: "inline-block",
+    textAlign: align || "left",
+    transformOrigin: (align === "right" ? "right" : align === "center" ? "center" : "left") + " center",
+    animation: "closePulse 0.45s ease-in-out infinite"
   } }, "⚠ " + t('closeWarn'));
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
     background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
@@ -4972,7 +4974,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1356,3 +1356,12 @@ bleiben im kostenlosen Spark-Plan (kein Server, kein Blaze).
 - Neue i18n-Keys: `closeWarn` (de/en).
 - Test: zusätzliche Absicherung, dass der Schriftzug bei geschlossener Burg NICHT erscheint
   (157/157 grün).
+
+### v3.12.7 — "ZUMAUERN!"-Schriftzug größer & stärker pochend
+
+- Der Bau-Dringlichkeits-Schriftzug in der Namensbox ist jetzt deutlich auffälliger:
+  Schriftgröße 10.5 → 14, hellerer Ton (#fee2e2), und ein echter Skalier-Puls statt nur
+  Opacity.
+- Neues Keyframe `closePulse` (0.45s): skaliert 1 → 1.22 + pulsierender roter Text-Shadow.
+- `transformOrigin` je Box verankert (P1 links / P2 rechts / P3 zentriert), damit der Text
+  beim Vergrößern in die Box hinein wächst statt über den Rand.
