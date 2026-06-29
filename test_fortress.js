@@ -1629,6 +1629,47 @@ async function suiteSound(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+async function suiteI18n(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: i18n (Englisch)\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  await page.addInitScript(`try { localStorage.setItem('fortress_lang','en'); } catch(e){}`);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── Menü auf Englisch ─────────────────────────────────────
+    const menuEn = await page.evaluate(() => /PLAY ONLINE/.test(document.body.innerText) && /PLAY LOCAL/.test(document.body.innerText));
+    menuEn ? ok('Menü englisch (PLAY ONLINE / PLAY LOCAL) ✓') : fail('Menü nicht englisch');
+    const noGerMenu = await page.evaluate(() => !/ONLINE SPIELEN|LOKAL SPIELEN/.test(document.body.innerText));
+    noGerMenu ? ok('Kein deutscher Menü-Text im EN-Modus ✓') : fail('Deutscher Menü-Text im EN-Modus übrig');
+
+    // ── Achievements-Modal englisch (der gemeldete Fall) ──────
+    await page.evaluate(() => { const b = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('title') === 'Achievements'); if (b) b.click(); });
+    await page.waitForTimeout(300);
+    const ach = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        counter: /unlocked/i.test(t) && !/freigeschaltet/.test(t),
+        cats: /Wins/.test(t) && /Streaks/.test(t) && /Destruction/.test(t) && !/Siege/.test(t) && !/Serien/.test(t) && !/Zerstörung/.test(t),
+        titleDesc: /10 Wins/.test(t) && /Win 10 online games/.test(t) && !/Gewinne/.test(t)
+      };
+    });
+    ach.counter  ? ok('Achievements: Zähler "unlocked" (kein "freigeschaltet") ✓') : fail('Achievements: Zähler nicht übersetzt');
+    ach.cats     ? ok('Achievements: Kategorien englisch (Wins/Streaks/Destruction) ✓') : fail('Achievements: Kategorien noch deutsch');
+    ach.titleDesc? ok('Achievements: Titel & Beschreibung englisch (kein "Gewinne") ✓') : fail('Achievements: Titel/Desc noch deutsch');
+
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('i18n: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('i18n-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -1653,7 +1694,7 @@ async function suiteSound(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd, rI18n] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1666,15 +1707,16 @@ async function suiteSound(browser) {
     suiteBuildUrgency(browser),
     suiteOnboarding(browser),
     suiteSound(browser),
+    suiteI18n(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

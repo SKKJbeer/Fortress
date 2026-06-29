@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1365,3 +1365,32 @@ bleiben im kostenlosen Spark-Plan (kein Server, kein Blaze).
 - Neues Keyframe `closePulse` (0.45s): skaliert 1 → 1.22 + pulsierender roter Text-Shadow.
 - `transformOrigin` je Box verankert (P1 links / P2 rechts / P3 zentriert), damit der Text
   beim Vergrößern in die Box hinein wächst statt über den Rand.
+
+### v3.12.8 — i18n-Review: alle hartkodierten deutschen UI-Texte übersetzt
+
+Vollständiges Review der Zweisprachigkeit (DE/EN). Zahlreiche benutzer-sichtbare Strings
+waren hartkodiert auf Deutsch und blieben im englischen UI deutsch. Jetzt durchgängig via
+`t()` / `LANGS` bzw. (für die Achievements) über eine Übersetzungs-Map.
+
+#### Achievements (Hauptfall)
+- `ACH_EN`-Map mit englischen `title`/`desc` für alle 20 Achievements (DE bleibt im
+  `ACHIEVEMENTS`-Array als Fallback); Helfer `achTitle(def)` / `achDesc(def)` wählen nach `lang`.
+- AchievementsModal + AchievementPopup nutzen jetzt `achTitle`/`achDesc`.
+- Kategorie-Labels (Siege/Spiele/Zerstörung/Gold/ELO/Serien), Zähler "X/N freigeschaltet",
+  "Geheimes Achievement", "✓ Freigeschaltet" → neue `t()`-Keys (`achcat_*`, `achUnlocked`,
+  `achSecret`, `achDone`).
+
+#### Weitere behobene Stellen
+- **Leaderboard**: Modus-Toggle "3 Spieler", "Lädt…", beide Leer-Zustände, "Aktualisieren",
+  "(Du)"-Marker, Statistik-Kürzel (S/N/Sp.) → `t()` (neu: `lbLoading/lbRefresh/lbEmpty/lbEmpty3p/gamesAbbr`, `youSuffix`).
+- **Hauptmenü**: falsch hartkodierter Online-Button "ONLINE SPIELEN (2–3 Geräte)" nutzt jetzt
+  `t('playOnline')`; Tooltips ("Profil bearbeiten", "tages-belohnung") via `t()`.
+- **Profil-Editor**: "AVATAR GALERIE", "GESPERRT", "Nächste Freischaltung", "benötigt" → `t()`
+  (neu: `avatarGallery/avatarLocked/nextUnlock/requiredLabel`).
+- **Setup/HUD**: "← Zurück" (lokal) → `t('back')`; "Code einfügen" → `t('pasteCode')`;
+  3× "(Du)" in den HUD-Namensboxen + "P3 (Grün)"-Fallback → `t()` (`youSuffix`, `p3GreenFallback`).
+
+#### Tests
+- Neue Suite `suiteI18n`: lädt das UI auf Englisch (`fortress_lang='en'`) und prüft, dass
+  Menü + Achievements (Zähler, Kategorien, Titel/Beschreibung) englisch sind und kein
+  deutscher Resttext erscheint. Gesamt jetzt **163 Tests grün**.
