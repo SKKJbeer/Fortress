@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.12.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.12.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1276,6 +1276,7 @@ const LANGS = {
     warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
     warnVerlassen: "{name} hat das Spiel verlassen",
     warnHostAntwortetNicht: "Host antwortet nicht — Verbindung unterbrochen?",
+    closeWarn: "ZUMAUERN!",
     warnHostEnded: "Host hat das Spiel beendet — zurück im Menü.",
     warnHostLost: "Verbindung zum Host verloren — zurück im Menü.",
     connLostTitle: "Verbindung instabil",
@@ -1442,6 +1443,7 @@ const LANGS = {
     warnAusgeschieden: "{names} eliminated — castle open!",
     warnVerlassen: "{name} left the game",
     warnHostAntwortetNicht: "Host not responding — connection lost?",
+    closeWarn: "SEAL IT!",
     warnHostEnded: "Host ended the game — back to menu.",
     warnHostLost: "Lost connection to host — back to menu.",
     connLostTitle: "Connection unstable",
@@ -4833,11 +4835,22 @@ window.FortressApp = function Fortress() {
     beginSetup();
   }
   const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
-  const buildUrgencyOpen = phase === "build" && timer <= 8 && timer > 0 && (() => {
+  // Pro Spieler: ist in den letzten 8 Bau-Sekunden die Burg noch offen?
+  const urgentPlayers = (phase === "build" && timer <= 8 && timer > 0) ? (() => {
     const fc = getFloodCache();
     const checkP = online.current ? (myRole.current >= 1 ? [myRole.current] : playersList()) : playersList();
-    return checkP.some(p => !eliminated.current[p] && !fc.castleClosed[p]);
-  })();
+    const res = {};
+    checkP.forEach((p) => { if (!eliminated.current[p] && !fc.castleClosed[p]) res[p] = true; });
+    return res;
+  })() : {};
+  const buildUrgencyOpen = Object.keys(urgentPlayers).length > 0;
+  // Schriftzug in der Spieler-Namensbox als Ergänzung zum pochenden Rand.
+  const closeWarnSpan = (align) => /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: 10.5, color: "#fecaca", fontWeight: 900, letterSpacing: "0.01em",
+    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+    flex: "1 1 auto", textAlign: align || "left", textShadow: "0 0 8px rgba(239,68,68,0.7)",
+    animation: "urgencyPulse 0.5s ease-in-out infinite"
+  } }, "⚠ " + t('closeWarn'));
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
     background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
     minHeight: "100dvh",
@@ -4959,7 +4972,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.12.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -5784,7 +5797,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? " (Du)" : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
     boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
     padding: "1px 6px",
@@ -5812,7 +5825,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2"), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? " (Du)" : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
     border: "1px solid rgba(16,185,129,0.45)",
     borderRadius: 14,    padding: "2px 10px",    display: "flex",
@@ -5822,7 +5835,7 @@ window.FortressApp = function Fortress() {
     boxShadow: "0 2px 16px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? " (Du)" : "") : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? " (Du)" : "") : "P3 (Gr\xFCn)", eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     top: 70,
     left: "50%",

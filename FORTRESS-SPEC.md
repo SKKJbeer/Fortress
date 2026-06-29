@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1341,3 +1341,18 @@ bleiben im kostenlosen Spark-Plan (kein Server, kein Blaze).
 > sind bereits OHNE Auth abgelehnt (HTTP 401), `games`-Direktzugriff offen, `games`-Listing
 > gesperrt (401). Das bestätigt: Anonymous-Auth zu aktivieren ist nicht nur Härtung, sondern
 > Voraussetzung dafür, dass Leaderboard-Schreibvorgänge überhaupt wieder funktionieren.
+
+### v3.12.6 — Schriftzug "ZUMAUERN!" in der Namensbox (Bau-Dringlichkeit)
+
+- Ergänzung zum bereits vorhandenen pochenden roten Spielfeld-Rand (`dangerGlow`): In den
+  letzten 8 Bau-Sekunden, solange die Burg eines Spielers noch offen ist, ersetzt ein
+  pulsierender roter Schriftzug `⚠ ZUMAUERN!` (en: `⚠ SEAL IT!`) den Spielernamen in dessen
+  Namensbox (P1/P2/P3) — maximale Klarheit, welcher Spieler handeln muss.
+- Neue Logik: `urgentPlayers` (pro Spieler offen+dringlich) ersetzt das frühere
+  einzelne `buildUrgencyOpen`-Boolean; `buildUrgencyOpen` wird daraus abgeleitet (Rand bleibt
+  unverändert). Helfer `closeWarnSpan(align)` für die drei Boxen (links/rechts/zentriert).
+- Identische Bedingung wie der Rand (`!castleClosed[p]`, Online: nur eigene Burg) → Schriftzug
+  und Rand erscheinen/verschwinden synchron, kein false-positive bei geschlossener Burg.
+- Neue i18n-Keys: `closeWarn` (de/en).
+- Test: zusätzliche Absicherung, dass der Schriftzug bei geschlossener Burg NICHT erscheint
+  (157/157 grün).

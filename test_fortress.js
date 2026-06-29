@@ -1471,6 +1471,12 @@ async function suiteBuildUrgency(browser) {
         ? ok('Kein false-positive dangerGlow bei geschlossener Burg ✓')
         : fail('Unerwarteter dangerGlow bei bereits geschlossener Burg');
 
+      // Schriftzug "ZUMAUERN!" darf bei geschlossener Burg ebenfalls NICHT erscheinen
+      const noLabelFalsePositive = await page.evaluate(() => !/ZUMAUERN/.test(document.body.innerText));
+      noLabelFalsePositive
+        ? ok('Kein false-positive "ZUMAUERN!"-Schriftzug bei geschlossener Burg ✓')
+        : fail('Unerwarteter ZUMAUERN-Schriftzug bei geschlossener Burg');
+
       await page.screenshot({ path: '/tmp/s8_build_timer.png' });
     }
 
