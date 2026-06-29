@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.12.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1328,3 +1328,16 @@ bleiben im kostenlosen Spark-Plan (kein Server, kein Blaze).
 - Echte ELO-Integrität (Client rechnet ELO weiter selbst), verifiziertes Spielergebnis
   (Host-autoritative P2P-Architektur), Connection-Flood-DoS (App Check). Leaderboard bleibt
   bis dahin „vorläufig/advisory".
+
+### v3.12.5 — Auth-Wait ohne Verzögerung (Folge-Fix zu v3.12.4)
+
+- `getFirebase()` bricht das Warten auf die anonyme Auth-UID jetzt SOFORT ab, sobald
+  der Login fehlschlägt (`window.__fbAuthError`). Vorher hätte das Warten — solange
+  Anonymous-Auth in der Console nicht aktiviert ist — bei jeder Online-Aktion bis zu
+  3 Sekunden gekostet. Jetzt: keine spürbare Verzögerung in der Übergangsphase.
+- Cache-Key `fortress-v3.12.5`.
+
+> Live-Backend-Befund (per REST geprüft, ohne Console-Zugriff): `leaderboard`-Schreibzugriffe
+> sind bereits OHNE Auth abgelehnt (HTTP 401), `games`-Direktzugriff offen, `games`-Listing
+> gesperrt (401). Das bestätigt: Anonymous-Auth zu aktivieren ist nicht nur Härtung, sondern
+> Voraussetzung dafür, dass Leaderboard-Schreibvorgänge überhaupt wieder funktionieren.
