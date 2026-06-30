@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.13.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1476,3 +1476,29 @@ Bauphase eingemauert und schussbereit (ready 2→3→…), beide Bots durchbrech
 durchgehend aktives, wachsendes Spiel. 169/169 Tests grün.
 
 Offen weiterhin: Schwierigkeitsgrade (der Bot spielt stark/fast optimal).
+
+### v3.14.0 — Interaktives Tutorial (geführtes erstes Spiel)
+
+Auf Wunsch: ein interaktives Tutorial direkt am Anfang, wie man es von anderen Spielen kennt —
+Lernen durch Tun statt nur Text-Slides.
+
+- **`startGuidedTutorial()`**: lokales Spiel gegen einen **passiven Bot** (`botShoot` no-op bei
+  `tutorialMode.current` → kein Druck; der Bot baut/verteidigt aber, liefert also ein realistisches
+  Ziel). `tutorialMode`-Ref neben `botMode`.
+- **Coach-Sprechblase** (unten, blockt das obere Spielfeld des Spielers nicht): zeigt pro Phase
+  eine konkrete Anweisung — Setup („Kanone setzen"), Bauen („Burg lückenlos einmauern"), Schießen
+  („Finger von der Kanone wegziehen, auf gegnerische Mauer zielen"), Kanone („weitere Kanone").
+  Plus „Tutorial beenden"-Button. **Wichtig: im GAME-Return gerendert, nicht im Menü-Return.**
+- **Einstieg**: Auto-Start direkt nach dem Onboarding für Erstspieler (`finishOnboarding` →
+  `startGuidedTutorial` wenn `fortress_tutorial_done` fehlt) + jederzeit über einen 🎓-Button
+  „Interaktives Tutorial" im Lokal-Untermenü wiederholbar. Merker `fortress_tutorial_done` (kein
+  erneuter Auto-Start).
+- **Zählt nicht für ELO** (lokal). Neue i18n-Keys (de/en): `guidedTutorial`, `coachLabel`,
+  `coachSetup/Build/Shoot/Cannon/Done`, `tutorialExit`.
+- **Tests**: neue Suite `suiteTutorial` (Button, Start, Coach-Blase + Anweisung + Exit-Button,
+  stabiler Phasenlauf); `PROFILE_INIT` setzt `fortress_tutorial_done='1'` gegen Auto-Start in
+  anderen Suites. Gesamt **176 Tests grün**.
+
+> Nebenbefund (separat zu fixen): Das Reconnect-Banner (`connLost`, v3.12.3) wird im **Menü-Return**
+> gerendert und damit während eines Online-Spiels (screen="game") nie angezeigt — funktionslos.
+> Sollte in den GAME-Return verschoben werden.

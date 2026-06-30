@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.13.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1246,6 +1246,14 @@ const LANGS = {
     playLocal: "LOKAL SPIELEN (1 Ger\xE4t)",
     playOnline: "ONLINE SPIELEN (2–3 Ger\xE4te)",
     vsBot: "\xDCbung gegen Bot",
+    guidedTutorial: "Interaktives Tutorial",
+    coachLabel: "COACH",
+    coachSetup: "Tippe auf eine freie Fl\xE4che rund um deine Burg, um eine Kanone zu setzen (2\xD7).",
+    coachBuild: "Mauere deine Burg L\xDCCKENLOS ein — tippe oder ziehe Teile. Ist sie am Bauende offen, verlierst du!",
+    coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
+    coachCannon: "Setze eine weitere Kanone dazu — mehr Kanonen = mehr Feuerkraft.",
+    coachDone: "🎉 Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
+    tutorialExit: "Tutorial beenden",
     leaderboard: "Bestenliste",
     helpStartTitle: "Start",
     helpStartDesc: "Platziere zu Beginn 2 Kanonen rund um deine Burg, dann ummauere alles dicht.",
@@ -1434,6 +1442,14 @@ const LANGS = {
     playLocal: "PLAY LOCAL (1 Device)",
     playOnline: "PLAY ONLINE (2–3 Devices)",
     vsBot: "Practice vs Bot",
+    guidedTutorial: "Interactive Tutorial",
+    coachLabel: "COACH",
+    coachSetup: "Tap a free spot around your castle to place a cannon (2\xD7).",
+    coachBuild: "Wall in your castle COMPLETELY — tap or drag pieces. If it's open when build ends, you lose!",
+    coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
+    coachCannon: "Place another cannon — more cannons = more firepower.",
+    coachDone: "🎉 Done! You now know all the basics. Keep playing to practise or end the tutorial.",
+    tutorialExit: "End tutorial",
     leaderboard: "Leaderboard",
     helpStartTitle: "Start",
     helpStartDesc: "Place 2 cannons around your castle at the start, then wall everything in tightly.",
@@ -2298,6 +2314,10 @@ window.FortressApp = function Fortress() {
   function finishOnboarding() {
     try { localStorage.setItem('fortress_onboarded', '1'); } catch (e) {}
     setShowOnboarding(false);
+    // Erstspieler direkt ins interaktive Tutorial führen (wie bei anderen Spielen).
+    let tutDone = true;
+    try { tutDone = !!localStorage.getItem('fortress_tutorial_done'); } catch (e) {}
+    if (!tutDone && profile) setTimeout(() => startGuidedTutorial(), 250);
   }
   function openProfileEditor() {
     setEditName((profile == null ? void 0 : profile.name) || "");
@@ -4110,6 +4130,20 @@ window.FortressApp = function Fortress() {
   // ── Bot / KI-Gegner (lokaler Einzelspieler-Modus) ──────────────────────────
   // Mensch = P1, KI = P2. Die KI nutzt dieselben Spielfunktionen wie ein Spieler.
   const botMode = useRef(false);
+  const tutorialMode = useRef(false); // geführtes erstes Spiel: passiver Bot + Coach-Hinweise
+  // Startet das interaktive Tutorial: lokales Spiel gegen einen passiven Bot mit
+  // Coach-Anweisungen pro Phase. Markiert sofort als gesehen (kein erneuter Auto-Start).
+  function startGuidedTutorial() {
+    try { localStorage.setItem('fortress_tutorial_done', '1'); } catch (e) {}
+    online.current = false;
+    botMode.current = true;
+    tutorialMode.current = true;
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
+    setShowOnboarding(false);
+    setMpScreen(null);
+    fullReset();
+  }
   function botPlaceOneCannon(g, B) {
     const castle = castles.current[B];
     if (!castle) return false;
@@ -4187,6 +4221,7 @@ window.FortressApp = function Fortress() {
     }
   }
   function botShoot(g, B) {
+    if (tutorialMode.current) return; // Tutorial: Bot schießt nicht → kein Druck beim Lernen
     if (performance.now() - lastShot.current[B] < RELOAD_MS) return;
     const E = B === 1 ? 2 : 1;
     const enemy = castles.current[E];
@@ -5174,7 +5209,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.13.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -5482,9 +5517,27 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     boxShadow: "0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
-  } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => startGuidedTutorial(), style: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "linear-gradient(135deg,#7c3aed,#db2777)",
+    color: "white",
+    border: "1px solid rgba(219,39,119,0.5)",
+    padding: "16px",
+    fontSize: 16,
+    fontWeight: 800,
+    borderRadius: 14,
+    cursor: "pointer",
+    marginBottom: 10,
+    letterSpacing: "0.03em",
+    boxShadow: "0 6px 26px rgba(124,58,237,0.3)"
+  } }, "🎓 ", t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     botMode.current = true;
+    tutorialMode.current = false;
     numPlayersRef.current = 2;
     setNumPlayers(2);
     setMpScreen(null);
@@ -6082,7 +6135,20 @@ window.FortressApp = function Fortress() {
     maxWidth: "92vw",
     overflow: "hidden",
     textOverflow: "ellipsis"
-  } }, warn), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, warn), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", left: 8, right: 8, bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
+  }, /* @__PURE__ */ React.createElement("div", {
+    style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left" }
+  },
+    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 3 } },
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "🎓"),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.14em" } }, t('coachLabel'))
+    ),
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#fff", lineHeight: 1.42 } },
+      phase === "setup" ? t('coachSetup') : phase === "build" ? t('coachBuild') : phase === "shoot" ? t('coachShoot') : phase === "cannon" ? t('coachCannon') : t('coachDone')
+    ),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { pointerEvents: "auto", marginTop: 7, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.32)", color: "#fff", borderRadius: 8, padding: "5px 11px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, t('tutorialExit'))
+  )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: buildUrgencyOpen ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.07)",

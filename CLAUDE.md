@@ -105,6 +105,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `numPlayersRef.current` | number | 2 oder 3 |
 | `myRole.current` | number | 0=Menü, 1=Host, 2=Gast2, 3=Gast3 |
 | `botMode.current` | bool | Bot-/KI-Modus aktiv (seit v3.13.0): Mensch=P1, KI=P2, lokal, zählt nicht für ELO. KI-Tick `botTick` via `setInterval(600)` in `useEffect([screen])`. |
+| `tutorialMode.current` | bool | Interaktives Tutorial (seit v3.14.0): wie Bot-Modus, aber Bot passiv (`botShoot` no-op) + Coach-Sprechblase pro Phase. Start `startGuidedTutorial()`; Merker localStorage `fortress_tutorial_done`; Auto-Start nach Onboarding für Erstspieler. Coach-Blase im GAME-Return (nicht Menü-Return!). |
 | `online.current` | bool | Online-Modus aktiv |
 | `frozenReady.current` | `{1:[],2:[],3:[]}` | Eingefrorne schussbereite Kanonen-IDs je Spieler |
 | `pieces.current` | `{1:{cells,ghostR,ghostC}, ...}` | Aktuelle Bauteile |

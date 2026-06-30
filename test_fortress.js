@@ -40,6 +40,8 @@ const PROFILE_INIT = `
     // Onboarding-Flag setzen, damit die Tutorial-Modal sich NICHT automatisch
     // öffnet (würde unrelated Tests blockieren). Eigener Test setzt es gezielt zurück.
     localStorage.setItem('fortress_onboarded', '1');
+    // Interaktives Tutorial als gesehen markieren → kein Auto-Start nach dem Onboarding.
+    localStorage.setItem('fortress_tutorial_done', '1');
   } catch(e) {}
 `;
 
@@ -1720,6 +1722,56 @@ async function suiteBot(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+async function suiteTutorial(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Interaktives Tutorial\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+
+    // ── Lokal-Untermenü öffnen, Tutorial-Button prüfen ────────
+    await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+    await page.waitForTimeout(250);
+    const tutBtn = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).some(b => /Interaktives Tutorial|Interactive Tutorial/.test(b.textContent || '')));
+    tutBtn ? ok('Tutorial-Button im Lokal-Menü sichtbar ✓') : fail('Tutorial-Button fehlt');
+
+    // ── Tutorial starten ──────────────────────────────────────
+    await jsClick(page, ['Interaktives Tutorial', 'Interactive Tutorial']);
+    const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
+    canvas ? ok('Tutorial-Spiel gestartet (Canvas) ✓') : fail('Tutorial startet nicht');
+    if (!canvas) return { res, errs };
+
+    // ── Coach-Sprechblase sichtbar (COACH-Label + Anweisung) ──
+    await page.waitForTimeout(400);
+    const coach = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        label: /COACH/.test(t),
+        instruction: /(Kanone|Mauer|Schleuder|cannon|wall|slingshot)/i.test(t),
+        exit: Array.from(document.querySelectorAll('button')).some(b => /Tutorial beenden|End tutorial/.test(b.textContent || ''))
+      };
+    });
+    coach.label ? ok('Coach-Sprechblase (COACH) sichtbar ✓') : fail('Coach-Sprechblase fehlt');
+    coach.instruction ? ok('Coach gibt eine Phasen-Anweisung ✓') : fail('Coach-Anweisung fehlt');
+    coach.exit ? ok('"Tutorial beenden"-Button vorhanden ✓') : fail('Tutorial-Exit-Button fehlt');
+
+    // ── Läuft stabil über eine Phase (passiver Bot, kein Crash) ──
+    await waitForPhase(page, ['FEUER', 'BAUEN', 'KANONE'], 6000);
+    ok('Tutorial läuft (Phasenwechsel) ✓');
+
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Tutorial: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Tutorial-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -1744,7 +1796,7 @@ async function suiteBot(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1759,15 +1811,16 @@ async function suiteBot(browser) {
     suiteSound(browser),
     suiteI18n(browser),
     suiteBot(browser),
+    suiteTutorial(browser),
   ]);
 
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
