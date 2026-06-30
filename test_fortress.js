@@ -42,6 +42,8 @@ const PROFILE_INIT = `
     localStorage.setItem('fortress_onboarded', '1');
     // Interaktives Tutorial als gesehen markieren → kein Auto-Start nach dem Onboarding.
     localStorage.setItem('fortress_tutorial_done', '1');
+    // Sprache explizit auf Deutsch (Headless-Browser meldet sonst en-US → Auto-Detect = EN).
+    localStorage.setItem('fortress_lang', 'de');
   } catch(e) {}
 `;
 

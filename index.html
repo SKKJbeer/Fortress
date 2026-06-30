@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -43,6 +43,8 @@
     @keyframes collectBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
     @keyframes urgencyPulse{0%,100%{opacity:0.72}50%{opacity:1}}
     @keyframes closePulse{0%,100%{transform:scale(1);opacity:0.85;text-shadow:0 0 6px rgba(239,68,68,0.6)}50%{transform:scale(1.22);opacity:1;text-shadow:0 0 16px rgba(239,68,68,0.95)}}
+    @keyframes coachPop{0%{transform:translateY(10px) scale(0.94);opacity:0}55%{transform:translateY(-3px) scale(1.04)}100%{transform:translateY(0) scale(1);opacity:1}}
+    @keyframes coachFlash{0%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}30%{box-shadow:0 0 0 3px rgba(255,255,255,0.9),0 8px 30px rgba(0,0,0,0.55)}100%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}}
     @keyframes dangerGlow{0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,0.25),0 8px 40px rgba(0,0,0,0.7)}50%{box-shadow:0 0 0 3px rgba(239,68,68,0.85),0 0 50px rgba(239,68,68,0.45),0 8px 40px rgba(0,0,0,0.7)}}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
@@ -1254,6 +1256,9 @@ const LANGS = {
     coachCannon: "Setze eine weitere Kanone dazu — mehr Kanonen = mehr Feuerkraft.",
     coachDone: "🎉 Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
     tutorialExit: "Tutorial beenden",
+    tutorialDoneTitle: "🎉 Tutorial abgeschlossen!",
+    tutorialDoneText: "Du kennst jetzt die Grundlagen: Kanonen setzen, Burg schlie\xDFen, zielen & feuern. Bereit f\xFCr ein echtes Spiel?",
+    tutorialToOnline: "Online spielen",
     leaderboard: "Bestenliste",
     helpStartTitle: "Start",
     helpStartDesc: "Platziere zu Beginn 2 Kanonen rund um deine Burg, dann ummauere alles dicht.",
@@ -1450,6 +1455,9 @@ const LANGS = {
     coachCannon: "Place another cannon — more cannons = more firepower.",
     coachDone: "🎉 Done! You now know all the basics. Keep playing to practise or end the tutorial.",
     tutorialExit: "End tutorial",
+    tutorialDoneTitle: "🎉 Tutorial complete!",
+    tutorialDoneText: "You now know the basics: place cannons, close your castle, aim & fire. Ready for a real game?",
+    tutorialToOnline: "Play online",
     leaderboard: "Leaderboard",
     helpStartTitle: "Start",
     helpStartDesc: "Place 2 cannons around your castle at the start, then wall everything in tightly.",
@@ -1655,7 +1663,15 @@ window.FortressApp = function Fortress() {
   const [numPlayers, setNumPlayers] = useState(2);
   const numPlayersRef = useRef(2);
   const playersList = () => numPlayersRef.current === 3 ? [1, 2, 3] : [1, 2];
-  const [lang, setLang] = React.useState(() => localStorage.getItem('fortress_lang') || 'de');
+  const [lang, setLang] = React.useState(() => {
+    try {
+      const stored = localStorage.getItem('fortress_lang');
+      if (stored) return stored;
+      // Erststart: Gerätesprache erkennen (nicht stur Deutsch). de → Deutsch, sonst Englisch.
+      const nav = ((typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || 'en').toLowerCase();
+      return nav.startsWith('de') ? 'de' : 'en';
+    } catch (e) { return 'de'; }
+  });
   React.useEffect(() => { localStorage.setItem('fortress_lang', lang); }, [lang]);
   const t = (key, vars = {}) => {
     const str = (LANGS[lang] && LANGS[lang][key]) || (LANGS.de[key]) || key;
@@ -2300,6 +2316,7 @@ window.FortressApp = function Fortress() {
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
+  const [showTutorialDone, setShowTutorialDone] = useState(false);
   const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem('fortress_sound') !== '0'; } catch (e) { return true; } });
   const [hapticsOn, setHapticsOn] = useState(() => { try { return localStorage.getItem('fortress_haptics') !== '0'; } catch (e) { return true; } });
   useEffect(() => { SFX.enabled = soundOn; try { localStorage.setItem('fortress_sound', soundOn ? '1' : '0'); } catch (e) {} }, [soundOn]);
@@ -2318,6 +2335,13 @@ window.FortressApp = function Fortress() {
     let tutDone = true;
     try { tutDone = !!localStorage.getItem('fortress_tutorial_done'); } catch (e) {}
     if (!tutDone && profile) setTimeout(() => startGuidedTutorial(), 250);
+  }
+  function endTutorial(goOnline) {
+    tutorialMode.current = false;
+    botMode.current = false;
+    setShowTutorialDone(false);
+    quitGame();
+    if (goOnline) setTimeout(() => setMpScreen("online"), 80);
   }
   function openProfileEditor() {
     setEditName((profile == null ? void 0 : profile.name) || "");
@@ -3905,6 +3929,11 @@ window.FortressApp = function Fortress() {
     }
     lastShot.current[player] = now;
     SFX.shoot();
+    // Tutorial: nach dem ersten eigenen Schuss als abgeschlossen anzeigen → kurz & knackig.
+    if (tutorialMode.current && player === 1 && !tutorialFired.current) {
+      tutorialFired.current = true;
+      setTimeout(() => setShowTutorialDone(true), 1800);
+    }
     ready.forEach((cn, index) => {
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
@@ -4131,6 +4160,7 @@ window.FortressApp = function Fortress() {
   // Mensch = P1, KI = P2. Die KI nutzt dieselben Spielfunktionen wie ein Spieler.
   const botMode = useRef(false);
   const tutorialMode = useRef(false); // geführtes erstes Spiel: passiver Bot + Coach-Hinweise
+  const tutorialFired = useRef(false);
   // Startet das interaktive Tutorial: lokales Spiel gegen einen passiven Bot mit
   // Coach-Anweisungen pro Phase. Markiert sofort als gesehen (kein erneuter Auto-Start).
   function startGuidedTutorial() {
@@ -4138,6 +4168,8 @@ window.FortressApp = function Fortress() {
     online.current = false;
     botMode.current = true;
     tutorialMode.current = true;
+    tutorialFired.current = false;
+    setShowTutorialDone(false);
     numPlayersRef.current = 2;
     setNumPlayers(2);
     setShowOnboarding(false);
@@ -4191,11 +4223,13 @@ window.FortressApp = function Fortress() {
     const cands = [];
     for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
       if (!outside[r * COLS + c] || g[r][c] !== EMPTY || !isBuildable(ter, r, c, B)) continue;
-      cands.push({ r, c, d: Math.max(Math.abs(r - obj.r), Math.abs(c - obj.c)) });
+      const d = Math.max(Math.abs(r - obj.r), Math.abs(c - obj.c));
+      if (d > 5) continue; // nah am Objekt bleiben → kompakter Schutzring statt riesiger Klotz
+      cands.push({ r, c, d });
     }
     cands.sort((a, b) => a.d - b.d);
     let placed = 0;
-    for (let i = 0; i < Math.min(cands.length, 30) && placed < maxPlace; i++) {
+    for (let i = 0; i < Math.min(cands.length, 16) && placed < maxPlace; i++) {
       const { r, c } = cands[i];
       for (let rot = 0; rot < 4; rot++) {
         const gv = grid.current;
@@ -4210,14 +4244,15 @@ window.FortressApp = function Fortress() {
     const castle = castles.current[B];
     // 1) Burg versiegeln (höchste Priorität)
     if (castle && !isCastleClosed(g, B, castle)) {
-      if (botFillNear(g, ter, B, computeOutsideMap(g, B), castle, 3)) return;
+      if (botFillNear(g, ter, B, computeOutsideMap(g, B), castle, 2)) return;
     }
+    if (tutorialMode.current) return; // Tutorial: nur Burg sichern, keine Kanonen-Ummauerung/Wachstum
     // 2) Noch offene Kanonen einmauern → werden schussbereit (wachsende Feuerkraft,
     //    Bot bleibt aktiv statt nach dem Schießen „aufzuhören").
     const oc = computeOutsideMapForCannons(g, B);
     const openCannons = (cannons.current[B] || []).filter((cn) => cn.hp > 0 && !isObjectClosed(oc, cn));
     for (const cn of openCannons) {
-      if (botFillNear(g, ter, B, oc, cn, 3)) return;
+      if (botFillNear(g, ter, B, oc, cn, 2)) return;
     }
   }
   function botShoot(g, B) {
@@ -4252,7 +4287,8 @@ window.FortressApp = function Fortress() {
     const g = grid.current, ter = terrain.current;
     if (!g || !ter) return;
     const ph = phase_r.current;
-    if (ph === "setup" || ph === "cannon") {
+    // Im Tutorial setzt der Bot nur seine 2 Start-Kanonen (kein Wachstum) → einfach & schnell.
+    if (ph === "setup" || (ph === "cannon" && !tutorialMode.current)) {
       let guard = 0;
       while (cannonBudget.current[B] > 0 && guard++ < 4) {
         if (!botPlaceOneCannon(g, B)) break;
@@ -4286,7 +4322,7 @@ window.FortressApp = function Fortress() {
       canvasRect.current = rect;
     }
     const rawY = (e.clientY - rect.top) / rect.height * H;
-    const p1Flipped = online.current && myRole.current === 1 && numPlayersRef.current === 2;
+    const p1Flipped = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
     return {
       x: (e.clientX - rect.left) / rect.width * W,
       y: p1Flipped ? H - rawY : rawY
@@ -4295,7 +4331,7 @@ window.FortressApp = function Fortress() {
   const LIFT_ROWS = 6;
   function liftedGhost(player, x, y) {
     const gc = Math.floor(x / CELL);
-    const fl = online.current && myRole.current === 1 && numPlayersRef.current === 2;
+    const fl = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
     let gr = Math.floor(y / CELL) + (fl ? LIFT_ROWS : -LIFT_ROWS);
     if (fl) { if (gr >= ROWS - 1) gr = ROWS - 2; }
     else { if (gr < 1) gr = 1; }
@@ -4523,7 +4559,7 @@ window.FortressApp = function Fortress() {
       ctx.translate((Math.random() - 0.5) * shakeRef.current, (Math.random() - 0.5) * shakeRef.current);
       shakeRef.current *= 0.72;
     }
-    const p1Flipped = online.current && myRole.current === 1 && numPlayersRef.current === 2;
+    const p1Flipped = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
     let p1FlipPatch = null;
     if (p1Flipped) {
       ctx.save();
@@ -5209,7 +5245,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6136,18 +6172,29 @@ window.FortressApp = function Fortress() {
     overflow: "hidden",
     textOverflow: "ellipsis"
   } }, warn), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", left: 8, right: 8, bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
+    style: { position: "fixed", left: 8, right: 8, top: "calc(env(safe-area-inset-top, 0px) + 54px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
-    style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left" }
+    key: "coach_" + phase,
+    style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s" }
   },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 3 } },
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "🎓"),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.14em" } }, t('coachLabel'))
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.14em" } }, t('coachLabel')),
+      /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)" } }, phase === "setup" ? "1/4" : phase === "build" ? "2/4" : phase === "shoot" ? "3/4" : phase === "cannon" ? "4/4" : "✓")
     ),
-    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#fff", lineHeight: 1.42 } },
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13.5, fontWeight: 700, color: "#fff", lineHeight: 1.42 } },
       phase === "setup" ? t('coachSetup') : phase === "build" ? t('coachBuild') : phase === "shoot" ? t('coachShoot') : phase === "cannon" ? t('coachCannon') : t('coachDone')
     ),
     /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { pointerEvents: "auto", marginTop: 7, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.32)", color: "#fff", borderRadius: 8, padding: "5px 11px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, t('tutorialExit'))
+  )), showTutorialDone && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.9)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }
+  }, /* @__PURE__ */ React.createElement("div", {
+    style: { maxWidth: 380, width: "100%", textAlign: "center", background: "linear-gradient(160deg,#15082a,#0f1f2e)", border: "1px solid rgba(124,58,237,0.4)", borderRadius: 18, padding: 26, boxShadow: "0 20px 60px rgba(0,0,0,0.6)", animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both" }
+  },
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#f1f5f9", marginBottom: 8 } }, t('tutorialDoneTitle')),
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#94a3b8", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", marginBottom: 9, boxShadow: "0 4px 20px rgba(124,58,237,0.35)" } }, "\u{1F310} " + t('tutorialToOnline')),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { width: "100%", background: "rgba(255,255,255,0.06)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
   )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,

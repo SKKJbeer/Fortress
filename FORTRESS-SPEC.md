@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1502,3 +1502,21 @@ Lernen durch Tun statt nur Text-Slides.
 > Nebenbefund (separat zu fixen): Das Reconnect-Banner (`connLost`, v3.12.3) wird im **Menü-Return**
 > gerendert und damit während eines Online-Spiels (screen="game") nie angezeigt — funktionslos.
 > Sollte in den GAME-Return verschoben werden.
+
+### v3.14.1 — Tutorial/Bot-Feinschliff + Sprach-Autoerkennung (Spieler-Feedback)
+
+- **Bot oben, Spieler unten:** Im Bot-/Tutorial-Modus wird das Feld jetzt gespiegelt (gleiche
+  `p1Flipped`-Mechanik wie beim Online-Host) → Mensch = P1 (blau) unten, Bot = P2 (rot) oben.
+  Bedingung erweitert: `(online && myRole===1 || botMode.current) && numPlayers===2`.
+- **Weniger „krasses" Bauen:** `botFillNear` baut nur noch im Umkreis (Chebyshev ≤ 5) der Burg/Kanone
+  und max. 2 Teile/Tick (statt 3, 30 Kandidaten) → kompakter Schutzring statt riesiger Klotz.
+- **Tutorial einfach & kurz:** Bot setzt im Tutorial nur seine 2 Start-Kanonen (kein Wachstum,
+  keine Kanonen-Ummauerung). Nach dem **ersten eigenen Schuss** des Spielers erscheint ein
+  Abschluss-Overlay („🎉 Tutorial abgeschlossen!") mit „Online spielen"/„Hauptmenü" → schnell vorbei.
+- **Coach-Wechsel deutlich sichtbar:** Sprechblase ist nun oben (Bot-Hälfte, blockt den Spieler nicht),
+  animiert bei jedem Phasenwechsel (`key=phase` + `coachPop`/`coachFlash`-Keyframes) und zeigt einen
+  Schritt-Zähler „1/4 … 4/4".
+- **Sprache automatisch:** Beim Erststart wird die Gerätesprache erkannt (`navigator.language`):
+  „de…" → Deutsch, sonst Englisch (statt immer Deutsch). Manuell weiter umschaltbar.
+- i18n: `tutorialDoneTitle/Text`, `tutorialToOnline`. Tests: `PROFILE_INIT` setzt `fortress_lang='de'`
+  (Headless meldet en-US). **176 Tests grün.** SW-Cache `fortress-v3.14.1`.
