@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.13.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.13.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -4131,46 +4131,56 @@ window.FortressApp = function Fortress() {
     return false;
   }
   function botBuild(g, ter, B) {
-    const outside = computeOutsideMap(g, B);
     const castle = castles.current[B];
-    if (!castle) return;
-    let open = false;
-    for (let dr = -1; dr <= 1 && !open; dr++) for (let dc = -1; dc <= 1; dc++) {
-      if (outside[(castle.r + dr) * COLS + (castle.c + dc)]) { open = true; break; }
-    }
-    if (!open) return; // Burg geschlossen → nichts zu tun
+    if (!castle || isCastleClosed(g, B, castle)) return; // geschlossen → nichts zu tun
+    const outside = computeOutsideMap(g, B);
+    // Außen-erreichbare (geflutete) leere Zellen nahe der Burg solide auffüllen → engt
+    // das Leck ein, bis die Burg wieder 8-dicht ummauert ist. Anker dort, wo das Teil
+    // wirklich passt (nicht an Mauern zentrieren — sonst Überlappung → Ablehnung).
     const cands = [];
     for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
-      const idx = r * COLS + c;
-      if (!outside[idx] || g[r][c] !== EMPTY || !isBuildable(ter, r, c, B)) continue;
-      if (!outside[idx - COLS] || !outside[idx + COLS] || !outside[idx - 1] || !outside[idx + 1]) {
-        cands.push({ r, c, d: Math.abs(r - castle.r) + Math.abs(c - castle.c) });
-      }
+      if (!outside[r * COLS + c] || g[r][c] !== EMPTY || !isBuildable(ter, r, c, B)) continue;
+      cands.push({ r, c, d: Math.max(Math.abs(r - castle.r), Math.abs(c - castle.c)) });
     }
     cands.sort((a, b) => a.d - b.d);
-    for (let i = 0; i < Math.min(cands.length, 8); i++) {
+    let placed = 0;
+    for (let i = 0; i < Math.min(cands.length, 30) && placed < 3; i++) {
       const { r, c } = cands[i];
       for (let rot = 0; rot < 4; rot++) {
         const gv = grid.current;
         placePiece(B, r, c);
-        if (grid.current !== gv) return; // platziert
+        if (grid.current !== gv) { placed++; break; } // platziert
         pieces.current[B].cells = rotateCW(pieces.current[B].cells);
       }
     }
   }
   function botShoot(g, B) {
     if (performance.now() - lastShot.current[B] < RELOAD_MS) return;
-    const enemy = castles.current[1];
+    const E = B === 1 ? 2 : 1;
+    const enemy = castles.current[E];
     if (!enemy) return;
-    const jit = botDifficulty.current; // kleinere Streuung = stärker
-    const tx = enemy.c * CELL + CELL / 2 + (Math.random() - 0.5) * 2 * jit * CELL;
-    const ty = enemy.r * CELL + CELL / 2 + (Math.random() - 0.5) * 2 * jit * CELL;
-    fireMortar(B, tx, ty);
+    // Mörser landet direkt am Zielpunkt (Bogenschuss) — NICHT auf die unzerstörbare
+    // Burgmitte zielen. Von der Burg nach außen Richtung eigener Kanonen marschieren
+    // und die ERSTE gegnerische Mauerzelle anvisieren = innerste Schutzmauer auf
+    // unserer Seite. Sie zu zerstören öffnet die gegnerische Burg.
+    const src = slingAnchor(B);
+    const ex = enemy.c * CELL + CELL / 2, ey = enemy.r * CELL + CELL / 2;
+    const dx = src.x - ex, dy = src.y - ey;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const wall = WALL_OF[E];
+    let tx = ex + ux * CELL * 3, ty = ey + uy * CELL * 3; // Fallback vor der Burg
+    for (let d = CELL; d <= len; d += CELL * 0.5) {
+      const px = ex + ux * d, py = ey + uy * d;
+      const cr = Math.floor(py / CELL), cc = Math.floor(px / CELL);
+      if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) break;
+      if (g[cr][cc] === wall) { tx = px; ty = py; break; }
+    }
+    const jit = botDifficulty.current * 0.5; // kleine Streuung, trifft die Mauerzelle zuverlässig
+    fireMortar(B, tx + (Math.random() - 0.5) * jit * CELL, ty + (Math.random() - 0.5) * jit * CELL);
   }
   const botDifficulty = useRef(1.0); // Ziel-Streuung in Zellen (1.0 = fair)
-  function botTick() {
-    if (!botMode.current || online.current || bannerActive.current) return;
-    const B = 2;
+  function botActFor(B) {
     if (eliminated.current[B]) return;
     const g = grid.current, ter = terrain.current;
     if (!g || !ter) return;
@@ -4185,6 +4195,10 @@ window.FortressApp = function Fortress() {
     } else if (ph === "shoot") {
       botShoot(g, B);
     }
+  }
+  function botTick() {
+    if (!botMode.current || online.current || bannerActive.current) return;
+    botActFor(2);
   }
   useEffect(() => {
     if (screen !== "game" || !botMode.current || online.current) return;
@@ -5128,7 +5142,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.13.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.13.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

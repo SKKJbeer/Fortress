@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.13.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.13.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1429,3 +1429,27 @@ behebt die „kein Online-Gegner = Sackgasse"-Situation und dient als praktische
 
 #### Offen / nächster Schritt
 - Schwierigkeitsgrade (Easy/Normal/Hard) über `botDifficulty` + Tick-Tempo + Bau-Aggressivität.
+
+### v3.13.1 — Bot-Intelligenz-Fixes (verifiziert per Selbstspiel-Diagnose)
+
+Ein Selbstspiel-Test (zwei Bots gegeneinander, echte Geschwindigkeit) deckte zwei gravierende
+Schwächen des v3.13.0-Bots auf; beide behoben:
+
+- **Offensive war wirkungslos:** Der Bot zielte auf die Burg*mitte* — die Burg ist unzerstörbar
+  und der Mörser ist ein Bogenschuss, der über die Mauer hinweg auf der Burg landet → null Schaden,
+  nie ein Durchbruch. **Fix (`botShoot`):** marschiert von der gegnerischen Burg nach außen Richtung
+  eigener Kanonen und zielt auf die ERSTE gegnerische Mauerzelle = innerste Schutzmauer → ihre
+  Zerstörung öffnet die Burg. Streuung reduziert, damit die Leitkanone die Mauer zuverlässig trifft.
+- **Defensive baute nichts:** Die Offen-Erkennung in `botBuild` prüfte die Burgzellen selbst (die der
+  Flood-Fill nie markiert) → Burg galt immer als „geschlossen" → 0 Bausteine. Zusätzlich zwang der
+  „an-Mauer-angrenzend"-Filter die Teile direkt an Mauern zu zentrieren (Überlappung → Ablehnung).
+  **Fix:** Offen-Erkennung über `isCastleClosed`; Versiegelung füllt die der Burg nächsten
+  außen-erreichbaren Leerzellen (Chebyshev-Distanz für 8-Konnektivität) dort, wo das Teil passt,
+  bis zu 3 Teile/Tick → engt das Leck ein, bis die Burg wieder 8-dicht ist.
+
+**Diagnose-Ergebnis nach Fixes:** Im Selbstspiel durchbrechen sich beide Bots gegenseitig die Burg
+(Offensive ✓) UND versiegeln in der Bauphase wieder (Defensive ✓) — echtes Hin und Her statt
+Sofort-Unentschieden. Der Bot ist damit ein vollwertiger Übungsgegner.
+
+Offen: Schwierigkeitsgrade (der Bot ist aktuell recht stark — schnelle, fast perfekte Versiegelung
++ präzise Offensive); tunebar über `botDifficulty` (Streuung), Tick-Tempo und Teile/Tick.
