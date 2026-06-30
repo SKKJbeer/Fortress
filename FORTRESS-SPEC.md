@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.13.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.13.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1453,3 +1453,26 @@ Sofort-Unentschieden. Der Bot ist damit ein vollwertiger Übungsgegner.
 
 Offen: Schwierigkeitsgrade (der Bot ist aktuell recht stark — schnelle, fast perfekte Versiegelung
 + präzise Offensive); tunebar über `botDifficulty` (Streuung), Tick-Tempo und Teile/Tick.
+
+### v3.13.2 — Bot wächst & bleibt aktiv (kein „Aufhören nach dem Schießen")
+
+Spieler-Feedback: der Bot blieb bei 2 Kanonen stehen und wirkte nach der ersten Schussphase
+passiv. Ursache: er konnte im Kanonen-Setzschritt keinen Platz für eine 3. Kanone finden
+(Innenraum voll, nur eingemauerte Plätze gesucht) und baute bei geschlossener Burg nichts.
+
+- **Kanonen-Platzierung (`botPlaceOneCannon`)** jetzt zweistufig: Pass 0 sucht bereits
+  eingemauerte Plätze (sofort schussbereit); Pass 1 setzt die Kanone an die eigene Festung
+  angrenzend (wird in der Bauphase ummauert). → Der Bot setzt **jede Runde +1 Kanone** statt
+  bei 2 zu verharren.
+- **Bauphase (`botBuild`)** erledigt jetzt zwei Aufgaben über den gemeinsamen Helfer
+  `botFillNear` (füllt die einem Objekt nächsten außen-erreichbaren Leerzellen auf):
+  1. Burg versiegeln (Priorität), 2. **noch offene Kanonen einmauern** → sie werden schussbereit.
+  → Wachsende Feuerkraft, Bot ist in jeder Phase beschäftigt.
+- **Service-Worker-Cache** `fortress-v3.13.2` — erzwingt, dass wiederkehrende Spieler den neuen
+  Bot (inkl. v3.13.1-Ziel-Fix) bekommen statt der gecachten alten Version.
+
+**Selbstspiel-Diagnose bestätigt:** Kanonenzahl wächst 2→3→4, neu gesetzte Kanonen werden in der
+Bauphase eingemauert und schussbereit (ready 2→3→…), beide Bots durchbrechen & versiegeln —
+durchgehend aktives, wachsendes Spiel. 169/169 Tests grün.
+
+Offen weiterhin: Schwierigkeitsgrade (der Bot spielt stark/fast optimal).

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.13.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.13.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -4113,45 +4113,77 @@ window.FortressApp = function Fortress() {
   function botPlaceOneCannon(g, B) {
     const castle = castles.current[B];
     if (!castle) return false;
+    const ter = terrain.current;
     const oc = computeOutsideMapForCannons(g, B);
+    const wall = WALL_OF[B];
     const offs = [];
-    for (let dr = -8; dr <= 8; dr++) for (let dc = -8; dc <= 8; dc++) {
+    for (let dr = -11; dr <= 11; dr++) for (let dc = -11; dc <= 11; dc++) {
       if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) continue; // Burg nicht überbauen
       offs.push([dr, dc]);
     }
     offs.sort((a, b) => (Math.abs(a[0]) + Math.abs(a[1])) - (Math.abs(b[0]) + Math.abs(b[1])));
-    for (const [dr, dc] of offs) {
-      const r = castle.r + dr, c = castle.c + dc;
-      if (r < 2 || r >= ROWS - 2 || c < 2 || c >= COLS - 2) continue;
-      if (oc[r * COLS + c] !== 0) continue; // nur eingemauerte (innere) Plätze → schussbereit
-      const before = cannonBudget.current[B];
-      placeCannon(B, r, c);
-      if (cannonBudget.current[B] < before) return true;
+    // Pass 0: bereits eingemauerte Plätze (sofort schussbereit).
+    // Pass 1: an die eigene Festung angrenzende Plätze — werden in der Bauphase ummauert.
+    //         So wächst der Bot jede Runde um eine Kanone, statt bei 2 stehenzubleiben.
+    for (let pass = 0; pass < 2; pass++) {
+      for (const [dr, dc] of offs) {
+        const r = castle.r + dr, c = castle.c + dc;
+        if (r < 2 || r >= ROWS - 2 || c < 2 || c >= COLS - 2) continue;
+        let free = true;
+        for (let q = -1; q <= 1 && free; q++) for (let w = -1; w <= 1; w++) {
+          if (g[r + q][c + w] !== EMPTY || !isBuildable(ter, r + q, c + w, B)) { free = false; break; }
+        }
+        if (!free) continue;
+        if (pass === 0) {
+          if (oc[r * COLS + c] !== 0) continue;
+        } else {
+          let near = false;
+          for (let q = -2; q <= 2 && !near; q++) for (let w = -2; w <= 2; w++) {
+            const rr = r + q, cc = c + w;
+            if (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && g[rr][cc] === wall) { near = true; break; }
+          }
+          if (!near) continue;
+        }
+        const before = cannonBudget.current[B];
+        placeCannon(B, r, c);
+        if (cannonBudget.current[B] < before) return true;
+      }
     }
     return false;
   }
-  function botBuild(g, ter, B) {
-    const castle = castles.current[B];
-    if (!castle || isCastleClosed(g, B, castle)) return; // geschlossen → nichts zu tun
-    const outside = computeOutsideMap(g, B);
-    // Außen-erreichbare (geflutete) leere Zellen nahe der Burg solide auffüllen → engt
-    // das Leck ein, bis die Burg wieder 8-dicht ummauert ist. Anker dort, wo das Teil
-    // wirklich passt (nicht an Mauern zentrieren — sonst Überlappung → Ablehnung).
+  // Füllt die einem Objekt (Burg/Kanone) nächsten außen-erreichbaren Leerzellen solide auf,
+  // bis es 8-dicht ummauert ist. Anker dort, wo das Teil passt (nicht an Mauern zentrieren).
+  function botFillNear(g, ter, B, outside, obj, maxPlace) {
     const cands = [];
     for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
       if (!outside[r * COLS + c] || g[r][c] !== EMPTY || !isBuildable(ter, r, c, B)) continue;
-      cands.push({ r, c, d: Math.max(Math.abs(r - castle.r), Math.abs(c - castle.c)) });
+      cands.push({ r, c, d: Math.max(Math.abs(r - obj.r), Math.abs(c - obj.c)) });
     }
     cands.sort((a, b) => a.d - b.d);
     let placed = 0;
-    for (let i = 0; i < Math.min(cands.length, 30) && placed < 3; i++) {
+    for (let i = 0; i < Math.min(cands.length, 30) && placed < maxPlace; i++) {
       const { r, c } = cands[i];
       for (let rot = 0; rot < 4; rot++) {
         const gv = grid.current;
         placePiece(B, r, c);
-        if (grid.current !== gv) { placed++; break; } // platziert
+        if (grid.current !== gv) { placed++; break; }
         pieces.current[B].cells = rotateCW(pieces.current[B].cells);
       }
+    }
+    return placed > 0;
+  }
+  function botBuild(g, ter, B) {
+    const castle = castles.current[B];
+    // 1) Burg versiegeln (höchste Priorität)
+    if (castle && !isCastleClosed(g, B, castle)) {
+      if (botFillNear(g, ter, B, computeOutsideMap(g, B), castle, 3)) return;
+    }
+    // 2) Noch offene Kanonen einmauern → werden schussbereit (wachsende Feuerkraft,
+    //    Bot bleibt aktiv statt nach dem Schießen „aufzuhören").
+    const oc = computeOutsideMapForCannons(g, B);
+    const openCannons = (cannons.current[B] || []).filter((cn) => cn.hp > 0 && !isObjectClosed(oc, cn));
+    for (const cn of openCannons) {
+      if (botFillNear(g, ter, B, oc, cn, 3)) return;
     }
   }
   function botShoot(g, B) {
@@ -5142,7 +5174,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.13.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.13.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
