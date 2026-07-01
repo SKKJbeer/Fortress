@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1251,7 +1251,10 @@ const LANGS = {
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Tippe auf eine freie Fl\xE4che rund um deine Burg, um eine Kanone zu setzen (2\xD7).",
-    coachBuild: "Deine Burg hat eine L\xDCCKE! Tippe/ziehe Bausteine und schlie\xDFe sie RUNDUM — nur eine komplett umschlossene Burg ist sicher.",
+    coachBuild: "Tippe oder ziehe, um Bausteine zu setzen. Merke: Deine Burg muss immer RUNDUM geschlossen sein!",
+    coachBuildOpen: "Deine Burg hat ein LOCH! Schlie\xDFe die L\xFCcke RUNDUM mit Bausteinen — sonst ist sie ungesch\xFCtzt.",
+    coachShootOpen: "⚠ Der Bot hat ein Loch in deine Burg geschossen! Sie ist jetzt OFFEN — schlie\xDFe sie in der n\xE4chsten Bauphase.",
+    tutorialSealed: "✓ Stark! Burg wieder geschlossen.",
     tutorialCastleOpen: "⚠ Deine Burg war offen! Nur eine RUNDUM geschlossene Burg ist gesch\xFCtzt — schlie\xDFe jede L\xFCcke.",
     coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
     coachCannon: "Setze eine weitere Kanone dazu — mehr Kanonen = mehr Feuerkraft.",
@@ -1451,7 +1454,10 @@ const LANGS = {
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Tap a free spot around your castle to place a cannon (2\xD7).",
-    coachBuild: "Your castle has a GAP! Tap/drag pieces and close it ALL AROUND — only a fully enclosed castle is safe.",
+    coachBuild: "Tap or drag to place building blocks. Remember: your castle must always be fully enclosed!",
+    coachBuildOpen: "Your castle has a HOLE! Close the gap ALL AROUND with blocks — otherwise it's unprotected.",
+    coachShootOpen: "⚠ The bot blasted a hole in your castle! It's OPEN now — close it in the next build phase.",
+    tutorialSealed: "✓ Nice! Castle sealed again.",
     tutorialCastleOpen: "⚠ Your castle was open! Only a fully enclosed castle is protected — close every gap.",
     coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
     coachCannon: "Place another cannon — more cannons = more firepower.",
@@ -3778,15 +3784,6 @@ window.FortressApp = function Fortress() {
           if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = castleMark;
         }
     }
-    // Tutorial: eine Lücke in die Spieler-Burgmauer (P1) reißen → der Spieler muss
-    // selbst lernen, die Burg RUNDUM zu schließen (Kernregel des Spiels).
-    if (tutorialMode.current && !is3 && castles.current[1]) {
-      const c1 = castles.current[1];
-      const gr = c1.r - 3; // Oberkante des Start-Mauer-Rings
-      for (const gc of [c1.c - 1, c1.c, c1.c + 1]) {
-        if (gr >= 0 && gr < ROWS && gc >= 0 && gc < COLS && g[gr][gc] === WALL1) g[gr][gc] = EMPTY;
-      }
-    }
     if (is3) {
       terObj.sectorMap = buildSectorMap(terObj, castles.current);
     }
@@ -3945,11 +3942,6 @@ window.FortressApp = function Fortress() {
     }
     lastShot.current[player] = now;
     SFX.shoot();
-    // Tutorial: nach dem ersten eigenen Schuss als abgeschlossen anzeigen → kurz & knackig.
-    if (tutorialMode.current && player === 1 && !tutorialFired.current) {
-      tutorialFired.current = true;
-      setTimeout(() => setShowTutorialDone(true), 1800);
-    }
     ready.forEach((cn, index) => {
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
@@ -4128,6 +4120,13 @@ window.FortressApp = function Fortress() {
     setGrid(newG);
     pieces.current[player] = { cells: randomShape(), ghostR: gr, ghostC: gc };
     setUiTick((t) => t + 1);
+    // Tutorial: hat der Spieler (P1) das vom Bot geschossene Loch wieder geschlossen? → geschafft!
+    if (tutorialMode.current && player === 1 && tutorialBotShot.current && !tutorialDoneQueued.current &&
+        castles.current[1] && isCastleClosed(newG, 1, castles.current[1])) {
+      tutorialDoneQueued.current = true;
+      showWarn(t('tutorialSealed'));
+      setTimeout(() => setShowTutorialDone(true), 1500);
+    }
   }
   function placeCannon(player, gr, gc) {
     var _a2;
@@ -4175,8 +4174,9 @@ window.FortressApp = function Fortress() {
   // ── Bot / KI-Gegner (lokaler Einzelspieler-Modus) ──────────────────────────
   // Mensch = P1, KI = P2. Die KI nutzt dieselben Spielfunktionen wie ein Spieler.
   const botMode = useRef(false);
-  const tutorialMode = useRef(false); // geführtes erstes Spiel: passiver Bot + Coach-Hinweise
-  const tutorialFired = useRef(false);
+  const tutorialMode = useRef(false); // geführtes erstes Spiel: Bot schießt EIN Loch + Coach-Hinweise
+  const tutorialBotShot = useRef(false);   // Bot hat sein einmaliges Tutorial-Loch geschossen
+  const tutorialDoneQueued = useRef(false); // Abschluss (nach Wieder-Verschließen) bereits ausgelöst
   // Startet das interaktive Tutorial: lokales Spiel gegen einen passiven Bot mit
   // Coach-Anweisungen pro Phase. Markiert sofort als gesehen (kein erneuter Auto-Start).
   function startGuidedTutorial() {
@@ -4184,7 +4184,8 @@ window.FortressApp = function Fortress() {
     online.current = false;
     botMode.current = true;
     tutorialMode.current = true;
-    tutorialFired.current = false;
+    tutorialBotShot.current = false;
+    tutorialDoneQueued.current = false;
     setShowTutorialDone(false);
     numPlayersRef.current = 2;
     setNumPlayers(2);
@@ -4272,7 +4273,9 @@ window.FortressApp = function Fortress() {
     }
   }
   function botShoot(g, B) {
-    if (tutorialMode.current) return; // Tutorial: Bot schießt nicht → kein Druck beim Lernen
+    // Tutorial: der Bot schießt EIN Loch in die noch geschlossene Spielerburg (authentisch);
+    // sobald sie offen ist, bleibt er passiv → der Spieler muss die Lücke selbst schließen.
+    if (tutorialMode.current && (!castles.current[1] || !isCastleClosed(g, 1, castles.current[1]))) return;
     if (performance.now() - lastShot.current[B] < RELOAD_MS) return;
     const E = B === 1 ? 2 : 1;
     const enemy = castles.current[E];
@@ -4293,6 +4296,11 @@ window.FortressApp = function Fortress() {
       const cr = Math.floor(py / CELL), cc = Math.floor(px / CELL);
       if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) break;
       if (g[cr][cc] === wall) { tx = px; ty = py; break; }
+    }
+    if (tutorialMode.current) {
+      const ok = fireMortar(B, tx, ty); // exakt auf die Mauerzelle → garantiertes Loch
+      if (ok) tutorialBotShot.current = true;
+      return;
     }
     const jit = botDifficulty.current * 0.5; // kleine Streuung, trifft die Mauerzelle zuverlässig
     fireMortar(B, tx + (Math.random() - 0.5) * jit * CELL, ty + (Math.random() - 0.5) * jit * CELL);
@@ -5132,6 +5140,8 @@ window.FortressApp = function Fortress() {
     return res;
   })() : {};
   const buildUrgencyOpen = Object.keys(urgentPlayers).length > 0;
+  // Tutorial: ist die Spielerburg (P1) gerade offen (vom Bot aufgeschossen)? → Coach-Text/Key
+  const coachP1Open = tutorialMode.current && screen === "game" && !getFloodCache().castleClosed[1];
   // Schriftzug in der Spieler-Namensbox als Ergänzung zum pochenden Rand.
   const closeWarnSpan = (align) => /* @__PURE__ */ React.createElement("span", { style: {
     fontSize: 14, color: "#fee2e2", fontWeight: 900, letterSpacing: "0.02em",
@@ -5261,7 +5271,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6190,7 +6200,7 @@ window.FortressApp = function Fortress() {
   } }, warn), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", left: 8, right: 8, top: "calc(env(safe-area-inset-top, 0px) + 54px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
-    key: "coach_" + phase,
+    key: "coach_" + phase + (coachP1Open ? "_o" : ""),
     style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s" }
   },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 3 } },
@@ -6199,7 +6209,7 @@ window.FortressApp = function Fortress() {
       /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)" } }, phase === "setup" ? "1/4" : phase === "build" ? "2/4" : phase === "shoot" ? "3/4" : phase === "cannon" ? "4/4" : "✓")
     ),
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13.5, fontWeight: 700, color: "#fff", lineHeight: 1.42 } },
-      phase === "setup" ? t('coachSetup') : phase === "build" ? t('coachBuild') : phase === "shoot" ? t('coachShoot') : phase === "cannon" ? t('coachCannon') : t('coachDone')
+      phase === "setup" ? t('coachSetup') : phase === "build" ? (coachP1Open ? t('coachBuildOpen') : t('coachBuild')) : phase === "shoot" ? (coachP1Open ? t('coachShootOpen') : t('coachShoot')) : phase === "cannon" ? t('coachCannon') : t('coachDone')
     ),
     /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { pointerEvents: "auto", marginTop: 7, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.32)", color: "#fff", borderRadius: 8, padding: "5px 11px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, t('tutorialExit'))
   )), showTutorialDone && /* @__PURE__ */ React.createElement("div", {

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1535,3 +1535,22 @@ rundum geschlossen sein muss. Bisher startete die Burg schon geschlossen → kei
   sondern bekommt die Regel erklärt (`tutorialCastleOpen`-Warnung) → keine Sackgasse, aber die
   Lektion sitzt (zusätzlich zur bestehenden „ZUMAUERN!"-Dringlichkeitswarnung in den letzten 8s).
 - i18n: `tutorialCastleOpen` (de/en), `coachBuild` neu. 176 Tests grün. SW-Cache `fortress-v3.14.2`.
+
+### v3.14.3 — Tutorial: Bot schießt ein echtes Loch (authentische Umschließungs-Lektion)
+
+Ersetzt die vorgefertigte Lücke (v3.14.2) durch echtes Gameplay:
+
+- **Bot schießt ein Loch:** In der Schussphase feuert der Tutorial-Bot gezielt auf die innerste
+  Mauer der Spielerburg (exakter Treffer, keine Streuung) — solange, bis die Burg **offen** ist,
+  danach passiv. `botShoot` prüft `isCastleClosed(...,1)`; `tutorialBotShot` markiert den Durchbruch.
+- **Coach-Box reagiert:** Sobald die Burg offen ist, wechselt der Coach-Text (dynamisch über
+  `coachP1Open` = `!floodCache.castleClosed[1]`, Key enthält den Offen-Zustand → Neu-Animation):
+  Schussphase → „⚠ Der Bot hat ein Loch in deine Burg geschossen! … schließe sie in der nächsten
+  Bauphase" (`coachShootOpen`); Bauphase → „Deine Burg hat ein LOCH! Schließe die Lücke RUNDUM"
+  (`coachBuildOpen`).
+- **Abschluss beim Wieder-Verschließen:** `placePiece` erkennt, wenn P1 nach dem Durchbruch die Burg
+  wieder schließt (`tutorialBotShot` && `isCastleClosed`) → „✓ Stark! Burg wieder geschlossen"
+  (`tutorialSealed`) + Abschluss-Overlay. Der frühere „Ende nach erstem Schuss"-Trigger entfällt.
+- Vorgefertigte Start-Lücke aus `initGrid` wieder entfernt. Neue i18n: `coachBuildOpen`,
+  `coachShootOpen`, `tutorialSealed` (de/en); `coachBuild` = Übungstext. Per Screenshot verifiziert.
+  176 Tests grün. SW-Cache `fortress-v3.14.3`.
