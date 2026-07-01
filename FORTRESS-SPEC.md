@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1554,3 +1554,16 @@ Ersetzt die vorgefertigte Lücke (v3.14.2) durch echtes Gameplay:
 - Vorgefertigte Start-Lücke aus `initGrid` wieder entfernt. Neue i18n: `coachBuildOpen`,
   `coachShootOpen`, `tutorialSealed` (de/en); `coachBuild` = Übungstext. Per Screenshot verifiziert.
   176 Tests grün. SW-Cache `fortress-v3.14.3`.
+
+### v3.14.4 — „Wie spielt man?"-Menübutton entfernt
+
+Da das interaktive Tutorial (v3.14.x) jetzt den Einstieg übernimmt (Auto-Start beim Erststart +
+🎓-Button im Lokal-Menü), ist der dominante „Wie spielt man?"-Button im Hauptmenü überflüssig.
+
+- Button (rief `openTutorial` → statisches Onboarding-Modal) aus dem Hauptmenü entfernt → Menü
+  aufgeräumter, Sprach-/Sound-Reihe sitzt direkt über den Spiel-Buttons.
+- Das statische Onboarding-Modal zeigt sich weiterhin automatisch beim Erststart (danach interaktives
+  Tutorial). Es ist nur nicht mehr manuell über einen Menübutton aufrufbar; das interaktive Tutorial
+  ist die wiederholbare Anleitung.
+- Test: Onboarding-Suite um die „Re-Open/Überspringen via Menübutton"-Checks bereinigt (Button gibt es
+  nicht mehr); Auto-Anzeige + Navigation + Abschluss bleiben abgedeckt. 174 Tests grün. SW-Cache v3.14.4.

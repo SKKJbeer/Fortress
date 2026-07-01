@@ -1550,17 +1550,9 @@ async function suiteOnboarding(browser) {
     const flag = await page.evaluate(() => { try { return localStorage.getItem('fortress_onboarded'); } catch { return null; } });
     flag === '1' ? ok('fortress_onboarded=1 in localStorage gesetzt ✓') : fail('Onboarding-Flag nicht gesetzt');
 
-    // ── Re-Open via Menü-Button "Wie spielt man?" ─────────────
-    await jsClick(page, ['Wie spielt man', 'How to play']);
-    await page.waitForTimeout(250);
-    const reopened = await page.evaluate(() => /Willkommen bei FORTRESS|Welcome to FORTRESS/.test(document.body.innerText));
-    reopened ? ok('Tutorial via Menü-Button erneut öffenbar ✓') : fail('Tutorial-Menü-Button öffnet nicht');
-
-    // ── "Überspringen" schließt ───────────────────────────────
-    await jsClick(page, ['Überspringen', 'Skip']);
-    await page.waitForTimeout(200);
-    const skipped = await page.evaluate(() => !/Willkommen bei FORTRESS|Welcome to FORTRESS/.test(document.body.innerText));
-    skipped ? ok('"Überspringen" schließt das Tutorial ✓') : fail('Überspringen schließt nicht');
+    // Hinweis: Der frühere "Wie spielt man?"-Menübutton wurde entfernt (v3.14.4) —
+    // das interaktive Tutorial übernimmt jetzt den Einstieg; das statische Onboarding
+    // zeigt sich nur noch automatisch beim Erststart.
 
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Onboarding: Keine JS-Fehler ✓');
   } catch (e) {
