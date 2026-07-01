@@ -139,6 +139,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_daily` | `{ lastCollect: timestamp, streak: number, lastStreakDay: "YYYY-MM-DD" }` |
 | `fortress_onboarded` | `'1'` = Tutorial/Onboarding gesehen (seit v3.12.1). Fehlt der Key → `OnboardingModal` zeigt sich automatisch beim ersten Menüstart. |
 | `fortress_sound` | `'1'`/`'0'` = Sound-Effekte an/aus (seit v3.12.2, Default an). Steuert `SFX.enabled`. |
+| `fortress_ach_seen` | Anzahl der zuletzt gesehenen Achievements (seit v3.14.5). Button-Badge zeigt nur NEUE (unlocked − ach_seen), verschwindet beim Öffnen (`openAchievements`). |
 | `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 
 ### Neue Konstanten

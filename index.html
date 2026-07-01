@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2321,6 +2321,14 @@ window.FortressApp = function Fortress() {
   const blocksDestroyedThisGameRef = React.useRef(0);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  // Anzahl der Achievements, die der Spieler zuletzt gesehen hat (wie „gelesen"-Marker).
+  const [achSeenCount, setAchSeenCount] = useState(() => { try { return parseInt(localStorage.getItem('fortress_ach_seen') || '0', 10) || 0; } catch (e) { return 0; } });
+  function openAchievements() {
+    const u = Array.isArray(profile && profile.achievements) ? profile.achievements.filter((a) => a.unlocked).length : 0;
+    setAchSeenCount(u);
+    try { localStorage.setItem('fortress_ach_seen', String(u)); } catch (e) {}
+    setShowAchievements(true);
+  }
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
@@ -5142,6 +5150,9 @@ window.FortressApp = function Fortress() {
   const buildUrgencyOpen = Object.keys(urgentPlayers).length > 0;
   // Tutorial: ist die Spielerburg (P1) gerade offen (vom Bot aufgeschossen)? → Coach-Text/Key
   const coachP1Open = tutorialMode.current && screen === "game" && !getFloodCache().castleClosed[1];
+  // Achievements-„Ungelesen"-Zähler: nur NEUE (noch nicht gesehene) freigeschaltete Achievements.
+  const achUnlockedCount = Array.isArray(profile && profile.achievements) ? profile.achievements.filter((a) => a.unlocked).length : 0;
+  const achNew = Math.max(0, achUnlockedCount - achSeenCount);
   // Schriftzug in der Spieler-Namensbox als Ergänzung zum pochenden Rand.
   const closeWarnSpan = (align) => /* @__PURE__ */ React.createElement("span", { style: {
     fontSize: 14, color: "#fee2e2", fontWeight: 900, letterSpacing: "0.02em",
@@ -5194,14 +5205,14 @@ window.FortressApp = function Fortress() {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
     } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 })),
-    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowAchievements(true), title: "Achievements", style: {
-      background: (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.08)"; })(),
-      border: (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.15)"; })(),
-      color: (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? "#fbbf24" : "#cbd5e1"; })(),
+    /* @__PURE__ */ React.createElement("button", { onClick: openAchievements, title: "Achievements", style: {
+      background: achNew > 0 ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.08)",
+      border: achNew > 0 ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.15)",
+      color: achNew > 0 ? "#fbbf24" : "#cbd5e1",
       borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative"
     } },
       React.createElement(Icon, { name: "trophy", size: 16 }),
-      (() => { const achs = Array.isArray(profile && profile.achievements) ? profile.achievements : []; const u = achs.filter(a => a.unlocked).length; return u > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fbbf24", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, u) : null; })()
+      achNew > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fbbf24", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, achNew) : null
     )
   )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, soundOn ? "\u{1F50A}" : "\u{1F507}"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, hapticsOn ? "\u{1F4F3}" : "\u{1F4F4}")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
@@ -5255,7 +5266,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

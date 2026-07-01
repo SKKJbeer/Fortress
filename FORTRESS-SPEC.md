@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1567,3 +1567,16 @@ Da das interaktive Tutorial (v3.14.x) jetzt den Einstieg übernimmt (Auto-Start 
   ist die wiederholbare Anleitung.
 - Test: Onboarding-Suite um die „Re-Open/Überspringen via Menübutton"-Checks bereinigt (Button gibt es
   nicht mehr); Auto-Anzeige + Navigation + Abschluss bleiben abgedeckt. 174 Tests grün. SW-Cache v3.14.4.
+
+### v3.14.5 — Achievement-Badge als „Ungelesen"-Marker
+
+Die Zahl am Achievement-Button im Hauptmenü zeigte bisher immer die Gesamtzahl freigeschalteter
+Achievements. Jetzt verhält sie sich wie ungelesene Nachrichten:
+
+- **Nur NEUE anzeigen**: Badge = `freigeschaltet − zuletzt_gesehen` (`achNew`). Ist er 0, wird weder
+  Zahl noch die goldene Hervorhebung (Hintergrund/Rahmen) angezeigt.
+- **Beim Öffnen als gelesen markieren**: `openAchievements()` setzt `achSeenCount = unlocked` und
+  persistiert es in `localStorage['fortress_ach_seen']` → Badge verschwindet nach dem ersten Blick
+  ins Achievement-Menü und kommt erst bei der nächsten Freischaltung wieder.
+- Neue localStorage-Key `fortress_ach_seen`. Tests: Badge zeigt neue (3 retroaktive), wird nach dem
+  Öffnen als gelesen markiert und verschwindet. **177 Tests grün.** SW-Cache `fortress-v3.14.5`.

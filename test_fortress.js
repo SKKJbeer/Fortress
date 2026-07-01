@@ -1265,6 +1265,15 @@ async function suiteAchievements(browser) {
       ? ok('Achievement-Button in gleicher Spalte wie Profil-Button ✓')
       : fail('Achievement-Button nicht unter Profil-Button (Layoutfehler)');
 
+    // Ungelesen-Badge: Profil hat retroaktiv 3 freigeschaltete, noch nicht gesehen → Zahl sichtbar
+    const badgeBefore = await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('title') === 'Achievements');
+      if (!btn) return 0;
+      const badge = Array.from(btn.querySelectorAll('span')).find(s => /^\d+$/.test((s.textContent || '').trim()));
+      return badge ? Number(badge.textContent.trim()) : 0;
+    });
+    badgeBefore >= 1 ? ok(`Ungelesen-Badge zeigt neue Achievements (${badgeBefore}) ✓`) : fail('Ungelesen-Badge fehlt trotz neuer Achievements');
+
     // ── B) Modal öffnen ───────────────────────────────────────
     await page.evaluate(() => {
       const btn = Array.from(document.querySelectorAll('button'))
@@ -1325,6 +1334,16 @@ async function suiteAchievements(browser) {
         (d.textContent || '').includes('freigeschaltet'))
     );
     modalGone ? ok('Achievement-Modal: schließt sich via ✕ ✓') : fail('Achievement-Modal: schließt sich nicht');
+
+    // Nach dem Öffnen: als „gelesen" markiert → Ungelesen-Badge verschwindet
+    const seenSet = await page.evaluate(() => { try { return localStorage.getItem('fortress_ach_seen'); } catch { return null; } });
+    const badgeGone = await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('title') === 'Achievements');
+      if (!btn) return true;
+      return !Array.from(btn.querySelectorAll('span')).some(s => /^\d+$/.test((s.textContent || '').trim()));
+    });
+    (seenSet !== null && Number(seenSet) >= 1) ? ok('Achievements als gelesen markiert (fortress_ach_seen) ✓') : fail('fortress_ach_seen nicht gesetzt');
+    badgeGone ? ok('Ungelesen-Badge verschwindet nach dem Öffnen ✓') : fail('Ungelesen-Badge bleibt trotz Öffnen');
 
     // ── C) Retroaktive Freischaltung (v3.11.18) ───────────────
     // Profile hat wins:5, games:7, elo:1050 aber kein achievementsRetroApplied
