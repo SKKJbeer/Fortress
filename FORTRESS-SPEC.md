@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1520,3 +1520,18 @@ Lernen durch Tun statt nur Text-Slides.
   „de…" → Deutsch, sonst Englisch (statt immer Deutsch). Manuell weiter umschaltbar.
 - i18n: `tutorialDoneTitle/Text`, `tutorialToOnline`. Tests: `PROFILE_INIT` setzt `fortress_lang='de'`
   (Headless meldet en-US). **176 Tests grün.** SW-Cache `fortress-v3.14.1`.
+
+### v3.14.2 — Tutorial lehrt jetzt die Umschließungs-Regel (Spieler-Feedback)
+
+Rückmeldung: das Bauen ist im Tutorial WICHTIG — der Spieler muss verstehen, dass seine Burg
+rundum geschlossen sein muss. Bisher startete die Burg schon geschlossen → kein Lerneffekt.
+
+- **Lücke in der Spieler-Burg**: In `initGrid` wird im Tutorial (nur P1, 2-Spieler) eine 3-Zellen-
+  Lücke in den Start-Mauerring gerissen → die Burg ist offen und der Spieler muss sie in der
+  Bauphase selbst schließen (Kernregel durch Tun gelernt).
+- **Coach-Bautext angepasst**: „Deine Burg hat eine LÜCKE! … schließe sie RUNDUM — nur eine komplett
+  umschlossene Burg ist sicher."
+- **Forgiving im Tutorial**: Bleibt die Burg am Bauende offen, wird der Spieler NICHT eliminiert,
+  sondern bekommt die Regel erklärt (`tutorialCastleOpen`-Warnung) → keine Sackgasse, aber die
+  Lektion sitzt (zusätzlich zur bestehenden „ZUMAUERN!"-Dringlichkeitswarnung in den letzten 8s).
+- i18n: `tutorialCastleOpen` (de/en), `coachBuild` neu. 176 Tests grün. SW-Cache `fortress-v3.14.2`.

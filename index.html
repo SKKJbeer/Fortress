@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1251,7 +1251,8 @@ const LANGS = {
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Tippe auf eine freie Fl\xE4che rund um deine Burg, um eine Kanone zu setzen (2\xD7).",
-    coachBuild: "Mauere deine Burg L\xDCCKENLOS ein — tippe oder ziehe Teile. Ist sie am Bauende offen, verlierst du!",
+    coachBuild: "Deine Burg hat eine L\xDCCKE! Tippe/ziehe Bausteine und schlie\xDFe sie RUNDUM — nur eine komplett umschlossene Burg ist sicher.",
+    tutorialCastleOpen: "⚠ Deine Burg war offen! Nur eine RUNDUM geschlossene Burg ist gesch\xFCtzt — schlie\xDFe jede L\xFCcke.",
     coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
     coachCannon: "Setze eine weitere Kanone dazu — mehr Kanonen = mehr Feuerkraft.",
     coachDone: "🎉 Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
@@ -1450,7 +1451,8 @@ const LANGS = {
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Tap a free spot around your castle to place a cannon (2\xD7).",
-    coachBuild: "Wall in your castle COMPLETELY — tap or drag pieces. If it's open when build ends, you lose!",
+    coachBuild: "Your castle has a GAP! Tap/drag pieces and close it ALL AROUND — only a fully enclosed castle is safe.",
+    tutorialCastleOpen: "⚠ Your castle was open! Only a fully enclosed castle is protected — close every gap.",
     coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
     coachCannon: "Place another cannon — more cannons = more firepower.",
     coachDone: "🎉 Done! You now know all the basics. Keep playing to practise or end the tutorial.",
@@ -3776,6 +3778,15 @@ window.FortressApp = function Fortress() {
           if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = castleMark;
         }
     }
+    // Tutorial: eine Lücke in die Spieler-Burgmauer (P1) reißen → der Spieler muss
+    // selbst lernen, die Burg RUNDUM zu schließen (Kernregel des Spiels).
+    if (tutorialMode.current && !is3 && castles.current[1]) {
+      const c1 = castles.current[1];
+      const gr = c1.r - 3; // Oberkante des Start-Mauer-Rings
+      for (const gc of [c1.c - 1, c1.c, c1.c + 1]) {
+        if (gr >= 0 && gr < ROWS && gc >= 0 && gc < COLS && g[gr][gc] === WALL1) g[gr][gc] = EMPTY;
+      }
+    }
     if (is3) {
       terObj.sectorMap = buildSectorMap(terObj, castles.current);
     }
@@ -3786,7 +3797,12 @@ window.FortressApp = function Fortress() {
     const g = grid.current;
     const players = playersList();
     const activePlayers = players.filter((p) => !eliminated.current[p]);
-    const newlyOut = activePlayers.filter((p) => !isCastleClosed(g, p, castles.current[p]));
+    const newlyOut = activePlayers.filter((p) => {
+      const open = !isCastleClosed(g, p, castles.current[p]);
+      // Tutorial: den Spieler nicht eliminieren, sondern die Regel erklären (kein Sackgassen-Verlust).
+      if (open && tutorialMode.current && p === 1) { showWarn(t('tutorialCastleOpen')); return false; }
+      return open;
+    });
     for (const p of newlyOut) eliminated.current[p] = true;
     const stillIn = players.filter((p) => !eliminated.current[p]);
     if (stillIn.length <= 1) {
@@ -5245,7 +5261,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
