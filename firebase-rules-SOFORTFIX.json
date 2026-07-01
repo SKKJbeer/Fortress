@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "leaderboard": {
+      ".read": true,
+      "$playerId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['name','elo']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999"
+      }
+    },
+    "queue2": { ".read": true, ".write": true },
+    "queue3": { ".read": true, ".write": true },
+    "games": {
+      "ping": { ".read": true, ".write": true },
+      "$gameCode": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}

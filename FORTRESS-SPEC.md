@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.9)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1631,3 +1631,10 @@ Spieler-Feedback: der Bot wirkte willkürlich beim Bauen und traf beim Schießen
   Dauer-Patt. Fortress-Struktur im Screenshot klar rechteckig (Ring + eingemauerte Kanonen).
 
 178 Tests grün. SW-Cache `fortress-v3.14.8`.
+
+### v3.14.9 — Bauphase auf 15 Sekunden verkürzt
+- **`BUILD_TIME` von 25 → 15 Sekunden** gesenkt. Die Bau-/Schließphase ist jetzt straffer:
+  weniger Leerlauf, schnelleres Spieltempo pro Runde. Die Umschließungs-Prüfung (Flood-Fill am
+  Bauende) und die Dringlichkeits-Warnung (`≤8s`) bleiben unverändert wirksam.
+
+Tests grün. SW-Cache `fortress-v3.14.9`.
