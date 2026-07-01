@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1596,3 +1596,19 @@ das fühlte sich wie ein Neustart an. Neu: die Wochen bleiben, werden aber wertv
   aber jede neue Woche gibt mehr — Langzeit-Streaks werden spürbar belohnt (Deckel gegen Inflation).
 - Neue i18n: `dailyLoyalty` (de/en). Test: Streak 14 → Woche 3 → ×1.5-Badge + Gold 10×1.5=15 verifiziert.
   **178 Tests grün.** SW-Cache `fortress-v3.14.6`.
+
+### v3.14.7 — Tutorial: Kanonen-Umschließung lehren + Bot setzt +1 Kanone
+
+Spieler-Feedback zum Tutorial:
+
+- **Kanonen müssen umschlossen sein, um zu feuern** — jetzt im Coach erklärt:
+  - Setup: „Setze 2 Kanonen INNERHALB deiner Burgmauern … Nur von Mauern UMSCHLOSSENE Kanonen
+    können feuern!" (`coachSetup`)
+  - Kanonenphase: „Setze eine weitere Kanone und MAUERE SIE EIN — nur umschlossene Kanonen feuern."
+    (`coachCannon`)
+- **Bot setzt im Tutorial wieder seine +1 Kanone**: `botActFor` platziert Kanonen auch im Tutorial
+  in der Kanonenphase (nicht mehr ausgeschlossen). Sobald beide Spieler ihr Budget auf 0 haben,
+  springt die Kanonenphase vorzeitig weiter (`placeCannon`-Auto-Advance) → Tutorial läuft flotter.
+  Der Bot bleibt sonst passiv (feuert nur das eine Loch, mauert seine Extra-Kanone nicht ein).
+
+178 Tests grün. SW-Cache `fortress-v3.14.7`.

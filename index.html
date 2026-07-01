@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.7</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1250,14 +1250,14 @@ const LANGS = {
     vsBot: "\xDCbung gegen Bot",
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
-    coachSetup: "Tippe auf eine freie Fl\xE4che rund um deine Burg, um eine Kanone zu setzen (2\xD7).",
+    coachSetup: "Setze 2 Kanonen INNERHALB deiner Burgmauern (auf freie Fl\xE4chen tippen). Wichtig: Nur von Mauern UMSCHLOSSENE Kanonen k\xF6nnen feuern!",
     coachBuild: "Tippe oder ziehe, um Bausteine zu setzen. Merke: Deine Burg muss immer RUNDUM geschlossen sein!",
     coachBuildOpen: "Deine Burg hat ein LOCH! Schlie\xDFe die L\xFCcke RUNDUM mit Bausteinen — sonst ist sie ungesch\xFCtzt.",
     coachShootOpen: "⚠ Der Bot hat ein Loch in deine Burg geschossen! Sie ist jetzt OFFEN — schlie\xDFe sie in der n\xE4chsten Bauphase.",
     tutorialSealed: "✓ Stark! Burg wieder geschlossen.",
     tutorialCastleOpen: "⚠ Deine Burg war offen! Nur eine RUNDUM geschlossene Burg ist gesch\xFCtzt — schlie\xDFe jede L\xFCcke.",
     coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
-    coachCannon: "Setze eine weitere Kanone dazu — mehr Kanonen = mehr Feuerkraft.",
+    coachCannon: "Setze eine weitere Kanone und MAUERE SIE EIN — nur umschlossene Kanonen feuern. Mehr Kanonen = mehr Feuerkraft.",
     coachDone: "🎉 Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
     tutorialExit: "Tutorial beenden",
     tutorialDoneTitle: "🎉 Tutorial abgeschlossen!",
@@ -1454,14 +1454,14 @@ const LANGS = {
     vsBot: "Practice vs Bot",
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
-    coachSetup: "Tap a free spot around your castle to place a cannon (2\xD7).",
+    coachSetup: "Place 2 cannons INSIDE your castle walls (tap free spots). Important: only cannons ENCLOSED by walls can fire!",
     coachBuild: "Tap or drag to place building blocks. Remember: your castle must always be fully enclosed!",
     coachBuildOpen: "Your castle has a HOLE! Close the gap ALL AROUND with blocks — otherwise it's unprotected.",
     coachShootOpen: "⚠ The bot blasted a hole in your castle! It's OPEN now — close it in the next build phase.",
     tutorialSealed: "✓ Nice! Castle sealed again.",
     tutorialCastleOpen: "⚠ Your castle was open! Only a fully enclosed castle is protected — close every gap.",
     coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
-    coachCannon: "Place another cannon — more cannons = more firepower.",
+    coachCannon: "Place another cannon and WALL IT IN — only enclosed cannons fire. More cannons = more firepower.",
     coachDone: "🎉 Done! You now know all the basics. Keep playing to practise or end the tutorial.",
     tutorialExit: "End tutorial",
     tutorialDoneTitle: "🎉 Tutorial complete!",
@@ -4332,8 +4332,9 @@ window.FortressApp = function Fortress() {
     const g = grid.current, ter = terrain.current;
     if (!g || !ter) return;
     const ph = phase_r.current;
-    // Im Tutorial setzt der Bot nur seine 2 Start-Kanonen (kein Wachstum) → einfach & schnell.
-    if (ph === "setup" || (ph === "cannon" && !tutorialMode.current)) {
+    // Setup + Kanonenphase: Kanonen setzen. Auch im Tutorial — so ist das Budget beider
+    // Spieler schnell 0 und die Phase springt vorzeitig weiter (Tutorial läuft flotter).
+    if (ph === "setup" || ph === "cannon") {
       let guard = 0;
       while (cannonBudget.current[B] > 0 && guard++ < 4) {
         if (!botPlaceOneCannon(g, B)) break;
@@ -5279,7 +5280,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
