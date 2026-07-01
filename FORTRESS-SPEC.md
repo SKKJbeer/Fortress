@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.9)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.10)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1638,3 +1638,27 @@ Spieler-Feedback: der Bot wirkte willkürlich beim Bauen und traf beim Schießen
   Bauende) und die Dringlichkeits-Warnung (`≤8s`) bleiben unverändert wirksam.
 
 Tests grün. SW-Cache `fortress-v3.14.9`.
+
+### v3.14.10 — Online-Fix: onDisconnect-Auto-Löschen zerstörte Lobbys & Matchmaking
+**Regression aus v3.12.4 behoben.** Das serverseitige Auto-Löschen bei Verbindungsabbruch
+(`onDisconnect().remove()`) war gut gemeint (keine verwaisten Knoten), brach aber das
+Online-Spiel in der Praxis: Mobile Browser trennen die Firebase-Verbindung bereits beim
+kurzen App-Wechsel (Code per Messenger teilen, Bildschirm sperren, WLAN↔LTE).
+
+- **Host-Lobby überlebt jetzt Verbindungs-Blips**: Das `onDisconnectRemove('games/'+code)`
+  beim Erstellen (Code-Spiel UND Quick-Match) ist entfernt. Vorher: Host teilt den Code per
+  WhatsApp → Verbindung kurz weg → Server löscht das Spiel → Gast: „Spiel nicht gefunden".
+  Sauberes Verlassen löscht weiterhin explizit (`cleanupGame`); Gäste behalten ihre Watchdogs.
+- **Quick-Match-Ticket heilt sich selbst**: Nach einem Blip löschte der Server das Queue-Ticket;
+  der 2s-Heartbeat (`mmTick`) patchte danach nur noch `{hb}` und erzeugte einen status-losen
+  Stub, den niemand matchen konnte → „sucht ewig". Jetzt erkennt `mmTick` das fehlende/kaputte
+  Ticket, trägt das komplette Ticket neu ein (`mmMyTicket`-Ref) und registriert das
+  onDisconnect neu (onDisconnect-Operationen feuern nur einmal).
+- **Verwaiste Lobby-Hygiene beim Join**: Ein Spiel ohne State und älter als 2h gilt beim
+  Code-Join als verwaist → wird gelöscht und als „nicht gefunden" gemeldet.
+- **Diagnose-Klarstellung**: Die Firebase-Rules sind NICHT die Ursache — Live-Probes mit den
+  echten Datenformaten (Ticket mit `status`/`ts`, `guestAction2` als JSON-String) laufen alle
+  ohne Auth durch. Hinweis: Zwei Tabs im selben Browser matchen sich per Quick-Match absichtlich
+  nie (gleiche Profil-ID = Selbst-Match-Schutz); zum Testen zwei Geräte oder Code-Join nutzen.
+
+Tests grün. SW-Cache `fortress-v3.14.10`.

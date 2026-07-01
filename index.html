@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.9</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.10</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2633,6 +2633,7 @@ window.FortressApp = function Fortress() {
   const mmWatchdog = useRef(null);
   const mmCancelDisconnect = useRef(null);
   const mmQueueSnapshot = useRef({});
+  const mmMyTicket = useRef(null);
   const mmStartedAt = useRef(0);
   const mmBusy = useRef(false);
   const mmActive = useRef(false);
@@ -3284,9 +3285,12 @@ window.FortressApp = function Fortress() {
     mmPendingCandidates.current = {};
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
-    // H-A: Serverseitiges Auto-Löschen des Spielknotens falls der Host abbricht
-    // (Tab zu / Crash / Netz weg) — verhindert verwaiste Spiele in der DB.
-    try { gameDisconnectCancel.current = fb.onDisconnectRemove(`games/${code}`); } catch (e) {}
+    // KEIN onDisconnect-Auto-Löschen des Spielknotens mehr (v3.14.10):
+    // Mobile Browser trennen die Firebase-Verbindung schon beim kurzen App-Wechsel
+    // (z.B. Code per WhatsApp teilen) → der Server löschte das Spiel, der Gast fand
+    // den Code nicht mehr. Verwaiste Knoten sind das kleinere Übel; sauberes
+    // Verlassen löscht weiterhin explizit (cleanupGame), Gäste haben Watchdogs.
+    gameDisconnectCancel.current = null;
     setMpCode(code);
     setMpScreen("waiting");
     startPolling(code, 1);
@@ -3306,6 +3310,13 @@ window.FortressApp = function Fortress() {
     }
     const data = await fb.get(`games/${code}`);
     if (!data) {
+      setMpError(t('warnSpielNichtGefunden'));
+      return;
+    }
+    // Verwaiste Lobby: nie gestartet (kein State) und älter als 2h → Host ist weg.
+    // Beim Join-Versuch aufräumen und wie "nicht gefunden" behandeln (v3.14.10).
+    if (!data.state && Date.now() - (data.createdAt || 0) > 72e5) {
+      fb.delete(`games/${code}`);
       setMpError(t('warnSpielNichtGefunden'));
       return;
     }
@@ -3516,8 +3527,8 @@ window.FortressApp = function Fortress() {
       await releaseAll();
       return;
     }
-    // H-A: Auto-Löschen des Spielknotens bei Host-Disconnect (siehe hostCreateGame).
-    try { gameDisconnectCancel.current = fb.onDisconnectRemove(`games/${code}`); } catch (e) {}
+    // Kein onDisconnect-Auto-Löschen — Begründung siehe hostCreateGame (v3.14.10).
+    gameDisconnectCancel.current = null;
     // Rollen vergeben: Kandidaten bekommen Rolle 2, 3, …; ich selbst Rolle 1.
     const pendingPaths = {};
     let role = 2;
@@ -3586,7 +3597,20 @@ window.FortressApp = function Fortress() {
   }
   function mmTick() {
     if (!mmActive.current) return;
-    fb.patch(`${mmQueueName()}/${SESSION_ID}`, { hb: Date.now() });
+    const qn = mmQueueName();
+    const my = mmQueueSnapshot.current[SESSION_ID];
+    // Selbstheilung (v3.14.10): Nach einem kurzen Verbindungsabbruch hat der Server
+    // das Ticket per onDisconnect gelöscht. Ein blindes hb-Patch würde nur einen
+    // status-losen Stub erzeugen, den niemand matchen kann ("sucht ewig").
+    // Stattdessen: komplettes Ticket neu eintragen + onDisconnect neu scharfstellen
+    // (onDisconnect-Operationen feuern nur EINMAL und müssen re-registriert werden).
+    if ((!my || !my.status) && mmMyTicket.current) {
+      fb.set(`${qn}/${SESSION_ID}`, { ...mmMyTicket.current, hb: Date.now() });
+      if (mmCancelDisconnect.current) mmCancelDisconnect.current();
+      mmCancelDisconnect.current = fb.onDisconnectRemove(`${qn}/${SESSION_ID}`);
+      return;
+    }
+    fb.patch(`${qn}/${SESSION_ID}`, { hb: Date.now() });
     mmOnQueueUpdate();
   }
   function cancelMatchmaking() {
@@ -3628,6 +3652,7 @@ window.FortressApp = function Fortress() {
       setMpError("Konnte nicht in die Warteschlange eintragen: " + _fbError);
       return;
     }
+    mmMyTicket.current = ticket;
     mmStartedAt.current = now;
     mmQueueSnapshot.current = { [SESSION_ID]: ticket };
     mmActive.current = true;
@@ -5328,7 +5353,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.9")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.10")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
