@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.7</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.8</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -4278,18 +4278,49 @@ window.FortressApp = function Fortress() {
     }
     return placed > 0;
   }
+  // Baut die SOLL-Mauer als sauberes Rechteck (wie die Start-Mauer) wieder auf: füllt die
+  // Lücken exakt auf dem Mauer-Rand um obj (±hH Zeilen, ±hW Spalten) → sieht aus wie eine
+  // reparierte Mauer, nicht wie ein zufälliger Klotz.
+  function botRebuildRing(g, ter, B, obj, hH, hW, maxPlace) {
+    const gaps = [];
+    for (let dr = -hH; dr <= hH; dr++) for (let dc = -hW; dc <= hW; dc++) {
+      if (dr !== -hH && dr !== hH && dc !== -hW && dc !== hW) continue; // nur der Rand
+      const r = obj.r + dr, c = obj.c + dc;
+      if (r < 1 || r >= ROWS - 1 || c < 1 || c >= COLS - 1) continue;
+      if (g[r][c] === EMPTY && isBuildable(ter, r, c, B)) gaps.push({ r, c });
+    }
+    let placed = 0;
+    for (const gap of gaps) {
+      if (placed >= maxPlace) break;
+      if (grid.current[gap.r][gap.c] !== EMPTY) continue; // schon durch ein vorheriges Teil gefüllt
+      const anchors = [[gap.r, gap.c], [gap.r - 1, gap.c], [gap.r + 1, gap.c], [gap.r, gap.c - 1], [gap.r, gap.c + 1]];
+      for (const [ar, ac] of anchors) {
+        let done = false;
+        for (let rot = 0; rot < 4; rot++) {
+          const gv = grid.current;
+          placePiece(B, ar, ac);
+          if (grid.current !== gv) { placed++; done = true; break; }
+          pieces.current[B].cells = rotateCW(pieces.current[B].cells);
+        }
+        if (done) break;
+      }
+    }
+    return placed > 0;
+  }
   function botBuild(g, ter, B) {
     const castle = castles.current[B];
-    // 1) Burg versiegeln (höchste Priorität)
+    // 1) Burg-Schutzmauer als sauberen Ring wieder aufbauen (Priorität). Falls der Soll-Ring
+    //    gerade keine passende Lücke bietet, allgemeines Auffüllen als Fallback.
     if (castle && !isCastleClosed(g, B, castle)) {
+      if (botRebuildRing(g, ter, B, castle, 3, 6, 2)) return;
       if (botFillNear(g, ter, B, computeOutsideMap(g, B), castle, 2)) return;
     }
     if (tutorialMode.current) return; // Tutorial: nur Burg sichern, keine Kanonen-Ummauerung/Wachstum
-    // 2) Noch offene Kanonen einmauern → werden schussbereit (wachsende Feuerkraft,
-    //    Bot bleibt aktiv statt nach dem Schießen „aufzuhören").
+    // 2) Noch offene Kanonen mit engem Ring einmauern → werden schussbereit (wachsende Feuerkraft).
     const oc = computeOutsideMapForCannons(g, B);
     const openCannons = (cannons.current[B] || []).filter((cn) => cn.hp > 0 && !isObjectClosed(oc, cn));
     for (const cn of openCannons) {
+      if (botRebuildRing(g, ter, B, cn, 2, 2, 2)) return;
       if (botFillNear(g, ter, B, oc, cn, 2)) return;
     }
   }
@@ -4301,32 +4332,49 @@ window.FortressApp = function Fortress() {
     const E = B === 1 ? 2 : 1;
     const enemy = castles.current[E];
     if (!enemy) return;
-    // Mörser landet direkt am Zielpunkt (Bogenschuss) — NICHT auf die unzerstörbare
-    // Burgmitte zielen. Von der Burg nach außen Richtung eigener Kanonen marschieren
-    // und die ERSTE gegnerische Mauerzelle anvisieren = innerste Schutzmauer auf
-    // unserer Seite. Sie zu zerstören öffnet die gegnerische Burg.
-    const src = slingAnchor(B);
-    const ex = enemy.c * CELL + CELL / 2, ey = enemy.r * CELL + CELL / 2;
-    const dx = src.x - ex, dy = src.y - ey;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;
     const wall = WALL_OF[E];
-    let tx = ex + ux * CELL * 3, ty = ey + uy * CELL * 3; // Fallback vor der Burg
-    for (let d = CELL; d <= len; d += CELL * 0.5) {
-      const px = ex + ux * d, py = ey + uy * d;
-      const cr = Math.floor(py / CELL), cc = Math.floor(px / CELL);
-      if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) break;
-      if (g[cr][cc] === wall) { tx = px; ty = py; break; }
+    // Regelverständnis: Um die gegnerische Burg zu ÖFFNEN, müssen die sie umschließenden
+    // Mauern fallen. Sammle burgnahe gegnerische Mauerzellen (innerste = am wirksamsten).
+    const walls = [];
+    for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
+      if (g[r][c] !== wall) continue;
+      const d = Math.max(Math.abs(r - enemy.r), Math.abs(c - enemy.c));
+      if (d > 7) continue;
+      walls.push({ r, c, d });
+    }
+    let tx, ty;
+    if (walls.length) {
+      walls.sort((a, b) => a.d - b.d);
+      // Tutorial: die burgnächste Mauer (öffnet die Burg sicher).
+      // Sonst: rotierend über die innersten Mauern → das Feuer WANDERT die Schutzmauer
+      // entlang und trägt sie systematisch ab, statt immer dieselbe Stelle zu treffen.
+      const pool = walls.slice(0, Math.min(12, walls.length));
+      const pick = tutorialMode.current ? pool[0] : pool[botAimSeq.current % pool.length];
+      if (!tutorialMode.current) botAimSeq.current++;
+      tx = pick.c * CELL + CELL / 2; ty = pick.r * CELL + CELL / 2;
+    } else {
+      // Keine Schutzmauern mehr → gegnerische Kanonen ausschalten (Offensive brechen),
+      // sonst vor die (unzerstörbare) Burg.
+      const cann = (cannons.current[E] || []).filter((cn) => cn.hp > 0);
+      if (cann.length) {
+        const cn = cann[botAimSeq.current % cann.length]; botAimSeq.current++;
+        tx = cn.c * CELL + CELL / 2; ty = cn.r * CELL + CELL / 2;
+      } else {
+        const src = slingAnchor(B);
+        const dx = src.x - (enemy.c * CELL + CELL / 2), dy = src.y - (enemy.r * CELL + CELL / 2), L = Math.hypot(dx, dy) || 1;
+        tx = enemy.c * CELL + CELL / 2 + dx / L * CELL * 2.5; ty = enemy.r * CELL + CELL / 2 + dy / L * CELL * 2.5;
+      }
     }
     if (tutorialMode.current) {
       const ok = fireMortar(B, tx, ty); // exakt auf die Mauerzelle → garantiertes Loch
       if (ok) tutorialBotShot.current = true;
       return;
     }
-    const jit = botDifficulty.current * 0.5; // kleine Streuung, trifft die Mauerzelle zuverlässig
+    const jit = botDifficulty.current * 0.35; // kleine Streuung, trifft die Zielzelle zuverlässig
     fireMortar(B, tx + (Math.random() - 0.5) * jit * CELL, ty + (Math.random() - 0.5) * jit * CELL);
   }
   const botDifficulty = useRef(1.0); // Ziel-Streuung in Zellen (1.0 = fair)
+  const botAimSeq = useRef(0); // rotiert die Zielmauer, damit das Feuer nicht auf einer Stelle klebt
   function botActFor(B) {
     if (eliminated.current[B]) return;
     const g = grid.current, ter = terrain.current;
@@ -5280,7 +5328,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.7")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.8")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

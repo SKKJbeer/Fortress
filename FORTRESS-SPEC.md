@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1612,3 +1612,22 @@ Spieler-Feedback zum Tutorial:
   Der Bot bleibt sonst passiv (feuert nur das eine Loch, mauert seine Extra-Kanone nicht ein).
 
 178 Tests grün. SW-Cache `fortress-v3.14.7`.
+
+### v3.14.8 — Bot-Intelligenz: gezieltes Schießen + sauberes Mauer-Reparieren
+
+Spieler-Feedback: der Bot wirkte willkürlich beim Bauen und traf beim Schießen immer dieselbe Stelle.
+
+- **Schießen mit Regelverständnis (`botShoot`)**: sammelt burgnahe gegnerische Mauerzellen (innerste
+  Schutzmauern = am wirksamsten, um die Burg zu öffnen) und zielt **rotierend** (`botAimSeq`) über
+  die innersten ~12 → das Feuer WANDERT die Schutzmauer entlang und trägt sie systematisch ab, statt
+  eine Zelle zu hämmern. Sind keine Schutzmauern mehr da → gezielt auf die gegnerischen Kanonen
+  (Offensive brechen), sonst vor die Burg. Streuung reduziert (0.35).
+- **Bauen als saubere Mauer (`botRebuildRing` + `botBuild`)**: baut die SOLL-Mauer als Rechteck-Ring
+  wieder auf (füllt gezielt die Lücken auf dem Mauer-Rand um Burg bzw. Kanone, ±3/±6 bzw. ±2/±2) →
+  sieht aus wie eine reparierte Mauer statt eines zufälligen Klotzes. `botFillNear` bleibt als
+  Fallback, falls der Soll-Ring gerade keine passende Lücke bietet.
+- **Selbstspiel-Diagnose**: beide Bots tragen sich gegenseitig die Schutzmauern ab (verteilte
+  Bresche) und reparieren ihre Ringe — das Spiel endet jetzt **entscheidend** (Sieger) statt im
+  Dauer-Patt. Fortress-Struktur im Screenshot klar rechteckig (Ring + eingemauerte Kanonen).
+
+178 Tests grün. SW-Cache `fortress-v3.14.8`.
