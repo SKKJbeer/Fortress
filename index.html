@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1426,6 +1426,7 @@ const LANGS = {
     dailyCollected: "✓ Abgeholt",
     dailyNextIn: "N\xE4chste in {h}h {m}min",
     dailyChest: "Bonus-Kiste!",
+    dailyLoyalty: "Woche {w} · Treue-Bonus ×{m}",
     nextRewardAt: "N\xE4chster Avatar ab Level {n}",
     tutorialBtn: "Wie spielt man?",
     onbSkip: "\xDCberspringen",
@@ -1629,6 +1630,7 @@ const LANGS = {
     dailyCollected: "✓ Collected",
     dailyNextIn: "Next in {h}h {m}min",
     dailyChest: "Bonus Chest!",
+    dailyLoyalty: "Week {w} · Loyalty bonus ×{m}",
     nextRewardAt: "Next avatar from Level {n}",
     tutorialBtn: "How to play?",
     onbSkip: "Skip",
@@ -2013,11 +2015,21 @@ window.FortressApp = function Fortress() {
   function getDailyStreakIndex(daily) {
     return Math.min(((daily && daily.streak) || 0) % 7, 6);
   }
+  // Treue-Bonus: pro abgeschlossener 7-Tage-Woche +25% auf Gold/XP, gedeckelt bei ×3
+  // (nach 8 Wochen). Der 7-Tage-Kalender wiederholt sich, aber jede Woche wird wertvoller
+  // → kein „von-vorne"-Gefühl, sondern spürbare Belohnung für lange Streaks.
+  function dailyWeekMult(streak) {
+    return Math.min(1 + Math.floor(((streak || 0)) / 7) * 0.25, 3);
+  }
   function DailyRewardModal({ daily, onCollect, onClose, collected }) {
     const [collecting, setCollecting] = useState(false);
     const canCollect = getDailyCollectable(daily);
     const streakIdx = getDailyStreakIndex(daily);
-    const reward = DAILY_REWARDS[streakIdx];
+    const baseReward = DAILY_REWARDS[streakIdx];
+    const mult = dailyWeekMult(daily && daily.streak);
+    const week = Math.floor(((daily && daily.streak) || 0) / 7) + 1;
+    // Effektive Belohnung inkl. Treue-Bonus (Anzeige + Vergabe nutzen denselben Wert)
+    const reward = { gold: Math.round(baseReward.gold * mult), xp: Math.round((baseReward.xp || 0) * mult), special: baseReward.special };
     const msLeft = msTillMidnight();
     const hLeft = Math.floor(msLeft / 3600000);
     const mLeft = Math.floor((msLeft % 3600000) / 60000);
@@ -2038,7 +2050,7 @@ window.FortressApp = function Fortress() {
       } },
         React.createElement("div", { style: { fontSize: 8, color: "#64748b", marginBottom: 2 } }, "T" + (i + 1)),
         React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: isCurrent ? "#fbbf24" : isPast ? "#4ade80" : "#475569" } },
-          isPast ? "✓" : r.special === "chest" ? "★" : "+" + r.gold + "G"
+          isPast ? "✓" : r.special === "chest" ? "★" : "+" + Math.round(r.gold * mult) + "G"
         )
       );
     });
@@ -2059,7 +2071,8 @@ window.FortressApp = function Fortress() {
           React.createElement(Icon, { name: "zap", size: 28, color: "#fbbf24" })
         ),
         React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
-        React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+        React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: mult > 1 ? 6 : 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+        mult > 1 && React.createElement("div", { style: { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 14, background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.45)", color: "#fdba74", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", animation: "streakGlow 2s ease infinite" } }, "🔥 " + t('dailyLoyalty', { m: mult, w: week })),
         React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
         collected
           ? React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#4ade80", marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
@@ -5266,7 +5279,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

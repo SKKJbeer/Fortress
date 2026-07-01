@@ -995,7 +995,7 @@ async function suiteProgression(browser) {
   await page.addInitScript(`
     try {
       localStorage.setItem('fortress_daily', JSON.stringify({
-        lastCollect: 0, streak: 2, lastStreakDay: ''
+        lastCollect: 0, streak: 14, lastStreakDay: ''
       }));
     } catch(e) {}
   `);
@@ -1082,11 +1082,14 @@ async function suiteProgression(browser) {
       const hasCollect = Array.from(document.querySelectorAll('button')).some(b =>
         /Abholen/i.test(b.textContent || ''));
       const hasDailyTitle = /Tages.Belohnung|Daily Reward/i.test(t);
-      return { hasStreak, hasCollect, hasDailyTitle };
+      // Streak 14 → Woche 3 → Treue-Bonus ×1.5 sollte sichtbar sein
+      const hasLoyalty = /Treue-Bonus|Loyalty bonus/i.test(t) && /1\.5/.test(t);
+      return { hasStreak, hasCollect, hasDailyTitle, hasLoyalty };
     });
     modalOk.hasDailyTitle ? ok('Daily Modal: Titel sichtbar ✓') : fail('Daily Modal: Titel fehlt');
     modalOk.hasStreak     ? ok('Daily Modal: Streak-Kalender T1–T7 ✓') : fail('Daily Modal: Streak-Kalender fehlt');
     modalOk.hasCollect    ? ok('Daily Modal: "Abholen!"-Button ✓') : fail('Daily Modal: "Abholen!"-Button fehlt');
+    modalOk.hasLoyalty    ? ok('Daily Modal: Treue-Bonus ×1.5 (Woche 3) sichtbar ✓') : fail('Daily Modal: Treue-Bonus fehlt');
 
     // ── Belohnung abholen ─────────────────────────────────────
     const goldBefore = await page.evaluate(() => {

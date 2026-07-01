@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1580,3 +1580,19 @@ Achievements. Jetzt verhält sie sich wie ungelesene Nachrichten:
   ins Achievement-Menü und kommt erst bei der nächsten Freischaltung wieder.
 - Neue localStorage-Key `fortress_ach_seen`. Tests: Badge zeigt neue (3 retroaktive), wird nach dem
   Öffnen als gelesen markiert und verschwindet. **177 Tests grün.** SW-Cache `fortress-v3.14.5`.
+
+### v3.14.6 — Daily-Reward: Treue-Bonus statt „von-vorne"-Gefühl
+
+Bisher wiederholte sich der 7-Tage-Kalender nach Tag 7 mit denselben kleinen Belohnungen —
+das fühlte sich wie ein Neustart an. Neu: die Wochen bleiben, werden aber wertvoller.
+
+- **`dailyWeekMult(streak)`**: pro abgeschlossener 7-Tage-Woche +25 % auf Gold/XP, gedeckelt bei
+  **×3** (nach 8 Wochen / 56 Tagen). Der Streak-Zähler lief schon immer weiter — jetzt zahlt er sich
+  auch aus.
+- **DailyRewardModal**: zeigt die multiplizierten Werte im Kalender (T1–T7) und in der Abhol-Anzeige;
+  ab Woche 2 erscheint ein pulsierendes **„🔥 Woche {w} · Treue-Bonus ×{m}"**-Badge. Die effektive
+  Belohnung (`reward` inkl. Multiplikator) wird sowohl angezeigt als auch vergeben (kein Auseinanderlaufen).
+- Kein Neustart-Gefühl mehr: der 7-Tage-Aufbau (Tag 7 = Bonus-Kiste) bleibt als Wochen-Dopamin,
+  aber jede neue Woche gibt mehr — Langzeit-Streaks werden spürbar belohnt (Deckel gegen Inflation).
+- Neue i18n: `dailyLoyalty` (de/en). Test: Streak 14 → Woche 3 → ×1.5-Badge + Gold 10×1.5=15 verifiziert.
+  **178 Tests grün.** SW-Cache `fortress-v3.14.6`.
