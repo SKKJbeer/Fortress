@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.12</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.13</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3533,11 +3533,22 @@ window.FortressApp = function Fortress() {
         return; // kein Match
       }
     }
+    // Schritt 0 (v3.14.13): EIGENES Ticket zuerst atomar auf 'claiming' setzen.
+    // Schließt die Race "gleichzeitig claimen & geclaimt werden" bei Snapshot-
+    // Versatz: sobald wir nicht mehr 'waiting' sind, kann uns niemand claimen —
+    // und wurden wir bereits geclaimt, brechen wir ab und folgen dem Match.
+    const selfRes = await fb.transact(`${qn}/${SESSION_ID}`, (cur) => {
+      if (!cur || cur.status !== "waiting") return;
+      return { ...cur, status: "claiming", claimBy: SESSION_ID, claimTs };
+    });
+    if (!selfRes.committed) return;
+    const releaseSelf = () => fb.patch(`${qn}/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null });
     const claimed = [];
     const releaseAll = async () => {
       for (const rid of claimed) {
         await fb.patch(`${qn}/${rid}`, { status: "waiting", claimBy: null, claimTs: null });
       }
+      await releaseSelf();
     };
     // Alle (np-1) Kandidaten nacheinander atomar claimen. Schlägt einer fehl
     // (jemand anderes war schneller), werden die bereits geclaimten freigegeben.
@@ -3583,34 +3594,57 @@ window.FortressApp = function Fortress() {
     const my = data[SESSION_ID];
     if (!my || my.status !== "waiting") return;
     const np = mmNp.current;
-    const need = np - 1;
     const qn = mmQueueName();
     const now = Date.now();
-    const myRad = mmRadius((now - my.ts) / 1e3);
-    const cands = [];
+    // ── Deterministisches globales Pairing (v3.14.13) ──────────────────────
+    // ALLE Clients berechnen aus demselben Queue-Snapshot dieselbe Gruppen-
+    // Zuteilung: ELO-sortierte Liste, gierig benachbarte 2er-/3er-Gruppen,
+    // pro Gruppe claimt GENAU der Client mit der kleinsten Session-ID.
+    // Das alte Verfahren (jeder wählt seinen ELO-nächsten Wunschgegner und
+    // claimt nur bei kleinerer eigener ID) bildete ab ~15 Wartenden
+    // Präferenz-Ketten ohne zuständigen Claimer → Livelock, niemand matchte.
+    const wait = [];
     for (const [id, tk] of Object.entries(data)) {
-      if (id === SESSION_ID || !tk) continue;
-      if (my.pid && tk.pid && tk.pid === my.pid) continue; // selber Spieler, gleicher Browser (gleiche localStorage-ID)
-      if (tk.dev && tk.dev === DEVICE_ID) continue; // selbes Gerät (auch nach Reload / ohne Profil) — nie selbst matchen
-      if (tk.status !== "waiting") continue;
-      if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
-        fb.delete(`${qn}/${id}`);
-        continue;
+      if (!tk || tk.status !== "waiting") continue;
+      if (id !== SESSION_ID) {
+        if (my.pid && tk.pid && tk.pid === my.pid) continue; // selber Spieler (gleiche Profil-ID)
+        if (tk.dev && tk.dev === DEVICE_ID) continue; // selbes Gerät — nie selbst matchen
+        if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
+          fb.delete(`${qn}/${id}`);
+          continue;
+        }
       }
-      const allowedRad = Math.max(myRad, mmRadius((now - tk.ts) / 1e3));
-      const diff = Math.abs(my.elo - tk.elo);
-      if (diff <= allowedRad) cands.push({ id, diff });
+      wait.push({ id, elo: typeof tk.elo === "number" ? tk.elo : 1e3, ts: tk.ts || now });
     }
-    if (cands.length < need) return;
-    // Die (np-1) nächstgelegenen Kandidaten (kleinste ELO-Differenz) wählen.
-    cands.sort((a, b) => a.diff - b.diff);
-    const chosen = cands.slice(0, need).map((c) => c.id);
-    // Nur die Seite mit der lexikographisch kleinsten SESSION_ID innerhalb der
-    // gewählten Gruppe darf claimen (= genau ein Host pro kompatibler Gruppe).
-    // Sonst würden mehrere Seiten gleichzeitig dieselben Kandidaten claimen.
-    for (const cid of chosen) {
-      if (SESSION_ID > cid) return;
+    if (wait.length < np) return;
+    // Deterministische Totalordnung: ELO, dann Session-ID (Tie-Break).
+    wait.sort((a, b) => a.elo - b.elo || (a.id < b.id ? -1 : 1));
+    const radOk = (a, b) => Math.abs(a.elo - b.elo) <= Math.max(mmRadius((now - a.ts) / 1e3), mmRadius((now - b.ts) / 1e3));
+    // Gierige Gruppenbildung über die sortierte Liste — identisch auf allen Clients.
+    let group = null;
+    let i = 0;
+    while (i + np <= wait.length) {
+      const g = wait.slice(i, i + np);
+      let okG = true;
+      for (let a = 0; a < g.length && okG; a++) {
+        for (let b = a + 1; b < g.length; b++) {
+          if (!radOk(g[a], g[b])) { okG = false; break; }
+        }
+      }
+      if (okG) {
+        if (g.some((x) => x.id === SESSION_ID)) { group = g; break; }
+        i += np; // fertige Gruppe anderer Spieler überspringen
+      } else {
+        i += 1;
+      }
     }
+    if (typeof window !== "undefined" && window.__mmDebug) window.__mmDbg = { sid: SESSION_ID.slice(0, 6), n: wait.length, sorted: wait.map((x) => x.id.slice(0, 6) + ":" + x.elo), group: group && group.map((x) => x.id.slice(0, 6)), t: Date.now() };
+    if (!group) return;
+    // Genau EIN Claimer pro Gruppe: die kleinste Session-ID (wird Host).
+    const claimer = group.reduce((m, x) => x.id < m.id ? x : m, group[0]);
+    if (typeof window !== "undefined" && window.__mmDebug) window.__mmDbg.claimer = claimer.id.slice(0, 6);
+    if (claimer.id !== SESSION_ID) return; // der zuständige Partner claimt mich
+    const chosen = group.filter((x) => x.id !== SESSION_ID).map((x) => x.id);
     mmBusy.current = true;
     try {
       await mmClaimAndMatch(chosen);
@@ -3634,6 +3668,7 @@ window.FortressApp = function Fortress() {
     mmTryFindMatch();
   }
   function mmTick() {
+    if (typeof window !== "undefined" && window.__mmDebug) window.__mmTicks = (window.__mmTicks || 0) + 1;
     if (!mmActive.current) return;
     const qn = mmQueueName();
     const my = mmQueueSnapshot.current[SESSION_ID];
@@ -3727,6 +3762,10 @@ window.FortressApp = function Fortress() {
       mmQueueSnapshot.current = data || {};
       mmOnQueueUpdate();
     });
+    if (mmTickTimer.current) clearInterval(mmTickTimer.current);
+    // Direkt vor Neuanlage räumen: zwei parallele startMatchmaking-Aufrufe
+    // (Doppelklick / Rejoin nach fehlgeschlagenem Reserve) dürfen nie zwei
+    // mmTick-Intervalle hinterlassen (v3.14.13).
     if (mmTickTimer.current) clearInterval(mmTickTimer.current);
     mmTickTimer.current = setInterval(mmTick, MM_TICK_MS);
     // Eigener 1-Sekunden-Ticker nur für die Anzeige (Wartezeit + Radius),
@@ -5403,7 +5442,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.12")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.13")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

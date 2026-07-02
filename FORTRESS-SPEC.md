@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.12)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.13)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1722,3 +1722,38 @@ Gegner — mit ELO-Differenz 0 sogar als BESTER Kandidat.
   Zombie-Tickets), Alt-Ticket-Bereinigung beim Queue-Beitritt.
 
 Tests grün. SW-Cache `fortress-v3.14.12`.
+
+### v3.14.13 — Matchmaking skaliert: deterministisches globales Pairing
+**Frage „funktioniert die Queue auch mit 10/50/100 Spielern?" → Nein, tat sie nicht.**
+Schwarm-Test (20 simulierte Clients) deckte einen Livelock auf: Im alten Verfahren
+wählte jeder Client seinen ELO-nächsten Wunschgegner und claimte nur, wenn seine
+eigene Session-ID kleiner war als die ALLER Gewählten — sonst wartete er darauf,
+selbst geclaimt zu werden. Der Wunschgegner bevorzugt aber oft einen Dritten: ab
+~15 Wartenden entstehen Präferenz-Ketten, in denen NIEMAND claimen darf →
+Stillstand (reproduzierbar: nur 8/20 gematcht, 12 Tickets für immer in der Queue).
+
+**Neues Verfahren (serverlos, Spark-kompatibel):**
+- Alle Clients berechnen aus demselben Queue-Snapshot dieselbe Zuteilung:
+  Warteliste deterministisch sortiert (ELO, dann Session-ID als Tie-Break),
+  gierige Bildung benachbarter 2er-/3er-Gruppen (paarweise im ELO-Radius,
+  der mit der Wartezeit wächst — `ts` aus dem Ticket, für alle sichtbar).
+- Pro Gruppe claimt GENAU der Client mit der kleinsten Session-ID (wird Host);
+  alle anderen warten passiv auf ihren `matched`-Status. Kein Wunsch-Voting,
+  keine Ketten, garantierter Fortschritt.
+- Claim-Ablauf gehärtet: Der Claimer setzt ZUERST sein EIGENES Ticket atomar
+  auf `claiming` (Transaktion). Damit ist die Race „gleichzeitig claimen und
+  geclaimt werden" (Snapshot-Versatz) geschlossen: Wer nicht mehr `waiting`
+  ist, kann nicht geclaimt werden; wer schon geclaimt wurde, bricht ab und
+  folgt dem Match. Alle Fehlerpfade geben Kandidaten UND eigenes Ticket frei.
+- `startMatchmaking` räumt direkt vor der Timer-Neuanlage auf (nie zwei
+  parallele mmTick-Intervalle nach Doppelklick/Rejoin).
+- Debug-Fenster `window.__mmDebug`/`__mmDbg` (opt-in, kostenlos wenn aus) für
+  künftige Matchmaking-Diagnosen.
+
+**Empirisch validiert** (Schwarm-Diagnose, Mock-Firebase, Echtzeit-Ticks):
+20/20 Clients gematcht in 6,5s (10 Spiele), 40 Clients → 20 Spiele, Queue leer.
+Skalierungsgrenzen jetzt extern: Spark-Plan erlaubt 100 simultane Verbindungen
+(hartes Limit, inkl. laufender Spiele) — genug für die aktuelle Phase; darüber
+wäre der Monetarisierungs-/Blaze-Moment (siehe Kostenpolitik).
+
+Tests grün. SW-Cache `fortress-v3.14.13`.
