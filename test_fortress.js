@@ -748,10 +748,13 @@ function makeFbMock(port) {
 }
 
 // Browser-Kontext mit Firebase-Mock (für Online-Tests)
-async function makeOnlineCtx(browser, fbPort) {
+async function makeOnlineCtx(browser, fbPort, extraInit) {
   const ctx  = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await ctx.newPage();
   await page.addInitScript(PROFILE_INIT);
+  // extraInit läuft NACH PROFILE_INIT → kann Profil/Device-ID pro Client
+  // überschreiben (Matchmaking-Tests brauchen unterschiedliche Identitäten).
+  if (extraInit) await page.addInitScript(extraInit);
   await page.addInitScript(TIMER_SPEEDUP);
   await page.addInitScript(makeFbMock(fbPort));
   await page.route('**unpkg.com**react@18**react.production.min.js**',
@@ -980,6 +983,132 @@ async function suiteOnline2P(browser, fbPort) {
     await ctxG.close();
   }
   return { res, errs: [...errs1, ...errs2] };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 5b: Matchmaking (Quick Match) — Match, Ranked-Result,
+// Runde 2 (Geister-Listener-Regression), Queue-Hygiene, Selbst-Match-Schutz
+// ═══════════════════════════════════════════════════════════════
+function mmIdentInit(name, pid, dev) {
+  return `try {
+    const p = JSON.parse(localStorage.getItem('fortress_profile'));
+    p.id = '${pid}'; p.name = '${name}';
+    localStorage.setItem('fortress_profile', JSON.stringify(p));
+    localStorage.setItem('fortress_device_id', '${dev}');
+  } catch(e){}`;
+}
+async function mmQuitToMenu(p) {
+  // Beenden-Button → Bestätigung → ggf. Ergebnis/Warnung → Hauptmenü
+  await p.evaluate(() => {
+    for (const b of document.querySelectorAll('button')) {
+      if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
+    }
+  });
+  await p.waitForTimeout(250);
+  await jsClick(p, ['Ja', 'Beenden', 'verlassen']);
+  await p.waitForTimeout(500);
+  await jsClick(p, ['Hauptmenü']);
+  await p.waitForTimeout(400);
+}
+async function suiteMatchmaking(browser, fbPort) {
+  const res = [], errsA = [], errsB = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Matchmaking (Quick Match)\n' + '='.repeat(50));
+
+  const { ctx: ctxA, page: pA } = await makeOnlineCtx(browser, fbPort, mmIdentInit('MMAnna', 'p_mm_a', 'd_mm_a'));
+  const { ctx: ctxB, page: pB } = await makeOnlineCtx(browser, fbPort, mmIdentInit('MMBert', 'p_mm_b', 'd_mm_b'));
+  pA.on('pageerror', e => { if (!/firebase/i.test(e.message)) errsA.push(e.message); });
+  pB.on('pageerror', e => { if (!/firebase/i.test(e.message)) errsB.push(e.message); });
+
+  const startMM = async (p) => {
+    await jsClick(p, ['ONLINE']);
+    await p.waitForTimeout(200);
+    await jsClick(p, ['Matchmaking']);
+    await p.waitForTimeout(150);
+  };
+  const inGame = (p, t) => p.waitForSelector('canvas', { timeout: t }).then(() => true).catch(() => false);
+
+  try {
+    await Promise.all([loadMenu(pA), loadMenu(pB)]);
+
+    // ── Match 1: beide finden sich über die Queue ─────────────
+    await startMM(pA);
+    await startMM(pB);
+    const [m1a, m1b] = await Promise.all([inGame(pA, 15000), inGame(pB, 15000)]);
+    m1a && m1b ? ok('Quick Match: beide Clients im Spiel ✓')
+               : fail(`Quick Match: A=${m1a} B=${m1b}`);
+    if (!m1a || !m1b) return { res, errs: [...errsA, ...errsB] };
+
+    // ── Ranked-Result: A gibt auf → B sieht Ergebnis ohne Rematch ──
+    await pA.waitForTimeout(1200);
+    await pA.evaluate(() => {
+      for (const b of document.querySelectorAll('button')) {
+        if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
+      }
+    });
+    await pA.waitForTimeout(250);
+    await jsClick(pA, ['Ja', 'Beenden', 'verlassen']);
+    await pB.waitForTimeout(2500);
+    const bRes = await pB.evaluate(() => {
+      const t = document.body.innerText;
+      return { menu: /Hauptmenü/.test(t), rematch: /Nächste Runde|Neue Karte/.test(t), hint: /neue Gegner|Matchmaking im Menü/.test(t) };
+    });
+    bRes.menu    ? ok('Ranked-Result: Hauptmenü-Button vorhanden ✓') : fail('Ranked-Result: Hauptmenü-Button fehlt');
+    !bRes.rematch ? ok('Ranked-Result: keine Rematch-Buttons ✓')     : fail('Ranked-Result: Rematch-Buttons sichtbar');
+    bRes.hint    ? ok('Ranked-Result: Matchmaking-Hinweis ✓')        : fail('Ranked-Result: Hinweis fehlt');
+
+    // Beide zurück ins Menü
+    await jsClick(pB, ['Hauptmenü']);
+    await jsClick(pA, ['Hauptmenü']);
+    await pA.waitForTimeout(500); await pB.waitForTimeout(300);
+
+    // ── Match 2 (Regression: Geister-Listener / Queue-Hygiene) ──
+    await startMM(pA);
+    await startMM(pB);
+    const [m2a, m2b] = await Promise.all([inGame(pA, 15000), inGame(pB, 15000)]);
+    m2a && m2b ? ok('Quick Match Runde 2: beide wieder im Spiel ✓')
+               : fail(`Quick Match Runde 2: A=${m2a} B=${m2b}`);
+
+    // Aufräumen + Queue-Hygiene prüfen
+    await mmQuitToMenu(pA);
+    await pB.waitForTimeout(1500);
+    await mmQuitToMenu(pB);
+    await pA.waitForTimeout(800);
+    const queue = await pA.evaluate(async (port) => {
+      try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=queue2')).json(); } catch (e) { return 'ERR'; }
+    }, fbPort);
+    const qCount = queue && queue !== 'ERR' ? Object.keys(queue).length : 0;
+    qCount === 0 ? ok('Queue nach Matches leer (keine Ticket-Leichen) ✓')
+                 : fail(`Queue nicht leer: ${qCount} Ticket(s) übrig`);
+
+    // ── Selbst-Match-Schutz: gleiche Geräte-ID darf NIE matchen ──
+    const { ctx: ctxC, page: pC } = await makeOnlineCtx(browser, fbPort, mmIdentInit('MMCarl', 'p_mm_c1', 'd_mm_same'));
+    const { ctx: ctxD, page: pD } = await makeOnlineCtx(browser, fbPort, mmIdentInit('MMCarlAlt', 'p_mm_c2', 'd_mm_same'));
+    try {
+      await Promise.all([loadMenu(pC), loadMenu(pD)]);
+      await startMM(pC);
+      await startMM(pD);
+      const selfMatched = await inGame(pC, 6000);
+      !selfMatched ? ok('Selbst-Match-Schutz: gleiches Gerät matcht nie ✓')
+                   : fail('Selbst-Match-Schutz VERLETZT: gleiches Gerät gematcht!');
+      // Suche sauber abbrechen (Tickets löschen)
+      await jsClick(pC, ['Abbrechen', 'abbrechen', 'Zurück']);
+      await jsClick(pD, ['Abbrechen', 'abbrechen', 'Zurück']);
+      await pC.waitForTimeout(400);
+    } finally {
+      await ctxC.close();
+      await ctxD.close();
+    }
+
+    // ── JS-Fehler ─────────────────────────────────────────────
+    errsA.length === 0 ? ok('MM Client A: Keine JS-Fehler ✓') : errsA.forEach(e => fail(`MM A JS: ${e.slice(0,80)}`));
+    errsB.length === 0 ? ok('MM Client B: Keine JS-Fehler ✓') : errsB.forEach(e => fail(`MM B JS: ${e.slice(0,80)}`));
+  } finally {
+    await ctxA.close();
+    await ctxB.close();
+  }
+  return { res, errs: [...errsA, ...errsB] };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1813,7 +1942,7 @@ async function suiteTutorial(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rMM, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1821,6 +1950,7 @@ async function suiteTutorial(browser) {
     suiteQuitUX(browser),
     suiteOnlineUI(browser, FB_PORT),
     suiteOnline2P(browser, FB_PORT),
+    suiteMatchmaking(browser, FB_PORT),
     suiteProgression(browser),
     suiteAchievements(browser),
     suiteBuildUrgency(browser),
@@ -1835,9 +1965,9 @@ async function suiteTutorial(browser) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

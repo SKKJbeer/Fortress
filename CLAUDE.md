@@ -301,6 +301,7 @@ node test_fortress.js
 - Firebase/gstatic werden abgeblockt
 - Alle Button-Clicks via `page.evaluate(() => btn.click())` — Overlay-Workaround
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)
+- **Online immer mitgetestet**: Code-Join (Host+Gast, Phasen-Sync, Gast-Timer, Aktionen) UND Matchmaking-Suite (`suiteMatchmaking`, seit v3.14.15): Quick Match ×2 hintereinander (Geister-Listener-Regression), Ranked-Result ohne Rematch-Buttons, Queue-Leere nach Matches (Ticket-Leichen), Selbst-Match-Schutz (gleiche `DEVICE_ID` via `mmIdentInit`-Override in `makeOnlineCtx(browser, fbPort, extraInit)`)
 - **Regel: Kein Commit ohne grünen Test**
 
 ---
