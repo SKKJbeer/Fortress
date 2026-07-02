@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1869,3 +1869,27 @@ Schimmer-Animation), Berge und Ambient-Partikel:
 - Visuell verifiziert: Screenshots aller 7 Welten (Seed-Erzwingung).
 
 Tests grün. SW-Cache `fortress-v3.15.0`.
+
+### v3.15.1 — Design-Overhaul der Welten (moderner Game-Art-Look)
+Kompletter visueller Umbau des Terrain-Renderers im Stil moderner Mobile-Games:
+
+- **Organischer Fluss (Metaball-Look)**: 4-Pass-Rendering — Uferband
+  (Theme-Farbe `bank`), Wasserkörper mit Glow, durchgängiges helles
+  Strömungsband (Kreisradius > halber Zellabstand → verschmilzt), elliptische
+  Glanzlichter an der Oberkante. Keine Pixel-Kacheln mehr.
+- **Gemalter Boden**: 12 große weiche Farbinseln (Radial-Verläufe) + hash-
+  gestreute weiche Bodenflecken (Farbe → transparent, Positions-Jitter) —
+  kein Raster-/Bubble-Muster.
+- **Plastische Berge**: weicher Bodenschatten (Ellipse), Licht-/Schatten-
+  Facetten (Licht von links oben), Kantenlicht, Gipfelkappe.
+- **Thematische Deko-Props** (~34 pro Karte, seeded via eigenem Deko-RNG →
+  auf allen Clients identisch): Bäume/Büsche (Frostreich, Nebelmoor,
+  Herbstwald), Kristalle/Scherben (Kristalltal, Vulkanschlund, Astralebene),
+  Kakteen (Glutwüste) — jeweils mit Bodenschatten, Licht-/Schattenseite und
+  Akzent; nur auf freiem Boden mit Abstand zu Wasser/Bergen.
+- **Theme-Slots erweitert**: `bank`, `propType`, `props [hell, dunkel, akzent]`.
+- **Welt-Badge**: Pill mit Theme-Kantenfarbe statt einfachem Rechteck.
+- Alles weiterhin im einmaligen Offscreen-Render (bgDirty) — keine
+  Laufzeit-Kosten. Visuell verifiziert über Screenshots aller 7 Welten.
+
+Tests grün. SW-Cache `fortress-v3.15.1`.

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.15.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.15.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -761,43 +761,43 @@ function makeRng(seed) {
 // waterEdge (Uferkante), waterAnim (Schimmer-Animation), mtn (Bergverlauf),
 // mtnEdge, mtnCap (Gipfel), particles (3 Ambient-Farben).
 const WORLD_THEMES = [
-  { name: "Kristalltal", icon: "\u{1F52E}",
+  { name: "Kristalltal", bank: "#1b3a52", propType: "crystal", props: ["#7dd3fc", "#2a6f97", "#e0f2fe"], icon: "\u{1F52E}",
     bg: ["#0e2336", "#0a1827", "#060e1a"], glow: "rgba(56,189,248,0.10)",
     tex1: "rgba(45,130,120,0.10)", tex2: "rgba(10,42,58,0.32)", dots: "rgba(125,180,210,0.05)",
     water: ["#155e8a", "#0a3a5e"], waterGlow: "rgba(34,211,238,0.7)", waterEdge: "rgba(103,232,249,0.5)", waterAnim: "160,210,255",
     mtn: ["#3a4a63", "#151e2f"], mtnEdge: "rgba(125,211,252,0.5)", mtnCap: "rgba(224,242,254,0.92)",
     particles: ["rgba(125,211,252,0.5)", "rgba(167,139,250,0.45)", "rgba(226,232,240,0.4)"] },
-  { name: "Frostreich", icon: "❄️",
+  { name: "Frostreich", bank: "#2c4a6e", propType: "tree", props: ["#b8c9dd", "#5c7899", "#ffffff"], icon: "❄️",
     bg: ["#182a44", "#111e34", "#0a1322"], glow: "rgba(191,219,254,0.13)",
     tex1: "rgba(226,232,240,0.11)", tex2: "rgba(30,58,92,0.30)", dots: "rgba(226,232,240,0.06)",
     water: ["#3b6fa0", "#1e3a5f"], waterGlow: "rgba(147,197,253,0.7)", waterEdge: "rgba(219,234,254,0.65)", waterAnim: "219,234,254",
     mtn: ["#64748b", "#1e293b"], mtnEdge: "rgba(226,232,240,0.6)", mtnCap: "rgba(255,255,255,0.95)",
     particles: ["rgba(255,255,255,0.6)", "rgba(203,213,225,0.5)", "rgba(147,197,253,0.45)"] },
-  { name: "Glutwüste", icon: "\u{1F3DC}️",
+  { name: "Glutwüste", bank: "#7a5a30", propType: "cactus", props: ["#65803a", "#41541f", "#fde68a"], icon: "\u{1F3DC}️",
     bg: ["#3a2410", "#2a1a0c", "#160d05"], glow: "rgba(251,191,36,0.11)",
     tex1: "rgba(217,164,65,0.11)", tex2: "rgba(87,52,20,0.30)", dots: "rgba(251,211,141,0.05)",
     water: ["#0e7490", "#155e75"], waterGlow: "rgba(45,212,191,0.6)", waterEdge: "rgba(153,246,228,0.55)", waterAnim: "153,246,228",
     mtn: ["#92603a", "#3b2312"], mtnEdge: "rgba(253,230,138,0.45)", mtnCap: "rgba(254,243,199,0.9)",
     particles: ["rgba(253,230,138,0.5)", "rgba(251,191,36,0.4)", "rgba(254,215,170,0.45)"] },
-  { name: "Vulkanschlund", icon: "\u{1F30B}",
+  { name: "Vulkanschlund", bank: "#511f14", propType: "crystal", props: ["#6b5d55", "#2e2320", "#fb923c"], icon: "\u{1F30B}",
     bg: ["#2a130e", "#1c0d09", "#0d0504"], glow: "rgba(239,68,68,0.13)",
     tex1: "rgba(130,62,42,0.13)", tex2: "rgba(45,20,15,0.35)", dots: "rgba(248,113,113,0.05)",
     water: ["#ea580c", "#9a3412"], waterGlow: "rgba(251,146,60,0.9)", waterEdge: "rgba(254,215,170,0.7)", waterAnim: "254,215,170",
     mtn: ["#44403c", "#150f0d"], mtnEdge: "rgba(251,146,60,0.5)", mtnCap: "rgba(254,202,120,0.9)",
     particles: ["rgba(251,146,60,0.6)", "rgba(239,68,68,0.5)", "rgba(254,215,170,0.45)"] },
-  { name: "Nebelmoor", icon: "\u{1F438}",
+  { name: "Nebelmoor", bank: "#2e4522", propType: "tree", props: ["#6f9440", "#3c5423", "#d9f99d"], icon: "\u{1F438}",
     bg: ["#1a2a1e", "#121e16", "#090f0b"], glow: "rgba(134,239,172,0.09)",
     tex1: "rgba(74,124,89,0.13)", tex2: "rgba(20,40,30,0.35)", dots: "rgba(163,230,53,0.05)",
     water: ["#4d7c0f", "#1a2e05"], waterGlow: "rgba(163,230,53,0.55)", waterEdge: "rgba(190,242,100,0.5)", waterAnim: "190,242,100",
     mtn: ["#4d5a4a", "#181f18"], mtnEdge: "rgba(163,230,53,0.35)", mtnCap: "rgba(217,249,157,0.8)",
     particles: ["rgba(190,242,100,0.6)", "rgba(253,224,71,0.5)", "rgba(134,239,172,0.45)"] },
-  { name: "Herbstwald", icon: "\u{1F342}",
+  { name: "Herbstwald", bank: "#4a2f18", propType: "tree", props: ["#d97b2e", "#8a4114", "#fde047"], icon: "\u{1F342}",
     bg: ["#2c1c10", "#20140b", "#110a05"], glow: "rgba(251,146,60,0.11)",
     tex1: "rgba(180,90,40,0.12)", tex2: "rgba(60,30,15,0.32)", dots: "rgba(253,186,116,0.05)",
     water: ["#155e8a", "#0a3a5e"], waterGlow: "rgba(56,189,248,0.55)", waterEdge: "rgba(125,211,252,0.5)", waterAnim: "125,211,252",
     mtn: ["#7c5836", "#2a1c10"], mtnEdge: "rgba(253,186,116,0.45)", mtnCap: "rgba(254,235,200,0.85)",
     particles: ["rgba(251,146,60,0.55)", "rgba(239,68,68,0.45)", "rgba(253,224,71,0.5)"] },
-  { name: "Astralebene", icon: "✨",
+  { name: "Astralebene", bank: "#3b2360", propType: "crystal", props: ["#c084fc", "#6b21a8", "#f0abfc"], icon: "✨",
     bg: ["#231539", "#180e2a", "#0b0616"], glow: "rgba(167,139,250,0.13)",
     tex1: "rgba(124,58,237,0.11)", tex2: "rgba(30,15,55,0.35)", dots: "rgba(196,181,253,0.06)",
     water: ["#7e22ce", "#4a1272"], waterGlow: "rgba(217,70,239,0.7)", waterEdge: "rgba(240,171,252,0.55)", waterAnim: "240,171,252",
@@ -5007,14 +5007,33 @@ window.FortressApp = function Fortress() {
       topGlow.addColorStop(1, "rgba(0,0,0,0)");
       bc.fillStyle = topGlow;
       bc.fillRect(0, 0, W, H * 0.6);
-      // Höhen-Textur (Bodenflecken im Thema)
-      for (let r = 0; r < ROWS; r += 2)
-        for (let c = 0; c < COLS; c += 2) {
+      // Deterministischer Deko-RNG (eigener Strom, unabhängig vom Terrain-RNG)
+      const drng = makeRng(((terObj && terObj.seed) >>> 0) ^ 2654435769);
+      // — Große weiche Farbinseln (hand-painted Look statt harter Kacheln) —
+      for (let i = 0; i < 12; i++) {
+        const bx = drng() * W, by = drng() * H, br = 60 + drng() * 130;
+        const blob = bc.createRadialGradient(bx, by, 0, bx, by, br);
+        blob.addColorStop(0, i % 2 ? WT.tex1 : WT.tex2);
+        blob.addColorStop(1, "rgba(0,0,0,0)");
+        bc.fillStyle = blob;
+        bc.fillRect(bx - br, by - br, br * 2, br * 2);
+      }
+      // Organische Bodenflecken — weiche Radial-Verläufe (Farbe → transparent),
+      // hash-gestreut mit Jitter: gemalte Bodentextur statt harter Kreise.
+      for (let r = 0; r < ROWS; r += 3)
+        for (let c = 0; c < COLS; c += 3) {
           const t = ter[r][c];
-          if (t === 1 || t === 2) {
-            bc.fillStyle = t === 1 ? WT.tex1 : WT.tex2;
-            bc.fillRect(c * CELL, r * CELL, CELL * 2, CELL * 2);
-          }
+          if (t !== 1 && t !== 2) continue;
+          const h = Math.abs(Math.sin(r * 12.9898 + c * 78.233) * 43758.5453) % 1;
+          if (h > 0.55) continue;
+          const jx = (h * 13) % 1 * CELL * 3 - CELL * 1.5, jy = (h * 51) % 1 * CELL * 3 - CELL * 1.5;
+          const px = c * CELL + CELL + jx, py = r * CELL + CELL + jy;
+          const pr2 = CELL * (2.2 + h * 3);
+          const soft = bc.createRadialGradient(px, py, 0, px, py, pr2);
+          soft.addColorStop(0, t === 1 ? WT.tex1 : WT.tex2);
+          soft.addColorStop(1, "rgba(0,0,0,0)");
+          bc.fillStyle = soft;
+          bc.fillRect(px - pr2, py - pr2, pr2 * 2, pr2 * 2);
         }
       // feines Punktraster
       bc.fillStyle = WT.dots;
@@ -5024,59 +5043,149 @@ window.FortressApp = function Fortress() {
           bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, 1, 0, Math.PI * 2);
           bc.fill();
         }
-      // — Leuchtende Flüsse (Thema: Wasser/Eis/Lava/...) —
+      // — Organischer Fluss (Metaball-Look: weiche runde Ufer statt Kacheln) —
+      const waterCells = [];
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (ter[r][c] === 3) waterCells.push([r, c]);
+      // Pass 1: Uferband (etwas größere Kreise in Ufer-Farbe)
+      bc.fillStyle = WT.bank;
+      for (const [r, c] of waterCells) {
+        bc.beginPath();
+        bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, CELL * 0.95, 0, Math.PI * 2);
+        bc.fill();
+      }
+      // Pass 2: Wasserkörper (dunkler Grundton) mit Glow
       bc.save();
       bc.shadowColor = WT.waterGlow;
-      bc.shadowBlur = 6;
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (ter[r][c] !== 3) continue;
-          const rg = bc.createLinearGradient(c * CELL, r * CELL, c * CELL, r * CELL + CELL);
-          rg.addColorStop(0, WT.water[0]);
-          rg.addColorStop(1, WT.water[1]);
-          bc.fillStyle = rg;
-          bc.fillRect(c * CELL, r * CELL, CELL, CELL);
-        }
-      bc.shadowBlur = 0;
+      bc.shadowBlur = 10;
+      bc.fillStyle = WT.water[1];
+      for (const [r, c] of waterCells) {
+        bc.beginPath();
+        bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, CELL * 0.72, 0, Math.PI * 2);
+        bc.fill();
+      }
       bc.restore();
-      // Schimmer an der Uferkante
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (ter[r][c] !== 3) continue;
-          if (r === 0 || ter[r - 1][c] !== 3) {
-            bc.fillStyle = WT.waterEdge;
-            bc.fillRect(c * CELL - 1, r * CELL, CELL + 2, 1.6);
-          }
+      // Pass 3: helle Strömung — Radius > halber Zellabstand, damit die Kreise
+      // horizontal verschmelzen (durchgängiges Band statt Punktkette)
+      bc.fillStyle = WT.water[0];
+      for (const [r, c] of waterCells) {
+        bc.beginPath();
+        bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2 - 1.5, CELL * 0.58, 0, Math.PI * 2);
+        bc.fill();
+      }
+      // Pass 4: Glanzlichter an der Oberkante (nur oberste Wasserzellen)
+      bc.fillStyle = WT.waterEdge;
+      for (const [r, c] of waterCells) {
+        if (r === 0 || ter[r - 1][c] !== 3) {
+          bc.beginPath();
+          bc.ellipse(c * CELL + CELL / 2, r * CELL + 2.5, CELL * 0.42, 1.7, 0, 0, Math.PI * 2);
+          bc.fill();
         }
-      // — Kristalline Berge mit Neon-Kantenlicht —
+      }
+      // — Plastische Berge: Bodenschatten + Licht-/Schattenfacette + Gipfel —
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
           if (ter[r][c] !== 4) continue;
-          const cx3 = c * CELL + CELL / 2, baseY3 = r * CELL + CELL, topY = r * CELL + 1;
-          const mg = bc.createLinearGradient(0, topY, 0, baseY3);
-          mg.addColorStop(0, WT.mtn[0]);
-          mg.addColorStop(1, WT.mtn[1]);
-          bc.fillStyle = mg;
+          const cx3 = c * CELL + CELL / 2, baseY3 = r * CELL + CELL, topY = r * CELL - 2;
+          // weicher Bodenschatten
+          bc.fillStyle = "rgba(0,0,0,0.30)";
+          bc.beginPath();
+          bc.ellipse(cx3 + 1.5, baseY3 - 0.5, CELL * 0.55, 2.6, 0, 0, Math.PI * 2);
+          bc.fill();
+          // dunkle (rechte) Facette
+          bc.fillStyle = WT.mtn[1];
           bc.beginPath();
           bc.moveTo(cx3, topY);
-          bc.lineTo(c * CELL + CELL - 1, baseY3 - 1);
-          bc.lineTo(c * CELL + 1, baseY3 - 1);
+          bc.lineTo(c * CELL + CELL, baseY3 - 1);
+          bc.lineTo(cx3 - 1, baseY3 - 1);
           bc.closePath();
           bc.fill();
+          // helle (linke) Facette — Lichteinfall von links oben
+          bc.fillStyle = WT.mtn[0];
+          bc.beginPath();
+          bc.moveTo(cx3, topY);
+          bc.lineTo(cx3 + 2, baseY3 - 1);
+          bc.lineTo(c * CELL - 1, baseY3 - 1);
+          bc.closePath();
+          bc.fill();
+          // Kantenlicht
           bc.strokeStyle = WT.mtnEdge;
           bc.lineWidth = 1;
           bc.beginPath();
           bc.moveTo(cx3, topY);
-          bc.lineTo(c * CELL + 1, baseY3 - 1);
+          bc.lineTo(c * CELL - 1, baseY3 - 1);
           bc.stroke();
+          // Gipfelkappe
           bc.fillStyle = WT.mtnCap;
           bc.beginPath();
           bc.moveTo(cx3, topY);
-          bc.lineTo(cx3 + 3, topY + 5);
-          bc.lineTo(cx3 - 3, topY + 5);
+          bc.lineTo(cx3 + 3.4, topY + 5.5);
+          bc.lineTo(cx3 - 3.4, topY + 5.5);
           bc.closePath();
           bc.fill();
         }
+      // — Thematische Deko-Props (seeded → auf allen Clients identisch) —
+      // Bäume/Büsche, Kristalle oder Kakteen; klein & gedeckt, damit Mauern/
+      // Kanonen klar im Vordergrund bleiben.
+      const propAt = (px, py, sc) => {
+        const [pMain, pDark, pAcc] = WT.props;
+        // Bodenschatten für alle Typen
+        bc.fillStyle = "rgba(0,0,0,0.28)";
+        bc.beginPath();
+        bc.ellipse(px + 1, py + 5.5 * sc, 5 * sc, 2 * sc, 0, 0, Math.PI * 2);
+        bc.fill();
+        if (WT.propType === "tree") {
+          bc.fillStyle = pDark;
+          bc.fillRect(px - 1 * sc, py + 2 * sc, 2 * sc, 4 * sc); // Stamm
+          bc.beginPath(); bc.arc(px, py, 4.6 * sc, 0, Math.PI * 2); bc.fill(); // Krone dunkel
+          bc.fillStyle = pMain;
+          bc.beginPath(); bc.arc(px - 1 * sc, py - 1.2 * sc, 3.4 * sc, 0, Math.PI * 2); bc.fill(); // Licht
+          bc.fillStyle = pAcc;
+          bc.beginPath(); bc.arc(px - 2 * sc, py - 2.4 * sc, 1.2 * sc, 0, Math.PI * 2); bc.fill(); // Glanz
+        } else if (WT.propType === "cactus") {
+          bc.fillStyle = pDark;
+          bc.fillRect(px - 1.6 * sc, py - 4 * sc, 3.2 * sc, 9 * sc); // Körper
+          bc.fillRect(px - 5 * sc, py - 1 * sc, 3.4 * sc, 2.2 * sc); // Arm links
+          bc.fillRect(px - 5 * sc, py - 3.5 * sc, 2.2 * sc, 3 * sc);
+          bc.fillStyle = pMain;
+          bc.fillRect(px - 1.6 * sc, py - 4 * sc, 1.6 * sc, 9 * sc); // Lichtseite
+          bc.fillStyle = pAcc;
+          bc.beginPath(); bc.arc(px, py - 4 * sc, 1 * sc, 0, Math.PI * 2); bc.fill(); // Blüte
+        } else { // crystal
+          bc.fillStyle = pDark;
+          bc.beginPath();
+          bc.moveTo(px, py - 6.5 * sc); bc.lineTo(px + 2.6 * sc, py + 4 * sc); bc.lineTo(px - 0.4 * sc, py + 4 * sc);
+          bc.closePath(); bc.fill();
+          bc.fillStyle = pMain;
+          bc.beginPath();
+          bc.moveTo(px, py - 6.5 * sc); bc.lineTo(px - 2.6 * sc, py + 4 * sc); bc.lineTo(px + 0.4 * sc, py + 4 * sc);
+          bc.closePath(); bc.fill();
+          bc.fillStyle = pDark;
+          bc.beginPath();
+          bc.moveTo(px + 3.4 * sc, py - 2.5 * sc); bc.lineTo(px + 5 * sc, py + 4 * sc); bc.lineTo(px + 2 * sc, py + 4 * sc);
+          bc.closePath(); bc.fill();
+          bc.fillStyle = pAcc;
+          bc.globalAlpha = 0.9;
+          bc.beginPath();
+          bc.moveTo(px, py - 6.5 * sc); bc.lineTo(px - 1 * sc, py - 2 * sc); bc.lineTo(px + 0.6 * sc, py - 2.5 * sc);
+          bc.closePath(); bc.fill();
+          bc.globalAlpha = 1;
+        }
+      };
+      let placed = 0;
+      for (let tries = 0; tries < 160 && placed < 34; tries++) {
+        const pr = 2 + Math.floor(drng() * (ROWS - 4));
+        const pc = 2 + Math.floor(drng() * (COLS - 4));
+        // nur auf freiem Boden, mit Abstand zu Wasser/Bergen
+        let free = true;
+        for (let q = -1; q <= 1 && free; q++)
+          for (let w = -1; w <= 1; w++)
+            if (ter[pr + q][pc + w] >= 3) { free = false; break; }
+        if (!free) continue;
+        propAt(pc * CELL + CELL / 2, pr * CELL + CELL / 2, 0.85 + drng() * 0.55);
+        placed++;
+      }
       // Ambient-Partikel (kühler Staub)
       for (let i = 0; i < 26; i++) {
         const fc3 = i * 313 % COLS, fr3 = i * 191 % ROWS;
@@ -5098,13 +5207,20 @@ window.FortressApp = function Fortress() {
       bc.save();
       bc.font = "700 13px 'Segoe UI', system-ui, sans-serif";
       bc.textBaseline = "bottom";
-      bc.fillStyle = "rgba(0,0,0,0.35)";
       const wtLabel = WT.icon + " " + WT.name.toUpperCase();
       const wtW = bc.measureText(wtLabel).width;
-      bc.fillRect(6, H - 24, wtW + 14, 19);
+      // Pill-Badge mit Theme-Kante
+      bc.fillStyle = "rgba(0,0,0,0.45)";
+      bc.beginPath();
+      if (bc.roundRect) bc.roundRect(6, H - 26, wtW + 20, 21, 10.5);
+      else bc.rect(6, H - 26, wtW + 20, 21);
+      bc.fill();
+      bc.strokeStyle = WT.mtnEdge;
+      bc.lineWidth = 1;
+      bc.stroke();
       bc.fillStyle = WT.mtnCap;
-      bc.globalAlpha = 0.55;
-      bc.fillText(wtLabel, 13, H - 8);
+      bc.globalAlpha = 0.75;
+      bc.fillText(wtLabel, 16, H - 9);
       bc.restore();
       if (p1Flipped) bc.restore();
     }
@@ -5646,7 +5762,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
