@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  # Manueller Neustart (Actions-Tab → Run workflow). WICHTIG: Bei Pages-Ausfällen
+  # IMMER einen frischen Lauf starten — "Re-run failed jobs" scheitert konstruktiv,
+  # weil deploy-pages@v4 dann zwei "github-pages"-Artefakte im selben Lauf findet.
+  workflow_dispatch:
 
 permissions:
   contents: write
