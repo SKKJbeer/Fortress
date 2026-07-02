@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1929,3 +1929,28 @@ aktiven Claimer claimen können). Fix: kein Self-Heal bei
 `claimBy === SESSION_ID && mmBusy`.
 
 Tests grün. SW-Cache `fortress-v3.15.2`.
+
+### v3.15.3 — Theme-Sync für Gäste + Geister-Tickets endgültig eliminiert
+**Finding A — Spieler sahen online unterschiedliche Welten:** `applyState`
+hängte im 2P-Zweig den `seed` NICHT ans Terrain-Objekt (nur der 3P-Zweig tat
+es) → Gäste renderten `worldThemeOf(undefined)` = immer Welt 0 (Kristalltal),
+der Host die echte Seed-Welt. Fix: seed in beiden Zweigen + Fallback auf
+`terrainSeed.current` im Renderer.
+
+**Finding B (kritisch) — Dritter matchte sich mit Spielern im laufenden
+Spiel:** Blinde `fb.patch`-Freigaben (releaseAll/releaseSelf/Claim-Heal)
+konnten auf inzwischen GELÖSCHTE Tickets treffen und erschufen dabei
+besitzerlose `{status:'waiting'}`-GEISTER — voll matchbar. Ein neu
+ankommender Spieler claimte den Geist und „connectete" sich scheinbar mit
+einem Spieler, der längst im Spiel war. Gehärtet auf fünf Ebenen:
+1. Alle Freigaben transaktional („nur wenn Ticket noch existiert") —
+   `reviveToWaiting`; gelöscht bleibt gelöscht.
+2. Claim-Heal transaktional (statt get+patch).
+3. Heartbeat transaktional — nie mehr `{hb}`-Stubs auf gelöschten Pfaden.
+4. Kandidatensuche verlangt Wohlgeformtheit (`ts` UND `pid`/`dev`) —
+   erkannte Geister werden sofort gelöscht.
+5. Claim-Transaktion verlangt `current.ts` — Geister sind nie claimbar.
+Plus: `mmJoinMatchedGame` prüft vor dem Reserve, ob das Spiel noch existiert
+(veralteter matched-Status erzeugte sonst Orphan-Knoten + ewiges Warten).
+
+Tests grün. SW-Cache `fortress-v3.15.3`.

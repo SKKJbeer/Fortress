@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.15.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.15.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3114,7 +3114,9 @@ window.FortressApp = function Fortress() {
         const haveWrongTerrain = need3 && (!terrain.current || !terrain.current.mode3);
         if (s.terrainSeed && (s.terrainSeed !== terrainSeed.current || haveWrongTerrain)) {
           terrainSeed.current = s.terrainSeed;
-          terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : generateTerrainFromSeed(s.terrainSeed);
+          // WICHTIG (v3.15.3): seed in BEIDEN Zweigen anhängen — ohne ihn rendert
+          // der Gast worldThemeOf(undefined) = immer Welt 0 (Theme-Desync!).
+          terrain.current = need3 ? __spreadProps(__spreadValues({}, generateTerrain3FromSeed(s.terrainSeed)), { seed: s.terrainSeed }) : __spreadProps(__spreadValues({}, generateTerrainFromSeed(s.terrainSeed)), { seed: s.terrainSeed });
           bgDirty.current = true;
         }
         castles.current = s.castles || castles.current;
@@ -3543,10 +3545,11 @@ window.FortressApp = function Fortress() {
       mmHealTimer.current = null;
       if (!mmActive.current) return;
       const qn = mmQueueName();
-      const cur = await fb.get(`${qn}/${SESSION_ID}`);
-      if (cur && cur.status === "claiming" && cur.claimTs === claimTs) {
-        await fb.patch(`${qn}/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null });
-      }
+      // Transaktional heilen — nie ein gelöschtes Ticket wiederbeleben (v3.15.3)
+      await fb.transact(`${qn}/${SESSION_ID}`, (cur) => {
+        if (!cur || cur.status !== "claiming" || cur.claimTs !== claimTs) return;
+        return { ...cur, status: "waiting", claimBy: null, claimTs: null };
+      });
     }, MM_CLAIM_HEAL_MS);
   }
   async function mmJoinMatchedGame(code, role, np) {
@@ -3571,6 +3574,14 @@ window.FortressApp = function Fortress() {
       color: (profile == null ? void 0 : profile.color) || (role === 2 ? "#dc2626" : "#059669"),
       elo: myEloForMode(np)
     });
+    // Existenz-Check (v3.15.3): Ist das Spiel schon wieder weg (Host-Watchdog/
+    // Abbruch, veralteter matched-Status), NICHT per Reserve einen Orphan-Knoten
+    // erzeugen — direkt weitersuchen.
+    const gameData = await fb.get(`games/${code}`);
+    if (!gameData || !gameData.createdAt) {
+      startMatchmaking(np);
+      return;
+    }
     const got = await fb.reserve(`games/${code}/guestAction${role}`, joinPayload);
     if (!got) {
       setMpError(t('warnSpielVoll'));
@@ -3657,16 +3668,22 @@ window.FortressApp = function Fortress() {
       return { ...cur, status: "claiming", claimBy: SESSION_ID, claimTs };
     });
     if (!selfRes.committed) return;
-    // Nach Abbruch (Nutzer verließ die Suche mitten im Claim) darf das eigene
-    // Ticket nicht per Patch als Stub wiederauferstehen — dann löschen (v3.14.15).
+    // Freigaben NUR über Transaktionen "wenn Ticket noch existiert" (v3.15.3):
+    // Ein blinder Patch auf ein inzwischen gelöschtes Ticket erschuf sonst
+    // einen matchbaren 'waiting'-GEIST ohne Besitzer — Dritte matchten sich
+    // scheinbar mit Spielern, die längst im Spiel waren.
+    const reviveToWaiting = (path) => fb.transact(path, (cur) => {
+      if (!cur) return; // gelöscht → gelöscht lassen, nie wiederbeleben
+      return { ...cur, status: "waiting", claimBy: null, claimTs: null };
+    });
     const releaseSelf = () => mmActive.current
-      ? fb.patch(`${qn}/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null })
+      ? reviveToWaiting(`${qn}/${SESSION_ID}`)
       : fb.delete(`${qn}/${SESSION_ID}`);
     if (!mmActive.current) { await releaseSelf(); return; }
     const claimed = [];
     const releaseAll = async () => {
       for (const rid of claimed) {
-        await fb.patch(`${qn}/${rid}`, { status: "waiting", claimBy: null, claimTs: null });
+        await reviveToWaiting(`${qn}/${rid}`);
       }
       await releaseSelf();
     };
@@ -3674,7 +3691,8 @@ window.FortressApp = function Fortress() {
     // (jemand anderes war schneller), werden die bereits geclaimten freigegeben.
     for (const cid of candidateIds) {
       const { committed, value } = await fb.transact(`${qn}/${cid}`, (current) => {
-        if (!current || current.status !== "waiting") return;
+        // ts-Pflicht: nie einen felderlosen Geist claimen (v3.15.3)
+        if (!current || current.status !== "waiting" || !current.ts) return;
         return { ...current, status: "claiming", claimBy: SESSION_ID, claimTs };
       });
       if (!committed || !value || value.claimBy !== SESSION_ID) {
@@ -3747,6 +3765,12 @@ window.FortressApp = function Fortress() {
     for (const [id, tk] of Object.entries(data)) {
       if (!tk || tk.status !== "waiting") continue;
       if (id !== SESSION_ID) {
+        // Wohlgeformtheit (v3.15.3): echte Tickets haben immer ts UND pid/dev.
+        // Geister (aus Patch-Wiederbelebung) sofort löschen statt matchen.
+        if (!tk.ts || (!tk.pid && !tk.dev)) {
+          fb.delete(`${qn}/${id}`);
+          continue;
+        }
         if (my.pid && tk.pid && tk.pid === my.pid) continue; // selber Spieler (gleiche Profil-ID)
         if (tk.dev && tk.dev === DEVICE_ID) continue; // selbes Gerät — nie selbst matchen
         // Verwaist = hb hat sich über 35s MEINER Beobachtung nicht geändert
@@ -3838,7 +3862,8 @@ window.FortressApp = function Fortress() {
       mmCancelDisconnect.current = fb.onDisconnectRemove(`${qn}/${SESSION_ID}`);
       return;
     }
-    fb.patch(`${qn}/${SESSION_ID}`, { hb: Date.now() });
+    // Heartbeat transaktional — nie einen {hb}-Stub auf gelöschtem Pfad erzeugen (v3.15.3)
+    fb.transact(`${qn}/${SESSION_ID}`, (cur) => cur ? { ...cur, hb: Date.now() } : void 0);
     mmOnQueueUpdate();
   }
   function cancelMatchmaking() {
@@ -5026,7 +5051,7 @@ window.FortressApp = function Fortress() {
       bgDirty.current = false;
       const bc = bgCanvas.current.getContext("2d");
       // Welt-Thema deterministisch aus dem Seed — identisch auf allen Clients.
-      const WT = worldThemeOf(terObj && terObj.seed || 0);
+      const WT = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
       if (p1Flipped) { bc.save(); bc.translate(0, H); bc.scale(1, -1); }
       // — Tiefer atmosphärischer Untergrund (Thema) —
       const mg2 = bc.createLinearGradient(0, 0, 0, H);
@@ -5259,7 +5284,7 @@ window.FortressApp = function Fortress() {
       if (p1Flipped) bc.restore();
     }
     if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
-    const WTa = worldThemeOf(terObj && terObj.seed || 0);
+    const WTa = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
     if (ter) {
       ctx.strokeStyle = `rgba(${WTa.waterAnim},${0.15 + 0.1 * Math.sin(now / 500)})`;
       ctx.lineWidth = 1;
@@ -5796,7 +5821,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
