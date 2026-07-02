@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.15)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.16)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1802,3 +1802,16 @@ den nächsten Beitritt stören.
   (`warnHostLost`) statt endlosem Wartescreen.
 
 Tests grün. SW-Cache `fortress-v3.14.15`.
+
+### v3.14.16 — Bot-Spiele mit echten Namen statt P1/P2
+- **Neue Konstanten** `BOT_NAMES` (50 witzige Burgen-/Belagerungs-Fantasy-Namen,
+  z.B. „Sir Bröckelbert von Bruchstein", „Katapulta die Ungeduldige",
+  „Zugbrücken-Zacharias") und `BOT_WAPPEN` (Wappen-Pool für Bots).
+- **`initBotMatchIdentity()`**: Wird bei beiden Bot-Starts (Übung gegen Bot +
+  Tutorial) aufgerufen. P1 = eigenes Profil (Name, Wappen, Farbe); P2 = pro
+  Spiel zufällig gezogener Bot-Name + zufälliges Wappen.
+- **HUD**: zeigt bei `botMode` jetzt die `playerInfo`-Namen/Wappen (wie online)
+  statt „P1"/„P2" — der eigene Name bekommt den „(Du)"-Suffix. Lokale
+  Hotseat-Spiele (2 Menschen an einem Gerät) behalten P1/P2.
+
+Tests grün. SW-Cache `fortress-v3.14.16`.

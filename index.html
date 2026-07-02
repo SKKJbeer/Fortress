@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.15</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.16</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -495,6 +495,28 @@ const MM_GROWTH_PER_SEC = 8;
 function mmRadius(waitSec) {
   return MM_BASE_RADIUS + Math.max(0, waitSec) * MM_GROWTH_PER_SEC;
 }
+// Bot-Namen (v3.14.16): pro Bot-Spiel wird zufällig einer gezogen.
+// Burgen-/Belagerungs-Fantasy mit Augenzwinkern.
+const BOT_NAMES = [
+  "Sir Bröckelbert von Bruchstein", "Gundula Geröllheimer", "Graf Zerbrösel III.",
+  "Mortimer Mörtelbart", "Katapulta die Ungeduldige", "Baron von Trümmerfeld",
+  "Zinnen-Zenzi", "Ritter Rums von Wumms", "Splitterhilde die Spröde",
+  "Lord Fassadenriss", "Bimsbert der Belagerte", "Fräulein Schießscharte",
+  "Der Graue Grantler", "Kanonikus Knall", "Burgfried Bröselmeier",
+  "Walli die Wallmeisterin", "Herzog Halbdach", "Pulverpaula",
+  "Steinbeißer Sepp", "Madame Mauerblume", "Türmchen-Toni",
+  "General Gipsbruch", "Erkerhard der Schiefe", "Ballista Ballerina",
+  "Freiherr von Fallgitter", "Trebuchet-Trude", "Mörser-Mechthild",
+  "Ziegelrich Löwenmut", "Attila der Zinnenlose", "Burgunda von Bollwerk",
+  "Kasimir Kanonenfutter", "Der Nörgelnde Normanne", "Schuttkönig Schorsch",
+  "Prinzessin Pulverdampf", "Wackelwart von Windschief", "Festungs-Ferdi",
+  "Gräfin Giebelbruch", "Bastian Bastion", "Zugbrücken-Zacharias",
+  "Hilde Hagelschlag", "Ritter Kunibert Kachelschreck", "Munitiona die Großzügige",
+  "Doktor Donnerschlag", "Schamane Schuttberg", "Vroni von der Vorburg",
+  "Käpt'n Kartätsche", "Ottokar Ohnedach", "Magier Mauerfraß",
+  "Isolde Eisenpforte", "Der Letzte Zinnensteher"
+];
+const BOT_WAPPEN = ["roboter", "skelett", "vampir", "pestdoc", "eismagie", "schatten"];
 const MM_TICK_MS = 2000;
 const MM_HEARTBEAT_STALE_MS = 35e3;
 const MM_CLAIM_HEAL_MS = 6e3;
@@ -4394,6 +4416,22 @@ window.FortressApp = function Fortress() {
   const tutorialDoneQueued = useRef(false); // Abschluss (nach Wieder-Verschließen) bereits ausgelöst
   // Startet das interaktive Tutorial: lokales Spiel gegen einen passiven Bot mit
   // Coach-Anweisungen pro Phase. Markiert sofort als gesehen (kein erneuter Auto-Start).
+  // Bot-Spiel-Identitäten (v3.14.16): Mensch = eigenes Profil, Bot = zufälliger
+  // Name aus BOT_NAMES + zufälliges Wappen. Das HUD zeigt dann Namen statt P1/P2.
+  function initBotMatchIdentity() {
+    playerInfo.current[1] = {
+      name: (profile == null ? void 0 : profile.name) || t('playerFallback', { n: 1 }),
+      wappen: (profile == null ? void 0 : profile.wappen) || "skelett",
+      color: (profile == null ? void 0 : profile.color) || "#2563eb",
+      elo: 1e3
+    };
+    playerInfo.current[2] = {
+      name: BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)],
+      wappen: BOT_WAPPEN[Math.floor(Math.random() * BOT_WAPPEN.length)],
+      color: "#dc2626",
+      elo: 1e3
+    };
+  }
   function startGuidedTutorial() {
     // Flow-Exklusivität (v3.14.12): Das Tutorial darf NIE eine laufende
     // Online-Session kapern. Läuft Matchmaking, wird es sauber abgebrochen
@@ -4405,6 +4443,7 @@ window.FortressApp = function Fortress() {
     online.current = false;
     botMode.current = true;
     tutorialMode.current = true;
+    initBotMatchIdentity();
     tutorialBotShot.current = false;
     tutorialDoneQueued.current = false;
     setShowTutorialDone(false);
@@ -5528,7 +5567,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.15")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.16")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -5857,6 +5896,7 @@ window.FortressApp = function Fortress() {
     online.current = false;
     botMode.current = true;
     tutorialMode.current = false;
+    initBotMatchIdentity();
     numPlayersRef.current = 2;
     setNumPlayers(2);
     setMpScreen(null);
@@ -6418,7 +6458,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current ? playerInfo.current[1].name + (myRole.current === 1 ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
     boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
     padding: "1px 6px",
@@ -6446,7 +6486,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
     border: "1px solid rgba(16,185,129,0.45)",
     borderRadius: 14,    padding: "2px 10px",    display: "flex",
