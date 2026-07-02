@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.10</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.11</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -342,7 +342,11 @@ const fb = {
       } };
     }
     const nodeRef = s.ref(s.db, path);
-    const cb = s.onValue(nodeRef, (snap) => {
+    // WICHTIG (v3.14.11): onValue() der modularen SDK gibt eine UNSUBSCRIBE-Funktion
+    // zurück — off(ref,'value',unsub) matcht dagegen keinen registrierten Listener
+    // und meldete NIE ab. Geister-Listener alter Spiele feuerten dann in neue
+    // Sessions hinein ("2. Spiel kommt nicht zustande"). Immer unsub() nutzen.
+    const unsub = s.onValue(nodeRef, (snap) => {
       const data = snap.exists() ? snap.val() : null;
       if (data) onData(data);
     }, (err) => {
@@ -350,7 +354,7 @@ const fb = {
     });
     return { stop: () => {
       try {
-        s.off(nodeRef, "value", cb);
+        unsub();
       } catch (e) {
       }
     } };
@@ -400,11 +404,12 @@ const fb = {
       return { stop: () => {} };
     }
     const nodeRef = s.ref(s.db, path);
-    const cb = s.onValue(nodeRef, (snap) => {
+    // Siehe subscribe(): onValue() liefert die Unsubscribe-Funktion (v3.14.11).
+    const unsub = s.onValue(nodeRef, (snap) => {
       const exists = snap.exists();
       onData(exists ? snap.val() : null, exists);
     }, (err) => { _fbError = err.message; });
-    return { stop: () => { try { s.off(nodeRef, "value", cb); } catch (e) {} } };
+    return { stop: () => { try { unsub(); } catch (e) {} } };
   },
   // Registriert serverseitiges Auto-Löschen falls die Verbindung abbricht
   // (Tab geschlossen, Crash, Netzwerkausfall) — ohne Cloud Functions.
@@ -516,8 +521,8 @@ const ROWS_HALF = 34;
 const ROWS = ROWS_HALF * 2;
 const W = COLS * CELL;
 const H = ROWS * CELL;
-const BUILD_TIME = 15;
-const SHOOT_TIME = 25;
+const BUILD_TIME = 25;
+const SHOOT_TIME = 20;
 const CANNON_TIME = 12;
 const SETUP_TIME = 20;
 const PHASE_BANNERS = {
@@ -2896,6 +2901,10 @@ window.FortressApp = function Fortress() {
   // Gemeinsamer Gast-State-Handler: erkennt Löschung des Spielknotens (exists=false)
   // als sauberes Host-Spielende. Wird von startPolling und resubscribeGuestState genutzt.
   function guestStateHandler(stateStr, exists) {
+    // Schutz vor Geister-Events (v3.14.11): nur reagieren wenn wir wirklich
+    // gerade Online-Gast sind — ein verwaister Listener eines früheren Spiels
+    // darf keine neue Session beenden.
+    if (!online.current || myRole.current === 1) return;
     if (exists === false) {
       // Host hat das Spiel beendet/gelöscht — nur reagieren wenn das Spiel lief.
       if (everGotState.current) endOnlineDisconnected('warnHostEnded');
@@ -5353,7 +5362,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.10")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.11")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

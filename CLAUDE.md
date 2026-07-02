@@ -65,7 +65,7 @@ index.html direkt editieren
 
 ## Spielmechanik (Kurzreferenz)
 
-- **Phasen**: Setup (20s) → Build (25s) → Shoot (30s) → Cannon (12s) → Build ...
+- **Phasen**: Setup (20s) → Build (25s) → Shoot (20s, seit v3.14.11) → Cannon (12s) → Build ...
 - **Verlust**: Burg am Bauende nicht vollständig von Mauern umschlossen (Flood-Fill)
 - **Kanonen**: schießen nur wenn zu Beginn der Schussrunde vollständig ummauert (`frozenReady`)
 - **Grid**: 44×68 Zellen, 14px pro Zelle (W=616, H=952)
@@ -265,6 +265,8 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | v2.8.2 | `activeBuild`/`activeDrag` Reset in `applyState` fehlte P3 → P3 konnte nach Phasenwechsel nichts platzieren |
 | v1.0.6 | Kanonen galten als Mauer beim Flood-Fill → Burg galt fälschlich als geschlossen |
 | v2.8.1 | Race-Condition beim gleichzeitigen Beitreten → beide Gäste bekamen Rolle P2 |
+| v3.14.10 | onDisconnect-Auto-Löschen des Spielknotens → mobile App-Wechsel löschte Lobby, Gast fand Code nicht (siehe Online-Architektur oben) |
+| v3.14.11 | `fb.subscribe`/`subscribeRaw`: `off(ref,'value',unsub)` meldete NIE ab (modulare SDK: `onValue()` gibt Unsubscribe-FUNKTION zurück, die muss aufgerufen werden). Geister-Listener alter Spiele beendeten neue Sessions → „2. Online-Spiel kommt nicht zustande". Test-Mock muss SDK-Semantik spiegeln (onValue → Funktion)! |
 
 ---
 

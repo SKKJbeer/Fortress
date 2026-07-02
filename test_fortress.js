@@ -720,9 +720,10 @@ function makeFbMock(port) {
         }
       } catch(e) { if (errCb) errCb(e); }
     }, 120);
-    return id;
+    // Wie die echte modulare SDK (v10): onValue gibt eine UNSUBSCRIBE-FUNKTION zurück.
+    return () => clearInterval(id);
   }
-  function off(ref, type, id) { clearInterval(id); }
+  function off(ref, type, unsub) { if (typeof unsub === 'function') unsub(); }
   async function runTransaction(ref, fn) {
     try {
       const rg = await _f(B+'/fb?op=get&path='+encodeURIComponent(ref.__p));

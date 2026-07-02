@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.10)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.11)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1662,3 +1662,27 @@ kurzen App-Wechsel (Code per Messenger teilen, Bildschirm sperren, WLAN↔LTE).
   nie (gleiche Profil-ID = Selbst-Match-Schutz); zum Testen zwei Geräte oder Code-Join nutzen.
 
 Tests grün. SW-Cache `fortress-v3.14.10`.
+
+### v3.14.11 — Online-Fix Teil 2: Geister-Listener + Phasenzeiten korrigiert
+**Kernbug „erstes Online-Spiel klappt, danach keins mehr":** Die modulare Firebase-SDK
+(v9/v10) gibt bei `onValue()` eine **Unsubscribe-Funktion** zurück. `fb.subscribe`/
+`fb.subscribeRaw` übergaben diesen Rückgabewert aber als „Callback" an
+`off(ref,'value',cb)` — das matcht keinen registrierten Listener, **kein `stop()` hat
+je einen Listener wirklich abgemeldet**. Nach dem ersten Spiel lebten alle Listener
+(Gast-State, Host-guestActions, Matchmaking-Queue) als Geister weiter: Löschte der
+Host-Cleanup 2,5s später den alten Spielknoten, feuerte der verwaiste Gast-Listener
+`exists=false` → „Host hat das Spiel beendet" → `leaveOnline()` warf den Spieler
+mitten aus dem zweiten Beitritt/Matchmaking. Erst ein Seiten-Reload räumte auf.
+
+- `subscribe`/`subscribeRaw`: `stop()` ruft jetzt die von `onValue()` zurückgegebene
+  Unsubscribe-Funktion auf (statt wirkungslosem `off(ref,'value',unsub)`).
+- `guestStateHandler`: Schutz-Guard — reagiert nur noch, wenn wirklich eine
+  Online-Gast-Session aktiv ist (`online && myRole !== 1`); ein verwaister Listener
+  kann keine neue Session mehr beenden.
+- Test-Mock (`test_fortress.js`): `onValue` gibt jetzt wie die echte SDK eine
+  Unsubscribe-Funktion zurück (die alte Mock-Semantik hatte den Bug unsichtbar gemacht).
+
+**Phasenzeiten (Klarstellung nach v3.14.9):** Bauphase wieder **25s** (v3.14.9 hatte
+fälschlich die Bauzeit gekürzt); stattdessen Schussphase **25s → 20s** gekürzt.
+
+Tests grün. SW-Cache `fortress-v3.14.11`.
