@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.16)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.17)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1815,3 +1815,29 @@ Tests grün. SW-Cache `fortress-v3.14.15`.
   Hotseat-Spiele (2 Menschen an einem Gerät) behalten P1/P2.
 
 Tests grün. SW-Cache `fortress-v3.14.16`.
+
+### v3.14.17 — 3-Spieler-Online verifiziert + Gast-Rejoin-Bug behoben
+**Systematische 3P-Online-Prüfung** (neue Diagnose: Code-Join mit 2 Gästen,
+Phasen-Sync, Quick-Match-Tripel über queue3, Gast-Ausstieg mitten im Spiel,
+Runde 2, Queue-Hygiene) deckte einen schweren, NICHT 3P-spezifischen Bug auf:
+
+**`screenRef`/`screen`-Drift (Gast-Rejoin-Bug):** `leaveOnline()` und der
+lokale `quitGame`-Pfad setzten beim Ausstieg nur den React-State
+(`setScreen("menu")`), aber NICHT `screenRef.current`. Ein Gast, der mitten
+im Spiel ausstieg, behielt `screenRef="game"`. `applyState` wechselt den
+Screen nur bei Differenz zum Ref (`newScreen !== screenRef.current`) — beim
+nächsten Online-Beitritt kam `screen:"game"` → keine Differenz → kein
+`setScreen`. Folge: Der Spieler hing für immer im Hauptmenü, während seine
+Refs unsichtbar im Spiel waren (sein Name erschien beim Gegner im HUD!).
+Fix: `screenRef.current` wird an allen drei `setScreen("menu")`-Stellen
+mitgesetzt (leaveOnline, quitGame lokal, Ergebnis-Hauptmenü lokal).
+
+**Neue Test-Suite `suiteOnline3P`** (läuft bei jedem Testlauf mit):
+3P-Code-Join (Host + 2 Gäste), Phasen-Sync aller drei Clients,
+Quick-Match-Tripel, Gast-Ausstieg + Rejoin (Regression für den
+screenRef-Bug), queue3-Hygiene. Gated Debug: `window.__myRole` +
+`window.__guestDbg` (nur bei `__mmDebug`).
+
+3P-Diagnose 4× komplett grün (inkl. deterministischem Gast-zuerst-Ausstieg).
+
+Tests grün. SW-Cache `fortress-v3.14.17`.

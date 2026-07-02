@@ -1112,6 +1112,124 @@ async function suiteMatchmaking(browser, fbPort) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 5c: Online 3-Spieler — Code-Join (Host + 2 Gäste), Phasen-Sync,
+// Quick-Match-Tripel (queue3), Gast-Ausstieg + Rejoin (screenRef-Regression)
+// ═══════════════════════════════════════════════════════════════
+async function suiteOnline3P(browser, fbPort) {
+  const res = [], errsAll = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Online 3-Spieler\n' + '='.repeat(50));
+
+  const mk = async (n, pid, dev) => {
+    const c = await makeOnlineCtx(browser, fbPort, mmIdentInit(n, pid, dev) + ";window.__mmDebug=true;");
+    c.page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errsAll.push(`${n}: ${e.message}`); });
+    await loadMenu(c.page);
+    return c;
+  };
+  const inGame = (p, t) => p.waitForSelector('canvas', { timeout: t }).then(() => true).catch(() => false);
+  const quitBtn = async (p) => {
+    await p.evaluate(() => {
+      for (const b of document.querySelectorAll('button')) {
+        if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
+      }
+    });
+    await p.waitForTimeout(250);
+    await jsClick(p, ['Ja', 'Beenden', 'verlassen']);
+    await p.waitForTimeout(400);
+    await jsClick(p, ['Hauptmenü']);
+    await p.waitForTimeout(300);
+  };
+  const startMM3 = async (p) => {
+    await jsClick(p, ['ONLINE']);
+    await p.waitForTimeout(200);
+    await jsClick(p, ['3 Spieler']);
+    await p.waitForTimeout(150);
+    await jsClick(p, ['Matchmaking']);
+    await p.waitForTimeout(150);
+  };
+
+  const H = await mk('O3Host', 'p_o3h', 'd_o3h');
+  const G2 = await mk('O3GastB', 'p_o3b', 'd_o3b');
+  const G3 = await mk('O3GastC', 'p_o3c', 'd_o3c');
+  try {
+    // ── Code-Join: Host erstellt 3P-Spiel, zwei Gäste treten bei ──
+    await jsClick(H.page, ['ONLINE']); await H.page.waitForTimeout(200);
+    await jsClick(H.page, ['3 Spieler']); await H.page.waitForTimeout(150);
+    await jsClick(H.page, ['Spiel erstellen']); await H.page.waitForTimeout(1200);
+    const code = await H.page.evaluate(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
+      return null;
+    });
+    if (!code) { fail('3P Code-Join: kein Spielcode'); return { res, errs: errsAll }; }
+    for (const G of [G2, G3]) {
+      await jsClick(G.page, ['ONLINE']); await G.page.waitForTimeout(200);
+      await jsClick(G.page, ['beitreten', 'Beitreten']); await G.page.waitForTimeout(200);
+      if (await G.page.evaluate(() => !!document.querySelector('input'))) await G.page.fill('input', code);
+      await G.page.waitForTimeout(100);
+      await jsClick(G.page, ['Beitreten']);
+      await G.page.waitForTimeout(400);
+    }
+    const [j1, j2, j3] = await Promise.all([inGame(H.page, 12000), inGame(G2.page, 12000), inGame(G3.page, 12000)]);
+    j1 && j2 && j3 ? ok('3P Code-Join: Host + 2 Gäste im Spiel ✓') : fail(`3P Code-Join: H=${j1} G2=${j2} G3=${j3}`);
+
+    if (j1 && j2 && j3) {
+      await H.page.waitForTimeout(2500);
+      const phases = await Promise.all([H.page, G2.page, G3.page].map(p => p.evaluate(() => {
+        const t = document.body.innerText;
+        return ['BAUEN', 'FEUER', 'START', 'KANONE'].find(k => t.includes(k)) || '?';
+      })));
+      phases[0] !== '?' && phases.every(x => x === phases[0])
+        ? ok(`3P Phasen-Sync: alle in "${phases[0]}" ✓`)
+        : fail(`3P Phasen-Desync: ${phases.join('/')}`);
+    }
+    // Alle sauber raus (Host zuerst → Gäste bekommen Ergebnis)
+    await quitBtn(H.page);
+    await G2.page.waitForTimeout(2000);
+    await jsClick(G2.page, ['Hauptmenü']); await jsClick(G3.page, ['Hauptmenü']);
+    await G2.page.waitForTimeout(400);
+
+    // ── Quick-Match-Tripel über queue3 ──
+    for (const X of [H, G2, G3]) await startMM3(X.page);
+    const [m1, m2, m3] = await Promise.all([inGame(H.page, 25000), inGame(G2.page, 25000), inGame(G3.page, 25000)]);
+    m1 && m2 && m3 ? ok('3P Quick-Match: Tripel gematcht ✓') : fail(`3P Quick-Match: H=${m1} G2=${m2} G3=${m3}`);
+
+    if (m1 && m2 && m3) {
+      // ── Gast-Ausstieg mitten im Spiel + Rejoin (screenRef-Regression v3.14.17) ──
+      await H.page.waitForTimeout(1200);
+      const clients = [['H', H], ['G2', G2], ['G3', G3]];
+      const roles = {};
+      for (const [nm, X] of clients) roles[nm] = await X.page.evaluate(() => window.__myRole || 0);
+      const guest = clients.find(([nm]) => roles[nm] !== 1) || clients[1];
+      await quitBtn(guest[1].page);
+      await H.page.waitForTimeout(1500);
+      for (const [nm, X] of clients) { if (nm !== guest[0]) await quitBtn(X.page); }
+      await H.page.waitForTimeout(600);
+      for (const X of [H, G2, G3]) await startMM3(X.page);
+      const [r1, r2, r3] = await Promise.all([inGame(H.page, 25000), inGame(G2.page, 25000), inGame(G3.page, 25000)]);
+      r1 && r2 && r3 ? ok('3P Rejoin nach Gast-Ausstieg: alle wieder gematcht ✓')
+                     : fail(`3P Rejoin: H=${r1} G2=${r2} G3=${r3} (Gast-Ausstieg=${guest[0]})`);
+      for (const [, X] of clients) await quitBtn(X.page);
+    }
+
+    // ── Queue-Hygiene ──
+    await H.page.waitForTimeout(1200);
+    const q3 = await H.page.evaluate(async (port) => {
+      try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=queue3')).json(); } catch (e) { return 'ERR'; }
+    }, fbPort);
+    const q3n = q3 && q3 !== 'ERR' ? Object.keys(q3).length : 0;
+    q3n === 0 ? ok('queue3 nach Matches leer ✓') : fail(`queue3 nicht leer: ${q3n} Ticket(s)`);
+
+    errsAll.length === 0 ? ok('3P Online: Keine JS-Fehler ✓') : errsAll.slice(0, 3).forEach(e => fail(`3P JS: ${e.slice(0, 80)}`));
+  } finally {
+    await H.ctx.close(); await G2.ctx.close(); await G3.ctx.close();
+  }
+  return { res, errs: errsAll };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE 6: Progressionssystem (Level, XP, Daily Reward, Avatar-Locks)
 // ═══════════════════════════════════════════════════════════════
 async function suiteProgression(browser) {
@@ -1942,7 +2060,14 @@ async function suiteTutorial(browser) {
   const FB_PORT   = 8766;
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rMM, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut] = await Promise.all([
+  // Matchmaking- und 3P-Suite NACHEINANDER (bis zu 6 Kontexte mit laufenden
+  // Spielen gleichzeitig überlasten den Runner → Phase-Sync-Flakes in 2P).
+  const onlineHeavy = (async () => {
+    const mm = await suiteMatchmaking(browser, FB_PORT);
+    const mm3 = await suiteOnline3P(browser, FB_PORT);
+    return { mm, mm3 };
+  })();
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -1950,7 +2075,7 @@ async function suiteTutorial(browser) {
     suiteQuitUX(browser),
     suiteOnlineUI(browser, FB_PORT),
     suiteOnline2P(browser, FB_PORT),
-    suiteMatchmaking(browser, FB_PORT),
+    onlineHeavy,
     suiteProgression(browser),
     suiteAchievements(browser),
     suiteBuildUrgency(browser),
@@ -1961,13 +2086,14 @@ async function suiteTutorial(browser) {
     suiteTutorial(browser),
   ]);
 
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

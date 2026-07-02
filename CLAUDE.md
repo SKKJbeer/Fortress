@@ -271,6 +271,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | v3.14.10 | onDisconnect-Auto-Löschen des Spielknotens → mobile App-Wechsel löschte Lobby, Gast fand Code nicht (siehe Online-Architektur oben) |
 | v3.14.11 | `fb.subscribe`/`subscribeRaw`: `off(ref,'value',unsub)` meldete NIE ab (modulare SDK: `onValue()` gibt Unsubscribe-FUNKTION zurück, die muss aufgerufen werden). Geister-Listener alter Spiele beendeten neue Sessions → „2. Online-Spiel kommt nicht zustande". Test-Mock muss SDK-Semantik spiegeln (onValue → Funktion)! |
 | v3.14.12 | Tutorial-Autostart/Onboarding kaperte laufendes Matchmaking (Erstgerät): Onboarding+Tutorial-Autostart nur noch im untätigen Menü; `startGuidedTutorial` bricht Matchmaking sauber ab, nie bei `online`. Selbst-Match im Quick-Match: `pid`-Fallback war SESSION_ID (ändert sich pro Load) → eigenes Geister-Ticket = „bester Gegner" (ELO-Diff 0). Fix: persistente `DEVICE_ID` (`fortress_device_id`), Ticket-Feld `dev`, alle 3 Selbst-Filter prüfen `dev`. |
+| v3.14.17 | `screenRef`/`screen`-Drift: `leaveOnline`/`quitGame` setzten nur `setScreen("menu")`, NICHT `screenRef.current` → Gast, der mitten im Spiel ausstieg, behielt Ref="game"; `applyState` wechselt den Screen nur bei Differenz zum Ref → nächster Online-Beitritt blieb für immer im Menü hängen (Refs spielten unsichtbar mit, Name erschien beim Gegner!). Regel: `setScreen` IMMER mit `screenRef.current` synchron setzen. |
 
 ---
 
