@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1954,3 +1954,10 @@ Plus: `mmJoinMatchedGame` prüft vor dem Reserve, ob das Spiel noch existiert
 (veralteter matched-Status erzeugte sonst Orphan-Knoten + ewiges Warten).
 
 Tests grün. SW-Cache `fortress-v3.15.3`.
+
+### v3.15.4 — Fahnen entfernt (freie Sicht auf die Mauern)
+Burg-Fahnenmast+Wimpel und der Neon-Wimpel über jeder Kanone (ragten bis zu
+2 Zellen nach oben) sind entfernt — sie verdeckten die Mauerreihen darüber.
+Das runde Wappen-Emblem auf dem Burgkörper bleibt (verdeckt nichts).
+
+Tests grün. SW-Cache `fortress-v3.15.4`.
