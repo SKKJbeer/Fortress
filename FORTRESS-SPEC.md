@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.14)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.15)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1774,3 +1774,31 @@ Ergebnis + ELO ansehen → zurück ins Hauptmenü → neues Matchmaking starten.
   Knoten-Löschung und 30s-Watchdog werden auf `screen==='result'` ignoriert.
 
 Tests grün. SW-Cache `fortress-v3.14.14`.
+
+### v3.14.15 — Lifecycle-Hygiene: Queue & DB nach jedem Match garantiert sauber
+Architektur-Audit aller Online-Ausstiegspfade; Ziel: nach JEDEM Spielende/Abbruch
+kann sofort wieder gematcht werden, ohne dass Leichen (Tickets, Timer, Knoten)
+den nächsten Beitritt stören.
+
+- **Zentraler Teardown in `cleanupGame`** (läuft bei jedem Online-Ausstieg):
+  räumt jetzt auch den Gast-Beitritts-Watchdog (`mmWatchdog`) ab — der feuerte
+  sonst nach Abbruch des Wartescreens später und startete UNSICHTBAR ein neues
+  Matchmaking (Zombie-Resurrection). Gibt reservierte Kandidaten-Tickets frei
+  (`mmPendingCandidates` → DB-Delete), stoppt notfalls noch aktive
+  Queue-Maschinerie (inkl. eigenes Ticket) und nullt `mmMatched`/`mmMyTicket`.
+- **Abbruch-sichere Claims**: `mmClaimAndMatch` prüft an drei Punkten
+  (nach Selbst-Claim, nach Kandidaten-Claims, nach Spielanlage), ob die Suche
+  inzwischen abgebrochen wurde → gibt Kandidaten frei, löscht ggf. den frisch
+  angelegten Spielknoten. `releaseSelf` löscht das eigene Ticket nach Abbruch,
+  statt per Patch einen status-losen Stub wiederauferstehen zu lassen.
+- **Crash-Marker `fortress_my_game`** (localStorage `{code, ts}`): wird bei
+  jeder eigenen Spielanlage gesetzt und beim sauberen Löschen entfernt. Bleibt
+  er nach App-Absturz/Tab-Kill liegen, löscht `gcOwnStaleGame()` den verwaisten
+  eigenen Spielknoten beim nächsten Online-Einstieg (nur Marker >30 Min —
+  ein zweiter Tab mit laufendem Spiel bleibt unberührt). Fremde Knoten kann
+  kein Client aufräumen (Rules verbieten Auflisten der games-Collection).
+- **Tote-Lobby-Timeout (Gast)**: beigetreten, aber nie State empfangen
+  (Host verschwand vor Spielstart) → nach 45s sauber zurück ins Menü
+  (`warnHostLost`) statt endlosem Wartescreen.
+
+Tests grün. SW-Cache `fortress-v3.14.15`.

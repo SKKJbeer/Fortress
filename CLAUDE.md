@@ -143,6 +143,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_ach_seen` | Anzahl der zuletzt gesehenen Achievements (seit v3.14.5). Button-Badge zeigt nur NEUE (unlocked − ach_seen), verschwindet beim Öffnen (`openAchievements`). |
 | `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 | `fortress_device_id` | Persistente Geräte-ID `d_...` (seit v3.14.12). Matchmaking-Ticket-Feld `dev` + `pid`-Fallback — verhindert Selbst-Matches über Reloads/fehlendes Profil hinweg. |
+| `fortress_my_game` | Crash-Marker `{code, ts}` des eigenen Spielknotens (seit v3.14.15). Bei sauberem Verlassen entfernt; nach Absturz löscht `gcOwnStaleGame()` (Marker >30 Min) den verwaisten Knoten beim nächsten Online-Einstieg. |
 
 ### Neue Konstanten
 - `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)

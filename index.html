@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.14</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.15</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3271,6 +3271,14 @@ window.FortressApp = function Fortress() {
           endOnlineDisconnected('warnHostLost');
           return;
         }
+        // Tote Lobby (v3.14.15): beigetreten, aber NIE State bekommen — der Host
+        // ist weg (normal pusht er sofort nach dem Join). Nach 45s sauber raus,
+        // statt ewig auf dem Wartescreen zu hängen.
+        if (stale > 45e3 && !everGotState.current) {
+          clearInterval(timeoutCheck);
+          endOnlineDisconnected('warnHostLost');
+          return;
+        }
         if (stale > 6e3) {
           setConn(true);
           if (!resubAttempted.current) {
@@ -3307,6 +3315,7 @@ window.FortressApp = function Fortress() {
     botMode.current = false;
     tutorialMode.current = false;
     mmMatched.current = false;
+    gcOwnStaleGame();
     const code = makeCode();
     const ok = await fb.set(`games/${code}`, {
       createdAt: Date.now(),
@@ -3320,6 +3329,7 @@ window.FortressApp = function Fortress() {
       setMpError("Konnte Spiel nicht anlegen: " + _fbError);
       return;
     }
+    try { localStorage.setItem("fortress_my_game", JSON.stringify({ code, ts: Date.now() })); } catch (e) {}
     mpCodeRef.current = code;
     myRole.current = 1;
     online.current = true;
@@ -3555,7 +3565,12 @@ window.FortressApp = function Fortress() {
       return { ...cur, status: "claiming", claimBy: SESSION_ID, claimTs };
     });
     if (!selfRes.committed) return;
-    const releaseSelf = () => fb.patch(`${qn}/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null });
+    // Nach Abbruch (Nutzer verließ die Suche mitten im Claim) darf das eigene
+    // Ticket nicht per Patch als Stub wiederauferstehen — dann löschen (v3.14.15).
+    const releaseSelf = () => mmActive.current
+      ? fb.patch(`${qn}/${SESSION_ID}`, { status: "waiting", claimBy: null, claimTs: null })
+      : fb.delete(`${qn}/${SESSION_ID}`);
+    if (!mmActive.current) { await releaseSelf(); return; }
     const claimed = [];
     const releaseAll = async () => {
       for (const rid of claimed) {
@@ -3576,6 +3591,11 @@ window.FortressApp = function Fortress() {
       }
       claimed.push(cid);
     }
+    // Abbruch-Prüfung: Suche wurde während der Claims beendet → alles freigeben.
+    if (!mmActive.current) {
+      await releaseAll();
+      return;
+    }
     const code = makeCode();
     const ok = await fb.set(`games/${code}`, {
       createdAt: Date.now(),
@@ -3588,6 +3608,15 @@ window.FortressApp = function Fortress() {
       await releaseAll();
       return;
     }
+    // Abbruch-Prüfung nach Spielanlage: Knoten wieder löschen, Tickets freigeben.
+    if (!mmActive.current) {
+      await releaseAll();
+      fb.delete(`games/${code}`);
+      return;
+    }
+    // Crash-Marker: eigener Spielknoten — wird bei sauberem Verlassen entfernt,
+    // nach einem Absturz beim nächsten Online-Einstieg aufgeräumt (v3.14.15).
+    try { localStorage.setItem("fortress_my_game", JSON.stringify({ code, ts: Date.now() })); } catch (e) {}
     // Kein onDisconnect-Auto-Löschen — Begründung siehe hostCreateGame (v3.14.10).
     gameDisconnectCancel.current = null;
     // Rollen vergeben: Kandidaten bekommen Rolle 2, 3, …; ich selbst Rolle 1.
@@ -3716,6 +3745,7 @@ window.FortressApp = function Fortress() {
     }
     botMode.current = false;
     tutorialMode.current = false;
+    gcOwnStaleGame();
     // Idempotenter Wiedereintritt (v3.14.12): evtl. noch laufende Timer/Listener
     // einer früheren Suche zuerst stoppen — nie zwei mmTick-Loops parallel.
     stopMatchmakingListeners(false);
@@ -3814,7 +3844,48 @@ window.FortressApp = function Fortress() {
       setScreen("game");
     }
   }
+  // Crash-Hinterlassenschaft beseitigen (v3.14.15): Ist von einer früheren
+  // Session noch ein EIGENER Spielknoten übrig (App-Absturz / Tab-Kill vor dem
+  // sauberen Verlassen), wird er beim nächsten Online-Einstieg gelöscht.
+  // Nur alte Marker (>30 Min) anfassen — ein zweiter offener Tab mit laufendem
+  // Spiel bleibt unberührt. Fremde Knoten kann kein Client aufräumen (Rules
+  // verbieten das Auflisten der games-Collection — gewollt).
+  function gcOwnStaleGame() {
+    try {
+      const raw = localStorage.getItem("fortress_my_game");
+      if (!raw) return;
+      const m = JSON.parse(raw);
+      if (!m || !m.code) { localStorage.removeItem("fortress_my_game"); return; }
+      if (m.code === mpCodeRef.current) return; // aktuelles eigenes Spiel
+      if (Date.now() - (m.ts || 0) < 18e5) return; // <30 Min: evtl. anderer Tab
+      fb.delete(`games/${m.code}`);
+      localStorage.removeItem("fortress_my_game");
+    } catch (e) {}
+  }
   function cleanupGame(code, wasHost) {
+    // ── Zentraler Teardown (v3.14.15): JEDER Online-Ausstieg läuft hier durch.
+    // Alles Matchmaking-Bezogene wird mit abgeräumt, damit keine Leichen den
+    // nächsten Queue-Beitritt stören.
+    // 1) Scharfer Gast-Beitritts-Watchdog: würde sonst nach Abbruch des
+    //    Wartescreens später feuern und UNSICHTBAR ein neues Matchmaking starten.
+    if (mmWatchdog.current) {
+      clearTimeout(mmWatchdog.current);
+      mmWatchdog.current = null;
+    }
+    // 2) Reservierte Kandidaten-Tickets freigeben (Gäste, die noch nicht
+    //    beigetreten sind, sollen sofort wieder suchen können).
+    for (const k of Object.keys(mmPendingCandidates.current)) {
+      try { fb.delete(mmPendingCandidates.current[k]); } catch (e) {}
+    }
+    mmPendingCandidates.current = {};
+    // 3) Falls irgendein Pfad mit noch aktiver Queue-Maschinerie hier landet:
+    //    Suche vollständig stoppen und eigenes Ticket löschen.
+    if (mmActive.current) {
+      mmActive.current = false;
+      stopMatchmakingListeners(true);
+    }
+    mmMatched.current = false;
+    mmMyTicket.current = null;
     // Geplantes Auto-Löschen (onDisconnect) abbestellen — sauberes Leave löscht selbst.
     if (gameDisconnectCancel.current) {
       try { gameDisconnectCancel.current(); } catch (e) {}
@@ -3824,6 +3895,8 @@ window.FortressApp = function Fortress() {
       setTimeout(() => {
         try {
           fb.delete(`games/${code}`);
+          // Eigener Spielknoten sauber entfernt → Crash-Marker löschen.
+          try { localStorage.removeItem("fortress_my_game"); } catch (e) {}
         } catch (e) {
         }
       }, 2500);
@@ -5455,7 +5528,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.14")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.15")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
