@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.13</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.14</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1397,6 +1397,7 @@ const LANGS = {
     nextRound: "N\xE4chste Runde",
     newMap: "Neue Karte",
     mainMenu: "Hauptmen\xFC",
+    mmResultHint: "Match beendet — neue Gegner findest du \xFCber das Matchmaking im Men\xFC.",
     profileTitle: "Profil bearbeiten",
     profileWelcome: "Willkommen, Feldherr!",
     profileSubExisting: "\xC4ndere Name, Wappen und Farbe.",
@@ -1601,6 +1602,7 @@ const LANGS = {
     nextRound: "Next round",
     newMap: "New map",
     mainMenu: "Main menu",
+    mmResultHint: "Match over — find new opponents via matchmaking in the menu.",
     profileTitle: "Edit profile",
     profileWelcome: "Welcome, Commander!",
     profileSubExisting: "Change your name, coat of arms and color.",
@@ -2662,6 +2664,9 @@ window.FortressApp = function Fortress() {
   const mmCancelDisconnect = useRef(null);
   const mmQueueSnapshot = useRef({});
   const mmMyTicket = useRef(null);
+  // true = laufendes Spiel kam aus dem Matchmaking (gewertet, kein Rematch) —
+  // false = Code-Spiel mit Freunden (Rematch erlaubt). (v3.14.14)
+  const mmMatched = useRef(false);
   const mmStartedAt = useRef(0);
   const mmBusy = useRef(false);
   const mmActive = useRef(false);
@@ -2930,7 +2935,9 @@ window.FortressApp = function Fortress() {
     if (!online.current || myRole.current === 1) return;
     if (exists === false) {
       // Host hat das Spiel beendet/gelöscht — nur reagieren wenn das Spiel lief.
-      if (everGotState.current) endOnlineDisconnected('warnHostEnded');
+      // Auf dem Ergebnisbildschirm ignorieren (v3.14.14): Das Match ist vorbei,
+      // der Gegner darf gehen, ohne uns von der ELO-Anzeige zu werfen.
+      if (everGotState.current && screenRef.current !== "result") endOnlineDisconnected('warnHostEnded');
       return;
     }
     if (stateStr == null) return;
@@ -3257,6 +3264,8 @@ window.FortressApp = function Fortress() {
           return;
         }
         const stale = Date.now() - lastStateAt.current;
+        // Ergebnisbildschirm: Match vorbei, Host pusht nichts mehr — kein Timeout (v3.14.14).
+        if (screenRef.current === "result") return;
         if (stale > 30e3 && everGotState.current) {
           clearInterval(timeoutCheck);
           endOnlineDisconnected('warnHostLost');
@@ -3297,6 +3306,7 @@ window.FortressApp = function Fortress() {
     }
     botMode.current = false;
     tutorialMode.current = false;
+    mmMatched.current = false;
     const code = makeCode();
     const ok = await fb.set(`games/${code}`, {
       createdAt: Date.now(),
@@ -3344,6 +3354,7 @@ window.FortressApp = function Fortress() {
     }
     botMode.current = false;
     tutorialMode.current = false;
+    mmMatched.current = false;
     const data = await fb.get(`games/${code}`);
     if (!data) {
       setMpError(t('warnSpielNichtGefunden'));
@@ -3464,6 +3475,7 @@ window.FortressApp = function Fortress() {
       startMatchmaking(np);
       return;
     }
+    mmMatched.current = true;
     mpCodeRef.current = code;
     myRole.current = role;
     online.current = true;
@@ -3481,6 +3493,7 @@ window.FortressApp = function Fortress() {
   }
   function mmBecomeHost(code, pendingPaths) {
     mmActive.current = false;
+    mmMatched.current = true;
     stopMatchmakingListeners(false);
     mpCodeRef.current = code;
     myRole.current = 1;
@@ -5442,7 +5455,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.13")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.14")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6207,7 +6220,28 @@ window.FortressApp = function Fortress() {
       shareShared ? t("shareBtnDone") : t("shareBtn")
     ),
     // ── ACTION-BUTTONS ────────────────────────────────────────
-    online.current && !isHost ? (
+    online.current && mmMatched.current ? (
+      // Matchmaking-Spiel (gewertet): kein Rematch — wie echtes Ranked.
+      // Zurück ins Menü, neue Gegner über neues Matchmaking.
+      React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320, alignItems: "center" }},
+        React.createElement("div", { style: {
+          color: "#64748b", fontSize: 12,
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 12, padding: "11px 18px", width: "100%", boxSizing: "border-box"
+        }}, t("mmResultHint")),
+        React.createElement("button", { onClick: () => {
+          scoresRef.current = { 1: 0, 2: 0 };
+          setScores({ 1: 0, 2: 0 });
+          leaveOnline();
+        }, style: {
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+          width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+          color: "white", border: "none", padding: "15px",
+          fontSize: 16, fontWeight: 800, borderRadius: 14, cursor: "pointer",
+          boxShadow: "0 4px 24px rgba(59,130,246,0.4)"
+        }}, React.createElement(Icon, { name: "home", size: 16 }), t("mainMenu"))
+      )
+    ) : online.current && !isHost ? (
       // Gast: Warte-Status + Hauptmenü
       React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320, alignItems: "center" }},
         React.createElement("div", { style: {

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.13)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.14)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1757,3 +1757,20 @@ Skalierungsgrenzen jetzt extern: Spark-Plan erlaubt 100 simultane Verbindungen
 wäre der Monetarisierungs-/Blaze-Moment (siehe Kostenpolitik).
 
 Tests grün. SW-Cache `fortress-v3.14.13`.
+
+### v3.14.14 — Matchmaking-Spiele ohne Rematch (echtes Ranked-Verhalten)
+Matchmaking-Spiele (Quick Match) enden jetzt wie in richtigen Ranked-Games:
+Ergebnis + ELO ansehen → zurück ins Hauptmenü → neues Matchmaking starten.
+
+- Neuer Ref `mmMatched`: true bei Spielen aus dem Matchmaking (`mmBecomeHost` /
+  `mmJoinMatchedGame`), false bei Code-Spielen (`hostCreateGame` / `guestJoinGame`).
+- Ergebnisbildschirm bei Matchmaking-Spielen (Host UND Gast): nur noch ein
+  prominenter „Hauptmenü"-Button + Hinweis (`mmResultHint` DE/EN). „Nächste
+  Runde" und „Neue Karte" gibt es dort nicht mehr — bei Code-Spielen mit
+  Freunden und lokalen Spielen bleiben sie erhalten.
+- Ergebnisbildschirm ist jetzt „Disconnect-sicher": Verlässt ein Spieler das
+  Match zuerst (Knoten gelöscht bzw. keine State-Pushes mehr), wird der andere
+  NICHT mehr per warnHostEnded/warnHostLost von der ELO-Anzeige geworfen —
+  Knoten-Löschung und 30s-Watchdog werden auf `screen==='result'` ignoriert.
+
+Tests grün. SW-Cache `fortress-v3.14.14`.
