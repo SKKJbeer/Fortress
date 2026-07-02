@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.14.11</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.14.12</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -250,6 +250,20 @@ const FB_CONFIG = {
 };
 const MP_CONFIGURED = FB_URL.startsWith("https://") && FB_URL.includes("firebasedatabase");
 const SESSION_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+// Geräte-stabile ID (v3.14.12): überlebt Reloads/App-Neustarts. Verhindert
+// Selbst-Matches im Matchmaking — die SESSION_ID ändert sich bei jedem Laden,
+// die Profil-ID existiert bei Erstspielern evtl. noch nicht. Nur die DEVICE_ID
+// identifiziert eigene (auch verwaiste) Queue-Tickets zuverlässig.
+const DEVICE_ID = (() => {
+  try {
+    let d = localStorage.getItem("fortress_device_id");
+    if (!d) {
+      d = "d_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("fortress_device_id", d);
+    }
+    return d;
+  } catch (e) { return SESSION_ID; }
+})();
 const MAX_STATE_BYTES = 15e4;
 let _fbError = "";
 let _pushCount = 0;
@@ -2361,14 +2375,19 @@ window.FortressApp = function Fortress() {
     window.addEventListener('pointerdown', r);
     return () => window.removeEventListener('pointerdown', r);
   }, []);
+  // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
+  const [mpScreen, setMpScreen] = useState(null);
   function openTutorial() { setOnboardStep(0); setShowOnboarding(true); }
   function finishOnboarding() {
     try { localStorage.setItem('fortress_onboarded', '1'); } catch (e) {}
     setShowOnboarding(false);
     // Erstspieler direkt ins interaktive Tutorial führen (wie bei anderen Spielen).
+    // NUR wenn der Spieler untätig im Hauptmenü ist — nie mitten in Matchmaking,
+    // Online-Session oder laufendem Spiel (v3.14.12).
     let tutDone = true;
     try { tutDone = !!localStorage.getItem('fortress_tutorial_done'); } catch (e) {}
-    if (!tutDone && profile) setTimeout(() => startGuidedTutorial(), 250);
+    const idleInMenu = screenRef.current === "menu" && mpScreen == null && !mmActive.current && !online.current;
+    if (!tutDone && profile && idleInMenu) setTimeout(() => startGuidedTutorial(), 250);
   }
   function endTutorial(goOnline) {
     tutorialMode.current = false;
@@ -2510,16 +2529,21 @@ window.FortressApp = function Fortress() {
     } catch (e) {
     }
   }
-  // Onboarding bei Erstkontakt automatisch zeigen (hat Vorrang vor Daily-Modal)
+  // Onboarding bei Erstkontakt automatisch zeigen (hat Vorrang vor Daily-Modal).
+  // NUR im untätigen Hauptmenü (v3.14.12) — nie über Matchmaking/Online-Screens
+  // poppen: das Schließen startete dort das Erstspieler-Tutorial und kaperte
+  // die laufende Queue-Session. Wird nachgeholt, sobald der Spieler ins Menü
+  // zurückkehrt (deps enthalten screen + mpScreen).
   useEffect(() => {
     if (!profile) return;
+    if (screen !== "menu" || mpScreen != null || mmActive.current || online.current) return;
     let onboarded = true;
     try { onboarded = !!localStorage.getItem('fortress_onboarded'); } catch (e) {}
     if (!onboarded) {
       const timer = setTimeout(() => { setOnboardStep(0); setShowOnboarding(true); }, 600);
       return () => clearTimeout(timer);
     }
-  }, [profile?.id]);
+  }, [profile?.id, screen, mpScreen]);
   useEffect(() => {
     if (!profile) return;
     let onboarded = true;
@@ -2624,7 +2648,6 @@ window.FortressApp = function Fortress() {
     }
     setCleanupBusy(false);
   }
-  const [mpScreen, setMpScreen] = useState(null);
   const [mpCode, setMpCode] = useState("");
   const [mpInput, setMpInput] = useState("");
   const [mpError, setMpError] = useState("");
@@ -3272,6 +3295,8 @@ window.FortressApp = function Fortress() {
       setMpError(MP_CONFIGURED ? t('warnVerbindung') + " " + _fbError : t('fbMissing'));
       return;
     }
+    botMode.current = false;
+    tutorialMode.current = false;
     const code = makeCode();
     const ok = await fb.set(`games/${code}`, {
       createdAt: Date.now(),
@@ -3317,6 +3342,8 @@ window.FortressApp = function Fortress() {
       setMpError(MP_CONFIGURED ? t('warnVerbindung') + " " + _fbError : t('fbMissing'));
       return;
     }
+    botMode.current = false;
+    tutorialMode.current = false;
     const data = await fb.get(`games/${code}`);
     if (!data) {
       setMpError(t('warnSpielNichtGefunden'));
@@ -3500,8 +3527,9 @@ window.FortressApp = function Fortress() {
       const cTk = mmQueueSnapshot.current[cid];
       if (!cTk || !my) continue;
       const samePid = my.pid && cTk.pid && my.pid === cTk.pid;
-      if (samePid) {
-        fb.delete(`${qn}/${cid}`); // Zombie-Ticket entfernen (gleiche pid = eigener alter Tab)
+      const sameDev = cTk.dev && cTk.dev === DEVICE_ID;
+      if (samePid || sameDev) {
+        fb.delete(`${qn}/${cid}`); // Zombie-Ticket entfernen (eigener alter Tab / eigenes Gerät)
         return; // kein Match
       }
     }
@@ -3563,6 +3591,7 @@ window.FortressApp = function Fortress() {
     for (const [id, tk] of Object.entries(data)) {
       if (id === SESSION_ID || !tk) continue;
       if (my.pid && tk.pid && tk.pid === my.pid) continue; // selber Spieler, gleicher Browser (gleiche localStorage-ID)
+      if (tk.dev && tk.dev === DEVICE_ID) continue; // selbes Gerät (auch nach Reload / ohne Profil) — nie selbst matchen
       if (tk.status !== "waiting") continue;
       if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
         fb.delete(`${qn}/${id}`);
@@ -3637,6 +3666,11 @@ window.FortressApp = function Fortress() {
       setMpError(MP_CONFIGURED ? t('warnVerbindung') + " " + _fbError : t('fbMissing'));
       return;
     }
+    botMode.current = false;
+    tutorialMode.current = false;
+    // Idempotenter Wiedereintritt (v3.14.12): evtl. noch laufende Timer/Listener
+    // einer früheren Suche zuerst stoppen — nie zwei mmTick-Loops parallel.
+    stopMatchmakingListeners(false);
     mmNp.current = np;
     numPlayersRef.current = np;
     setNumPlayers(np);
@@ -3647,7 +3681,8 @@ window.FortressApp = function Fortress() {
       wappen: (profile == null ? void 0 : profile.wappen) || "♔",
       color: (profile == null ? void 0 : profile.color) || "#2563eb",
       elo: myEloForMode(np),
-      pid: (profile == null ? void 0 : profile.id) || SESSION_ID,
+      pid: (profile == null ? void 0 : profile.id) || DEVICE_ID,
+      dev: DEVICE_ID,
       ts: now,
       hb: now,
       status: "waiting",
@@ -3680,7 +3715,7 @@ window.FortressApp = function Fortress() {
         const dels = [];
         for (const [oldId, oldTk] of Object.entries(snap)) {
           if (oldId === SESSION_ID || !oldTk) continue;
-          if (myPid && oldTk.pid === myPid) dels.push(fb.delete(`${qn}/${oldId}`));
+          if ((myPid && oldTk.pid === myPid) || (oldTk.dev && oldTk.dev === DEVICE_ID)) dels.push(fb.delete(`${qn}/${oldId}`));
         }
         if (dels.length > 0) await Promise.all(dels);
       }
@@ -4235,6 +4270,12 @@ window.FortressApp = function Fortress() {
   // Startet das interaktive Tutorial: lokales Spiel gegen einen passiven Bot mit
   // Coach-Anweisungen pro Phase. Markiert sofort als gesehen (kein erneuter Auto-Start).
   function startGuidedTutorial() {
+    // Flow-Exklusivität (v3.14.12): Das Tutorial darf NIE eine laufende
+    // Online-Session kapern. Läuft Matchmaking, wird es sauber abgebrochen
+    // (Ticket löschen, Listener stoppen) — sonst sucht die Queue-Maschinerie
+    // unsichtbar hinter dem Tutorial weiter und matcht mitten hinein.
+    if (online.current) return;
+    if (mmActive.current) cancelMatchmaking();
     try { localStorage.setItem('fortress_tutorial_done', '1'); } catch (e) {}
     online.current = false;
     botMode.current = true;
@@ -5362,7 +5403,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.11")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.14.12")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

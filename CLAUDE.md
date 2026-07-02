@@ -141,6 +141,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_sound` | `'1'`/`'0'` = Sound-Effekte an/aus (seit v3.12.2, Default an). Steuert `SFX.enabled`. |
 | `fortress_ach_seen` | Anzahl der zuletzt gesehenen Achievements (seit v3.14.5). Button-Badge zeigt nur NEUE (unlocked − ach_seen), verschwindet beim Öffnen (`openAchievements`). |
 | `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
+| `fortress_device_id` | Persistente Geräte-ID `d_...` (seit v3.14.12). Matchmaking-Ticket-Feld `dev` + `pid`-Fallback — verhindert Selbst-Matches über Reloads/fehlendes Profil hinweg. |
 
 ### Neue Konstanten
 - `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)
@@ -267,6 +268,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | v2.8.1 | Race-Condition beim gleichzeitigen Beitreten → beide Gäste bekamen Rolle P2 |
 | v3.14.10 | onDisconnect-Auto-Löschen des Spielknotens → mobile App-Wechsel löschte Lobby, Gast fand Code nicht (siehe Online-Architektur oben) |
 | v3.14.11 | `fb.subscribe`/`subscribeRaw`: `off(ref,'value',unsub)` meldete NIE ab (modulare SDK: `onValue()` gibt Unsubscribe-FUNKTION zurück, die muss aufgerufen werden). Geister-Listener alter Spiele beendeten neue Sessions → „2. Online-Spiel kommt nicht zustande". Test-Mock muss SDK-Semantik spiegeln (onValue → Funktion)! |
+| v3.14.12 | Tutorial-Autostart/Onboarding kaperte laufendes Matchmaking (Erstgerät): Onboarding+Tutorial-Autostart nur noch im untätigen Menü; `startGuidedTutorial` bricht Matchmaking sauber ab, nie bei `online`. Selbst-Match im Quick-Match: `pid`-Fallback war SESSION_ID (ändert sich pro Load) → eigenes Geister-Ticket = „bester Gegner" (ELO-Diff 0). Fix: persistente `DEVICE_ID` (`fortress_device_id`), Ticket-Feld `dev`, alle 3 Selbst-Filter prüfen `dev`. |
 
 ---
 

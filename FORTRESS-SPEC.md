@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.11)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.12)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1686,3 +1686,39 @@ mitten aus dem zweiten Beitritt/Matchmaking. Erst ein Seiten-Reload räumte auf.
 fälschlich die Bauzeit gekürzt); stattdessen Schussphase **25s → 20s** gekürzt.
 
 Tests grün. SW-Cache `fortress-v3.14.11`.
+
+### v3.14.12 — Flow-Exklusivität + gerätestabile Matchmaking-Identität
+Zwei Findings vom Test mit einem fabrikneuen Zweitgerät behoben:
+
+**Finding 1 — Tutorial kaperte die Matchmaking-Session:** Auf einem frischen Gerät
+existiert beim App-Start noch kein Profil → das Onboarding-Popup (Effect auf
+`profile?.id`) erschien erst NACH der Profilerstellung — auch mitten über dem
+Matchmaking-Screen (technisch `screen==='menu'`). Beim Schließen startete
+`finishOnboarding()` das Erstspieler-Tutorial, `startGuidedTutorial()` setzte zwar
+`mpScreen=null`, brach aber das Matchmaking NICHT ab: `mmActive`, Queue-Listener,
+`mmTick`-Heartbeat und Ticket liefen unsichtbar hinter dem Tutorial weiter. Betrat
+der zweite Spieler die Queue, matchte die Hintergrund-Maschinerie mitten ins
+Tutorial hinein (Hybrid aus Bot-/Tutorial-/Online-Zustand).
+- Onboarding-Popup erscheint nur noch im untätigen Hauptmenü (kein `mpScreen`,
+  kein `mmActive`, kein `online`) und wird nachgeholt, sobald der Spieler dorthin
+  zurückkehrt (Effect-Deps: `profile?.id, screen, mpScreen`).
+- Tutorial-Autostart in `finishOnboarding()` ebenso nur im untätigen Menü.
+- `startGuidedTutorial()`: Hard-Guards — bricht bei `online` ab; laufendes
+  Matchmaking wird zuerst sauber via `cancelMatchmaking()` beendet.
+- Online-Einstiege (`startMatchmaking`, `hostCreateGame`, `guestJoinGame`) setzen
+  defensiv `botMode=false, tutorialMode=false`.
+- `startMatchmaking` ist idempotent: `stopMatchmakingListeners(false)` am Anfang —
+  nie zwei parallele mmTick-Loops.
+
+**Finding 2 — Selbst-Match („mit sich selber gejoint"):** Die Selbst-Erkennung
+hing an `pid = profile?.id || SESSION_ID`. Bei Erstspielern ohne Profil bzw. nach
+Reload/App-Neustart (neue SESSION_ID) galt das eigene verwaiste Ticket als fremder
+Gegner — mit ELO-Differenz 0 sogar als BESTER Kandidat.
+- Neue `DEVICE_ID` (localStorage `fortress_device_id`, einmalig pro Gerät erzeugt,
+  überlebt Reloads). Ticket trägt jetzt `dev: DEVICE_ID`; `pid`-Fallback ist die
+  DEVICE_ID statt SESSION_ID.
+- Alle drei Selbst-Filter prüfen zusätzlich `dev`: Kandidatensuche
+  (`mmTryFindMatch`), Claim-Sicherung (`mmClaimAndMatch`, löscht eigene
+  Zombie-Tickets), Alt-Ticket-Bereinigung beim Queue-Beitritt.
+
+Tests grün. SW-Cache `fortress-v3.14.12`.
