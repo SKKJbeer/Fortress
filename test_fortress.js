@@ -1040,6 +1040,15 @@ async function suiteMatchmaking(browser, fbPort) {
                : fail(`Quick Match: A=${m1a} B=${m1b}`);
     if (!m1a || !m1b) return { res, errs: [...errsA, ...errsB] };
 
+    // Selbst-Match-Regression (v3.15.2): beide HUDs müssen BEIDE Namen zeigen —
+    // bei einem Selbst-Match (Host joint eigenes Spiel) stünde ein Name doppelt.
+    await pA.waitForTimeout(600);
+    const hudA = await pA.evaluate(() => document.body.innerText);
+    const hudB = await pB.evaluate(() => document.body.innerText);
+    const bothNames = /MMAnna/.test(hudA) && /MMBert/.test(hudA) && /MMAnna/.test(hudB) && /MMBert/.test(hudB);
+    bothNames ? ok('Match-Identitäten: beide Namen in beiden HUDs ✓')
+              : fail(`Match-Identitäten falsch (A: ${/MMAnna/.test(hudA)}/${/MMBert/.test(hudA)}, B: ${/MMAnna/.test(hudB)}/${/MMBert/.test(hudB)})`);
+
     // ── Ranked-Result: A gibt auf → B sieht Ergebnis ohne Rematch ──
     await pA.waitForTimeout(1200);
     await pA.evaluate(() => {
@@ -1056,7 +1065,7 @@ async function suiteMatchmaking(browser, fbPort) {
     });
     bRes.menu    ? ok('Ranked-Result: Hauptmenü-Button vorhanden ✓') : fail('Ranked-Result: Hauptmenü-Button fehlt');
     !bRes.rematch ? ok('Ranked-Result: keine Rematch-Buttons ✓')     : fail('Ranked-Result: Rematch-Buttons sichtbar');
-    bRes.hint    ? ok('Ranked-Result: Matchmaking-Hinweis ✓')        : fail('Ranked-Result: Hinweis fehlt');
+    !bRes.hint   ? ok('Ranked-Result: keine Hinweis-Box (seit v3.15.2) ✓') : fail('Ranked-Result: Hinweis-Box noch sichtbar');
 
     // Beide zurück ins Menü
     await jsClick(pB, ['Hauptmenü']);

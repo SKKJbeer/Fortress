@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1893,3 +1893,39 @@ Kompletter visueller Umbau des Terrain-Renderers im Stil moderner Mobile-Games:
   Laufzeit-Kosten. Visuell verifiziert über Screenshots aller 7 Welten.
 
 Tests grün. SW-Cache `fortress-v3.15.1`.
+
+### v3.15.2 — Matchmaking-Review: Selbst-Match-Race + Uhren-Immunität
+Komplettes Review nach erneutem Selbst-Match-Report. Drei Findings:
+
+**Finding 1 (KRITISCH, die Selbst-Match-Ursache):** `mmClaimAndMatch` patchte
+am Ende das EIGENE Ticket auf `{status:'matched', code, role:1}`. Echtes
+Firebase pusht dieses Update sofort zurück in die eigene Queue-Subscription →
+`mmOnQueueUpdate` behandelte es bedingungslos als Fremd-Match →
+`mmJoinMatchedGame` zwang role 1→2 → der designierte HOST jointe als GAST 2
+in sein EIGENES Spiel (guestAction2 = eigenes Profil) und wurde eine
+Millisekunde später zusätzlich Host → „Spieler connected mit sich selbst".
+Die Test-Mocks (onValue = 120ms-Polling statt Push) trafen dieses Fenster
+praktisch nie — deshalb blieben alle Suites grün.
+- Fix 1: Own-Patch ENTFERNT (hatte keinen Konsumenten; mmBecomeHost löscht
+  das Ticket ohnehin sofort).
+- Fix 2: `mmOnQueueUpdate` befolgt `matched` nur noch bei echten
+  Fremd-Matches (`!mmBusy && claimBy !== SESSION_ID && role !== 1`).
+- Fix 3 (Tiefenverteidigung): `mmJoinMatchedGame` verweigert Rollen ≠ 2/3
+  und joint nie in ein Spiel, das der Client selbst hostet.
+- Regressionstest: nach Quick Match müssen BEIDE Namen in BEIDEN HUDs stehen.
+
+**UI:** „Match beendet"-Hinweis-Box auf dem Ranked-Ergebnisbildschirm entfernt
+(Nutzerwunsch) — nur noch der Hauptmenü-Button.
+
+**Finding 2 (Uhren-Skew):** Verwaist-Check verglich lokale Uhr mit fremden
+Zeitstempeln (`now − tk.hb > 35s`) — Geräte mit >35s Uhrabweichung löschten
+permanent fremde, frische Tickets („Queue immer leer"). Fix: beobachtungs-
+basierte Staleness (`mmHbSeen`-Map): verwaist erst, wenn sich das hb über
+35s EIGENER Beobachtung nicht ändert. Komplett uhren-immun.
+
+**Finding 3 (klein):** Der 6s-Claim-Heal konnte das eigene Ticket während des
+EIGENEN laufenden Claims auf `waiting` zurücksetzen (Dritter hätte einen
+aktiven Claimer claimen können). Fix: kein Self-Heal bei
+`claimBy === SESSION_ID && mmBusy`.
+
+Tests grün. SW-Cache `fortress-v3.15.2`.

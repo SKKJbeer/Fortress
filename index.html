@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.15.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.15.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2742,6 +2742,11 @@ window.FortressApp = function Fortress() {
   const mmCancelDisconnect = useRef(null);
   const mmQueueSnapshot = useRef({});
   const mmMyTicket = useRef(null);
+  // Beobachtungsbasierte Heartbeat-Überwachung (v3.15.2): {id: {hb, at}}.
+  // Ein Ticket gilt erst als verwaist, wenn sich sein hb über 35s MEINER
+  // Beobachtung nicht geändert hat — immun gegen falsch gehende Geräte-Uhren
+  // (Wanduhr-Vergleich löschte sonst fremde, frische Tickets).
+  const mmHbSeen = useRef({});
   // true = laufendes Spiel kam aus dem Matchmaking (gewertet, kein Rematch) —
   // false = Code-Spiel mit Freunden (Rematch erlaubt). (v3.14.14)
   const mmMatched = useRef(false);
@@ -3545,7 +3550,14 @@ window.FortressApp = function Fortress() {
     }, MM_CLAIM_HEAL_MS);
   }
   async function mmJoinMatchedGame(code, role, np) {
-    role = role === 3 ? 3 : 2;
+    // Tiefenverteidigung (v3.15.2): niemals als Gast in ein Spiel joinen,
+    // das ich selbst hoste — und nur echte Gast-Rollen (2/3) akzeptieren.
+    if (myRole.current === 1 && mpCodeRef.current === code) return;
+    if (role !== 2 && role !== 3) {
+      fb.delete(`${mmQueueName()}/${SESSION_ID}`);
+      startMatchmaking(np === 3 ? 3 : 2);
+      return;
+    }
     np = np === 3 ? 3 : 2;
     stopMatchmakingListeners(false);
     fb.delete(`${np === 3 ? "queue3" : "queue2"}/${SESSION_ID}`);
@@ -3707,7 +3719,11 @@ window.FortressApp = function Fortress() {
       pendingPaths[role] = `${qn}/${cid}`;
       role++;
     }
-    await fb.patch(`${qn}/${SESSION_ID}`, { status: "matched", code, role: 1 });
+    // WICHTIG (v3.15.2): Das EIGENE Ticket NICHT auf 'matched' patchen!
+    // Die eigene Queue-Subscription pushte das Update sofort zurück →
+    // mmOnQueueUpdate hielt es für ein Fremd-Match, mmJoinMatchedGame zwang
+    // role 1 → 2 und der Host jointe als Gast IN SEIN EIGENES SPIEL
+    // (Selbst-Match!). mmBecomeHost löscht das Ticket ohnehin sofort.
     mmBecomeHost(code, pendingPaths);
   }
   async function mmTryFindMatch() {
@@ -3726,13 +3742,22 @@ window.FortressApp = function Fortress() {
     // claimt nur bei kleinerer eigener ID) bildete ab ~15 Wartenden
     // Präferenz-Ketten ohne zuständigen Claimer → Livelock, niemand matchte.
     const wait = [];
+    const seen = mmHbSeen.current;
+    for (const k of Object.keys(seen)) if (!data[k]) delete seen[k]; // Karteileichen der Beobachtung
     for (const [id, tk] of Object.entries(data)) {
       if (!tk || tk.status !== "waiting") continue;
       if (id !== SESSION_ID) {
         if (my.pid && tk.pid && tk.pid === my.pid) continue; // selber Spieler (gleiche Profil-ID)
         if (tk.dev && tk.dev === DEVICE_ID) continue; // selbes Gerät — nie selbst matchen
-        if (now - (tk.hb || tk.ts) > MM_HEARTBEAT_STALE_MS) {
+        // Verwaist = hb hat sich über 35s MEINER Beobachtung nicht geändert
+        // (uhren-immun; kein Vergleich lokale Uhr vs. fremder Zeitstempel).
+        const hb = tk.hb || tk.ts || 0;
+        const rec = seen[id];
+        if (!rec || rec.hb !== hb) {
+          seen[id] = { hb, at: now };
+        } else if (now - rec.at > MM_HEARTBEAT_STALE_MS) {
           fb.delete(`${qn}/${id}`);
+          delete seen[id];
           continue;
         }
       }
@@ -3779,11 +3804,19 @@ window.FortressApp = function Fortress() {
     const my = mmQueueSnapshot.current[SESSION_ID];
     if (!my) return;
     if (my.status === "matched" && my.code) {
+      // Selbst-Match-Schutz (v3.15.2): NUR Fremd-Matches befolgen. Läuft mein
+      // eigener Claim (mmBusy) oder trägt das Ticket meine Rolle 1 / meine
+      // eigene claimBy-Signatur, ist es ein Echo des eigenen Claims —
+      // mmBecomeHost übernimmt, niemals als Gast ins eigene Spiel joinen.
+      if (mmBusy.current || my.claimBy === SESSION_ID || (my.role || 2) === 1) return;
       mmActive.current = false;
       mmJoinMatchedGame(my.code, my.role || 2, mmNp.current);
       return;
     }
     if (my.status === "claiming") {
+      // Eigener aktiver Claim heilt sich nicht selbst zurück auf 'waiting'
+      // (sonst könnte ein Dritter einen aktiven Claimer claimen) — Finding 3.
+      if (my.claimBy === SESSION_ID && mmBusy.current) return;
       mmScheduleClaimHeal(my.claimTs);
       return;
     }
@@ -3855,6 +3888,7 @@ window.FortressApp = function Fortress() {
       return;
     }
     mmMyTicket.current = ticket;
+    mmHbSeen.current = {};
     mmStartedAt.current = now;
     mmQueueSnapshot.current = { [SESSION_ID]: ticket };
     mmActive.current = true;
@@ -5762,7 +5796,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6532,11 +6566,6 @@ window.FortressApp = function Fortress() {
       // Matchmaking-Spiel (gewertet): kein Rematch — wie echtes Ranked.
       // Zurück ins Menü, neue Gegner über neues Matchmaking.
       React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320, alignItems: "center" }},
-        React.createElement("div", { style: {
-          color: "#64748b", fontSize: 12,
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: 12, padding: "11px 18px", width: "100%", boxSizing: "border-box"
-        }}, t("mmResultHint")),
         React.createElement("button", { onClick: () => {
           scoresRef.current = { 1: 0, 2: 0 };
           setScores({ 1: 0, 2: 0 });
