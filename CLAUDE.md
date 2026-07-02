@@ -69,6 +69,7 @@ index.html direkt editieren
 - **Verlust**: Burg am Bauende nicht vollständig von Mauern umschlossen (Flood-Fill)
 - **Kanonen**: schießen nur wenn zu Beginn der Schussrunde vollständig ummauert (`frozenReady`)
 - **Grid**: 44×68 Zellen, 14px pro Zelle (W=616, H=952)
+- **Welt-Themes (seit v3.15.0)**: `WORLD_THEMES` (7 Welten: Kristalltal, Frostreich, Glutwüste, Vulkanschlund, Nebelmoor, Herbstwald, Astralebene) — `worldThemeOf(terrainSeed)` = `seed % 7`, deterministisch → online automatisch synchron. Farben laufen komplett über den bgCanvas-Offscreen-Render; Welt-Namenszug wird INNERHALB der p1Flipped-Transformation gezeichnet (Doppel-Flip = lesbar). |
 - **Spieler**: P1=Blau(♔), P2=Rot(♚), P3=Grün(♜)
 
 ---

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.14.17)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1841,3 +1841,31 @@ screenRef-Bug), queue3-Hygiene. Gated Debug: `window.__myRole` +
 3P-Diagnose 4× komplett grün (inkl. deterministischem Gast-zuerst-Ausstieg).
 
 Tests grün. SW-Cache `fortress-v3.14.17`.
+
+### v3.15.0 — Welt-Themes: 7 Welten, zufällig pro Spiel
+Jedes Spiel spielt jetzt in einer von **7 zufälligen Welten** — komplette
+Farbwelten für Untergrund, Bodentextur, Fluss (inkl. Glow + Ufer +
+Schimmer-Animation), Berge und Ambient-Partikel:
+
+| Welt | Charakter |
+|---|---|
+| 🔮 Kristalltal | das bisherige Navy/Teal-Design |
+| ❄️ Frostreich | Eisblau, gefrorener Fluss, weiße Gipfel, Schneepartikel |
+| 🏜️ Glutwüste | warmer Sand, türkise Oase, Sandstein-Berge, Goldstaub |
+| 🌋 Vulkanschlund | Basaltschwarz, GLÜHENDER LAVA-Fluss, Glut-Funken |
+| 🐸 Nebelmoor | Sumpfgrün, giftgrünes Wasser, Glühwürmchen |
+| 🍂 Herbstwald | warmes Braun/Rost, kühler Fluss als Kontrast, Blätter |
+| ✨ Astralebene | Violett-kosmisch, Magenta-Energiefluss, Sternenstaub |
+
+**Technik:**
+- `WORLD_THEMES` (14 Farb-Slots pro Thema) + `worldThemeOf(seed)`.
+- Deterministische Wahl: `seed % 7` aus dem Terrain-Seed → **online automatisch
+  synchron** (Host und Gäste teilen den Seed über den State, null
+  Protokoll-Änderung; gilt für 2P und 3P, lokal, Bot und Tutorial).
+- Alle Theme-Farben laufen über den bestehenden Offscreen-Render (`bgCanvas`,
+  nur bei `bgDirty` neu gezeichnet) — keine Performance-Änderung.
+- Dezenter Welt-Namenszug unten links im Terrain (innerhalb der
+  Flip-Transformation gezeichnet — steht auch bei P1-Flip nie kopf).
+- Visuell verifiziert: Screenshots aller 7 Welten (Seed-Erzwingung).
+
+Tests grün. SW-Cache `fortress-v3.15.0`.
