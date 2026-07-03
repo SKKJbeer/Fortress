@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2073,3 +2073,17 @@ Tests grün (195). SW-Cache `fortress-v3.16.2`.
   Platzierungs-Vorschau. Nachlege-Stein startet jetzt ohne Ghost.
 
 Tests grün (195). SW-Cache `fortress-v3.16.3`.
+
+### v3.16.4 — Startkapital für Rüstphase 1 + Reparatur verständlich gemacht
+Zwei Nutzer-Rückfragen umgesetzt:
+- **⚙15 Startkapital** (`startGame`): Damit ist schon in der ERSTEN Rüstphase
+  eine echte Kaufentscheidung möglich (Reparatur ⚙15 sofort, oder mit den
+  ersten Treffern die Kanone ⚙20).
+- **Reparatur jetzt SOFORT + sichtbar** (war unverständlich, weil verzögert):
+  Kauf verwandelt AUGENBLICKLICH bis zu 3 Trümmer im Umkreis der eigenen Burg
+  (Chebyshev ≤10) zurück in Mauern (`repairRubble`), plus Toast „🔧 N Mauern
+  repariert!". Die verzögerte Gutschrift zur nächsten Bauphase ist entfernt.
+  Gibt es nichts zu reparieren, ist die Karte ausgegraut (Preis bleibt
+  sichtbar, KEIN irreführendes „MAX" mehr — eigener `noNeed`-Zustand).
+
+Tests grün (195). SW-Cache `fortress-v3.16.4`.

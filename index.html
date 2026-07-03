@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1494,6 +1494,7 @@ const LANGS = {
     shopArmor: "Panzermauern",
     shopRepair: "Reparatur",
     shopMax: "MAX",
+    repairDone: "\u{1F527} {n} Mauern repariert!",
     warnKeinKanone: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     warnKanoneGesetzt: "Kanone ({name}) platziert — noch {left}",
     warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
@@ -1704,6 +1705,7 @@ const LANGS = {
     shopArmor: "Armored walls",
     shopRepair: "Repair crew",
     shopMax: "MAX",
+    repairDone: "\u{1F527} {n} walls repaired!",
     warnKeinKanone: "No ready cannon — cannons must be walled in!",
     warnKanoneGesetzt: "Cannon ({name}) placed — {left} remaining",
     warnAusgeschieden: "{names} eliminated — castle open!",
@@ -4332,30 +4334,6 @@ window.FortressApp = function Fortress() {
     setPhase("build");
     timerVal.current = BUILD_TIME;
     setTimer(BUILD_TIME);
-    // Reparatur-Trupp (v3.16.0): je gekaufter Ladung bis zu 3 Trümmer nahe der
-    // eigenen Burg zurück in Mauern verwandeln.
-    {
-      let repaired = false;
-      const gNow = grid.current.map((row) => [...row]);
-      for (const p of players) {
-        const up = upgrades.current[p];
-        const castle = castles.current[p];
-        if (!up || !up.repair || !castle || eliminated.current[p]) continue;
-        while (up.repair > 0) {
-          up.repair -= 1;
-          const rubbles = [];
-          for (let r = 0; r < ROWS; r++)
-            for (let c = 0; c < COLS; c++)
-              if (gNow[r][c] === RUBBLE) rubbles.push([r, c, Math.max(Math.abs(r - castle.r), Math.abs(c - castle.c))]);
-          rubbles.sort((a, b) => a[2] - b[2]);
-          for (let i = 0; i < Math.min(3, rubbles.length); i++) {
-            gNow[rubbles[i][0]][rubbles[i][1]] = WALL_OF[p];
-            repaired = true;
-          }
-        }
-      }
-      if (repaired) setGrid(gNow);
-    }
     pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
     warnedOpen.current = mk(false);
     activeBuild.current = mk(null);
@@ -4679,6 +4657,27 @@ window.FortressApp = function Fortress() {
     }
     buyUpgrade(player, item);
   }
+  // Reparatur-Trupp (v3.16.4): bis zu maxN Trümmer im Umkreis der eigenen
+  // Burg (Chebyshev ≤ 10) sofort in eigene Mauern verwandeln. Gibt Anzahl zurück.
+  function repairRubble(player, maxN) {
+    const g = grid.current;
+    const castle = castles.current[player];
+    if (!g || !castle) return 0;
+    const cand = [];
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++) {
+        if (g[r][c] !== RUBBLE) continue;
+        const d = Math.max(Math.abs(r - castle.r), Math.abs(c - castle.c));
+        if (d <= 10) cand.push([r, c, d]);
+      }
+    if (!cand.length) return 0;
+    cand.sort((a, b) => a[2] - b[2]);
+    const newG = g.map((row) => [...row]);
+    const n = Math.min(maxN, cand.length);
+    for (let i = 0; i < n; i++) newG[cand[i][0]][cand[i][1]] = WALL_OF[player];
+    setGrid(newG);
+    return n;
+  }
   // Shop-Kauf (v3.16.0). Läuft NUR beim Zustands-Besitzer (Host/lokal) —
   // Gäste senden eine buy-Action. Rückgabe: true wenn gekauft.
   function buyUpgrade(player, item) {
@@ -4704,7 +4703,12 @@ window.FortressApp = function Fortress() {
     } else if (item === "repair") {
       price = SHOP.repair.price;
       if (have < price) return false;
-      up.repair += 1;
+      // SOFORT reparieren (v3.16.4): bis zu 3 Trümmer nahe der eigenen Burg
+      // werden augenblicklich wieder zu Mauern — sichtbarer Effekt statt
+      // unsichtbarer Gutschrift für später.
+      const fixedN = repairRubble(player, 3);
+      if (fixedN === 0) return false;
+      showWarn(t("repairDone", { n: fixedN }));
     } else return false;
     scrap.current[player] = have - price;
     if (typeof window !== "undefined" && window.__mmDebug) (window.__buys = window.__buys || []).push(player + ":" + item);
@@ -5973,8 +5977,9 @@ window.FortressApp = function Fortress() {
   function startGame() {
     initGrid();
     setRound(1);
-    // Neues Spiel: Ökonomie komplett zurücksetzen (v3.16.0)
-    scrap.current = { 1: 0, 2: 0, 3: 0 };
+    // Neues Spiel: Ökonomie zurücksetzen — mit ⚙15 Startkapital (v3.16.4),
+    // damit schon in der ersten Rüstphase eine echte Kaufentscheidung möglich ist.
+    scrap.current = { 1: 15, 2: 15, 3: 15 };
     upgrades.current = { 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } };
     wallHp.current = {};
     beginSetup();
@@ -6119,7 +6124,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7071,7 +7076,15 @@ window.FortressApp = function Fortress() {
         { k: "cannon", icon: "\u{1F9E8}", label: t("shopCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
         { k: "reload", icon: "\u26A1", label: t("shopReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
         { k: "armor", icon: "\u{1F6E1}", label: t("shopArmor"), price: SHOP.armor.price, max: !!up.armor },
-        { k: "repair", icon: "\u{1F527}", label: t("shopRepair"), price: SHOP.repair.price, max: false }
+        { k: "repair", icon: "\u{1F527}", label: t("shopRepair"), price: SHOP.repair.price, max: false, noNeed: (() => {
+          // Nichts zu reparieren = ausgegraut (aber Preis bleibt sichtbar, kein „MAX")
+          const gg = grid.current, ctl = castles.current[sp];
+          if (!gg || !ctl) return true;
+          for (let rr = Math.max(0, ctl.r - 10); rr <= Math.min(ROWS - 1, ctl.r + 10); rr++)
+            for (let cc = Math.max(0, ctl.c - 10); cc <= Math.min(COLS - 1, ctl.c + 10); cc++)
+              if (gg[rr][cc] === RUBBLE) return false;
+          return true;
+        })() }
       ];
       const isTop = !online.current && !botMode.current && sp !== 1;
       const pos = isTop
@@ -7081,7 +7094,7 @@ window.FortressApp = function Fortress() {
         /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(8,12,22,0.93)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: "6px 8px", display: "flex", gap: 6, alignItems: "stretch", pointerEvents: "auto", boxShadow: "0 6px 24px rgba(0,0,0,0.5)" } },
           /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", fontSize: 13, fontWeight: 800, color: "#fbbf24", padding: "0 5px" } }, "\u2699 " + have),
           items.map((it) => {
-            const afford = !it.max && have >= it.price;
+            const afford = !it.max && !it.noNeed && have >= it.price;
             return /* @__PURE__ */ React.createElement("button", { key: it.k, onClick: () => doBuy(sp, it.k), disabled: !afford, style: {
               background: afford ? "rgba(56,120,230,0.28)" : "rgba(255,255,255,0.05)",
               border: "1px solid " + (afford ? "rgba(96,165,250,0.65)" : "rgba(255,255,255,0.10)"),
@@ -7090,7 +7103,7 @@ window.FortressApp = function Fortress() {
             } },
               /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, it.icon),
               /* @__PURE__ */ React.createElement("span", null, it.label),
-              /* @__PURE__ */ React.createElement("span", { style: { color: it.max ? "#4ade80" : "#fbbf24", fontSize: 10 } }, it.max ? t("shopMax") : "\u2699" + it.price)
+              /* @__PURE__ */ React.createElement("span", { style: { color: it.max ? "#4ade80" : it.noNeed ? "#475569" : "#fbbf24", fontSize: 10 } }, it.max ? t("shopMax") : "\u2699" + it.price)
             );
           })
         )

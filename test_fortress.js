@@ -2014,9 +2014,13 @@ async function suiteBot(browser) {
     await waitForPhase(page, ['KANONE'], 6000);
     // ── Schrott-Shop (v3.16.0): erscheint in der Rüstphase mit ⚙-Konto + Karten ──
     let shopSeen = null;
-    const shopDeadline = Date.now() + 9000;
+    const shopDeadline = Date.now() + 14000;
     while (Date.now() < shopDeadline && !shopSeen) {
       shopSeen = await page.evaluate(() => {
+        // Spiel evtl. vorbei (Bot gewinnt gegen idle Test-Menschen) → weiterspielen
+        for (const b of document.querySelectorAll('button')) {
+          if (/Nächste Runde/.test(b.textContent)) { b.click(); return null; }
+        }
         const t = document.body.innerText;
         if (!/⚙ \d+/.test(t)) return null;
         const cards = [...document.querySelectorAll('button')].filter(b => /⚙/.test(b.textContent) && /Kanone|Schnellladen|Panzermauern|Reparatur|Cannon|reload|Armored|Repair/i.test(b.textContent));

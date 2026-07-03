@@ -1,4 +1,4 @@
-const CACHE = 'fortress-v3.16.3';
+const CACHE = 'fortress-v3.16.4';
 const CORE = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-96.png'];
 
 self.addEventListener('install', e => {
