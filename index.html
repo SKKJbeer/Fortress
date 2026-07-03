@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1201,12 +1201,12 @@ function drawCastle(ctx, cx, cy, player, open, now) {
   ctx.stroke();
   // (Fahnenmast + Wimpel entfernt, v3.15.4 — verdeckten die Mauern darüber)
   // leuchtender Wappen-Kern — Glow als Radial-Verlauf statt shadowBlur (v3.15.5)
-  const crestGlow = ctx.createRadialGradient(cx, cy - S * 0.35, CELL * 0.2, cx, cy - S * 0.35, CELL * 1.05);
-  crestGlow.addColorStop(0, glow + "0.30)");
+  const crestGlow = ctx.createRadialGradient(cx, cy - S * 0.35, CELL * 0.15, cx, cy - S * 0.35, CELL * 0.82);
+  crestGlow.addColorStop(0, glow + "0.26)");
   crestGlow.addColorStop(1, glow + "0)");
   ctx.fillStyle = crestGlow;
   ctx.beginPath();
-  ctx.arc(cx, cy - S * 0.35, CELL * 1.05, 0, Math.PI * 2);
+  ctx.arc(cx, cy - S * 0.35, CELL * 0.82, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = lt;
   ctx.lineWidth = 1.4;
@@ -4979,6 +4979,7 @@ window.FortressApp = function Fortress() {
     return () => clearInterval(id);
   }, [screen]);
   const canvasRect = useRef(null);
+  const canvasRectAt = useRef(0);
   function refreshRect() {
     const canvas = canvasRef.current;
     if (canvas) canvasRect.current = canvas.getBoundingClientRect();
@@ -5000,11 +5001,12 @@ window.FortressApp = function Fortress() {
   }, []);
   const LIFT_ROWS = 6;
   function liftedGhost(player, x, y) {
-    const gc = Math.floor(x / CELL);
     const fl = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
     let gr = Math.floor(y / CELL) + (fl ? LIFT_ROWS : -LIFT_ROWS);
-    if (fl) { if (gr >= ROWS - 1) gr = ROWS - 2; }
-    else { if (gr < 1) gr = 1; }
+    // Beidseitig klemmen (v3.16.2): vorher konnte der Ghost über den Rand
+    // hinaus zeigen → Vorschau teils unsichtbar, Platzierung schlug still fehl.
+    gr = Math.max(1, Math.min(ROWS - 2, gr));
+    const gc = Math.max(1, Math.min(COLS - 2, Math.floor(x / CELL)));
     return { gr, gc };
   }
   const onPointerDown = useCallback((e) => {
@@ -5057,6 +5059,15 @@ window.FortressApp = function Fortress() {
     if (bannerActive.current) return;
     const pt = pointers.current.get(e.pointerId);
     if (!pt) return;
+    // Rect-Drift-Schutz (v3.16.2): mobile Browserleisten kollabieren WÄHREND
+    // des Drags → Canvas verschiebt sich → Ghost hängt versetzt zum Finger.
+    // Sanft gedrosselt neu messen (alle 400ms, nicht pro Move).
+    const nowRe = performance.now();
+    if (nowRe - (canvasRectAt.current || 0) > 400) {
+      const cv = canvasRef.current;
+      if (cv) canvasRect.current = cv.getBoundingClientRect();
+      canvasRectAt.current = nowRe;
+    }
     const { x, y } = toCanvas(e);
     pt.x = x;
     pt.y = y;
@@ -5191,7 +5202,17 @@ window.FortressApp = function Fortress() {
       const prevS = prevScrap.current[p];
       if (typeof prevS === "number" && curS > prevS) {
         const ct = castles.current[p];
-        if (ct) scrapFloats.current.push({ x: ct.c * CELL + CELL / 2, y: ct.r * CELL - 10, amt: curS - prevS, life: 80, max: 80 });
+        if (ct) {
+          // Bildschirm-OBEN über der Burg (flip-bewusst) + leichter Versatz,
+          // damit schnelle Serien nicht exakt übereinander liegen (v3.16.2)
+          const flv = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
+          const stack = scrapFloats.current.length;
+          scrapFloats.current.push({
+            x: ct.c * CELL + CELL / 2 + (stack % 3 - 1) * 16,
+            y: ct.r * CELL + (flv ? CELL * 3.4 : -CELL * 1.6),
+            amt: curS - prevS, life: 80, max: 80
+          });
+        }
       }
       prevScrap.current[p] = curS;
     }
@@ -6095,7 +6116,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

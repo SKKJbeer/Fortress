@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2042,3 +2042,19 @@ Tests grün (195). SW-Cache `fortress-v3.16.0`.
   Spieler — das eigene Konto (und das des Gegners) ist immer sichtbar.
 
 Tests grün (195). SW-Cache `fortress-v3.16.1`.
+
+### v3.16.2 — Preview-/Animations-Feinschliff (Nutzer-Feedback)
+- **Baustein-Preview**: `liftedGhost` klemmt jetzt BEIDSEITIG (Zeile 1..ROWS−2,
+  Spalte 1..COLS−2) — vorher konnte der Ghost über den Spielfeldrand hinaus
+  zeigen: Vorschau teils unsichtbar, Platzierung schlug still fehl („Preview
+  stimmt nicht mit Landeposition überein").
+- **Rect-Drift-Schutz**: `canvasRect` wird während eines Drags sanft gedrosselt
+  (400ms) neu vermessen — mobile Browserleisten kollabieren mitten im Drag und
+  verschoben sonst den Ghost gegenüber dem Finger.
+- **„+N ⚙"-Popups**: spawnen jetzt bildschirm-OBEN über der Burg (flip-bewusst;
+  vorher beim gedrehten P1 unterhalb) und mit Stapel-Versatz, damit schnelle
+  Serien lesbar bleiben.
+- **Wappen-Glühen**: Radius CELL·1.05 → CELL·0.82 — passt wieder vollständig
+  in den Burgkörper.
+
+Tests grün (195). SW-Cache `fortress-v3.16.2`.
