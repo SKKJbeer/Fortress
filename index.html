@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -6124,7 +6124,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7178,11 +7178,16 @@ window.FortressApp = function Fortress() {
       const maxC = Math.max(...cells.map(([, c]) => c));
       const BOX = 24;
       const dot = Math.max(4, Math.min(7, Math.floor(BOX / Math.max(maxR + 1, maxC + 1)) - 1));
+      // WICHTIG (v3.16.5): P1 sieht sein Feld vertikal gespiegelt (scale(1,-1)),
+      // solange p1Flipped (Bot/Online-Host, 2 Spieler). Die Hand-Vorschau MUSS
+      // dieselbe Spiegelung zeigen — sonst zeigt sie eine andere Richtung als
+      // der Feld-Ghost, den man zieht.
+      const p1Flip = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
       return React.createElement("div", { style: { width: BOX, height: BOX, display: "flex", alignItems: "center", justifyContent: "center" } },
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`, gridTemplateRows: `repeat(${maxR + 1}, ${dot}px)`, gap: 1 } },
           Array.from({ length: (maxR + 1) * (maxC + 1) }).map((_, i) => {
             const r = Math.floor(i / (maxC + 1)), c = i % (maxC + 1);
-            const on = cells.some(([cr, cc]) => cr === r && cc === c);
+            const on = cells.some(([cr, cc]) => cr === (p1Flip ? maxR - r : r) && cc === c);
             return React.createElement("div", { key: i, style: { width: dot, height: dot, borderRadius: 2, background: on ? "#60a5fa" : "rgba(255,255,255,0.04)" } });
           })
         )

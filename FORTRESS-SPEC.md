@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2087,3 +2087,19 @@ Zwei Nutzer-Rückfragen umgesetzt:
   sichtbar, KEIN irreführendes „MAX" mehr — eigener `noNeed`-Zustand).
 
 Tests grün (195). SW-Cache `fortress-v3.16.4`.
+
+### v3.16.5 — Hand-Vorschau-Orientierung endlich gefixt (echte Ursache)
+**Der langjährige „Preview zeigt andere Richtung als die Platzierung"-Bug —
+korrekt diagnostiziert:** Es lag NICHT an der Feld-Vorschau (die stimmte immer
+mit der Platzierung überein, identische Grid-Mathematik). Ursache war die
+**Hand-Vorschau in der Toolbar** unten: Sie zeichnete den Stein in
+Grid-Orientierung (Reihe 0 oben). Für Spieler 1 ist das Feld aber vertikal
+gespiegelt (`scale(1,-1)`, sobald `p1Flipped` = Bot-/Online-Host-Spiel, 2
+Spieler) → auf dem Feld liegt Grid-Reihe 0 UNTEN. Damit zeigte die
+Hand-Vorschau den Stein vertikal gespiegelt gegenüber dem Feld-Ghost, den man
+zieht — „das Element kommt nicht so wie in der Vorschau".
+- Fix: Die P1-Hand-Vorschau spiegelt ihre Reihen jetzt (`maxR - r`), wenn
+  `p1Flipped` aktiv ist → Hand-Vorschau und Feld zeigen dieselbe Richtung.
+  Lokales Hotseat-Spiel (P1 nicht gespiegelt) und P2/P3 bleiben unverändert.
+
+Tests grün (195). SW-Cache `fortress-v3.16.5`.
