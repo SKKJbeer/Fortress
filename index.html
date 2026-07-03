@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3023,6 +3023,9 @@ window.FortressApp = function Fortress() {
   const pointers = useRef(/* @__PURE__ */ new Map());
   const activeDrag = useRef({ 1: null, 2: null });
   const activeBuild = useRef({ 1: null, 2: null });
+  // Reset-Geste (v3.16.6): true wenn der Finger gerade über der Vorschau-Leiste
+  // unterhalb des Spielfelds schwebt → Loslassen bricht die Platzierung ab.
+  const cancelHover = useRef({ 1: false, 2: false, 3: false });
   const fitTimerRef = useRef(null);
   useEffect(() => {
     function fit() {
@@ -4737,6 +4740,7 @@ window.FortressApp = function Fortress() {
       for (let dc = -1; dc <= 1; dc++)
         newG[gr + dr][gc + dc] = mark;
     setGrid(newG);
+    if (typeof window !== "undefined" && window.__mmDebug) { window.__places = window.__places || {}; window.__places[player] = (window.__places[player] || 0) + 1; }
     cannonSeq.current += 1;
     cannons.current[player].push({ r: gr, c: gc, id: "c" + cannonSeq.current, hp: CANNON_HP });
     cannonBudget.current[player] -= 1;
@@ -5067,6 +5071,7 @@ window.FortressApp = function Fortress() {
         return;
       }
       activeBuild.current[player] = e.pointerId;
+      cancelHover.current[player] = false;
       const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
@@ -5100,6 +5105,10 @@ window.FortressApp = function Fortress() {
     const player = pt.player;
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
       if (activeBuild.current[player] !== e.pointerId) return;
+      // Reset-Zone (v3.16.6): Finger unterhalb des Spielfelds (über der
+      // Vorschau-Leiste) → Loslassen bricht ab. Ghost grau als Feedback.
+      const rc = canvasRect.current;
+      cancelHover.current[player] = !!(rc && e.clientY > rc.bottom - 2);
       const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
@@ -5143,6 +5152,16 @@ window.FortressApp = function Fortress() {
     if (phase_r.current === "build") {
       if (activeBuild.current[player] !== e.pointerId) return;
       activeBuild.current[player] = null;
+      // Reset-Geste (v3.16.6): über der Vorschau-Leiste unten losgelassen →
+      // Platzierung abbrechen, Ghost verschwindet, Finger neu ansetzbar.
+      const rcU = canvasRect.current;
+      if (rcU && e.clientY > rcU.bottom - 2) {
+        pieces.current[player].ghostR = null;
+        pieces.current[player].ghostC = null;
+        cancelHover.current[player] = false;
+        setUiTick((t) => t + 1);
+        return;
+      }
       const moved = Math.hypot(e.clientX - pt.startCX, e.clientY - pt.startCY);
       if (moved < 14 && performance.now() - pt.t < 450) {
         pieces.current[player].ghostR = null;
@@ -5166,6 +5185,15 @@ window.FortressApp = function Fortress() {
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
       if (activeBuild.current[player] !== e.pointerId) return;
       activeBuild.current[player] = null;
+      // Reset-Geste (v3.16.6): über der Vorschau-Leiste losgelassen → abbrechen.
+      const rcC = canvasRect.current;
+      if (rcC && e.clientY > rcC.bottom - 2) {
+        pieces.current[player].ghostR = null;
+        pieces.current[player].ghostC = null;
+        cancelHover.current[player] = false;
+        setUiTick((t) => t + 1);
+        return;
+      }
       const gr = pieces.current[player].ghostR;
       const gc = pieces.current[player].ghostC;
       if (gr !== null && gc !== null) {
@@ -5619,7 +5647,8 @@ window.FortressApp = function Fortress() {
           if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
           ctx.fillRect(c * CELL + 2, r * CELL + 2, CELL - 4, CELL - 4);
         }
-        const col = valid ? GHOST_RGB[player] || GHOST_RGB[1] : "rgba(120,120,120,";
+        const resetting = cancelHover.current[player];
+        const col = resetting ? "rgba(148,163,184," : valid ? GHOST_RGB[player] || GHOST_RGB[1] : "rgba(120,120,120,";
         ctx.fillStyle = col + "0.55)";
         ctx.strokeStyle = col + "0.9)";
         ctx.lineWidth = 2;
@@ -5638,10 +5667,10 @@ window.FortressApp = function Fortress() {
         ctx.lineTo(ghostCenterX, ghostCenterY + liftSign * LIFT_ROWS * CELL);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = valid ? GHOST_HEX[player] || GHOST_HEX[1] : "#6b7280";
+        ctx.fillStyle = resetting ? "#94a3b8" : valid ? GHOST_HEX[player] || GHOST_HEX[1] : "#6b7280";
         ctx.font = `bold ${CELL * 0.8}px system-ui`;
         ctx.textAlign = "center";
-        ctx.fillText(valid ? "\u2713" : "\u2717", ghostCenterX, ghostCenterY + liftSign * LIFT_ROWS * CELL - 2);
+        ctx.fillText(resetting ? "\u21ba" : valid ? "\u2713" : "\u2717", ghostCenterX, ghostCenterY + liftSign * LIFT_ROWS * CELL - 2);
         ctx.textAlign = "left";
       }
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
@@ -5658,15 +5687,16 @@ window.FortressApp = function Fortress() {
             const r = gr0 + dr, c = gc0 + dc;
             if (r < 1 || r >= ROWS - 1 || c < 1 || c >= COLS - 1 || g[r][c] !== EMPTY || !isBuildable(terObj, r, c, player)) valid = false;
           }
-        ctx.fillStyle = valid ? GFILL[player] : "rgba(120,120,120,0.3)";
-        ctx.strokeStyle = valid ? GSTROKE[player] : "rgba(160,160,160,0.5)";
+        const resettingC = cancelHover.current[player];
+        ctx.fillStyle = resettingC ? "rgba(148,163,184,0.35)" : valid ? GFILL[player] : "rgba(120,120,120,0.3)";
+        ctx.strokeStyle = resettingC ? "rgba(148,163,184,0.7)" : valid ? GSTROKE[player] : "rgba(160,160,160,0.5)";
         ctx.lineWidth = 2;
         ctx.fillRect((gc0 - 1) * CELL, (gr0 - 1) * CELL, CELL * 3, CELL * 3);
         ctx.strokeRect((gc0 - 1) * CELL + 1, (gr0 - 1) * CELL + 1, CELL * 3 - 2, CELL * 3 - 2);
-        ctx.fillStyle = valid ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.4)";
+        ctx.fillStyle = resettingC ? "#cbd5e1" : valid ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.4)";
         ctx.font = `${CELL * 1.4}px serif`;
         ctx.textAlign = "center";
-        ctx.fillText("\u2295", gc0 * CELL + CELL / 2, gr0 * CELL + CELL);
+        ctx.fillText(resettingC ? "\u21ba" : "\u2295", gc0 * CELL + CELL / 2, gr0 * CELL + CELL);
         ctx.textAlign = "left";
       }
     }
@@ -6124,7 +6154,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

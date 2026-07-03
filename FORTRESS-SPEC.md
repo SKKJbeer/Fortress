@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2103,3 +2103,18 @@ zieht — „das Element kommt nicht so wie in der Vorschau".
   Lokales Hotseat-Spiel (P1 nicht gespiegelt) und P2/P3 bleiben unverändert.
 
 Tests grün (195). SW-Cache `fortress-v3.16.5`.
+
+### v3.16.6 — Reset-Geste beim Platzieren wieder da
+Verlorene Funktion zurückgebracht: Wer den Finger neu ansetzen will, zieht ihn
+beim Bauen/Kanonen-Setzen auf die Vorschau-Leiste UNTERHALB des Spielfelds und
+lässt los → die Platzierung wird abgebrochen (Ghost verworfen), man kann frisch
+ansetzen. Kein versehentliches Setzen mehr an ungewollter Stelle.
+- Erkennung: Der Canvas fängt den Pointer (`setPointerCapture`), daher feuert
+  `pointerup` auch über der Toolbar. Loslassen mit `clientY > canvasRect.bottom`
+  → abbrechen statt platzieren (Build UND Setup/Rüstphase).
+- Visuelles Feedback: Sobald der Finger über der Leiste schwebt, wird der Ghost
+  grau und zeigt „↺" (statt ✓/✗ bzw. ⊕) — man sieht, dass Loslassen zurücklegt.
+- Regressionstest `Reset-Geste` (gated Zähler `window.__places[1]`): Cancel-Drag
+  in der Setup-Phase erhöht P1s Platzierungen NICHT.
+
+Tests grün (196). SW-Cache `fortress-v3.16.6`.

@@ -1998,6 +1998,25 @@ async function suiteBot(browser) {
     canvas ? ok('Bot-Spiel gestartet (Canvas sichtbar) ✓') : fail('Bot-Spiel startet nicht');
     if (!canvas) return { res, errs };
 
+    // ── Reset-Geste (v3.16.6): Drag unter das Spielfeld bricht ab ──
+    // In der Setup-Phase: Finger von P1s Feld unter das Canvas ziehen und
+    // loslassen → KEINE P1-Kanone platziert (per gated Zähler window.__places[1]).
+    {
+      await page.evaluate(() => { window.__mmDebug = true; window.__places = window.__places || {}; });
+      await page.waitForTimeout(300);
+      const cb = await page.evaluate(() => { const c = document.querySelector('canvas').getBoundingClientRect(); return { x: c.x, y: c.y, w: c.width, h: c.height, bottom: c.bottom }; });
+      const p1Before = await page.evaluate(() => (window.__places && window.__places[1]) || 0);
+      await page.mouse.move(cb.x + cb.w * 0.5, cb.y + cb.h * 0.72);
+      await page.mouse.down();
+      await page.mouse.move(cb.x + cb.w * 0.5, cb.bottom + 30, { steps: 5 });
+      await page.waitForTimeout(120);
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+      const p1After = await page.evaluate(() => (window.__places && window.__places[1]) || 0);
+      p1After === p1Before ? ok('Reset-Geste: Drag unter Feld platziert nichts (P1) ✓')
+                           : fail(`Reset-Geste: Cancel-Drag platzierte trotzdem (P1 ${p1Before}→${p1After})`);
+    }
+
     // ── Beweis: Bot (P2) platziert Kanonen (Toast erscheint) ──
     // Der Test-„Mensch" platziert nichts → jeder Kanonen-Toast stammt vom Bot.
     let placed = false;
