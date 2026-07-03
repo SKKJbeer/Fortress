@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1961,3 +1961,34 @@ Burg-Fahnenmast+Wimpel und der Neon-Wimpel über jeder Kanone (ragten bis zu
 Das runde Wappen-Emblem auf dem Burgkörper bleibt (verdeckt nichts).
 
 Tests grün. SW-Cache `fortress-v3.15.4`.
+
+### v3.15.5 — Performance-Overhaul: Sprite-Caching (Lag ab ~15 Kanonen behoben)
+Nutzerreport: langes Spiel mit 15+ Kanonen wurde auf dem Handy laggy.
+Audit des Frame-Loops fand vier mit der Objektzahl skalierende Kostentreiber —
+alle über einmaliges Offscreen-Vorrendern (Sprites) eliminiert:
+
+1. **Mauern/Trümmer** (`drawWall`/`drawRubble`): erzeugten pro Zelle pro Frame
+   einen Gradient + ~6 Pfad-Ops (bei 600 Mauerzellen ~36.000 Ops/s). Jetzt:
+   4 einmalig gebackene Zell-Sprites, pro Zelle nur noch EIN drawImage.
+2. **Kanonen** (`drawCannonFull`): 2 Gradients + 2 shadowBlur pro Kanone pro
+   Frame — einer mit ANIMIERTEM Blur-Radius (für den Browser uncachebar;
+   der Mobile-Killer schlechthin). Jetzt: Kuppel- und Rohr-Sprite pro Spieler
+   (Mündungsglühen einmalig eingebacken), Rohr rotiert als Blit;
+   Ready-Ring pulsiert über Alpha/Linienbreite statt shadowBlur.
+3. **Bälle im Flug**: shadowBlur 12 + Radial-Gradient pro Ball pro Frame —
+   bei 15 Kanonen bis zu 15 Bälle gleichzeitig, genau in der Ruckel-Phase.
+   Jetzt: ein Ball-Sprite pro Spieler, skaliert geblittet.
+4. **Zonen-Overlay**: >1000 fillRects pro Frame, obwohl sich Zonen nur mit dem
+   Grid ändern. Jetzt: Offscreen-Canvas, gecacht per gridVersion, pro Frame
+   ein drawImage. Burg-Wappenglühen: Radial-Verlauf statt shadowBlur.
+
+**Gemessen** (gated Metrik `window.__perfDbg` → `__frameMs`, 45s Bot-Spiel):
+Ø 1,07→0,62 ms (−42%), p95 1,60→0,70 ms (−56%), Max 4,0→2,5 ms — auf
+Desktop-Hardware bei kleiner Szene; auf Mobil-GPUs (teure Blur-Pässe) und
+vollen Endgame-Karten ist der Effekt um ein Vielfaches größer, und die
+Kosten pro Objekt sind jetzt konstant klein (Blit) statt Gradient+Blur.
+
+**Regel (nicht verletzen):** NIE Gradients oder shadowBlur pro Objekt pro
+Frame im Render-Loop — Statisches gehört in den Sprite-Cache (`SPR`).
+
+Tests grün. SW-Cache `fortress-v3.15.5`.

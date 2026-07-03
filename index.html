@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.15.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.15.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1115,6 +1115,30 @@ const GHOST_HEX = { 1: "#60a5fa", 2: "#f87171", 3: "#34d399" };
 const BALL_MID = { 1: "#60a5fa", 2: "#f87171", 3: "#34d399" };
 const BALL_DARK = { 1: "#1e40af", 2: "#7f1d1d", 3: "#065f46" };
 const BALL_GLOW = { 1: "rgba(59,130,246,0.9)", 2: "rgba(239,68,68,0.9)", 3: "rgba(16,185,129,0.9)" };
+// Ball-Sprites (v3.15.5): Glow + Verlauf einmal backen; im Flug nur noch
+// skaliert blitten. Basisradius 8, Sprite-Halbgröße 24 (Platz für den Glow).
+const BALL_SPRITES = {};
+function ballSprite(player) {
+  if (!BALL_SPRITES[player]) {
+    const HS = 24, BR = 8;
+    const c = document.createElement("canvas");
+    c.width = HS * 2;
+    c.height = HS * 2;
+    const x = c.getContext("2d");
+    x.shadowColor = BALL_GLOW[player] || BALL_GLOW[1];
+    x.shadowBlur = 12;
+    const g = x.createRadialGradient(HS - 3, HS - 3, 0, HS, HS, BR);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.4, BALL_MID[player] || BALL_MID[1]);
+    g.addColorStop(1, BALL_DARK[player] || BALL_DARK[1]);
+    x.fillStyle = g;
+    x.beginPath();
+    x.arc(HS, HS, BR, 0, Math.PI * 2);
+    x.fill();
+    BALL_SPRITES[player] = c;
+  }
+  return BALL_SPRITES[player];
+}
 function drawCastle(ctx, cx, cy, player, open, now) {
   const S = CELL * 1.5;
   const roof = ROOF_OF[player] || "#2563eb";
@@ -1164,16 +1188,14 @@ function drawCastle(ctx, cx, cy, player, open, now) {
   ctx.lineWidth = 1.2;
   ctx.stroke();
   // (Fahnenmast + Wimpel entfernt, v3.15.4 — verdeckten die Mauern darüber)
-  // leuchtender Wappen-Kern
-  ctx.save();
-  ctx.shadowColor = roof;
-  ctx.shadowBlur = 10;
-  ctx.fillStyle = glow + "0.18)";
+  // leuchtender Wappen-Kern — Glow als Radial-Verlauf statt shadowBlur (v3.15.5)
+  const crestGlow = ctx.createRadialGradient(cx, cy - S * 0.35, CELL * 0.2, cx, cy - S * 0.35, CELL * 1.05);
+  crestGlow.addColorStop(0, glow + "0.30)");
+  crestGlow.addColorStop(1, glow + "0)");
+  ctx.fillStyle = crestGlow;
   ctx.beginPath();
-  ctx.arc(cx, cy - S * 0.35, CELL * 0.62, 0, Math.PI * 2);
+  ctx.arc(cx, cy - S * 0.35, CELL * 1.05, 0, Math.PI * 2);
   ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.restore();
   ctx.strokeStyle = lt;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
@@ -1208,76 +1230,138 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
+// \u2500\u2500 Sprite-Cache (v3.15.5) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Performance: Gradients + shadowBlur sind im Frame-Loop die teuersten
+// Canvas-Operationen (skalieren mit Mauer-/Kanonenzahl \u2192 Ruckler auf Mobile
+// ab ~15 Kanonen). Alles Statische wird EINMAL in Offscreen-Canvases
+// vorgerendert; pro Frame bleibt nur drawImage (Blit, um Gr\u00f6\u00dfenordnungen
+// billiger). NIEMALS wieder Gradients/shadowBlur pro Objekt pro Frame!
+const SPR = { wall: {}, rubble: null, dome: {}, barrel: {} };
+function mkSpriteCanvas(w, h) {
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(w);
+  c.height = Math.ceil(h);
+  return c;
+}
+const WALL_SPRITE_COLORS = {
+  [1]: ["#3b82f6", "#93c5fd", "#1e40af", "#172a63"],
+  [2]: ["#ef4444", "#fca5a5", "#991b1b", "#5e1414"],
+  [10]: ["#10b981", "#6ee7b7", "#065f46", "#044a37"]
+};
+function wallSprite(v) {
+  if (!SPR.wall[v]) {
+    const c = mkSpriteCanvas(CELL, CELL);
+    const col = WALL_SPRITE_COLORS[v] || WALL_SPRITE_COLORS[1];
+    drawWall(c.getContext("2d"), 0, 0, col[0], col[1], col[2], col[3]);
+    SPR.wall[v] = c;
+  }
+  return SPR.wall[v];
+}
+function rubbleSprite() {
+  if (!SPR.rubble) {
+    const c = mkSpriteCanvas(CELL, CELL);
+    drawRubble(c.getContext("2d"), 0, 0);
+    SPR.rubble = c;
+  }
+  return SPR.rubble;
+}
+const CANNON_NEON = {
+  1: { ac: "#3b82f6", lt: "#93c5fd", glow: "rgba(59,130,246," },
+  2: { ac: "#ef4444", lt: "#fca5a5", glow: "rgba(239,68,68," },
+  3: { ac: "#10b981", lt: "#6ee7b7", glow: "rgba(16,185,129," }
+};
+// Kuppel (statisch pro Spieler): Radial-Gradient, Ring, Bolzen, Glanz, Kern
+function cannonDomeSprite(player) {
+  if (!SPR.dome[player]) {
+    const R = CELL * 1.6;
+    const D = Math.ceil(R * 1.6 + 6);
+    const c = mkSpriteCanvas(D, D);
+    const x = c.getContext("2d");
+    const n = CANNON_NEON[player] || CANNON_NEON[1];
+    const cx = D / 2, cy = D / 2;
+    const grad = x.createRadialGradient(cx - R * 0.35, cy - R * 0.4, 1, cx, cy, R * 0.85);
+    grad.addColorStop(0, "#5a6477");
+    grad.addColorStop(0.5, "#2c333f");
+    grad.addColorStop(1, "#10141d");
+    x.fillStyle = grad;
+    x.beginPath();
+    x.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
+    x.fill();
+    x.strokeStyle = n.ac;
+    x.lineWidth = 2.2;
+    x.beginPath();
+    x.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
+    x.stroke();
+    x.fillStyle = "rgba(0,0,0,0.45)";
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      x.beginPath();
+      x.arc(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58, 1.5, 0, Math.PI * 2);
+      x.fill();
+    }
+    x.fillStyle = "rgba(255,255,255,0.28)";
+    x.beginPath();
+    x.arc(cx - R * 0.28, cy - R * 0.3, R * 0.22, 0, Math.PI * 2);
+    x.fill();
+    x.fillStyle = n.lt;
+    x.beginPath();
+    x.arc(cx, cy, R * 0.16, 0, Math.PI * 2);
+    x.fill();
+    SPR.dome[player] = c;
+  }
+  return SPR.dome[player];
+}
+// Rohr (statisch pro Spieler), M\u00fcndungsgl\u00fchen EINMAL beim Backen (shadowBlur
+// nur hier, nie im Frame-Loop). Gezeichnet horizontal, ab x=PAD.
+const BARREL_PAD = 10;
+function cannonBarrelSprite(player) {
+  if (!SPR.barrel[player]) {
+    const barrelLen = CELL * 2.7, barrelW = 9;
+    const W2 = Math.ceil(CELL * 0.2 + barrelLen + BARREL_PAD * 2);
+    const H2 = Math.ceil(barrelW + 3 + BARREL_PAD * 2);
+    const c = mkSpriteCanvas(W2, H2);
+    const x = c.getContext("2d");
+    const n = CANNON_NEON[player] || CANNON_NEON[1];
+    const ox = BARREL_PAD + CELL * 0.2, oy = H2 / 2;
+    const bG = x.createLinearGradient(0, oy - barrelW / 2, 0, oy + barrelW / 2);
+    bG.addColorStop(0, "#8b95a7");
+    bG.addColorStop(0.45, "#3a4252");
+    bG.addColorStop(1, "#141925");
+    x.fillStyle = bG;
+    roundRectPath(x, ox - CELL * 0.2, oy - barrelW / 2, barrelLen, barrelW, 4);
+    x.fill();
+    x.fillStyle = n.ac;
+    x.fillRect(ox + CELL * 0.2, oy - 1, barrelLen - CELL * 0.55, 1.3);
+    x.shadowColor = n.ac;
+    x.shadowBlur = 9;
+    x.fillStyle = n.lt;
+    roundRectPath(x, ox + barrelLen - CELL * 0.4, oy - barrelW / 2 - 1.5, 4.5, barrelW + 3, 2);
+    x.fill();
+    x.shadowBlur = 0;
+    SPR.barrel[player] = c;
+  }
+  return SPR.barrel[player];
+}
 function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
   const R = CELL * 1.6;
-  const NEON = {
-    1: { ac: "#3b82f6", lt: "#93c5fd", glow: "rgba(59,130,246," },
-    2: { ac: "#ef4444", lt: "#fca5a5", glow: "rgba(239,68,68," },
-    3: { ac: "#10b981", lt: "#6ee7b7", glow: "rgba(16,185,129," }
-  };
-  const n = NEON[player] || NEON[1];
+  const n = CANNON_NEON[player] || CANNON_NEON[1];
   const now = Date.now();
-  // Bodenschatten
+  // Bodenschatten (eine Ellipse, billig)
   ctx.fillStyle = "rgba(0,0,0,0.40)";
   ctx.beginPath();
   ctx.ellipse(cx + 2, cy + 5, R * 0.95, R * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
-  // \u2014 Lauf (Gunmetal + Neon-Linie + gl\u00fchende M\u00fcndung) \u2014
-  const barrelLen = CELL * 2.7, barrelW = 9;
+  // Rohr: vorgerendertes Sprite, nur rotiert geblittet
+  const bar = cannonBarrelSprite(player);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
-  const bG = ctx.createLinearGradient(0, -barrelW / 2, 0, barrelW / 2);
-  bG.addColorStop(0, "#8b95a7");
-  bG.addColorStop(0.45, "#3a4252");
-  bG.addColorStop(1, "#141925");
-  ctx.fillStyle = bG;
-  roundRectPath(ctx, -CELL * 0.2, -barrelW / 2, barrelLen, barrelW, 4);
-  ctx.fill();
-  ctx.fillStyle = n.ac;
-  ctx.fillRect(CELL * 0.2, -1, barrelLen - CELL * 0.55, 1.3);
-  ctx.shadowColor = n.ac;
-  ctx.shadowBlur = 9;
-  ctx.fillStyle = n.lt;
-  roundRectPath(ctx, barrelLen - CELL * 0.4, -barrelW / 2 - 1.5, 4.5, barrelW + 3, 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  ctx.drawImage(bar, -BARREL_PAD - CELL * 0.2, -bar.height / 2);
   ctx.restore();
-  // \u2014 Basis-Kuppel (Gunmetal-Radial) \u2014
-  const grad = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, 1, cx, cy, R * 0.85);
-  grad.addColorStop(0, "#5a6477");
-  grad.addColorStop(0.5, "#2c333f");
-  grad.addColorStop(1, "#10141d");
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  // Neon-Ring um Basis
-  ctx.strokeStyle = n.ac;
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  ctx.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
-  ctx.stroke();
-  // Schraubbolzen
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  for (let i = 0; i < 6; i++) {
-    const a = i / 6 * Math.PI * 2;
-    ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // Glanz-Highlight
-  ctx.fillStyle = "rgba(255,255,255,0.28)";
-  ctx.beginPath();
-  ctx.arc(cx - R * 0.28, cy - R * 0.3, R * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-  // innerer Kern (Energiepunkt)
-  ctx.fillStyle = n.lt;
-  ctx.beginPath();
-  ctx.arc(cx, cy, R * 0.16, 0, Math.PI * 2);
-  ctx.fill();
-  // (Neon-Wimpel entfernt, v3.15.4 \u2014 verdeckte die Mauern \u00fcber der Kanone)
-  // \u2014 Reload-/Ready-Ring \u2014
+  // Kuppel: vorgerendertes Sprite
+  const dome = cannonDomeSprite(player);
+  ctx.drawImage(dome, cx - dome.width / 2, cy - dome.height / 2);
+  // \u2014 Reload-/Ready-Ring (dynamisch, aber OHNE shadowBlur) \u2014
   if (reloadFrac < 1) {
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = 5;
@@ -1290,15 +1374,13 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
     ctx.arc(cx, cy, R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * reloadFrac);
     ctx.stroke();
   } else {
-    ctx.save();
-    ctx.shadowColor = n.ac;
-    ctx.shadowBlur = 8 + Math.sin(now / 250) * 4;
-    ctx.strokeStyle = n.glow + "0.85)";
-    ctx.lineWidth = 2;
+    // Puls \u00fcber Alpha + Linienbreite statt animiertem shadowBlur (Mobile-Killer)
+    const pulse = 0.55 + 0.35 * Math.sin(now / 250);
+    ctx.strokeStyle = n.glow + pulse.toFixed(2) + ")";
+    ctx.lineWidth = 2.5 + Math.sin(now / 250) * 0.8;
     ctx.beginPath();
     ctx.arc(cx, cy, R + 6, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.restore();
   }
 }
 const LANGS = {
@@ -2835,6 +2917,8 @@ window.FortressApp = function Fortress() {
     castleClosedP2: true
   });
   const gridVersion = useRef(0);
+  const zoneCanvas = useRef(null);
+  const zoneKeyRef = useRef("");
   function setGrid(newG) {
     grid.current = newG;
     gridVersion.current++;
@@ -4925,6 +5009,7 @@ window.FortressApp = function Fortress() {
   }, []);
   const renderLoop = useCallback(() => {
     var _a2;
+    if (typeof window !== "undefined" && window.__perfDbg) window.__frameT0 = performance.now();
     const canvas = canvasRef.current;
     if (!canvas || !running.current) return;
     const ctx = canvas.getContext("2d");
@@ -5265,27 +5350,41 @@ window.FortressApp = function Fortress() {
           }
     }
     const fc = getFloodCache();
-    const ZONE_FILL = { 1: "rgba(56,120,230,0.28)", 2: "rgba(220,50,50,0.28)", 3: "rgba(16,150,90,0.28)" };
-    for (const player of players) {
-      const outside = fc.outside[player];
-      if (!outside) continue;
-      const ownWall = WALL_OF[player];
-      ctx.fillStyle = ZONE_FILL[player];
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++) {
-          if (!outside[r * COLS + c] && g[r][c] !== ownWall)
-            ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
-        }
+    // Zonen-Overlay gecacht (v3.15.5): ändert sich nur mit dem Grid — in
+    // Offscreen-Canvas rendern und pro Frame blitten statt >1000 fillRects.
+    const zoneKey = gridVersion.current + ":" + players.join("");
+    if (!zoneCanvas.current) {
+      zoneCanvas.current = document.createElement("canvas");
+      zoneCanvas.current.width = W;
+      zoneCanvas.current.height = H;
     }
+    if (zoneKeyRef.current !== zoneKey) {
+      zoneKeyRef.current = zoneKey;
+      const zc = zoneCanvas.current.getContext("2d");
+      zc.clearRect(0, 0, W, H);
+      const ZONE_FILL = { 1: "rgba(56,120,230,0.28)", 2: "rgba(220,50,50,0.28)", 3: "rgba(16,150,90,0.28)" };
+      for (const player of players) {
+        const outside = fc.outside[player];
+        if (!outside) continue;
+        const ownWall = WALL_OF[player];
+        zc.fillStyle = ZONE_FILL[player];
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++) {
+            if (!outside[r * COLS + c] && g[r][c] !== ownWall)
+              zc.fillRect(c * CELL, r * CELL, CELL, CELL);
+          }
+      }
+    }
+    ctx.drawImage(zoneCanvas.current, 0, 0);
+    // Mauern/Trümmer als vorgerenderte Sprites blitten (v3.15.5) — pro Zelle
+    // nur noch EIN drawImage statt Gradient + 6 Pfad-Operationen.
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const v = g[r][c];
         if (v === EMPTY) continue;
         const px = c * CELL, py = r * CELL;
-        if (v === WALL1) drawWall(ctx, px, py, "#3b82f6", "#93c5fd", "#1e40af", "#172a63");
-        else if (v === WALL2) drawWall(ctx, px, py, "#ef4444", "#fca5a5", "#991b1b", "#5e1414");
-        else if (v === WALL3) drawWall(ctx, px, py, "#10b981", "#6ee7b7", "#065f46", "#044a37");
-        else if (v === RUBBLE) drawRubble(ctx, px, py);
+        if (v === WALL1 || v === WALL2 || v === WALL3) ctx.drawImage(wallSprite(v), px, py);
+        else if (v === RUBBLE) ctx.drawImage(rubbleSprite(), px, py);
       }
     }
     for (const player of players) {
@@ -5496,18 +5595,11 @@ window.FortressApp = function Fortress() {
       ctx.ellipse(bx, by, 6 * shScale, 4 * shScale, 0, 0, Math.PI * 2);
       ctx.fill();
       const ballR = 5 + h / (ball.arcH + 1) * 5;
-      ctx.save();
-      ctx.shadowColor = BALL_GLOW[ball.player] || BALL_GLOW[1];
-      ctx.shadowBlur = 12;
-      const bg2 = ctx.createRadialGradient(bx - 2, drawY - 2, 0, bx, drawY, ballR);
-      bg2.addColorStop(0, "#ffffff");
-      bg2.addColorStop(0.4, BALL_MID[ball.player] || BALL_MID[1]);
-      bg2.addColorStop(1, BALL_DARK[ball.player] || BALL_DARK[1]);
-      ctx.fillStyle = bg2;
-      ctx.beginPath();
-      ctx.arc(bx, drawY, ballR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      // Vorgerendertes Ball-Sprite skaliert blitten (v3.15.5) — kein
+      // shadowBlur/Gradient mehr pro Ball pro Frame.
+      const bs = ballSprite(ball.player);
+      const bsc = ballR / 8;
+      ctx.drawImage(bs, bx - 24 * bsc, drawY - 24 * bsc, 48 * bsc, 48 * bsc);
     }
     for (const p of particles.current) {
       const a = p.life / p.maxLife;
@@ -5557,6 +5649,12 @@ window.FortressApp = function Fortress() {
       if (didShake) ctx.restore();
     }
     if (online.current && myRole.current === 1) pushState(false);
+    // Gated Perf-Metrik (v3.15.5): window.__perfDbg = true → Zeichendauer in __frameMs
+    if (typeof window !== "undefined" && window.__perfDbg && window.__frameT0) {
+      const fm = window.__frameMs = window.__frameMs || [];
+      fm.push(performance.now() - window.__frameT0);
+      if (fm.length > 600) fm.shift();
+    }
     animId.current = requestAnimationFrame(renderLoop);
   }, []);
   useEffect(() => {
@@ -5787,7 +5885,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

@@ -255,6 +255,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 - **`setGrid(newG)`** muss verwendet werden (erhöht `gridVersion`) — NIE `grid.current =` direkt
 - **`canvasRect.current`**: nur bei pointerdown/resize/scroll neu holen, nicht bei pointermove
 - Alle Spielzustände in **Refs** (keine React-Re-Renders im Render-Loop)
+- **Sprite-Cache `SPR` (seit v3.15.5)**: Mauern/Trümmer/Kanonenkuppel/-rohr/Bälle werden EINMAL offscreen vorgerendert und pro Frame nur geblittet. Zonen-Overlay in `zoneCanvas` (Key: gridVersion). NIE Gradients oder `shadowBlur` pro Objekt pro Frame in den Render-Loop — das war die Lag-Ursache ab ~15 Kanonen auf Mobilgeräten. Perf-Messung: `window.__perfDbg=true` → `__frameMs` (Zeichendauer, gated).
 
 ---
 
