@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2997,10 +2997,13 @@ window.FortressApp = function Fortress() {
   const scrap = useRef({ 1: 0, 2: 0, 3: 0 });
   const upgrades = useRef({ 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } });
   const wallHp = useRef({});
-  // „+N ⚙"-Popups beim Schrott-Verdienen (v3.16.1): Delta-Erkennung im
-  // Render-Loop (funktioniert damit auch beim Gast, der scrap nur via State bekommt)
-  const scrapFloats = useRef([]);
-  const prevScrap = useRef({});
+  // „+N ⚙"-Popups (v3.16.3): am TREFFERORT in Spielerfarbe, wie explosions
+  // über den State synchronisiert (Gäste sehen sie dadurch identisch).
+  const scrapPops = useRef([]);
+  function addScrapPop(x, y, amt, player) {
+    scrapPops.current.push({ x, y, amt, player, frame: 0 });
+    if (scrapPops.current.length > 24) scrapPops.current.shift();
+  }
   function reloadMsOf(player) {
     const lvl = (upgrades.current[player] || {}).reload || 0;
     return RELOAD_MS * SHOP.reload.factors[lvl];
@@ -3079,6 +3082,7 @@ window.FortressApp = function Fortress() {
         alive: b.alive
       })),
       explosions: explosions.current.map((e) => ({ x: e.x, y: e.y, frame: e.frame, big: e.big })),
+      scrapPops: scrapPops.current.map((f) => ({ x: f.x, y: f.y, amt: f.amt, player: f.player, frame: f.frame })),
       phase: phase_r.current,
       timer: timerVal.current,
       round: roundRefVal.current,
@@ -3235,6 +3239,7 @@ window.FortressApp = function Fortress() {
         if (s.scrap) scrap.current = s.scrap;
         if (s.upgrades) upgrades.current = s.upgrades;
         wallHp.current = s.wallHp || {};
+        if (s.scrapPops) scrapPops.current = s.scrapPops;
         if (s.eliminated) eliminated.current = s.eliminated;
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
         if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
@@ -4391,7 +4396,11 @@ window.FortressApp = function Fortress() {
     // Schrott-Ökonomie (v3.16.0): KEIN Gratis-Kanonen-Budget mehr — Kanonen
     // werden im Shop gekauft. Überlebens-Sold für alle aktiven Spieler.
     cannonBudget.current = players.reduce((o, p) => (o[p] = 0, o), {});
-    for (const p of players) if (!eliminated.current[p]) scrap.current[p] = (scrap.current[p] || 0) + SCRAP_SURVIVE;
+    for (const p of players) if (!eliminated.current[p]) {
+      scrap.current[p] = (scrap.current[p] || 0) + SCRAP_SURVIVE;
+      const ct = castles.current[p];
+      if (ct) addScrapPop(ct.c * CELL + CELL / 2, ct.r * CELL - CELL, SCRAP_SURVIVE, p);
+    }
     if (typeof window !== "undefined" && window.__mmDebug) window.__econ = { scrap: { ...scrap.current }, up: JSON.parse(JSON.stringify(upgrades.current)), t: Date.now() };
     activeBuild.current = mk(null);
     activeDrag.current = mk(null);
@@ -4552,7 +4561,11 @@ window.FortressApp = function Fortress() {
         cn.hp -= 1;
         if (cn.hp <= 0) {
           // Kill-Belohnung (v3.16.0): Schrott für den Schützen
-          if (ball.player !== ep) scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_CANNON;
+          let killScrap = 0;
+          if (ball.player !== ep) {
+            killScrap = SCRAP_CANNON;
+            scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_CANNON;
+          }
           const newG2 = g.map((row) => [...row]);
           const enemyWallT = WALL_OF[ep];
           for (let dr = -1; dr <= 1; dr++)
@@ -4563,9 +4576,13 @@ window.FortressApp = function Fortress() {
               else if (newG2[r][c] === enemyWallT) {
                 newG2[r][c] = RUBBLE;
                 delete wallHp.current[r + "_" + c];
-                if (ball.player !== ep) scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+                if (ball.player !== ep) {
+                  killScrap += SCRAP_WALL;
+                  scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+                }
               }
             }
+          if (killScrap > 0) addScrapPop(cn.c * CELL + CELL / 2, cn.r * CELL, killScrap, ball.player);
           setGrid(newG2);
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
           explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
@@ -4607,7 +4624,10 @@ window.FortressApp = function Fortress() {
         delete wallHp.current[wkey];
         newG[hitR][hitC] = RUBBLE;
         wallDestroyed = true;
-        if (ball.player !== ep) scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+        if (ball.player !== ep) {
+          scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+          addScrapPop(hitC * CELL + CELL / 2, hitR * CELL, SCRAP_WALL, ball.player);
+        }
       }
     }
     if (wallDestroyed && ball.owner === myRole.current) {
@@ -4639,7 +4659,9 @@ window.FortressApp = function Fortress() {
     const mark = WALL_OF[player];
     for (const [r, c] of abs) newG[r][c] = mark;
     setGrid(newG);
-    pieces.current[player] = { cells: randomShape(), ghostR: gr, ghostC: gc };
+    // Nachlege-Stein OHNE Ghost (v3.16.3): die geerbte Position blieb als
+    // Phantom-Vorschau stehen (v.a. nach Bot-/Gegner-Zügen sichtbar).
+    pieces.current[player] = { cells: randomShape(), ghostR: null, ghostC: null };
     setUiTick((t) => t + 1);
     // Tutorial: hat der Spieler (P1) das vom Bot geschossene Loch wieder geschlossen? → geschafft!
     if (tutorialMode.current && player === 1 && tutorialBotShot.current && !tutorialDoneQueued.current &&
@@ -5196,26 +5218,6 @@ window.FortressApp = function Fortress() {
     }
     const now = performance.now();
     const players = playersList();
-    // Schrott-Zuwachs erkennen → goldenes „+N ⚙" über der eigenen Burg (v3.16.1)
-    for (const p of players) {
-      const curS = scrap.current[p] || 0;
-      const prevS = prevScrap.current[p];
-      if (typeof prevS === "number" && curS > prevS) {
-        const ct = castles.current[p];
-        if (ct) {
-          // Bildschirm-OBEN über der Burg (flip-bewusst) + leichter Versatz,
-          // damit schnelle Serien nicht exakt übereinander liegen (v3.16.2)
-          const flv = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
-          const stack = scrapFloats.current.length;
-          scrapFloats.current.push({
-            x: ct.c * CELL + CELL / 2 + (stack % 3 - 1) * 16,
-            y: ct.r * CELL + (flv ? CELL * 3.4 : -CELL * 1.6),
-            amt: curS - prevS, life: 80, max: 80
-          });
-        }
-      }
-      prevScrap.current[p] = curS;
-    }
     const isGuest = online.current && myRole.current !== 1;
     if (isGuest && reloadProgRef.current) {
       const rp = reloadProgRef.current;
@@ -5814,24 +5816,25 @@ window.FortressApp = function Fortress() {
       }
     }
     ctx.globalAlpha = 1;
-    // „+N ⚙"-Popups (v3.16.1) — steigen auf und verblassen; fillText ist beim
-    // P1-Flip automatisch kontergeflippt, Drift-Richtung je nach Flip.
-    if (scrapFloats.current.length) {
+    // „+N ⚙"-Popups (v3.16.3): am Trefferort, Spielerfarbe, steigen bildschirm-
+    // aufwärts (flip-bewusst); frame-basiert und via State synchronisiert.
+    if (scrapPops.current.length) {
+      const POP_HEX = { 1: "#93c5fd", 2: "#fca5a5", 3: "#6ee7b7" };
       ctx.font = "800 13px 'Segoe UI', system-ui, sans-serif";
       ctx.textAlign = "center";
-      for (const f of scrapFloats.current) {
-        const fa = f.life / f.max;
-        ctx.globalAlpha = Math.min(1, fa * 1.6);
+      for (const f of scrapPops.current) {
+        const fa = 1 - f.frame / 80;
+        const rise = f.frame * 0.55 * (p1Flipped ? 1 : -1);
+        ctx.globalAlpha = Math.max(0, Math.min(1, fa * 1.6));
         ctx.fillStyle = "#0a0d14";
-        ctx.fillText("+" + f.amt + " \u2699", f.x + 1, f.y + 1);
-        ctx.fillStyle = "#fbbf24";
-        ctx.fillText("+" + f.amt + " \u2699", f.x, f.y);
-        f.y += p1Flipped ? 0.55 : -0.55;
-        f.life--;
+        ctx.fillText("+" + f.amt + " \u2699", f.x + 1, f.y + rise + 1);
+        ctx.fillStyle = POP_HEX[f.player] || "#fbbf24";
+        ctx.fillText("+" + f.amt + " \u2699", f.x, f.y + rise);
+        f.frame++;
       }
       ctx.globalAlpha = 1;
       ctx.textAlign = "left";
-      scrapFloats.current = scrapFloats.current.filter((f) => f.life > 0);
+      scrapPops.current = scrapPops.current.filter((f) => f.frame < 80);
     }
     explosions.current = explosions.current.filter((e2) => e2.frame < 22);
     // Sound bei neuen Explosionen (funktioniert geräteübergreifend, da explosions synchronisiert sind)
@@ -6116,7 +6119,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

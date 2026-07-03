@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2058,3 +2058,18 @@ Tests grün (195). SW-Cache `fortress-v3.16.1`.
   in den Burgkörper.
 
 Tests grün (195). SW-Cache `fortress-v3.16.2`.
+
+### v3.16.3 — Schrott-Popups am Trefferort + Phantom-Vorschau behoben
+- **„+N ⚙"-Popups am EINSCHLAGSORT in Spielerfarbe** (Nutzerwunsch): Mauer-
+  Treffer poppen an der zerstörten Zelle, Kanonen-Kills als Gesamtsumme an
+  der Kanone, Überlebens-Sold an der eigenen Burg. Farbe = Verdiener
+  (P1 hellblau, P2 hellrot, P3 mintgrün) → eindeutige Zuordnung. Wie
+  `explosions` über den State synchronisiert (`scrapPops`) — Gäste sehen
+  identische Popups. Delta-Erkennung von v3.16.1/2 ersetzt.
+- **Phantom-Vorschau behoben** („Preview zeigt anderes als Platzierung"):
+  `placePiece`/`placeCannon` übergaben dem Nachlege-Stein die ALTE
+  Ghost-Position — nach jedem Bot-/Gegner-Zug blieb dadurch eine (oft graue)
+  Geister-Vorschau auf dem Feld stehen und suggerierte eine falsche
+  Platzierungs-Vorschau. Nachlege-Stein startet jetzt ohne Ghost.
+
+Tests grün (195). SW-Cache `fortress-v3.16.3`.

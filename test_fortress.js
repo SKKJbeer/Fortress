@@ -514,11 +514,16 @@ async function suiteMechanics(browser) {
     if (!shoot2) { fail('Zweite Schussphase nicht erreicht'); return { res, errs }; }
     ok(`Zweite Schussphase: "${shoot2}" ✓`);
 
-    await page.waitForTimeout(200); // kurz nach Phasen-Reset stabilisieren
-    const st0 = await getTimerValue(page);
-    await page.waitForTimeout(1000);
-    const st1 = await getTimerValue(page);
-    (st0 !== null && st1 !== null && st1 < st0)
+    // Phasengrenzen-bewusst (Zeitraffer): bis zu 3 Versuche
+    let st0 = null, st1 = null, stOk = false;
+    for (let att = 0; att < 3 && !stOk; att++) {
+      await page.waitForTimeout(200);
+      st0 = await getTimerValue(page);
+      await page.waitForTimeout(700);
+      st1 = await getTimerValue(page);
+      if (st0 !== null && st1 !== null && st1 < st0) stOk = true;
+    }
+    stOk
       ? ok(`Schuss-Timer Runde 2: ${st0} → ${st1} ✓`)
       : fail(`Schuss-Timer Runde 2 zählt nicht (${st0} → ${st1})`);
 
