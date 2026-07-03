@@ -65,7 +65,8 @@ index.html direkt editieren
 
 ## Spielmechanik (Kurzreferenz)
 
-- **Phasen**: Setup (20s) → Build (25s) → Shoot (20s, seit v3.14.11) → Cannon (12s) → Build ...
+- **Phasen**: Setup (20s) → Build (25s) → Shoot (20s, seit v3.14.11) → Rüstphase/Cannon (15s, seit v3.16.0) → Build ...
+- **Schrott-Ökonomie (seit v3.16.0)**: In-Match-Währung `scrap` (Mauer +1, Kanone +12, Überleben +6/Rüstphase). KEIN Gratis-Kanonen-Nachschub mehr — Shop in der Rüstphase (Kanone ⚙20+8, Schnellladen ⚙25/50 → `reloadMsOf()`, Panzermauern ⚙35 → `wallHp`-Map + Riss-Sprite, Reparatur ⚙15). Match-persistent über Runden (Reset nur bei neuem Spiel via `startGame`; `beginSetup` resettet nur wallHp + Kanonenpreis-Staffel). Kanonen-Kill sprengt 3×3-Mauern des Besitzers mit. Host-autoritativ; Gäste senden `buy`-Action. Gated Debug: `__buys`/`__econ`/`__botSelfPlay`.
 - **Verlust**: Burg am Bauende nicht vollständig von Mauern umschlossen (Flood-Fill)
 - **Kanonen**: schießen nur wenn zu Beginn der Schussrunde vollständig ummauert (`frozenReady`)
 - **Grid**: 44×68 Zellen, 14px pro Zelle (W=616, H=952)

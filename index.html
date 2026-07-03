@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.15.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -538,8 +538,9 @@ function sanitizeAction(raw) {
     return null;
   }
   if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave"];
+  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy"];
   if (!validTypes.includes(a.type)) return null;
+  if (a.type === "buy" && !["cannon", "reload", "armor", "repair"].includes(a.item)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
   if (a.tx !== void 0 && (typeof a.tx !== "number" || a.tx < 0 || a.tx > W * 2)) return null;
@@ -559,13 +560,24 @@ const W = COLS * CELL;
 const H = ROWS * CELL;
 const BUILD_TIME = 25;
 const SHOOT_TIME = 20;
-const CANNON_TIME = 12;
+const CANNON_TIME = 15;
 const SETUP_TIME = 20;
+// ── Schrott-Ökonomie (v3.16.0) ─────────────────────────────────────────
+// In-Match-Währung: verdient durch Zerstören (Mauer +1, Kanone +12) und
+// Überleben (+4 je Rüstphase). KEIN Gratis-Kanonen-Nachschub mehr — alles
+// nach den 2 Setup-Kanonen wird im Shop der Rüstphase gekauft.
+const SCRAP_WALL = 1, SCRAP_CANNON = 12, SCRAP_SURVIVE = 6;
+const SHOP = {
+  cannon: { base: 20, step: 8 },       // Preis steigt je Kauf (Selbstlimitierung)
+  reload: { prices: [25, 50], factors: [1, 0.8, 0.65] }, // globaler Nachlade-Faktor
+  armor:  { price: 35 },               // Mauern halten 2 Treffer
+  repair: { price: 15 }                // +3 eigene Trümmer → Mauern (nächste Bauphase)
+};
 const PHASE_BANNERS = {
   setup:  { emoji: "\u{1F3F0}", title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
   build:  { emoji: "\u{1F9F1}", title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
   shoot:  { emoji: "\u{1F4A5}", title: "FEUER FREI!", sub: "Zieh von deiner Kanone weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
-  cannon: { emoji: "\u{1F3AF}", title: "NEUE KANONE", sub: "Tippe auf eine freie 3\xD73-Fl\xE4che",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
+  cannon: { emoji: "\u2699\uFE0F", title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
 };
 // ── Game Event Bus ─────────────────────────────────────────────
 const createEventBus = () => {
@@ -1257,6 +1269,26 @@ function wallSprite(v) {
   }
   return SPR.wall[v];
 }
+function crackSprite() {
+  if (!SPR.crack) {
+    const c = mkSpriteCanvas(CELL, CELL);
+    const x = c.getContext("2d");
+    x.strokeStyle = "rgba(10,12,18,0.75)";
+    x.lineWidth = 1.2;
+    x.beginPath();
+    x.moveTo(CELL * 0.5, CELL * 0.1);
+    x.lineTo(CELL * 0.42, CELL * 0.45);
+    x.lineTo(CELL * 0.62, CELL * 0.6);
+    x.lineTo(CELL * 0.5, CELL * 0.92);
+    x.moveTo(CELL * 0.42, CELL * 0.45);
+    x.lineTo(CELL * 0.18, CELL * 0.62);
+    x.moveTo(CELL * 0.62, CELL * 0.6);
+    x.lineTo(CELL * 0.85, CELL * 0.72);
+    x.stroke();
+  SPR.crack = c;
+  }
+  return SPR.crack;
+}
 function rubbleSprite() {
   if (!SPR.rubble) {
     const c = mkSpriteCanvas(CELL, CELL);
@@ -1401,7 +1433,7 @@ const LANGS = {
     tutorialSealed: "✓ Stark! Burg wieder geschlossen.",
     tutorialCastleOpen: "⚠ Deine Burg war offen! Nur eine RUNDUM geschlossene Burg ist gesch\xFCtzt — schlie\xDFe jede L\xFCcke.",
     coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
-    coachCannon: "Setze eine weitere Kanone und MAUERE SIE EIN — nur umschlossene Kanonen feuern. Mehr Kanonen = mehr Feuerkraft.",
+    coachCannon: "R\xFCstphase: F\xFCr \u2699 Schrott (gibt es f\xFCrs Zerst\xF6ren!) kaufst du hier Upgrades und Kanonen. Gekaufte Kanonen platzieren und EINMAUERN!",
     coachDone: "🎉 Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
     tutorialExit: "Tutorial beenden",
     tutorialDoneTitle: "🎉 Tutorial abgeschlossen!",
@@ -1453,10 +1485,15 @@ const LANGS = {
     bannerBuildSub: "Mauere deine Burg l\xFCckenlos ein!",
     bannerShootTitle: "FEUER FREI!",
     bannerShootSub: "Zieh von deiner Kanone weg zum Zielen",
-    bannerCannonTitle: "NEUE KANONE",
-    bannerCannonSub: "Tippe auf eine freie 3\xD73-Fl\xE4che",
+    bannerCannonTitle: "R\xDCSTPHASE",
+    bannerCannonSub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",
     warnBurgOffen: "BURG von {name} offen — bis Bauende schlie\xDFen!",
     warnKanoneZerstoert: "Kanone von {name} zerst\xF6rt!",
+    shopCannon: "Kanone",
+    shopReload: "Schnellladen",
+    shopArmor: "Panzermauern",
+    shopRepair: "Reparatur",
+    shopMax: "MAX",
     warnKeinKanone: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     warnKanoneGesetzt: "Kanone ({name}) platziert — noch {left}",
     warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
@@ -1494,7 +1531,7 @@ const LANGS = {
     warnSpielVoll: "Dieses Spiel ist bereits voll.",
     warnVerbindung: "Verbindung fehlgeschlagen:",
     warnNoCannonReady: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
-    tipCannon: "Neue Kanone setzen! Tippe auf eine freie 3\xD73-Fl\xE4che — dann in der Bauphase ummauern",
+    tipCannon: "R\xFCstphase: Kaufe im Shop Upgrades oder eine neue Kanone (dann auf eine freie 3\xD73-Fl\xE4che tippen und ummauern)",
     tipSetup: "START: Platziere deine 2 Kanonen rund um die Burg — danach ummauern (Burg muss dicht sein!)",
     tipShoot: "Schleuder: Finger von der Kanone wegziehen \xB7 \u{1F3AF} Fadenkreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern",
     quitTitle: "Spiel beenden?",
@@ -1606,7 +1643,7 @@ const LANGS = {
     tutorialSealed: "✓ Nice! Castle sealed again.",
     tutorialCastleOpen: "⚠ Your castle was open! Only a fully enclosed castle is protected — close every gap.",
     coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
-    coachCannon: "Place another cannon and WALL IT IN — only enclosed cannons fire. More cannons = more firepower.",
+    coachCannon: "Armory phase: spend \u2699 scrap (earned by destroying!) on upgrades and cannons. Place bought cannons and WALL THEM IN!",
     coachDone: "🎉 Done! You now know all the basics. Keep playing to practise or end the tutorial.",
     tutorialExit: "End tutorial",
     tutorialDoneTitle: "🎉 Tutorial complete!",
@@ -1658,10 +1695,15 @@ const LANGS = {
     bannerBuildSub: "Wall in your castle completely!",
     bannerShootTitle: "OPEN FIRE!",
     bannerShootSub: "Drag from your cannon to aim",
-    bannerCannonTitle: "NEW CANNON",
-    bannerCannonSub: "Tap an empty 3\xD73 area",
+    bannerCannonTitle: "ARMORY",
+    bannerCannonSub: "Buy upgrades in the shop — earn scrap by destroying",
     warnBurgOffen: "CASTLE of {name} open — close before build ends!",
     warnKanoneZerstoert: "{name}'s cannon destroyed!",
+    shopCannon: "Cannon",
+    shopReload: "Fast reload",
+    shopArmor: "Armored walls",
+    shopRepair: "Repair crew",
+    shopMax: "MAX",
     warnKeinKanone: "No ready cannon — cannons must be walled in!",
     warnKanoneGesetzt: "Cannon ({name}) placed — {left} remaining",
     warnAusgeschieden: "{names} eliminated — castle open!",
@@ -2951,6 +2993,14 @@ window.FortressApp = function Fortress() {
   const cannons = useRef({ 1: [], 2: [] });
   const cannonSeq = useRef(0);
   const cannonBudget = useRef({ 1: 0, 2: 0 });
+  // Schrott-Ökonomie (v3.16.0): Währung, gekaufte Upgrades, angeknackste Mauern
+  const scrap = useRef({ 1: 0, 2: 0, 3: 0 });
+  const upgrades = useRef({ 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } });
+  const wallHp = useRef({});
+  function reloadMsOf(player) {
+    const lvl = (upgrades.current[player] || {}).reload || 0;
+    return RELOAD_MS * SHOP.reload.factors[lvl];
+  }
   const warnedOpen = useRef({ 1: false, 2: false });
   const cannonAngle = useRef({ 1: Math.PI / 2, 2: -Math.PI / 2 });
   const balls = useRef([]);
@@ -2999,7 +3049,7 @@ window.FortressApp = function Fortress() {
     var _a2;
     const players = playersList();
     const rp = {};
-    for (const p of players) rp[p] = Math.min(1, (performance.now() - ((_a2 = lastShot.current[p]) != null ? _a2 : -99999)) / RELOAD_MS);
+    for (const p of players) rp[p] = Math.min(1, (performance.now() - ((_a2 = lastShot.current[p]) != null ? _a2 : -99999)) / reloadMsOf(p));
     return {
       grid: grid.current,
       terrainSeed: terrainSeed.current,
@@ -3007,6 +3057,9 @@ window.FortressApp = function Fortress() {
       castles: castles.current,
       cannons: cannons.current,
       cannonBudget: cannonBudget.current,
+      scrap: scrap.current,
+      upgrades: upgrades.current,
+      wallHp: wallHp.current,
       piece1: pieces.current[1] && pieces.current[1].cells,
       piece2: pieces.current[2] && pieces.current[2].cells,
       piece3: pieces.current[3] && pieces.current[3].cells,
@@ -3175,6 +3228,9 @@ window.FortressApp = function Fortress() {
         }
         cannons.current = s.cannons || cannons.current;
         cannonBudget.current = s.cannonBudget || cannonBudget.current;
+        if (s.scrap) scrap.current = s.scrap;
+        if (s.upgrades) upgrades.current = s.upgrades;
+        wallHp.current = s.wallHp || {};
         if (s.eliminated) eliminated.current = s.eliminated;
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
         if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
@@ -3327,6 +3383,7 @@ window.FortressApp = function Fortress() {
     const ph = phase_r.current;
     if (a.type === "place" && ph === "build") placePiece(p, a.r, a.c);
     else if (a.type === "cannon" && (ph === "setup" || ph === "cannon")) placeCannon(p, a.r, a.c);
+    else if (a.type === "buy" && ph === "cannon") buyUpgrade(p, a.item);
     else if (a.type === "fire" && ph === "shoot") fireMortar(p, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[p] = a.angle;
     else if (a.type === "rotate") pieces.current[p].cells = rotateCW(pieces.current[p].cells);
@@ -4266,6 +4323,30 @@ window.FortressApp = function Fortress() {
     setPhase("build");
     timerVal.current = BUILD_TIME;
     setTimer(BUILD_TIME);
+    // Reparatur-Trupp (v3.16.0): je gekaufter Ladung bis zu 3 Trümmer nahe der
+    // eigenen Burg zurück in Mauern verwandeln.
+    {
+      let repaired = false;
+      const gNow = grid.current.map((row) => [...row]);
+      for (const p of players) {
+        const up = upgrades.current[p];
+        const castle = castles.current[p];
+        if (!up || !up.repair || !castle || eliminated.current[p]) continue;
+        while (up.repair > 0) {
+          up.repair -= 1;
+          const rubbles = [];
+          for (let r = 0; r < ROWS; r++)
+            for (let c = 0; c < COLS; c++)
+              if (gNow[r][c] === RUBBLE) rubbles.push([r, c, Math.max(Math.abs(r - castle.r), Math.abs(c - castle.c))]);
+          rubbles.sort((a, b) => a[2] - b[2]);
+          for (let i = 0; i < Math.min(3, rubbles.length); i++) {
+            gNow[rubbles[i][0]][rubbles[i][1]] = WALL_OF[p];
+            repaired = true;
+          }
+        }
+      }
+      if (repaired) setGrid(gNow);
+    }
     pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
     warnedOpen.current = mk(false);
     activeBuild.current = mk(null);
@@ -4303,10 +4384,21 @@ window.FortressApp = function Fortress() {
     setTimer(CANNON_TIME);
     balls.current = [];
     explosions.current = [];
-    cannonBudget.current = players.reduce((o, p) => (o[p] = eliminated.current[p] ? 0 : 1, o), {});
+    // Schrott-Ökonomie (v3.16.0): KEIN Gratis-Kanonen-Budget mehr — Kanonen
+    // werden im Shop gekauft. Überlebens-Sold für alle aktiven Spieler.
+    cannonBudget.current = players.reduce((o, p) => (o[p] = 0, o), {});
+    for (const p of players) if (!eliminated.current[p]) scrap.current[p] = (scrap.current[p] || 0) + SCRAP_SURVIVE;
+    if (typeof window !== "undefined" && window.__mmDebug) window.__econ = { scrap: { ...scrap.current }, up: JSON.parse(JSON.stringify(upgrades.current)), t: Date.now() };
     activeBuild.current = mk(null);
     activeDrag.current = mk(null);
     pointers.current.clear();
+    // Kann sich niemand etwas leisten und hat niemand offenes Budget → Phase
+    // verkürzen (sonst 15s Leerlauf in den ersten Runden).
+    const anyAction = players.some((p) => !eliminated.current[p] && (cannonBudget.current[p] > 0 || (scrap.current[p] || 0) >= SHOP.repair.price));
+    if (!anyAction) {
+      timerVal.current = 4;
+      setTimer(4);
+    }
     setUiTick((t) => t + 1);
     showPhaseBanner("cannon", startTimer);
   }
@@ -4336,7 +4428,7 @@ window.FortressApp = function Fortress() {
   function fireMortar(player, targetX, targetY) {
     if (eliminated.current[player]) return false;
     const now = performance.now();
-    if (now - lastShot.current[player] < RELOAD_MS) return false;
+    if (now - lastShot.current[player] < reloadMsOf(player)) return false;
     const g = grid.current;
     let ready;
     if (phase_r.current === "shoot" && frozenReady.current[player]) {
@@ -4459,12 +4551,20 @@ window.FortressApp = function Fortress() {
       if (cn) {
         cn.hp -= 1;
         if (cn.hp <= 0) {
+          // Kill-Belohnung (v3.16.0): Schrott für den Schützen
+          if (ball.player !== ep) scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_CANNON;
           const newG2 = g.map((row) => [...row]);
+          const enemyWallT = WALL_OF[ep];
           for (let dr = -1; dr <= 1; dr++)
             for (let dc = -1; dc <= 1; dc++) {
               const r = cn.r + dr, c = cn.c + dc;
-              if (r >= 0 && r < ROWS && c >= 0 && c < COLS && newG2[r][c] === enemyCannon)
+              if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+              if (newG2[r][c] === enemyCannon) newG2[r][c] = RUBBLE;
+              else if (newG2[r][c] === enemyWallT) {
                 newG2[r][c] = RUBBLE;
+                delete wallHp.current[r + "_" + c];
+                if (ball.player !== ep) scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+              }
             }
           setGrid(newG2);
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
@@ -4497,8 +4597,20 @@ window.FortressApp = function Fortress() {
     const enemyWall = WALL_OF[ep];
     const castleClosedBefore = isCastleClosed(g, ep, castles.current[ep]);
     const newG = g.map((row) => [...row]);
-    if (target === enemyWall) newG[hitR][hitC] = RUBBLE;
-    if (target === enemyWall && ball.owner === myRole.current) {
+    let wallDestroyed = false;
+    if (target === enemyWall) {
+      const wkey = hitR + "_" + hitC;
+      // Panzermauern (v3.16.0): erster Treffer knackst nur an
+      if ((upgrades.current[ep] || {}).armor && !wallHp.current[wkey]) {
+        wallHp.current[wkey] = 1;
+      } else {
+        delete wallHp.current[wkey];
+        newG[hitR][hitC] = RUBBLE;
+        wallDestroyed = true;
+        if (ball.player !== ep) scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+      }
+    }
+    if (wallDestroyed && ball.owner === myRole.current) {
       blocksDestroyedThisGameRef.current = (blocksDestroyedThisGameRef.current || 0) + 1;
     }
     setGrid(newG);
@@ -4537,6 +4649,48 @@ window.FortressApp = function Fortress() {
       setTimeout(() => setShowTutorialDone(true), 1500);
     }
   }
+  // UI-Einstieg: Gast sendet Action, Host/lokal kauft direkt (v3.16.0)
+  function doBuy(player, item) {
+    if (online.current && myRole.current !== 1) {
+      sendAction({ type: "buy", item });
+      return;
+    }
+    buyUpgrade(player, item);
+  }
+  // Shop-Kauf (v3.16.0). Läuft NUR beim Zustands-Besitzer (Host/lokal) —
+  // Gäste senden eine buy-Action. Rückgabe: true wenn gekauft.
+  function buyUpgrade(player, item) {
+    if (phase_r.current !== "cannon" || eliminated.current[player]) return false;
+    const up = upgrades.current[player] || (upgrades.current[player] = { reload: 0, armor: 0, repair: 0, cbought: 0 });
+    const have = scrap.current[player] || 0;
+    let price = 0;
+    if (item === "cannon") {
+      price = SHOP.cannon.base + SHOP.cannon.step * up.cbought;
+      if (have < price) return false;
+      up.cbought += 1;
+      cannonBudget.current[player] = (cannonBudget.current[player] || 0) + 1;
+    } else if (item === "reload") {
+      if (up.reload >= 2) return false;
+      price = SHOP.reload.prices[up.reload];
+      if (have < price) return false;
+      up.reload += 1;
+    } else if (item === "armor") {
+      if (up.armor) return false;
+      price = SHOP.armor.price;
+      if (have < price) return false;
+      up.armor = 1;
+    } else if (item === "repair") {
+      price = SHOP.repair.price;
+      if (have < price) return false;
+      up.repair += 1;
+    } else return false;
+    scrap.current[player] = have - price;
+    if (typeof window !== "undefined" && window.__mmDebug) (window.__buys = window.__buys || []).push(player + ":" + item);
+    SFX.place && SFX.place();
+    setUiTick((t) => t + 1);
+    if (online.current && myRole.current === 1) pushState(true);
+    return true;
+  }
   function placeCannon(player, gr, gc) {
     var _a2;
     const g = grid.current;
@@ -4564,7 +4718,7 @@ window.FortressApp = function Fortress() {
     const left = cannonBudget.current[player];
     const pn = ((_a2 = playerInfo.current[player]) == null ? void 0 : _a2.name) || (player === 1 ? t('bluePlayer') : player === 2 ? t('redPlayer') : t('greenPlayer'));
     showWarn(left > 0 ? t('warnKanoneGesetzt', {name: pn, left}) : t('warnLastCannon', {flag: FLAG_OF[player] || "\u2654", name: pn}));
-    if ((phase_r.current === "setup" || phase_r.current === "cannon") && playersList().every((p) => cannonBudget.current[p] <= 0) && timerVal.current > 3) {
+    if ((phase_r.current === "setup" || phase_r.current === "cannon") && playersList().every((p) => cannonBudget.current[p] <= 0 && (phase_r.current === "setup" || (scrap.current[p] || 0) < SHOP.repair.price)) && timerVal.current > 3) {
       timerVal.current = 3;
       setTimer(3);
     }
@@ -4739,7 +4893,7 @@ window.FortressApp = function Fortress() {
     // Tutorial: der Bot schießt EIN Loch in die noch geschlossene Spielerburg (authentisch);
     // sobald sie offen ist, bleibt er passiv → der Spieler muss die Lücke selbst schließen.
     if (tutorialMode.current && (!castles.current[1] || !isCastleClosed(g, 1, castles.current[1]))) return;
-    if (performance.now() - lastShot.current[B] < RELOAD_MS) return;
+    if (performance.now() - lastShot.current[B] < reloadMsOf(B)) return;
     const E = B === 1 ? 2 : 1;
     const enemy = castles.current[E];
     if (!enemy) return;
@@ -4794,6 +4948,15 @@ window.FortressApp = function Fortress() {
     // Setup + Kanonenphase: Kanonen setzen. Auch im Tutorial — so ist das Budget beider
     // Spieler schnell 0 und die Phase springt vorzeitig weiter (Tutorial läuft flotter).
     if (ph === "setup" || ph === "cannon") {
+      // Bot-Einkauf (v3.16.0): erst Kanone, dann Schnellladen, dann Panzerung
+      if (ph === "cannon" && !tutorialMode.current) {
+        const up = upgrades.current[B] || {};
+        const have = scrap.current[B] || 0;
+        const cPrice = SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
+        if (cannonBudget.current[B] <= 0 && have >= cPrice && (cannons.current[B] || []).length < 6) buyUpgrade(B, "cannon");
+        else if ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) buyUpgrade(B, "reload");
+        else if (!up.armor && have >= SHOP.armor.price) buyUpgrade(B, "armor");
+      }
       let guard = 0;
       while (cannonBudget.current[B] > 0 && guard++ < 4) {
         if (!botPlaceOneCannon(g, B)) break;
@@ -4807,6 +4970,8 @@ window.FortressApp = function Fortress() {
   function botTick() {
     if (!botMode.current || online.current || bannerActive.current) return;
     botActFor(2);
+    // Gated Selbstspiel (Diagnose): beide Seiten von der KI steuern lassen
+    if (typeof window !== "undefined" && window.__botSelfPlay) botActFor(1);
   }
   useEffect(() => {
     if (screen !== "game" || !botMode.current || online.current) return;
@@ -5023,12 +5188,11 @@ window.FortressApp = function Fortress() {
     const isGuest = online.current && myRole.current !== 1;
     if (isGuest && reloadProgRef.current) {
       const rp = reloadProgRef.current;
-      const elapsed = (now - (rp.at || now)) / RELOAD_MS;
       for (const p of players)
-        reload.current[p] = Math.min(1, ((_a2 = rp[p]) != null ? _a2 : 1) + elapsed);
+        reload.current[p] = Math.min(1, ((_a2 = rp[p]) != null ? _a2 : 1) + (now - (rp.at || now)) / reloadMsOf(p));
     } else {
       for (const p of players)
-        reload.current[p] = Math.min(1, (now - lastShot.current[p]) / RELOAD_MS);
+        reload.current[p] = Math.min(1, (now - lastShot.current[p]) / reloadMsOf(p));
     }
     if (phase_r.current === "shoot") {
       if (!isGuest) {
@@ -5383,7 +5547,11 @@ window.FortressApp = function Fortress() {
         const v = g[r][c];
         if (v === EMPTY) continue;
         const px = c * CELL, py = r * CELL;
-        if (v === WALL1 || v === WALL2 || v === WALL3) ctx.drawImage(wallSprite(v), px, py);
+        if (v === WALL1 || v === WALL2 || v === WALL3) {
+          ctx.drawImage(wallSprite(v), px, py);
+          // Panzermauer angeknackst (v3.16.0): Riss-Overlay
+          if (wallHp.current[r + "_" + c]) ctx.drawImage(crackSprite(), px, py);
+        }
         else if (v === RUBBLE) ctx.drawImage(rubbleSprite(), px, py);
       }
     }
@@ -5727,6 +5895,15 @@ window.FortressApp = function Fortress() {
     activeBuild.current = mk(null);
     warnedOpen.current = mk(false);
     cannonBudget.current = mk(2);
+    // Match-Progression (v3.16.0): Schrott + Upgrades ÜBERLEBEN den Rundenwechsel
+    // (Level-Gefühl übers ganze Match). Nur Karten-Lokales wird zurückgesetzt:
+    // wallHp (neue Karte) und die Kanonenpreis-Staffel (frische Kanonen-Ökonomie).
+    for (const p of players) {
+      if (typeof scrap.current[p] !== "number") scrap.current[p] = 0;
+      const up = upgrades.current[p] || (upgrades.current[p] = { reload: 0, armor: 0, repair: 0, cbought: 0 });
+      up.cbought = 0;
+    }
+    wallHp.current = {};
     if (numPlayersRef.current === 3) {
       cannonAngle.current = { 1: Math.PI, 2: Math.PI * 1.67, 3: Math.PI * 0.33 };
     } else {
@@ -5743,6 +5920,10 @@ window.FortressApp = function Fortress() {
   function startGame() {
     initGrid();
     setRound(1);
+    // Neues Spiel: Ökonomie komplett zurücksetzen (v3.16.0)
+    scrap.current = { 1: 0, 2: 0, 3: 0 };
+    upgrades.current = { 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } };
+    wallHp.current = {};
     beginSetup();
   }
   function fullReset() {
@@ -5885,7 +6066,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.15.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6828,7 +7009,41 @@ window.FortressApp = function Fortress() {
     maxWidth: "92vw",
     overflow: "hidden",
     textOverflow: "ellipsis"
-  } }, warn), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
+  } }, warn), phase === "cannon" && (() => {
+    const mine = online.current ? [myRole.current] : botMode.current ? [1] : playersList();
+    return mine.filter((sp) => sp >= 1 && !eliminated.current[sp]).map((sp) => {
+      const up = upgrades.current[sp] || {};
+      const have = scrap.current[sp] || 0;
+      const items = [
+        { k: "cannon", icon: "\u{1F9E8}", label: t("shopCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
+        { k: "reload", icon: "\u26A1", label: t("shopReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
+        { k: "armor", icon: "\u{1F6E1}", label: t("shopArmor"), price: SHOP.armor.price, max: !!up.armor },
+        { k: "repair", icon: "\u{1F527}", label: t("shopRepair"), price: SHOP.repair.price, max: false }
+      ];
+      const isTop = !online.current && !botMode.current && sp !== 1;
+      const pos = isTop
+        ? { top: "calc(env(safe-area-inset-top, 0px) + " + (sp === 3 ? 116 : 54) + "px)" }
+        : { bottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" };
+      return /* @__PURE__ */ React.createElement("div", { key: "shop" + sp, style: __spreadValues({ position: "fixed", left: 8, right: 8, zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" }, pos) },
+        /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(8,12,22,0.93)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: "6px 8px", display: "flex", gap: 6, alignItems: "stretch", pointerEvents: "auto", boxShadow: "0 6px 24px rgba(0,0,0,0.5)" } },
+          /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", fontSize: 13, fontWeight: 800, color: "#fbbf24", padding: "0 5px" } }, "\u2699 " + have),
+          items.map((it) => {
+            const afford = !it.max && have >= it.price;
+            return /* @__PURE__ */ React.createElement("button", { key: it.k, onClick: () => doBuy(sp, it.k), disabled: !afford, style: {
+              background: afford ? "rgba(56,120,230,0.28)" : "rgba(255,255,255,0.05)",
+              border: "1px solid " + (afford ? "rgba(96,165,250,0.65)" : "rgba(255,255,255,0.10)"),
+              borderRadius: 10, padding: "3px 7px", color: afford ? "#e2e8f0" : "#475569",
+              fontSize: 10, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, cursor: afford ? "pointer" : "default", minWidth: 56
+            } },
+              /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, it.icon),
+              /* @__PURE__ */ React.createElement("span", null, it.label),
+              /* @__PURE__ */ React.createElement("span", { style: { color: it.max ? "#4ade80" : "#fbbf24", fontSize: 10 } }, it.max ? t("shopMax") : "\u2699" + it.price)
+            );
+          })
+        )
+      );
+    });
+  })(), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", left: 8, right: 8, top: "calc(env(safe-area-inset-top, 0px) + 54px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
     key: "coach_" + phase + (coachP1Open ? "_o" : ""),

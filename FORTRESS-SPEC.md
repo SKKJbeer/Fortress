@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.15.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1992,3 +1992,39 @@ Kosten pro Objekt sind jetzt konstant klein (Blit) statt Gradient+Blur.
 Frame im Render-Loop — Statisches gehört in den Sprite-Cache (`SPR`).
 
 Tests grün. SW-Cache `fortress-v3.15.5`.
+
+### v3.16.0 — Schrott-Ökonomie: In-Match-Levelsystem mit Shop (Konzept-Feature)
+Löst die Kanonen-Inflation langer Spiele: Kanonen sind nicht mehr gratis,
+Zerstören lohnt sich, und übers Match entsteht ein Level-/Aufrüst-Gefühl.
+
+**⚙ Schrott (In-Match-Währung, getrennt vom Meta-Gold):**
+- Gegnerische Mauer zerstört: **+1** · Gegnerische Kanone zerstört: **+12**
+- Überlebens-Sold: **+6** je Rüstphase (pro aktivem Spieler)
+- KEIN Schrott für Burg-Treffer (nicht farmbar) und keinen Dicht-Bonus
+- **Match-persistent**: Schrott + Upgrades überleben den Rundenwechsel
+  (Level-Gefühl übers ganze Match); nur ein neues Spiel resettet. Pro Runde
+  (neue Karte) resetten nur `wallHp` und die Kanonenpreis-Staffel.
+
+**Rüstphase (ehem. Kanonenphase, 12s → 15s) mit Shop (4 Karten):**
+- 🧨 **Kanone** ⚙20 (+8 je Kauf — Selbstlimitierung statt hartem Cap)
+- ⚡ **Schnellladen** ⚙25/⚙50 (global −20% / −35% Nachladezeit — passt zur
+  Ein-Gesten-Steuerung, `reloadMsOf(player)` ersetzt festes RELOAD_MS)
+- 🛡 **Panzermauern** ⚙35 (Mauern halten 2 Treffer; 1. Treffer = Riss-Overlay,
+  `wallHp`-Map, online synchron)
+- 🔧 **Reparatur** ⚙15 (nächste Bauphase: bis zu 3 Trümmer nahe der eigenen
+  Burg werden wieder zu Mauern)
+- **Der stupide Gratis-Kanonen-Nachschub (+1/Runde) ist ABGESCHAFFT** —
+  nur die 2 Setup-Kanonen sind frei. Rüstphase wird auf 4s verkürzt, wenn
+  niemand Budget oder ≥15 Schrott hat.
+
+**Kanonen-Explosion:** Zerstörte Kanonen reißen im 3×3 auch die MAUERN des
+Besitzers mit (Kill öffnet die Hülle; +1 Schrott je Mauer an den Schützen).
+
+**Technik:** Host-autoritativ (`scrap`/`upgrades`/`wallHp` im State; Gäste
+senden `buy`-Action, `sanitizeAction` erweitert). Bot kauft selbst (Kanone →
+Schnellladen → Panzerung). Gated Debug: `__buys`, `__econ`, `__botSelfPlay`
+(Zwei-Bot-Selbstspiel in botTick). Phasen-Banner/Coach-Texte auf Rüstphase
+umgestellt. Balance-Validierung im Echtzeit-Selbstspiel (Kauf-Loop
+nachgewiesen); Suite-Test „Schrott-Shop in Rüstphase sichtbar".
+
+Tests grün (195). SW-Cache `fortress-v3.16.0`.

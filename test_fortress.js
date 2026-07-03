@@ -335,12 +335,16 @@ async function suiteNavHUD(browser, playerCount) {
     if (!shootPh) { fail('Schussphase nach Setup nicht erreicht'); return { res, errs }; }
     ok(`Schussphase direkt nach Setup: "${shootPh}" ✓`);
 
-    // Timer zählt (in Schussphase messen — nach Reset auf 30, stabil)
-    await page.waitForTimeout(200);
-    const t0 = await getTimerValue(page);
-    await page.waitForTimeout(600);
-    const t1 = await getTimerValue(page);
-    (t0 !== null && t1 !== null && t1 < t0)
+    // Timer zählt — Phasengrenzen-bewusst (Zeitraffer): bis zu 3 Versuche
+    let tOk = false, t0 = null, t1 = null;
+    for (let att = 0; att < 3 && !tOk; att++) {
+      await page.waitForTimeout(200);
+      t0 = await getTimerValue(page);
+      await page.waitForTimeout(600);
+      t1 = await getTimerValue(page);
+      if (t0 !== null && t1 !== null && t1 < t0) tOk = true;
+    }
+    tOk
       ? ok(`Timer zählt: ${t0} → ${t1} ✓`)
       : fail(`Timer zählt nicht (${t0} → ${t1})`);
     await page.screenshot({ path: `/tmp/s1_${playerCount}p_shoot.png` });
@@ -410,11 +414,16 @@ async function suiteMechanics(browser) {
     ok(`Schussphase direkt nach Setup: "${shoot1}" ✓`);
     await page.screenshot({ path: '/tmp/s2_shoot1.png' });
 
-    // Timer zählt
-    const fs0 = await getTimerValue(page);
-    await page.waitForTimeout(500);
-    const fs1 = await getTimerValue(page);
-    (fs0 !== null && fs1 !== null && fs1 < fs0)
+    // Timer zählt — Phasengrenzen-bewusst: bei Phasenwechsel zwischen den
+    // Samples (Zeitraffer!) neu versuchen statt fälschlich zu failen.
+    let timerOk = false, fs0 = null, fs1 = null;
+    for (let att = 0; att < 3 && !timerOk; att++) {
+      fs0 = await getTimerValue(page);
+      await page.waitForTimeout(500);
+      fs1 = await getTimerValue(page);
+      if (fs0 !== null && fs1 !== null && fs1 < fs0) timerOk = true;
+    }
+    timerOk
       ? ok(`Schuss-Timer zählt: ${fs0} → ${fs1} ✓`)
       : fail(`Schuss-Timer zählt nicht (${fs0} → ${fs1})`);
 
@@ -927,9 +936,19 @@ async function suiteOnline2P(browser, fbPort) {
     guestPh ? ok(`Gast-Phase erkannt: "${guestPh.slice(0,25)}" ✓`) : fail('Gast: keine Phase erkannt');
 
     if (hostPh && guestPh) {
-      const hK = ['FEUER','BAUEN','START','KANONE'].find(k => hostPh.includes(k));
-      const gK = ['FEUER','BAUEN','START','KANONE'].find(k => guestPh.includes(k));
-      hK === gK
+      // Beide Seiten GLEICHZEITIG samplen; an Phasengrenzen (Zeitraffer)
+      // bis zu 3 Versuche, bevor Desync gemeldet wird.
+      let hK = null, gK = null, syncOk = false;
+      const readPh = p => p.evaluate(() => {
+        const t = document.body.innerText;
+        return ['FEUER','BAUEN','START','KANONE'].find(k => t.includes(k)) || null;
+      });
+      for (let att = 0; att < 3 && !syncOk; att++) {
+        [hK, gK] = await Promise.all([readPh(pH), readPh(pG)]);
+        if (hK && hK === gK) syncOk = true;
+        else await pH.waitForTimeout(400);
+      }
+      syncOk
         ? ok(`Phase-Sync: beide in "${hK}" ✓`)
         : fail(`Phase-Desync: Host="${hK}" Gast="${gK}"`);
     }
@@ -939,10 +958,15 @@ async function suiteOnline2P(browser, fbPort) {
     console.log('⏳ Warte auf Schussphase für Gast-Timer-Check...');
     await waitForPhase(pG, ['FEUER'], 6000);
     await pG.waitForTimeout(300); // kurz nach Reset stabilisieren
-    const gt0 = await getTimerValue(pG);
-    await pG.waitForTimeout(1200);
-    const gt1 = await getTimerValue(pG);
-    (gt0 !== null && gt1 !== null && gt1 < gt0)
+    // Phasengrenzen-bewusst: bei Timer-Anstieg (neue Phase im Zeitraffer) neu messen
+    let gtOk = false, gt0 = null, gt1 = null;
+    for (let att = 0; att < 3 && !gtOk; att++) {
+      gt0 = await getTimerValue(pG);
+      await pG.waitForTimeout(700);
+      gt1 = await getTimerValue(pG);
+      if (gt0 !== null && gt1 !== null && gt1 < gt0) gtOk = true;
+    }
+    gtOk
       ? ok(`Gast-Timer läuft (State-Sync aktiv): ${gt0} → ${gt1} ✓`)
       : fail(`Gast-Timer steht (State-Sync defekt): ${gt0} → ${gt1}`);
 
@@ -1983,6 +2007,19 @@ async function suiteBot(browser) {
     const sawShoot = await waitForPhase(page, ['FEUER'], 6000);
     sawShoot ? ok('Bot-Spiel erreicht Schussphase ✓') : fail('Schussphase nicht erreicht');
     await waitForPhase(page, ['KANONE'], 6000);
+    // ── Schrott-Shop (v3.16.0): erscheint in der Rüstphase mit ⚙-Konto + Karten ──
+    let shopSeen = null;
+    const shopDeadline = Date.now() + 9000;
+    while (Date.now() < shopDeadline && !shopSeen) {
+      shopSeen = await page.evaluate(() => {
+        const t = document.body.innerText;
+        if (!/⚙ \d+/.test(t)) return null;
+        const cards = [...document.querySelectorAll('button')].filter(b => /⚙/.test(b.textContent) && /Kanone|Schnellladen|Panzermauern|Reparatur|Cannon|reload|Armored|Repair/i.test(b.textContent));
+        return cards.length >= 4 ? { cards: cards.length } : null;
+      });
+      if (!shopSeen) await page.waitForTimeout(120);
+    }
+    shopSeen ? ok(`Schrott-Shop in Rüstphase sichtbar (${shopSeen.cards} Karten) ✓`) : fail('Schrott-Shop nicht gefunden');
     await waitForPhase(page, ['BAUEN'], 6000);
     const shoot2 = await waitForPhase(page, ['FEUER'], 8000);
     shoot2 ? ok('Bot-Spiel läuft über vollen Phasenzyklus stabil ✓') : fail('2. Phasenzyklus nicht erreicht (Freeze?)');
