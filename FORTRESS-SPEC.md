@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2028,3 +2028,17 @@ umgestellt. Balance-Validierung im Echtzeit-Selbstspiel (Kauf-Loop
 nachgewiesen); Suite-Test „Schrott-Shop in Rüstphase sichtbar".
 
 Tests grün (195). SW-Cache `fortress-v3.16.0`.
+
+### v3.16.1 — Rüstphase immer 15s + sichtbares Schrott-Farming
+- **Rüstphase konstant 15s** (Nutzer-Feedback „Timer buggy"): Die Auto-
+  Verkürzung auf 4s („niemand kann kaufen") ist entfernt — konsistente
+  Phasendauer zum Planen. Der Schnellvorlauf nach Platzierung gilt nur noch
+  in der Setup-Phase.
+- **„+N ⚙"-Popups**: Bei jedem Schrott-Zuwachs steigt ein goldener Betrag
+  über der Burg des Verdieners auf (Canvas, Delta-Erkennung im Render-Loop →
+  funktioniert auch beim Gast, der scrap nur über den State erhält;
+  fillText-Konterflip hält die Schrift bei P1-Flip lesbar).
+- **Permanenter Kontostand**: ⚙-Badge im HUD neben dem Punktestand beider
+  Spieler — das eigene Konto (und das des Gegners) ist immer sichtbar.
+
+Tests grün (195). SW-Cache `fortress-v3.16.1`.

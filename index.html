@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.16.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2997,6 +2997,10 @@ window.FortressApp = function Fortress() {
   const scrap = useRef({ 1: 0, 2: 0, 3: 0 });
   const upgrades = useRef({ 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } });
   const wallHp = useRef({});
+  // „+N ⚙"-Popups beim Schrott-Verdienen (v3.16.1): Delta-Erkennung im
+  // Render-Loop (funktioniert damit auch beim Gast, der scrap nur via State bekommt)
+  const scrapFloats = useRef([]);
+  const prevScrap = useRef({});
   function reloadMsOf(player) {
     const lvl = (upgrades.current[player] || {}).reload || 0;
     return RELOAD_MS * SHOP.reload.factors[lvl];
@@ -4392,13 +4396,9 @@ window.FortressApp = function Fortress() {
     activeBuild.current = mk(null);
     activeDrag.current = mk(null);
     pointers.current.clear();
-    // Kann sich niemand etwas leisten und hat niemand offenes Budget → Phase
-    // verkürzen (sonst 15s Leerlauf in den ersten Runden).
-    const anyAction = players.some((p) => !eliminated.current[p] && (cannonBudget.current[p] > 0 || (scrap.current[p] || 0) >= SHOP.repair.price));
-    if (!anyAction) {
-      timerVal.current = 4;
-      setTimer(4);
-    }
+    // Rüstphase läuft IMMER volle 15s (v3.16.1) — die frühere Auto-Verkürzung
+    // („niemand kann kaufen → 4s") wirkte wie ein Timer-Bug und nahm die Zeit
+    // zum Planen. Nutzer-Entscheid: konsistente Phasendauer.
     setUiTick((t) => t + 1);
     showPhaseBanner("cannon", startTimer);
   }
@@ -4718,7 +4718,7 @@ window.FortressApp = function Fortress() {
     const left = cannonBudget.current[player];
     const pn = ((_a2 = playerInfo.current[player]) == null ? void 0 : _a2.name) || (player === 1 ? t('bluePlayer') : player === 2 ? t('redPlayer') : t('greenPlayer'));
     showWarn(left > 0 ? t('warnKanoneGesetzt', {name: pn, left}) : t('warnLastCannon', {flag: FLAG_OF[player] || "\u2654", name: pn}));
-    if ((phase_r.current === "setup" || phase_r.current === "cannon") && playersList().every((p) => cannonBudget.current[p] <= 0 && (phase_r.current === "setup" || (scrap.current[p] || 0) < SHOP.repair.price)) && timerVal.current > 3) {
+    if (phase_r.current === "setup" && playersList().every((p) => cannonBudget.current[p] <= 0) && timerVal.current > 3) {
       timerVal.current = 3;
       setTimer(3);
     }
@@ -5185,6 +5185,16 @@ window.FortressApp = function Fortress() {
     }
     const now = performance.now();
     const players = playersList();
+    // Schrott-Zuwachs erkennen → goldenes „+N ⚙" über der eigenen Burg (v3.16.1)
+    for (const p of players) {
+      const curS = scrap.current[p] || 0;
+      const prevS = prevScrap.current[p];
+      if (typeof prevS === "number" && curS > prevS) {
+        const ct = castles.current[p];
+        if (ct) scrapFloats.current.push({ x: ct.c * CELL + CELL / 2, y: ct.r * CELL - 10, amt: curS - prevS, life: 80, max: 80 });
+      }
+      prevScrap.current[p] = curS;
+    }
     const isGuest = online.current && myRole.current !== 1;
     if (isGuest && reloadProgRef.current) {
       const rp = reloadProgRef.current;
@@ -5783,6 +5793,25 @@ window.FortressApp = function Fortress() {
       }
     }
     ctx.globalAlpha = 1;
+    // „+N ⚙"-Popups (v3.16.1) — steigen auf und verblassen; fillText ist beim
+    // P1-Flip automatisch kontergeflippt, Drift-Richtung je nach Flip.
+    if (scrapFloats.current.length) {
+      ctx.font = "800 13px 'Segoe UI', system-ui, sans-serif";
+      ctx.textAlign = "center";
+      for (const f of scrapFloats.current) {
+        const fa = f.life / f.max;
+        ctx.globalAlpha = Math.min(1, fa * 1.6);
+        ctx.fillStyle = "#0a0d14";
+        ctx.fillText("+" + f.amt + " \u2699", f.x + 1, f.y + 1);
+        ctx.fillStyle = "#fbbf24";
+        ctx.fillText("+" + f.amt + " \u2699", f.x, f.y);
+        f.y += p1Flipped ? 0.55 : -0.55;
+        f.life--;
+      }
+      ctx.globalAlpha = 1;
+      ctx.textAlign = "left";
+      scrapFloats.current = scrapFloats.current.filter((f) => f.life > 0);
+    }
     explosions.current = explosions.current.filter((e2) => e2.frame < 22);
     // Sound bei neuen Explosionen (funktioniert geräteübergreifend, da explosions synchronisiert sind)
     const explNow = explosions.current.length;
@@ -6066,7 +6095,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6952,7 +6981,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", marginLeft: 2 } }, "\u2699" + (scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
     boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
     padding: "1px 6px",
@@ -6980,7 +7009,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", marginRight: 2 } }, "\u2699" + (scrap.current[2] || 0)), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
     border: "1px solid rgba(16,185,129,0.45)",
     borderRadius: 14,    padding: "2px 10px",    display: "flex",
