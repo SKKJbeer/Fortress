@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.18.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.18.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -551,7 +551,7 @@ function sanitizeAction(raw) {
     return null;
   }
   if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy"];
+  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy", "ready"];
   if (!validTypes.includes(a.type)) return null;
   if (a.type === "buy" && !["cannon", "reload", "armor", "repair"].includes(a.item)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
@@ -1522,6 +1522,8 @@ const LANGS = {
     shopRepair: "Reparatur",
     shopMax: "MAX",
     armoryPlaceHint: "\u{1F3AF} Tippe aufs Feld, um die Kanone zu platzieren",
+    armoryDone: "Fertig",
+    armoryWaiting: "Bereit \u2713 \xB7 Warte auf Mitspieler",
     repairDone: "\u{1F527} {n} Mauern repariert!",
     warnKeinKanone: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     warnKanoneGesetzt: "Kanone ({name}) platziert — noch {left}",
@@ -1734,6 +1736,8 @@ const LANGS = {
     shopRepair: "Repair crew",
     shopMax: "MAX",
     armoryPlaceHint: "\u{1F3AF} Tap the field to place your cannon",
+    armoryDone: "Ready",
+    armoryWaiting: "Ready \u2713 \xB7 Waiting for others",
     repairDone: "\u{1F527} {n} walls repaired!",
     warnKeinKanone: "No ready cannon — cannons must be walled in!",
     warnKanoneGesetzt: "Cannon ({name}) placed — {left} remaining",
@@ -2602,6 +2606,10 @@ window.FortressApp = function Fortress() {
       if (phase_r.current === "shoot" && balls.current.some((b) => b.alive)) { shootSettling.current = true; return true; }
       return false;
     });
+    // Testhilfen für die „Fertig"-Bestätigung (v3.18.1)
+    window.__readTimer = gated(() => timerVal.current);
+    window.__readReady = gated(() => __spreadValues({}, armoryReady.current));
+    window.__forceReady = gated((p) => { setArmoryReady(p); return true; });
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
@@ -3056,6 +3064,28 @@ window.FortressApp = function Fortress() {
   const scrap = useRef({ 1: 0, 2: 0, 3: 0 });
   const upgrades = useRef({ 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } });
   const wallHp = useRef({});
+  // „Fertig"-Bestätigung in der Rüstphase (v3.18.1): Sind alle aktiven Spieler
+  // bereit, springt der Timer auf 3s (wenn > 3) — wie das Auto-Vorspulen im Setup.
+  const armoryReady = useRef({ 1: false, 2: false, 3: false });
+  function checkArmoryReady() {
+    if (phase_r.current !== "cannon") return;
+    const active = playersList().filter((p) => !eliminated.current[p]);
+    if (active.length && active.every((p) => armoryReady.current[p]) && timerVal.current > 3) {
+      timerVal.current = 3;
+      setTimer(3);
+    }
+  }
+  function setArmoryReady(player) {
+    if (phase_r.current !== "cannon" || eliminated.current[player]) return;
+    armoryReady.current[player] = true;
+    setUiTick((t) => t + 1);
+    checkArmoryReady();
+    if (online.current && myRole.current === 1) pushState(true);
+  }
+  function confirmArmory(player) {
+    if (online.current && myRole.current !== 1) { sendAction({ type: "ready" }); armoryReady.current[player] = true; setUiTick((t) => t + 1); return; }
+    setArmoryReady(player);
+  }
   // Kauf-Pop pro Karte (v3.17.0): Zähler erhöht → React-key ändert → Karte
   // remountet → shopBuyPop-Animation spielt erneut. Nur Optik.
   const shopBuyAnim = useRef({});
@@ -3132,6 +3162,7 @@ window.FortressApp = function Fortress() {
       scrap: scrap.current,
       upgrades: upgrades.current,
       wallHp: wallHp.current,
+      armoryReady: armoryReady.current,
       piece1: pieces.current[1] && pieces.current[1].cells,
       piece2: pieces.current[2] && pieces.current[2].cells,
       piece3: pieces.current[3] && pieces.current[3].cells,
@@ -3304,6 +3335,7 @@ window.FortressApp = function Fortress() {
         if (s.scrap) scrap.current = s.scrap;
         if (s.upgrades) upgrades.current = s.upgrades;
         wallHp.current = s.wallHp || {};
+        if (s.armoryReady) armoryReady.current = s.armoryReady;
         if (s.scrapPops) scrapPops.current = s.scrapPops;
         if (s.eliminated) eliminated.current = s.eliminated;
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
@@ -3458,6 +3490,7 @@ window.FortressApp = function Fortress() {
     if (a.type === "place" && ph === "build") placePiece(p, a.r, a.c);
     else if (a.type === "cannon" && (ph === "setup" || ph === "cannon")) placeCannon(p, a.r, a.c);
     else if (a.type === "buy" && ph === "cannon") buyUpgrade(p, a.item);
+    else if (a.type === "ready" && ph === "cannon") setArmoryReady(p);
     else if (a.type === "fire" && ph === "shoot") fireMortar(p, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[p] = a.angle;
     else if (a.type === "rotate") pieces.current[p].cells = rotateCW(pieces.current[p].cells);
@@ -4445,6 +4478,7 @@ window.FortressApp = function Fortress() {
     setTimer(CANNON_TIME);
     balls.current = [];
     explosions.current = [];
+    armoryReady.current = { 1: false, 2: false, 3: false };
     // Schrott-Ökonomie (v3.16.0): KEIN Gratis-Kanonen-Budget mehr — Kanonen
     // werden im Shop gekauft. Überlebens-Sold für alle aktiven Spieler.
     cannonBudget.current = players.reduce((o, p) => (o[p] = 0, o), {});
@@ -5085,6 +5119,15 @@ window.FortressApp = function Fortress() {
       let guard = 0;
       while (cannonBudget.current[B] > 0 && guard++ < 4) {
         if (!botPlaceOneCannon(g, B)) break;
+      }
+      // Bot bestätigt „Fertig", sobald er nichts mehr kaufen/platzieren kann
+      // (v3.18.1) → mit-auslösend fürs Vorspulen auf 3s.
+      if (ph === "cannon" && cannonBudget.current[B] <= 0 && !armoryReady.current[B]) {
+        const up = upgrades.current[B] || {};
+        const have = scrap.current[B] || 0;
+        const cPrice = SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
+        const wantsMore = (have >= cPrice && (cannons.current[B] || []).length < 6) || ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) || (!up.armor && have >= SHOP.armor.price);
+        if (!wantsMore) setArmoryReady(B);
       }
     } else if (ph === "build") {
       botBuild(g, ter, B);
@@ -6256,7 +6299,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.18.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.18.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7219,6 +7262,20 @@ window.FortressApp = function Fortress() {
           } }, t("armoryPlaceHint"))
         );
       }
+      // Spieler hat „Fertig" bestätigt → kompaktes Warte-Panel statt Shop (v3.18.1)
+      if (armoryReady.current[sp]) {
+        const isTopW = !online.current && !botMode.current && sp !== 1;
+        const posW = isTopW ? { top: "calc(env(safe-area-inset-top, 0px) + " + (sp === 3 ? 116 : 54) + "px)" } : { bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" };
+        return h("div", { key: "armoryWait" + sp, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" }, posW) },
+          h("div", { style: {
+            padding: "9px 18px", borderRadius: 14, fontSize: 13, fontWeight: 800, color: "#6ee7b7",
+            background: "linear-gradient(180deg, rgba(30,41,66,0.94), rgba(11,16,30,0.96))",
+            border: "1px solid rgba(52,211,153,0.4)",
+            boxShadow: "0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
+            backdropFilter: "blur(10px)", animation: "shopRise 0.32s cubic-bezier(.22,1,.36,1) both"
+          } }, t("armoryWaiting"))
+        );
+      }
       const up = upgrades.current[sp] || {};
       const have = scrap.current[sp] || 0;
       const items = [
@@ -7306,7 +7363,16 @@ window.FortressApp = function Fortress() {
                     )
               );
             })
-          )
+          ),
+          // „FERTIG"-Button (v3.18.1): bestätigt Bereitschaft → Timer auf 3s
+          // sobald alle aktiven Spieler bestätigt haben.
+          h("button", { onClick: () => confirmArmory(sp), className: "shop-card", style: {
+            marginTop: 8, width: "100%", border: "none", cursor: "pointer", borderRadius: 13, padding: "9px",
+            background: "linear-gradient(180deg,#34d399,#059669)", color: "#052e1a",
+            fontSize: 14, fontWeight: 900, letterSpacing: "0.04em",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+          } }, "✓ " + t("armoryDone"))
         )
       );
     });

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.18.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.18.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2180,3 +2180,19 @@ waren, ohne Wirkung — kein Treffer, keine Gutschrift.
   gutgeschrieben, danach Rüstphase, keine Kugel verworfen.
 
 Tests grün (208). SW-Cache `fortress-v3.18.0`.
+
+### v3.18.1 — „Fertig"-Bestätigung in der Rüstphase
+Neuer grüner **„✓ Fertig"-Button** unter den Shop-Karten: Wer fertig gekauft
+hat oder nichts machen kann, bestätigt. Sobald ALLE aktiven Spieler (2 bzw. 3)
+bestätigt haben, springt der Timer auf 3s — aber nur wenn er noch > 3 ist
+(wie das Auto-Vorspulen im Setup).
+- `armoryReady`-Ref pro Spieler, Reset bei jedem Rüstphasen-Start (`endShoot`).
+- `checkArmoryReady()`: alle aktiven bereit + Timer > 3 → 3s.
+- Nach Bestätigung: kompaktes „Bereit ✓ · Warte auf Mitspieler"-Panel statt Shop.
+- Host-autoritativ: Gäste senden `ready`-Action; `armoryReady` im State
+  synchronisiert. Bot bestätigt automatisch, sobald er nichts mehr
+  kaufen/platzieren kann.
+- Neue isolierte Suite `suiteArmoryReady`: Button sichtbar; alle bereit →
+  Timer 15→3 (gated Hooks `__forceReady`/`__readTimer`/`__readReady`).
+
+Tests grün (211). SW-Cache `fortress-v3.18.1`.
