@@ -1974,6 +1974,59 @@ async function suiteI18n(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Nachlauf (v3.18.0) — bei Rundenende noch fliegende Kugeln
+// treffen und schreiben Schrott gut, statt zu verschwinden. Eigenes Spiel,
+// damit die (bewusst vorzeitig beendete) Schussphase keine andere Suite stört.
+// ═══════════════════════════════════════════════════════════════
+async function suiteBallSettle(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Kugel-Nachlauf bei Rundenende\n' + '='.repeat(50));
+
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+    await page.waitForTimeout(250);
+    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
+    if (!canvas) { fail('Bot-Spiel startet nicht'); return { res, errs }; }
+    await page.evaluate(() => { window.__mmDebug = true; window.__lateImpacts = 0; window.__discardedAtEnd = 0; });
+
+    // Echte (kurze) Schussphase abfangen → fast gelandete Kugel P1 auf Feindmauer
+    // spawnen und Nachlauf starten (Timer-Ende simuliert), ohne die Phasenfolge
+    // zu hijacken (endShoot läuft danach ganz normal).
+    const before = await page.evaluate(async () => {
+      const deadline = Date.now() + 12000;
+      while (Date.now() < deadline) {
+        if (window.__phase && window.__phase() === 'shoot') {
+          const b = window.__spawnBallAtEnemy(1);
+          if (b === null) return 'nowall';
+          window.__setSettling();
+          return b;
+        }
+        await new Promise(r => setTimeout(r, 15));
+      }
+      return 'noshoot';
+    });
+    if (typeof before !== 'number') { fail(`Nachlauf: Setup nicht erreicht (${before})`); return { res, errs }; }
+
+    await page.waitForTimeout(1000); // Kugel fliegt zu Ende, schlägt ein, Phase wechselt
+    const rr = await page.evaluate(() => ({ scrap: window.__readScrap(1), phase: window.__phase(), late: window.__lateImpacts || 0, disc: window.__discardedAtEnd || 0 }));
+    rr.late >= 1 ? ok('Nachlauf: späte Kugel schlägt nach Rundenende noch ein ✓') : fail('Nachlauf: kein später Einschlag');
+    rr.scrap > before ? ok(`Nachlauf: Schrott noch gutgeschrieben (${before}→${rr.scrap}) ✓`) : fail(`Nachlauf: kein Schrott (${before}→${rr.scrap})`);
+    rr.phase !== 'shoot' ? ok(`Nachlauf: Schussphase danach verlassen (→ ${rr.phase}) ✓`) : fail('Nachlauf: hängt in Schussphase');
+    rr.disc === 0 ? ok('Nachlauf: keine fliegende Kugel verworfen ✓') : fail(`Nachlauf: ${rr.disc} Kugel(n) verworfen`);
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Nachlauf: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Nachlauf-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
 async function suiteBot(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -2175,7 +2228,7 @@ async function suiteTutorial(browser) {
     const mm3 = await suiteOnline3P(browser, FB_PORT);
     return { mm, mm3 };
   })();
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -2192,6 +2245,7 @@ async function suiteTutorial(browser) {
     suiteI18n(browser),
     suiteBot(browser),
     suiteTutorial(browser),
+    suiteBallSettle(browser),
   ]);
 
   const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
@@ -2199,9 +2253,9 @@ async function suiteTutorial(browser) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

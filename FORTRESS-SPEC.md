@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.17.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.18.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2163,3 +2163,20 @@ Reine Test-/Absicherungs-Erweiterung (kein Spiel-Change):
   im selben Tick — der Zwischenzustand ist nie sichtbar).
 
 203 Tests grün (2 Läufe). SW-Cache `fortress-v3.17.2`.
+
+### v3.18.0 — Kugel-Nachlauf bei Rundenende
+Bisher verschwanden Kugeln, die beim Ablauf der Schussphase noch in der Luft
+waren, ohne Wirkung — kein Treffer, keine Gutschrift.
+- Sind bei Ablauf der Schussphase noch Kugeln in der Luft, bleibt die Phase
+  kurz „shoot" (`shootSettling`), sodass sie normal einschlagen (Mauer-/Kanonen-
+  Treffer + Schrott-Gutschriften). Erst wenn alle gelandet sind, wechselt das
+  Spiel in die Rüstphase (`endShoot`). Sicherheits-Timeout 4s.
+- Während des Nachlaufs sind keine neuen Schüsse mehr möglich (`fireMortar`).
+- Host-autoritativ: der Host spielt die Kugeln aus und pusht State, Gäste sehen
+  die Einschläge normal.
+- Neue isolierte Testsuite `suiteBallSettle` (deterministisch via gated Hooks
+  `__spawnBallAtEnemy`/`__setSettling`/`__readScrap`/`__phase`, alle
+  call-time-gated auf `__mmDebug`): späte Kugel schlägt ein, Schrott wird
+  gutgeschrieben, danach Rüstphase, keine Kugel verworfen.
+
+Tests grün (208). SW-Cache `fortress-v3.18.0`.

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.17.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.18.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2578,9 +2578,30 @@ window.FortressApp = function Fortress() {
   // Gated Test-Hook (nur bei window.__mmDebug): Schrott gutschreiben, damit
   // Tests den echten Kauf-Flow im Shop deterministisch auslösen können.
   useEffect(() => {
-    if (typeof window !== "undefined" && window.__mmDebug) {
-      window.__grantScrap = (p, n) => { scrap.current[p] = (scrap.current[p] || 0) + n; setUiTick((t) => t + 1); };
-    }
+    // Test-Hooks IMMER installieren, aber JEDE Funktion prüft zur Aufrufzeit
+    // window.__mmDebug (kein Cheat in Produktion, da __mmDebug dort nie gesetzt).
+    // So sind sie auch verfügbar, wenn __mmDebug erst mitten im Spiel gesetzt wird.
+    if (typeof window === "undefined") return;
+    const gated = (fn) => (...a) => window.__mmDebug ? fn(...a) : null;
+    window.__grantScrap = gated((p, n) => { scrap.current[p] = (scrap.current[p] || 0) + n; setUiTick((t) => t + 1); return true; });
+    window.__readScrap = gated((p) => scrap.current[p] || 0);
+    window.__phase = gated(() => phase_r.current);
+    // Testhilfe: eine fast gelandete Kugel von `shooter` auf eine Feindmauer
+    window.__spawnBallAtEnemy = gated((shooter) => {
+      const g = grid.current; if (!g) return null;
+      const enemyWall = shooter === 1 ? WALL2 : WALL1;
+      let tr = -1, tc = -1;
+      for (let r = 0; r < ROWS && tr < 0; r++) for (let c = 0; c < COLS; c++) if (g[r][c] === enemyWall) { tr = r; tc = c; break; }
+      if (tr < 0) return null;
+      const before = scrap.current[shooter] || 0;
+      balls.current.push({ sx: tc * CELL + CELL / 2, sy: (tr + 5) * CELL, tx: tc * CELL + CELL / 2, ty: tr * CELL + CELL / 2, prog: 0.8, dur: 18, arcH: 8, player: shooter, alive: true, cannonIndex: 0, trail: [] });
+      return before;
+    });
+    // Testhilfe: Nachlauf jetzt starten (nur in echter Schussphase mit Kugeln)
+    window.__setSettling = gated(() => {
+      if (phase_r.current === "shoot" && balls.current.some((b) => b.alive)) { shootSettling.current = true; return true; }
+      return false;
+    });
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
@@ -4385,9 +4406,16 @@ window.FortressApp = function Fortress() {
     showPhaseBanner("build", startTimer);
   }
   const frozenReady = useRef({ 1: [], 2: [] });
+  // Nach Ablauf der Schussphase noch fliegende Kugeln ausspielen lassen
+  // (v3.18.0): Phase bleibt kurz „shoot", Kugeln landen normal (Treffer +
+  // Schrott-Gutschriften), erst DANN geht es in die Rüstphase.
+  const shootSettling = useRef(false);
+  const shootSettleTimeout = useRef(null);
   function startShoot() {
     const players = playersList();
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
+    shootSettling.current = false;
+    if (shootSettleTimeout.current) { clearTimeout(shootSettleTimeout.current); shootSettleTimeout.current = null; }
     phase_r.current = "shoot";
     setPhase("shoot");
     timerVal.current = SHOOT_TIME;
@@ -4407,6 +4435,10 @@ window.FortressApp = function Fortress() {
   function endShoot() {
     const players = playersList();
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
+    // Diagnose (gated): bei endShoot dürfen KEINE Kugeln mehr fliegen (v3.18.0)
+    if (typeof window !== "undefined" && window.__mmDebug) window.__discardedAtEnd = (window.__discardedAtEnd || 0) + balls.current.filter((b) => b.alive).length;
+    shootSettling.current = false;
+    if (shootSettleTimeout.current) { clearTimeout(shootSettleTimeout.current); shootSettleTimeout.current = null; }
     phase_r.current = "cannon";
     setPhase("cannon");
     timerVal.current = CANNON_TIME;
@@ -4449,13 +4481,32 @@ window.FortressApp = function Fortress() {
         clearInterval(timerID.current);
         if (phase_r.current === "setup") endSetup();
         else if (phase_r.current === "build") endBuild();
-        else if (phase_r.current === "shoot") endShoot();
+        else if (phase_r.current === "shoot") {
+          // Noch fliegende Kugeln erst zu Ende fliegen lassen (v3.18.0):
+          // Phase bleibt „shoot", der Render-Loop lässt sie normal einschlagen
+          // (Treffer + Schrott), danach ruft er endShoot() auf. Sicherheits-
+          // Timeout, falls eine Kugel doch mal hängt.
+          if (balls.current.some((b) => b.alive)) {
+            shootSettling.current = true;
+            if (shootSettleTimeout.current) clearTimeout(shootSettleTimeout.current);
+            shootSettleTimeout.current = setTimeout(() => {
+              if (shootSettling.current && phase_r.current === "shoot") {
+                shootSettling.current = false;
+                endShoot();
+              }
+            }, 4000);
+          } else {
+            endShoot();
+          }
+        }
         else if (phase_r.current === "cannon") endCannon();
       }
     }, 1e3);
   }
   function fireMortar(player, targetX, targetY) {
     if (eliminated.current[player]) return false;
+    // Kein neuer Schuss mehr im Nachlauf nach Ablauf der Schussphase (v3.18.0)
+    if (shootSettling.current) return false;
     const now = performance.now();
     if (now - lastShot.current[player] < reloadMsOf(player)) return false;
     const g = grid.current;
@@ -4523,6 +4574,8 @@ window.FortressApp = function Fortress() {
     return true;
   }
   function impactAt(ball) {
+    // Diagnose (gated): Einschläge im Nachlauf nach Schussphasen-Ende (v3.18.0)
+    if (typeof window !== "undefined" && window.__mmDebug && shootSettling.current) window.__lateImpacts = (window.__lateImpacts || 0) + 1;
     const g = grid.current;
     const hitC = Math.floor(ball.tx / CELL);
     const hitR = Math.floor(ball.ty / CELL);
@@ -5312,6 +5365,13 @@ window.FortressApp = function Fortress() {
           }
         }
         balls.current = balls.current.filter((b) => b.alive);
+        // Nachlauf (v3.18.0): Timer abgelaufen + alle Kugeln eingeschlagen →
+        // jetzt erst in die Rüstphase wechseln.
+        if (shootSettling.current && balls.current.length === 0) {
+          shootSettling.current = false;
+          if (shootSettleTimeout.current) { clearTimeout(shootSettleTimeout.current); shootSettleTimeout.current = null; }
+          endShoot();
+        }
       } else {
         for (const ball of balls.current) {
           if (!ball.alive) continue;
@@ -6196,7 +6256,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.17.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.18.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
