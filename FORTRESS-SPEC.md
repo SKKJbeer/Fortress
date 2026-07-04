@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.17.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.17.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2151,3 +2151,15 @@ Burg — dort konnte man die Kanone nicht platzieren.
   Feld, um die Kanone zu platzieren", DE/EN, `armoryPlaceHint`).
 
 Tests grün (196). SW-Cache `fortress-v3.17.1`.
+
+### v3.17.2 — Testsuite deckt den neuen Shop ab
+Reine Test-/Absicherungs-Erweiterung (kein Spiel-Change):
+- Premium-Shop-Struktur geprüft: 4 Karten, jede mit **SVG-Medaille** (kein
+  Emoji), Preis-Pille/MAX, RÜSTPHASE-Header, goldener Schrott-Chip.
+- v3.17.1-Verhalten deterministisch getestet: Kanonenkauf blendet das
+  Shop-Panel aus (Feld frei) und zeigt den Platzier-Hinweis.
+- Neuer gated Test-Hook `window.__grantScrap(p,n)` (nur bei `__mmDebug`),
+  damit der echte Kauf-Flow im Test auslösbar ist (Bot kauft+platziert sonst
+  im selben Tick — der Zwischenzustand ist nie sichtbar).
+
+203 Tests grün (2 Läufe). SW-Cache `fortress-v3.17.2`.

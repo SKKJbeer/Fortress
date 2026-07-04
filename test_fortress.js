@@ -2031,24 +2031,58 @@ async function suiteBot(browser) {
     const sawShoot = await waitForPhase(page, ['FEUER'], 6000);
     sawShoot ? ok('Bot-Spiel erreicht Schussphase ✓') : fail('Schussphase nicht erreicht');
     await waitForPhase(page, ['KANONE'], 6000);
-    // ── Schrott-Shop (v3.16.0): erscheint in der Rüstphase mit ⚙-Konto + Karten ──
+    await page.evaluate(() => { window.__mmDebug = true; });
+    // ── Premium-Shop (v3.17.0): Panel-Struktur in der Rüstphase ──
     let shopSeen = null;
     const shopDeadline = Date.now() + 14000;
     while (Date.now() < shopDeadline && !shopSeen) {
       shopSeen = await page.evaluate(() => {
-        // Spiel evtl. vorbei (Bot gewinnt gegen idle Test-Menschen) → weiterspielen
         for (const b of document.querySelectorAll('button')) {
           if (/Nächste Runde/.test(b.textContent)) { b.click(); return null; }
         }
         const t = document.body.innerText;
         if (!/⚙ \d+/.test(t)) return null;
         const cards = [...document.querySelectorAll('button')].filter(b => /⚙/.test(b.textContent) && /Kanone|Schnellladen|Panzermauern|Reparatur|Cannon|reload|Armored|Repair/i.test(b.textContent));
-        return cards.length >= 4 ? { cards: cards.length } : null;
+        if (cards.length < 4) return null;
+        return {
+          cards: cards.length,
+          svg: cards.filter(b => b.querySelector('svg')).length,        // Medaillen-Icons (kein Emoji)
+          priced: cards.filter(b => /⚙\s?\d+|MAX/.test(b.textContent)).length, // Preis-Pille od. MAX
+          header: /RÜSTPHASE/.test(t),                                   // Panel-Titel
+          chip: /⚙ \d+/.test(t)                                         // goldener Schrott-Chip
+        };
       });
       if (!shopSeen) await page.waitForTimeout(120);
     }
-    shopSeen ? ok(`Schrott-Shop in Rüstphase sichtbar (${shopSeen.cards} Karten) ✓`) : fail('Schrott-Shop nicht gefunden');
-    await waitForPhase(page, ['BAUEN'], 6000);
+    if (!shopSeen) { fail('Premium-Shop nicht gefunden'); }
+    else {
+      ok(`Premium-Shop sichtbar (${shopSeen.cards} Karten) ✓`);
+      shopSeen.svg === 4 ? ok('Shop: alle 4 Karten mit SVG-Medaille (kein Emoji) ✓') : fail(`Shop: nur ${shopSeen.svg}/4 Karten mit SVG-Icon`);
+      shopSeen.priced === 4 ? ok('Shop: alle 4 Karten mit Preis/MAX ✓') : fail(`Shop: nur ${shopSeen.priced}/4 Karten mit Preis`);
+      shopSeen.header ? ok('Shop: RÜSTPHASE-Header ✓') : fail('Shop: Header fehlt');
+      shopSeen.chip ? ok('Shop: goldener Schrott-Chip ✓') : fail('Shop: Schrott-Chip fehlt');
+
+      // ── v3.17.1: Kanonenkauf blendet Shop aus + zeigt Platzier-Hinweis ──
+      await page.evaluate(() => { window.__grantScrap && window.__grantScrap(1, 40); });
+      await page.waitForTimeout(200);
+      const cannonEnabled = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find(x => /Kanone|Cannon/.test(x.textContent) && /⚙/.test(x.textContent));
+        return b && !b.disabled;
+      });
+      cannonEnabled ? ok('Shop: Kanonen-Karte nach Schrott kaufbar (aktiv) ✓') : fail('Shop: Kanonen-Karte bleibt gesperrt trotz Schrott');
+      if (cannonEnabled) {
+        await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Kanone|Cannon/.test(x.textContent) && /⚙/.test(x.textContent)); b && b.click(); });
+        await page.waitForTimeout(250);
+        const afterBuy = await page.evaluate(() => {
+          const shopCards = [...document.querySelectorAll('button')].filter(b => /⚙/.test(b.textContent) && /Kanone|Schnellladen|Panzermauern|Reparatur/i.test(b.textContent)).length;
+          const hint = /Tippe aufs Feld|Tap the field/.test(document.body.innerText);
+          return { shopCards, hint };
+        });
+        afterBuy.shopCards === 0 ? ok('Kanonenkauf: Shop-Panel ausgeblendet (Feld frei) ✓') : fail(`Kanonenkauf: Shop noch sichtbar (${afterBuy.shopCards} Karten)`);
+        afterBuy.hint ? ok('Kanonenkauf: Platzier-Hinweis erscheint ✓') : fail('Kanonenkauf: Platzier-Hinweis fehlt');
+      }
+    }
+    await waitForPhase(page, ['BAUEN'], 8000);
     const shoot2 = await waitForPhase(page, ['FEUER'], 8000);
     shoot2 ? ok('Bot-Spiel läuft über vollen Phasenzyklus stabil ✓') : fail('2. Phasenzyklus nicht erreicht (Freeze?)');
 
