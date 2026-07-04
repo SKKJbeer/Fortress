@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.16.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.17.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2118,3 +2118,25 @@ ansetzen. Kein versehentliches Setzen mehr an ungewollter Stelle.
   in der Setup-Phase erhöht P1s Platzierungen NICHT.
 
 Tests grün (196). SW-Cache `fortress-v3.16.6`.
+
+### v3.17.0 — Shop-Redesign auf Premium-Mobile-Niveau (rein optisch)
+Kompletter visueller Neuaufbau des Rüstphasen-Shops im Stil moderner
+Supercell-Games — KEINE neuen Features/Mechaniken, KEINE Balance-Änderung,
+identische Upgrades/Preise/Wiring (`doBuy`, `max`/`noNeed`, Online-Sync).
+
+- **Panel statt Leiste**: abgesetztes Glas-Panel (Verlauf, Innen-Highlight,
+  weicher Schlagschatten, 20px-Radius, Slide-up-Entrance `shopRise`).
+- **Header**: „⚒ RÜSTPHASE"-Label links + goldener Schrott-Chip rechts
+  (Verlauf, Glanz, `shopCoinPulse` bei jeder Schrott-Änderung).
+- **4 Upgrade-Karten** je in eigener Farbwelt (`SHOP_THEME`): glänzende
+  runde Medaille mit maßgeschneidertem **SVG-Icon** (`SHOP_ICONS`) statt Emoji
+  — Bombe mit Lunte (Kanone), Blitz (Schnellladen), Schild (Panzermauern),
+  Schraubenschlüssel (Reparatur). Glow-Rahmen + sanftes Icon-Floaten +
+  Lauf-Sheen bei leistbaren Karten; ausgegraut/entsättigt wenn nicht leistbar;
+  grüner MAX-Chip bei ausgereizten Upgrades; Preis-Pille mit ⚙.
+- **Animationen**: gestaffelte Karten-Einblendung (`shopCardIn`), Press-Scale,
+  Kauf-Pop (`shopBuyPop`, via Remount-Key `shopBuyAnim`).
+- Alles GPU-freundlich (CSS-Transforms/Filter), inline-SVG (self-contained,
+  CSP-konform). Visuell abgenommen (Screenshots aller Zustände).
+
+Tests grün (196). SW-Cache `fortress-v3.17.0`.

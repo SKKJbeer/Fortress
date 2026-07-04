@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.16.6</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.17.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -46,6 +46,19 @@
     @keyframes coachPop{0%{transform:translateY(10px) scale(0.94);opacity:0}55%{transform:translateY(-3px) scale(1.04)}100%{transform:translateY(0) scale(1);opacity:1}}
     @keyframes coachFlash{0%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}30%{box-shadow:0 0 0 3px rgba(255,255,255,0.9),0 8px 30px rgba(0,0,0,0.55)}100%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}}
     @keyframes dangerGlow{0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,0.25),0 8px 40px rgba(0,0,0,0.7)}50%{box-shadow:0 0 0 3px rgba(239,68,68,0.85),0 0 50px rgba(239,68,68,0.45),0 8px 40px rgba(0,0,0,0.7)}}
+    /* ── Premium-Shop (v3.17.0) ── */
+    @keyframes shopRise{0%{transform:translateY(24px) scale(0.96);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
+    @keyframes shopCardIn{0%{transform:translateY(16px) scale(0.9);opacity:0}60%{transform:translateY(-2px) scale(1.03)}100%{transform:translateY(0) scale(1);opacity:1}}
+    @keyframes shopBuyPop{0%{transform:scale(1)}25%{transform:scale(1.14)}55%{transform:scale(0.96)}100%{transform:scale(1)}}
+    @keyframes shopCoinPulse{0%{transform:scale(1)}35%{transform:scale(1.22)}100%{transform:scale(1)}}
+    @keyframes shopIconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
+    @keyframes shopSheen{0%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(240%) skewX(-18deg)}}
+    @keyframes shopAffordGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,255,255,0))}50%{filter:drop-shadow(0 0 6px rgba(255,255,255,0.35))}}
+    .shop-card{position:relative;overflow:hidden;isolation:isolate;transition:transform .12s cubic-bezier(.34,1.56,.64,1),box-shadow .18s ease,filter .18s ease}
+    .shop-card:active{transform:scale(0.93)!important}
+    .shop-card.afford::after{content:"";position:absolute;top:0;left:0;width:34%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent);z-index:3;pointer-events:none;animation:shopSheen 3.4s ease-in-out infinite;animation-delay:1.2s}
+    .shop-medal{transition:transform .2s ease}
+    .shop-card.afford .shop-medal{animation:shopIconFloat 2.6s ease-in-out infinite}
     .li{display:inline-block;vertical-align:-0.18em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
     #ios-hint{display:none;position:fixed;bottom:16px;left:12px;right:12px;background:rgba(8,16,30,0.92);border:1px solid rgba(56,189,248,0.30);border-radius:16px;padding:14px 16px;z-index:8888;font-family:system-ui;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 12px 40px rgba(0,0,0,0.55)}
     #ios-hint p{color:#e2e8f0;font-size:13px;line-height:1.5}
@@ -572,6 +585,20 @@ const SHOP = {
   reload: { prices: [25, 50], factors: [1, 0.8, 0.65] }, // globaler Nachlade-Faktor
   armor:  { price: 35 },               // Mauern halten 2 Treffer
   repair: { price: 15 }                // +3 eigene Trümmer → Mauern (nächste Bauphase)
+};
+// ── Premium-Shop-Design (v3.17.0): pro Upgrade eine Farbwelt + maßgeschneidertes
+// SVG-Icon (kein Emoji). Rein optisch — Preise/Mechanik unverändert.
+const SHOP_THEME = {
+  cannon: { c1: "#7dd3fc", c2: "#2563eb", c3: "#0b2a6b", glow: "96,165,250" },
+  reload: { c1: "#fde68a", c2: "#f59e0b", c3: "#7c3d06", glow: "251,191,36" },
+  armor:  { c1: "#ddd6fe", c2: "#8b5cf6", c3: "#4c1d95", glow: "167,139,250" },
+  repair: { c1: "#a7f3d0", c2: "#10b981", c3: "#065f46", glow: "52,211,153" }
+};
+const SHOP_ICONS = {
+  cannon: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><circle cx="10.4" cy="14.4" r="6.9" fill="#fff"/><rect x="8.7" y="6.1" width="3.3" height="2.7" rx="0.7" fill="#fff"/><path d="M12.4 6.3 q2.9-2.7 4.9-0.6" stroke="#fde68a" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="17.6" cy="4.5" r="2" fill="#fde68a"/><circle cx="17.6" cy="4.5" r="0.9" fill="#f59e0b"/><circle cx="7.8" cy="11.9" r="2.2" fill="rgba(0,0,0,0.10)"/></svg>',
+  reload: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M12.4 2 L4.8 13 a0.9 0.9 0 0 0 0.74 1.42 H9.6 l-1.3 6.9 a0.55 0.55 0 0 0 0.98 0.43 L18.9 10.4 a0.9 0.9 0 0 0-0.72-1.44 H13.9 l1.35-6.2 A0.62 0.62 0 0 0 12.4 2 z"/></svg>',
+  armor:  '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M12 2.2 L20 5.1 v5.7 c0 5-3.4 8.4-8 11 -4.6-2.6-8-6-8-11 V5.1 z"/><path fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" d="M8.4 12.1 l2.5 2.5 4.7-5"/></svg>',
+  repair: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M20.9 6 a4.1 4.1 0 0 1-5.15 5.15 L8.2 18.7 a1.95 1.95 0 0 1-2.76-2.76 L13 8.4 A4.1 4.1 0 0 1 18.15 3.25 L15.5 5.9 a1.25 1.25 0 0 0 1.77 1.77 z"/></svg>'
 };
 const PHASE_BANNERS = {
   setup:  { emoji: "\u{1F3F0}", title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
@@ -2999,6 +3026,9 @@ window.FortressApp = function Fortress() {
   const scrap = useRef({ 1: 0, 2: 0, 3: 0 });
   const upgrades = useRef({ 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } });
   const wallHp = useRef({});
+  // Kauf-Pop pro Karte (v3.17.0): Zähler erhöht → React-key ändert → Karte
+  // remountet → shopBuyPop-Animation spielt erneut. Nur Optik.
+  const shopBuyAnim = useRef({});
   // „+N ⚙"-Popups (v3.16.3): am TREFFERORT in Spielerfarbe, wie explosions
   // über den State synchronisiert (Gäste sehen sie dadurch identisch).
   const scrapPops = useRef([]);
@@ -4715,6 +4745,9 @@ window.FortressApp = function Fortress() {
     } else return false;
     scrap.current[player] = have - price;
     if (typeof window !== "undefined" && window.__mmDebug) (window.__buys = window.__buys || []).push(player + ":" + item);
+    // Kauf-Pop-Animation triggern (v3.17.0, rein optisch)
+    const bk = player + "_" + item;
+    shopBuyAnim.current[bk] = (shopBuyAnim.current[bk] || 0) + 1;
     SFX.place && SFX.place();
     setUiTick((t) => t + 1);
     if (online.current && myRole.current === 1) pushState(true);
@@ -6154,7 +6187,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.16.6")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.17.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7099,15 +7132,15 @@ window.FortressApp = function Fortress() {
     textOverflow: "ellipsis"
   } }, warn), phase === "cannon" && (() => {
     const mine = online.current ? [myRole.current] : botMode.current ? [1] : playersList();
+    const h = React.createElement;
     return mine.filter((sp) => sp >= 1 && !eliminated.current[sp]).map((sp) => {
       const up = upgrades.current[sp] || {};
       const have = scrap.current[sp] || 0;
       const items = [
-        { k: "cannon", icon: "\u{1F9E8}", label: t("shopCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
-        { k: "reload", icon: "\u26A1", label: t("shopReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
-        { k: "armor", icon: "\u{1F6E1}", label: t("shopArmor"), price: SHOP.armor.price, max: !!up.armor },
-        { k: "repair", icon: "\u{1F527}", label: t("shopRepair"), price: SHOP.repair.price, max: false, noNeed: (() => {
-          // Nichts zu reparieren = ausgegraut (aber Preis bleibt sichtbar, kein „MAX")
+        { k: "cannon", label: t("shopCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
+        { k: "reload", label: t("shopReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
+        { k: "armor", label: t("shopArmor"), price: SHOP.armor.price, max: !!up.armor },
+        { k: "repair", label: t("shopRepair"), price: SHOP.repair.price, max: false, noNeed: (() => {
           const gg = grid.current, ctl = castles.current[sp];
           if (!gg || !ctl) return true;
           for (let rr = Math.max(0, ctl.r - 10); rr <= Math.min(ROWS - 1, ctl.r + 10); rr++)
@@ -7119,23 +7152,76 @@ window.FortressApp = function Fortress() {
       const isTop = !online.current && !botMode.current && sp !== 1;
       const pos = isTop
         ? { top: "calc(env(safe-area-inset-top, 0px) + " + (sp === 3 ? 116 : 54) + "px)" }
-        : { bottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" };
-      return /* @__PURE__ */ React.createElement("div", { key: "shop" + sp, style: __spreadValues({ position: "fixed", left: 8, right: 8, zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" }, pos) },
-        /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(8,12,22,0.93)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 14, padding: "6px 8px", display: "flex", gap: 6, alignItems: "stretch", pointerEvents: "auto", boxShadow: "0 6px 24px rgba(0,0,0,0.5)" } },
-          /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", fontSize: 13, fontWeight: 800, color: "#fbbf24", padding: "0 5px" } }, "\u2699 " + have),
-          items.map((it) => {
-            const afford = !it.max && !it.noNeed && have >= it.price;
-            return /* @__PURE__ */ React.createElement("button", { key: it.k, onClick: () => doBuy(sp, it.k), disabled: !afford, style: {
-              background: afford ? "rgba(56,120,230,0.28)" : "rgba(255,255,255,0.05)",
-              border: "1px solid " + (afford ? "rgba(96,165,250,0.65)" : "rgba(255,255,255,0.10)"),
-              borderRadius: 10, padding: "3px 7px", color: afford ? "#e2e8f0" : "#475569",
-              fontSize: 10, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, cursor: afford ? "pointer" : "default", minWidth: 56
+        : { bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" };
+      return h("div", { key: "shop" + sp, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" }, pos) },
+        h("div", { style: {
+          width: "100%", maxWidth: 452, pointerEvents: "auto",
+          background: "linear-gradient(180deg, rgba(30,41,66,0.96) 0%, rgba(11,16,30,0.975) 100%)",
+          border: "1px solid rgba(255,255,255,0.10)", borderRadius: 20, padding: "9px 10px 11px",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 18px 46px rgba(0,0,0,0.62), 0 0 0 1px rgba(0,0,0,0.45)",
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          animation: "shopRise 0.42s cubic-bezier(.22,1,.36,1) both"
+        } },
+          h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, padding: "0 3px" } },
+            h("div", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, letterSpacing: "0.09em", color: "#94a3b8", textTransform: "uppercase" } },
+              h("span", { style: { fontSize: 12 } }, "⚒️"),
+              h("span", null, t("bannerCannonTitle"))
+            ),
+            h("div", { key: "coin" + have, style: {
+              display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
+              background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.55)",
+              boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -2px 4px rgba(180,83,9,0.4)",
+              animation: "shopCoinPulse 0.42s ease both"
             } },
-              /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, it.icon),
-              /* @__PURE__ */ React.createElement("span", null, it.label),
-              /* @__PURE__ */ React.createElement("span", { style: { color: it.max ? "#4ade80" : it.noNeed ? "#475569" : "#fbbf24", fontSize: 10 } }, it.max ? t("shopMax") : "\u2699" + it.price)
-            );
-          })
+              h("span", { style: { fontSize: 14, fontWeight: 900, color: "#3b2606", textShadow: "0 1px 0 rgba(255,255,255,0.4)" } }, "⚙ " + have)
+            )
+          ),
+          h("div", { style: { display: "flex", gap: 7, alignItems: "stretch" } },
+            items.map((it, idx) => {
+              const th = SHOP_THEME[it.k];
+              const afford = !it.max && !it.noNeed && have >= it.price;
+              const dim = !afford;
+              const buyC = shopBuyAnim.current[sp + "_" + it.k] || 0;
+              return h("button", {
+                key: it.k + "_" + buyC,
+                onClick: () => doBuy(sp, it.k),
+                disabled: !afford,
+                className: "shop-card" + (afford ? " afford" : ""),
+                style: {
+                  flex: 1, minWidth: 0, border: "none", cursor: afford ? "pointer" : "default",
+                  borderRadius: 15, padding: "8px 3px 6px",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                  background: afford
+                    ? "linear-gradient(180deg, rgba(" + th.glow + ",0.24) 0%, rgba(10,14,24,0.55) 100%)"
+                    : "linear-gradient(180deg, rgba(40,48,64,0.42), rgba(12,16,26,0.55))",
+                  boxShadow: afford
+                    ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(" + th.glow + ",0.6), 0 6px 16px rgba(" + th.glow + ",0.3), 0 4px 10px rgba(0,0,0,0.42)"
+                    : "inset 0 0 0 1px rgba(255,255,255,0.06), 0 3px 8px rgba(0,0,0,0.38)",
+                  filter: dim ? "saturate(0.5)" : "none", opacity: dim ? 0.84 : 1,
+                  animation: buyC ? "shopBuyPop 0.44s ease both" : ("shopCardIn 0.44s cubic-bezier(.22,1.4,.4,1) " + (0.04 + idx * 0.05).toFixed(2) + "s both")
+                }
+              },
+                h("div", { className: "shop-medal", style: {
+                  width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: dim ? "linear-gradient(180deg,#4b5563,#232b39)" : "radial-gradient(circle at 35% 26%, " + th.c1 + " 0%, " + th.c2 + " 56%, " + th.c3 + " 100%)",
+                  boxShadow: dim ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 5px rgba(0,0,0,0.42)" : "inset 0 1.5px 0 rgba(255,255,255,0.6), inset 0 -2px 5px rgba(0,0,0,0.38), 0 3px 9px rgba(" + th.glow + ",0.55)",
+                  border: "1px solid rgba(255,255,255,0.28)"
+                }, dangerouslySetInnerHTML: { __html: SHOP_ICONS[it.k] } }),
+                h("div", { style: { fontSize: 9.5, fontWeight: 800, color: dim ? "#94a3b8" : "#f1f5f9", textAlign: "center", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", textShadow: "0 1px 2px rgba(0,0,0,0.5)" } }, it.label),
+                it.max
+                  ? h("div", { style: { padding: "2px 9px", borderRadius: 999, background: "linear-gradient(180deg,#34d399,#059669)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 6px rgba(16,185,129,0.4)", fontSize: 9, fontWeight: 900, color: "#052e1a", letterSpacing: "0.05em" } }, t("shopMax"))
+                  : h("div", { style: {
+                      display: "flex", alignItems: "center", gap: 2, padding: "2px 9px", borderRadius: 999,
+                      background: afford ? "linear-gradient(180deg, rgba(0,0,0,0.48), rgba(0,0,0,0.74))" : "rgba(0,0,0,0.42)",
+                      border: "1px solid rgba(255,255,255,0.08)"
+                    } },
+                      h("span", { style: { fontSize: 10 } }, "⚙"),
+                      h("span", { style: { fontSize: 11.5, fontWeight: 900, color: afford ? "#fcd34d" : "#64748b" } }, it.price)
+                    )
+              );
+            })
+          )
         )
       );
     });
