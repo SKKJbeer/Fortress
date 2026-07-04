@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.17.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.17.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2140,3 +2140,14 @@ identische Upgrades/Preise/Wiring (`doBuy`, `max`/`noNeed`, Online-Sync).
   CSP-konform). Visuell abgenommen (Screenshots aller Zustände).
 
 Tests grün (196). SW-Cache `fortress-v3.17.0`.
+
+### v3.17.1 — Shop weicht der Kanonen-Platzierung
+Nutzer-Bug: Nach dem Kanonenkauf verdeckte das Shop-Panel unten die eigene
+Burg — dort konnte man die Kanone nicht platzieren.
+- Sobald eine gekaufte Kanone auf Platzierung wartet (`cannonBudget[sp] > 0`),
+  wird das Shop-Panel ausgeblendet → das ganze Feld ist frei. Es kommt zurück,
+  sobald die Kanone gesetzt ist (Budget wieder 0).
+- Stattdessen ein schmaler, nicht-blockierender Hinweis oben („🎯 Tippe aufs
+  Feld, um die Kanone zu platzieren", DE/EN, `armoryPlaceHint`).
+
+Tests grün (196). SW-Cache `fortress-v3.17.1`.
