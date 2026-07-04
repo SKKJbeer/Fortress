@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.18.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.18.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2610,6 +2610,8 @@ window.FortressApp = function Fortress() {
     window.__readTimer = gated(() => timerVal.current);
     window.__readReady = gated(() => __spreadValues({}, armoryReady.current));
     window.__forceReady = gated((p) => { setArmoryReady(p); return true; });
+    // Testhilfe: Reset-Hover-Zustand lesen (v3.18.2, Bottom-Placement-Fix)
+    window.__cancelHover = gated((p) => !!cancelHover.current[p]);
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
@@ -5243,10 +5245,14 @@ window.FortressApp = function Fortress() {
     const player = pt.player;
     if (phase_r.current === "build" || phase_r.current === "cannon" || phase_r.current === "setup") {
       if (activeBuild.current[player] !== e.pointerId) return;
-      // Reset-Zone (v3.16.6): Finger unterhalb des Spielfelds (über der
-      // Vorschau-Leiste) → Loslassen bricht ab. Ghost grau als Feedback.
+      // Reset-Zone (v3.16.6 / v3.18.2): Finger TIEF unterhalb des Spielfelds
+      // (klar in der Leiste) → Loslassen bricht ab. WICHTIG: Die untersten
+      // Bau-Reihen erreicht man, indem der Finger knapp unter den Feldrand geht
+      // (der Ghost ist um LIFT_ROWS nach oben versetzt) — daher erst ab
+      // (LIFT_ROWS+2) Zellen unter dem Rand als Reset werten, sonst konnte man
+      // ganz unten nicht mehr platzieren.
       const rc = canvasRect.current;
-      cancelHover.current[player] = !!(rc && e.clientY > rc.bottom - 2);
+      cancelHover.current[player] = !!(rc && e.clientY > rc.bottom + (LIFT_ROWS + 2) * (rc.height / ROWS));
       const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
@@ -5290,10 +5296,11 @@ window.FortressApp = function Fortress() {
     if (phase_r.current === "build") {
       if (activeBuild.current[player] !== e.pointerId) return;
       activeBuild.current[player] = null;
-      // Reset-Geste (v3.16.6): über der Vorschau-Leiste unten losgelassen →
-      // Platzierung abbrechen, Ghost verschwindet, Finger neu ansetzbar.
+      // Reset-Geste (v3.16.6 / v3.18.2): tief unter dem Feldrand losgelassen →
+      // abbrechen. Schwelle wie in onPointerMove, damit die untersten Bau-Reihen
+      // (Finger knapp unter dem Rand) weiter platzierbar bleiben.
       const rcU = canvasRect.current;
-      if (rcU && e.clientY > rcU.bottom - 2) {
+      if (rcU && e.clientY > rcU.bottom + (LIFT_ROWS + 2) * (rcU.height / ROWS)) {
         pieces.current[player].ghostR = null;
         pieces.current[player].ghostC = null;
         cancelHover.current[player] = false;
@@ -5323,9 +5330,9 @@ window.FortressApp = function Fortress() {
     } else if (phase_r.current === "cannon" || phase_r.current === "setup") {
       if (activeBuild.current[player] !== e.pointerId) return;
       activeBuild.current[player] = null;
-      // Reset-Geste (v3.16.6): über der Vorschau-Leiste losgelassen → abbrechen.
+      // Reset-Geste (v3.16.6 / v3.18.2): tief unter dem Feldrand → abbrechen.
       const rcC = canvasRect.current;
-      if (rcC && e.clientY > rcC.bottom - 2) {
+      if (rcC && e.clientY > rcC.bottom + (LIFT_ROWS + 2) * (rcC.height / ROWS)) {
         pieces.current[player].ghostR = null;
         pieces.current[player].ghostC = null;
         cancelHover.current[player] = false;
@@ -6299,7 +6306,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.18.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.18.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

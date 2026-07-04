@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.18.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.18.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2196,3 +2196,20 @@ bestätigt haben, springt der Timer auf 3s — aber nur wenn er noch > 3 ist
   Timer 15→3 (gated Hooks `__forceReady`/`__readTimer`/`__readReady`).
 
 Tests grün (211). SW-Cache `fortress-v3.18.1`.
+
+### v3.18.2 — Bugfix: Platzieren am unteren Feldrand wieder möglich
+Regression aus v3.16.6 (Reset-Geste): Der eigene Spieler (unten, gespiegelt)
+erreicht die untersten Bau-/Kanonen-Reihen, indem der Finger knapp UNTER den
+Feldrand geht — der Ghost ist um `LIFT_ROWS` nach oben versetzt. Die Reset-Zone
+(„Finger unter das Feld = abbrechen") begann aber direkt am Feldrand und fing
+dadurch genau diese Platzierungen ab → man konnte ganz unten nichts mehr setzen.
+- Reset-Schwelle von `bottom − 2` auf `bottom + (LIFT_ROWS+2)·Zellhöhe` gesenkt:
+  knapp-unter-dem-Rand platziert wieder (untere Reihen), erst ein klar tiefer
+  Drag in die Leiste bricht ab. Gilt für Bau- UND Setup-/Rüstphase.
+- Reset-Regressionstest zieht jetzt entsprechend TIEFER; „nicht eingefroren"-
+  Check mit großzügigeren Timeouts (paralleler Testlast-Flake entschärft).
+- Hinweis: Das reine Unter-dem-Feld-Verhalten ist headless nicht testbar
+  (Playwright routet gecapturte Pointer-Events nicht off-element wie ein echter
+  Touchscreen) — auf echten Geräten greift die Logik.
+
+Tests grün (211, 4 Läufe stabil). SW-Cache `fortress-v3.18.2`.
