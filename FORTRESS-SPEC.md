@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2245,3 +2245,19 @@ Online-Spiel den Schrott/Upgrade-Stand des vorigen mit: 1. Spiel startete bei 0
 - Suite prüft: 2. Online-Spiel in Folge startet mit ⚙15 (nicht Carry-over).
 
 Tests grün (215). SW-Cache `fortress-v3.19.1`.
+
+### v3.19.2 — Shop: prägnante Tagline pro Karte + Info-Button mit Fakten
+Neue Spieler wussten nicht, was jeder Kauf bewirkt (Karten zeigten nur Name +
+Preis). Statt platzraubender Beschreibungszeilen jetzt zweistufig:
+- **Tagline pro Karte** (winzig, in Item-Farbe unter dem Namen): Kanone „+1 extra",
+  Schnellladen „schneller", Panzermauern „2 Treffer", Reparatur „+3 Mauern".
+- **Info-Button** (ⓘ) im Shop-Header (links neben dem Schrott-Chip) öffnet ein
+  Overlay `showShopInfo` mit allen Fakten: Verdienst-Tabelle (Mauer +1, Kanone
+  +12, Überleben +6, Start ⚙15) und je Upgrade Icon + genaue Wirkung (inkl.
+  Nachlade-Stufen 2,5s→2,0s→1,6s, Preis-Staffel Kanone 20→28→36).
+- Rein additiv/optisch — keine Balance-/Mechanik-Änderung. Modal schließt bei
+  Phasenende (`endCannon` → `setShowShopInfo(false)`) und rendert nur in der
+  Rüstphase (`phase === "cannon"`-Guard), damit es Gäste beim Phasenwechsel nicht
+  überlagert. i18n de/en vollständig.
+
+Tests grün. SW-Cache `fortress-v3.19.2`.

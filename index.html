@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.19.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.19.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1522,7 +1522,22 @@ const LANGS = {
     shopReload: "Schnellladen",
     shopArmor: "Panzermauern",
     shopRepair: "Reparatur",
+    shopTagCannon: "+1 extra",
+    shopTagReload: "schneller",
+    shopTagArmor: "2 Treffer",
+    shopTagRepair: "+3 Mauern",
     shopMax: "MAX",
+    shopInfoTitle: "Shop – So funktioniert's",
+    shopInfoEarnTitle: "Schrott ⚙ verdienen",
+    shopInfoEarnWall: "Gegner-Mauer zerst\xF6ren",
+    shopInfoEarnCannon: "Gegner-Kanone zerst\xF6ren",
+    shopInfoEarnSurvive: "Runde \xFCberleben",
+    shopInfoEarnStart: "Startkapital (pro Spiel)",
+    shopInfoCannonDesc: "Eine zus\xE4tzliche Kanone f\xFCr die n\xE4chste Bauphase. Der Preis steigt mit jedem Kauf (20 → 28 → 36 …).",
+    shopInfoReloadDesc: "Deine Kanonen laden schneller nach – mehr Sch\xFCsse pro Runde. 2 Stufen: 2,5s → 2,0s → 1,6s.",
+    shopInfoArmorDesc: "Alle deine Mauern halten 2 Treffer statt 1. Der erste Treffer macht nur einen Riss.",
+    shopInfoRepairDesc: "Verwandelt bis zu 3 deiner Tr\xFCmmer nahe der Burg sofort zur\xFCck in Mauern. Notfall-Reparatur, beliebig oft.",
+    shopInfoClose: "Verstanden",
     armoryPlaceHint: "\u{1F3AF} Tippe aufs Feld, um die Kanone zu platzieren",
     armoryDone: "Fertig",
     armoryWaiting: "Bereit \u2713 \xB7 Warte auf Mitspieler",
@@ -1736,7 +1751,22 @@ const LANGS = {
     shopReload: "Fast reload",
     shopArmor: "Armored walls",
     shopRepair: "Repair crew",
+    shopTagCannon: "+1 extra",
+    shopTagReload: "faster",
+    shopTagArmor: "2 hits",
+    shopTagRepair: "+3 walls",
     shopMax: "MAX",
+    shopInfoTitle: "Shop – How it works",
+    shopInfoEarnTitle: "Earn scrap ⚙",
+    shopInfoEarnWall: "Destroy an enemy wall",
+    shopInfoEarnCannon: "Destroy an enemy cannon",
+    shopInfoEarnSurvive: "Survive a round",
+    shopInfoEarnStart: "Starting capital (per game)",
+    shopInfoCannonDesc: "One extra cannon for the next build phase. The price rises with each purchase (20 → 28 → 36 …).",
+    shopInfoReloadDesc: "Your cannons reload faster – more shots per round. 2 tiers: 2.5s → 2.0s → 1.6s.",
+    shopInfoArmorDesc: "All your walls take 2 hits instead of 1. The first hit only cracks them.",
+    shopInfoRepairDesc: "Instantly turns up to 3 of your rubble tiles near the castle back into walls. Emergency repair, any number of times.",
+    shopInfoClose: "Got it",
     armoryPlaceHint: "\u{1F3AF} Tap the field to place your cannon",
     armoryDone: "Ready",
     armoryWaiting: "Ready \u2713 \xB7 Waiting for others",
@@ -2718,6 +2748,7 @@ window.FortressApp = function Fortress() {
   const [leaderboard, setLeaderboard] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [showShopInfo, setShowShopInfo] = useState(false);
   const [dailyState, setDailyState] = useState(() => loadDailyState());
   const [showDailyModal, setShowDailyModal] = useState(false);
   const [dailyCollected, setDailyCollected] = useState(false);
@@ -4525,6 +4556,7 @@ window.FortressApp = function Fortress() {
     showPhaseBanner("cannon", startTimer);
   }
   function endCannon() {
+    setShowShopInfo(false);
     setRound((r) => r + 1);
     startBuild();
   }
@@ -6338,7 +6370,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7318,10 +7350,10 @@ window.FortressApp = function Fortress() {
       const up = upgrades.current[sp] || {};
       const have = scrap.current[sp] || 0;
       const items = [
-        { k: "cannon", label: t("shopCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
-        { k: "reload", label: t("shopReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
-        { k: "armor", label: t("shopArmor"), price: SHOP.armor.price, max: !!up.armor },
-        { k: "repair", label: t("shopRepair"), price: SHOP.repair.price, max: false, noNeed: (() => {
+        { k: "cannon", label: t("shopCannon"), tag: t("shopTagCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
+        { k: "reload", label: t("shopReload"), tag: t("shopTagReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
+        { k: "armor", label: t("shopArmor"), tag: t("shopTagArmor"), price: SHOP.armor.price, max: !!up.armor },
+        { k: "repair", label: t("shopRepair"), tag: t("shopTagRepair"), price: SHOP.repair.price, max: false, noNeed: (() => {
           const gg = grid.current, ctl = castles.current[sp];
           if (!gg || !ctl) return true;
           for (let rr = Math.max(0, ctl.r - 10); rr <= Math.min(ROWS - 1, ctl.r + 10); rr++)
@@ -7348,14 +7380,23 @@ window.FortressApp = function Fortress() {
               h("span", { style: { fontSize: 12 } }, "⚒️"),
               h("span", null, t("bannerCannonTitle"))
             ),
-            h("div", { key: "coin" + have, style: {
-              display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
-              background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.55)",
-              boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -2px 4px rgba(180,83,9,0.4)",
-              animation: "shopCoinPulse 0.42s ease both"
-            } },
-              h("span", { style: { fontSize: 14, fontWeight: 900, color: "#3b2606", textShadow: "0 1px 0 rgba(255,255,255,0.4)" } }, "⚙ " + have)
+            h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
+              h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: {
+                width: 22, height: 22, borderRadius: 999, border: "1px solid rgba(148,163,184,0.5)", cursor: "pointer",
+                background: "linear-gradient(180deg, rgba(51,65,85,0.9), rgba(15,23,42,0.9))",
+                color: "#cbd5e1", fontSize: 12, fontWeight: 900, fontStyle: "italic", lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 6px rgba(0,0,0,0.4)"
+              } }, "i"),
+              h("div", { key: "coin" + have, style: {
+                display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
+                background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.55)",
+                boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -2px 4px rgba(180,83,9,0.4)",
+                animation: "shopCoinPulse 0.42s ease both"
+              } },
+                h("span", { style: { fontSize: 14, fontWeight: 900, color: "#3b2606", textShadow: "0 1px 0 rgba(255,255,255,0.4)" } }, "⚙ " + have)
+              )
             )
           ),
           h("div", { style: { display: "flex", gap: 7, alignItems: "stretch" } },
@@ -7390,6 +7431,7 @@ window.FortressApp = function Fortress() {
                   border: "1px solid rgba(255,255,255,0.28)"
                 }, dangerouslySetInnerHTML: { __html: SHOP_ICONS[it.k] } }),
                 h("div", { style: { fontSize: 9.5, fontWeight: 800, color: dim ? "#94a3b8" : "#f1f5f9", textAlign: "center", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", textShadow: "0 1px 2px rgba(0,0,0,0.5)" } }, it.label),
+                h("div", { style: { fontSize: 7.8, fontWeight: 700, color: dim ? "rgba(148,163,184,0.7)" : "rgba(" + th.glow + ",0.95)", textAlign: "center", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", letterSpacing: "0.01em" } }, it.tag),
                 it.max
                   ? h("div", { style: { padding: "2px 9px", borderRadius: 999, background: "linear-gradient(180deg,#34d399,#059669)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 6px rgba(16,185,129,0.4)", fontSize: 9, fontWeight: 900, color: "#052e1a", letterSpacing: "0.05em" } }, t("shopMax"))
                   : h("div", { style: {
@@ -7415,6 +7457,68 @@ window.FortressApp = function Fortress() {
         )
       );
     });
+  })(), showShopInfo && phase === "cannon" && (() => {
+    const h = React.createElement;
+    const earn = [
+      { l: t("shopInfoEarnWall"), v: "+1" },
+      { l: t("shopInfoEarnCannon"), v: "+12" },
+      { l: t("shopInfoEarnSurvive"), v: "+6" },
+      { l: t("shopInfoEarnStart"), v: "15" }
+    ];
+    const rows = [
+      { k: "cannon", label: t("shopCannon"), desc: t("shopInfoCannonDesc") },
+      { k: "reload", label: t("shopReload"), desc: t("shopInfoReloadDesc") },
+      { k: "armor", label: t("shopArmor"), desc: t("shopInfoArmorDesc") },
+      { k: "repair", label: t("shopRepair"), desc: t("shopInfoRepairDesc") }
+    ];
+    return h("div", { key: "shopinfo", onClick: () => setShowShopInfo(false), style: {
+      position: "fixed", inset: 0, zIndex: 1460, background: "rgba(2,6,15,0.9)",
+      backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 18
+    } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: {
+        maxWidth: 420, width: "100%", maxHeight: "86vh", overflowY: "auto",
+        background: "linear-gradient(180deg, rgba(30,41,66,0.98) 0%, rgba(11,16,30,0.99) 100%)",
+        border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "18px 16px 16px",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
+        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
+      } },
+        h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginBottom: 12 } },
+          h("span", { style: { fontSize: 18 } }, "⚒️"),
+          h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", letterSpacing: "0.02em" } }, t("shopInfoTitle"))
+        ),
+        h("div", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("shopInfoEarnTitle")),
+        h("div", { style: { display: "flex", flexDirection: "column", gap: 3, marginBottom: 14, padding: "8px 10px", borderRadius: 12, background: "rgba(245,158,11,0.09)", border: "1px solid rgba(245,158,11,0.22)" } },
+          earn.map((e, i) => h("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5, color: "#e2e8f0" } },
+            h("span", null, e.l),
+            h("span", { style: { fontWeight: 900, color: "#fcd34d" } }, "⚙ " + e.v)
+          ))
+        ),
+        h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 } },
+          rows.map((it) => {
+            const th = SHOP_THEME[it.k];
+            return h("div", { key: it.k, style: { display: "flex", alignItems: "flex-start", gap: 10 } },
+              h("div", { style: {
+                flex: "0 0 auto", width: 30, height: 30, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+                background: "radial-gradient(circle at 35% 26%, " + th.c1 + " 0%, " + th.c2 + " 56%, " + th.c3 + " 100%)",
+                boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.55), 0 2px 7px rgba(" + th.glow + ",0.5)",
+                border: "1px solid rgba(255,255,255,0.28)"
+              }, dangerouslySetInnerHTML: { __html: SHOP_ICONS[it.k] } }),
+              h("div", { style: { flex: 1, minWidth: 0 } },
+                h("div", { style: { fontSize: 13, fontWeight: 800, color: "#f1f5f9", marginBottom: 1 } }, it.label),
+                h("div", { style: { fontSize: 11.5, color: "#94a3b8", lineHeight: 1.35 } }, it.desc)
+              )
+            );
+          })
+        ),
+        h("button", { onClick: () => setShowShopInfo(false), style: {
+          width: "100%", border: "none", cursor: "pointer", borderRadius: 12, padding: "11px",
+          background: "linear-gradient(180deg,#34d399,#059669)", color: "#052e1a",
+          fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)"
+        } }, "✓ " + t("shopInfoClose"))
+      )
+    );
   })(), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", left: 8, right: 8, top: "calc(env(safe-area-inset-top, 0px) + 54px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {

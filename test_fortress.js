@@ -2234,6 +2234,33 @@ async function suiteBot(browser) {
       shopSeen.header ? ok('Shop: RÜSTPHASE-Header ✓') : fail('Shop: Header fehlt');
       shopSeen.chip ? ok('Shop: goldener Schrott-Chip ✓') : fail('Shop: Schrott-Chip fehlt');
 
+      // ── v3.19.2: Info-Button öffnet Fakten-Overlay ──
+      const infoOpened = await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Info');
+        if (!btn) return { found: false };
+        btn.click();
+        return { found: true };
+      });
+      if (!infoOpened.found) { fail('Shop: Info-Button (ⓘ) fehlt'); }
+      else {
+        ok('Shop: Info-Button (ⓘ) vorhanden ✓');
+        await page.waitForTimeout(200);
+        const info = await page.evaluate(() => {
+          const t = document.body.innerText;
+          return {
+            title: /So funktioniert|How it works/.test(t),
+            earn: /\+12/.test(t) && /\+6/.test(t) && /\+1/.test(t),   // Verdienst-Fakten
+            close: [...document.querySelectorAll('button')].some(b => /Verstanden|Got it/.test(b.textContent))
+          };
+        });
+        info.title ? ok('Shop-Info: Titel sichtbar ✓') : fail('Shop-Info: Titel fehlt');
+        info.earn ? ok('Shop-Info: Verdienst-Fakten (+1/+12/+6) ✓') : fail('Shop-Info: Verdienst-Fakten fehlen');
+        info.close ? ok('Shop-Info: Schließen-Button ✓') : fail('Shop-Info: Schließen-Button fehlt');
+        // Overlay wieder schließen, damit der Kauf-Test die Karten erreicht
+        await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Verstanden|Got it/.test(x.textContent)); b && b.click(); });
+        await page.waitForTimeout(150);
+      }
+
       // ── v3.17.1: Kanonenkauf blendet Shop aus + zeigt Platzier-Hinweis ──
       await page.evaluate(() => { window.__grantScrap && window.__grantScrap(1, 40); });
       await page.waitForTimeout(200);
