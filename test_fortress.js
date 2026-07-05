@@ -1108,6 +1108,21 @@ async function suiteMatchmaking(browser, fbPort) {
     m2a && m2b ? ok('Quick Match Runde 2: beide wieder im Spiel ✓')
                : fail(`Quick Match Runde 2: A=${m2a} B=${m2b}`);
 
+    // v3.19.1: Online-Spielstart muss die Schrott-Ökonomie auf 15 zurücksetzen —
+    // auch beim 2. Spiel (vorher schleppte es den Schrott des 1. Spiels mit).
+    if (m2a && m2b) {
+      await pA.evaluate(() => { window.__mmDebug = true; });
+      await pA.waitForTimeout(600);
+      const scrapReset = await pA.evaluate(() => {
+        const s1 = window.__readScrap ? window.__readScrap(1) : null;
+        const s2 = window.__readScrap ? window.__readScrap(2) : null;
+        return { s1, s2 };
+      });
+      (scrapReset.s1 === 15 && scrapReset.s2 === 15)
+        ? ok('Online-Neustart: Schrott auf 15 zurückgesetzt (2. Spiel) ✓')
+        : fail(`Online-Neustart: Schrott nicht 15 (P1=${scrapReset.s1} P2=${scrapReset.s2})`);
+    }
+
     // Aufräumen + Queue-Hygiene prüfen
     await mmQuitToMenu(pA);
     await pB.waitForTimeout(1500);

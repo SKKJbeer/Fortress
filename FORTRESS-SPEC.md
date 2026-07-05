@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2232,3 +2232,16 @@ bepreist. EINE Stellschraube war kaputt:
   Feindkanone und schreiben +12 Schrott gut.
 
 Tests grün (214). SW-Cache `fortress-v3.19.0`.
+
+### v3.19.1 — Bugfix: Online-Spiele resetten die Schrott-Ökonomie nicht
+Nutzer-Report „Startschrott jedes Spiel unterschiedlich". Ursache: `startGame`
+(lokal/Bot) setzt die Ökonomie auf ⚙15 zurück — `startOnlineGame` rief aber nur
+`beginSetup()` auf (match-persistent, KEIN Reset). Dadurch schleppte jedes
+Online-Spiel den Schrott/Upgrade-Stand des vorigen mit: 1. Spiel startete bei 0
+(Ref-Default), Folgespiele beim Endstand des vorigen → jedes Mal anders.
+- Reset in Helfer `resetEconomy()` ausgelagert (⚙15, keine Upgrades, keine
+  angeknacksten Mauern); wird jetzt AUCH in `startOnlineGame` (Host) aufgerufen.
+  Gäste erhalten den frischen Stand wie gewohnt über den State-Sync.
+- Suite prüft: 2. Online-Spiel in Folge startet mit ⚙15 (nicht Carry-over).
+
+Tests grün (215). SW-Cache `fortress-v3.19.1`.

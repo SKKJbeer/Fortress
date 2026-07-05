@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.19.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.19.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -4212,6 +4212,7 @@ window.FortressApp = function Fortress() {
       initGrid();
       setRound(1);
       roundRefVal.current = 1;
+      resetEconomy();  // v3.19.1: Online-Spielstart resettet die Schrott-Ökonomie
       beginSetup();
       screenRef.current = "game";
       setTimeout(() => pushState(true), 300);
@@ -6180,14 +6181,21 @@ window.FortressApp = function Fortress() {
     setScreen("game");
     showPhaseBanner("setup", startTimer);
   }
+  // Ökonomie eines NEUEN Spiels zurücksetzen (v3.19.1): ⚙15 Startkapital,
+  // keine Upgrades, keine angeknacksten Mauern. MUSS bei jedem Spielstart laufen
+  // — auch online (sonst schleppt das nächste Spiel den Schrott des vorigen mit,
+  // Startwert war dadurch bei jedem Online-Spiel anders).
+  function resetEconomy() {
+    scrap.current = { 1: 15, 2: 15, 3: 15 };
+    upgrades.current = { 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } };
+    wallHp.current = {};
+  }
   function startGame() {
     initGrid();
     setRound(1);
     // Neues Spiel: Ökonomie zurücksetzen — mit ⚙15 Startkapital (v3.16.4),
     // damit schon in der ersten Rüstphase eine echte Kaufentscheidung möglich ist.
-    scrap.current = { 1: 15, 2: 15, 3: 15 };
-    upgrades.current = { 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } };
-    wallHp.current = {};
+    resetEconomy();
     beginSetup();
   }
   function fullReset() {
@@ -6330,7 +6338,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
