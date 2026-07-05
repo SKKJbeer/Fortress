@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2278,3 +2278,22 @@ unverändert (`Math.max(30, 26 + dist*0.09)`).
 - Kugel-Geschwindigkeit jetzt konstant unabhängig von der Framerate/Geräteklasse.
 
 Tests grün. SW-Cache `fortress-v3.19.3`.
+
+### v3.19.4 — Performance-Pass: Per-Frame-Scans & Allokationen im Render-Loop entfernt
+Folge-Arbeit zu „Performance ist absolute Priorität". Der Render-Loop war seit
+v3.15.5 bereits stark optimiert (Sprite-Cache SPR, gecachtes Zonen-/BG-Overlay,
+keine Gradients/shadowBlur pro Objekt). Verbleibende Overhead-Quellen beseitigt:
+- **Wasser-Animation**: scannte pro Frame ALLE 44×68 = 2992 Zellen, um Wasser zu
+  finden. Wasserzellen ändern sich nie innerhalb eines Spiels → jetzt einmal pro
+  Terrain (`waterCellsRef`, Key = Seed) gecacht; pro Frame nur noch die echten
+  Wasserzellen (~100–300) iteriert.
+- **Riss-Overlay**: `wallHp.current[r+'_'+c]` erzeugte pro Mauerzelle pro Frame
+  einen String (GC-Druck), obwohl `wallHp` meist leer ist (keine Panzermauern).
+  Jetzt einmal `anyCrack`-Guard vor der Schleife → String-Concat nur wenn Risse
+  existieren.
+- **Kanonen**: `drawCannonFull` rief pro Kanone pro Frame `Date.now()` für den
+  Ready-Puls. `now` (bereits im Loop vorhanden) wird jetzt durchgereicht.
+Rein interne Optimierung, keine sichtbare/mechanische Änderung. Selbstmessung am
+Gerät: `window.__perfDbg=true` → `__frameMs` (Zeichendauer je Frame, gated).
+
+Tests grün (219). SW-Cache `fortress-v3.19.4`.

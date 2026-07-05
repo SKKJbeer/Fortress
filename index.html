@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.19.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.19.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1403,10 +1403,10 @@ function cannonBarrelSprite(player) {
   }
   return SPR.barrel[player];
 }
-function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac) {
+function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT) {
   const R = CELL * 1.6;
   const n = CANNON_NEON[player] || CANNON_NEON[1];
-  const now = Date.now();
+  const now = nowT != null ? nowT : Date.now();
   // Bodenschatten (eine Ellipse, billig)
   ctx.fillStyle = "rgba(0,0,0,0.40)";
   ctx.beginPath();
@@ -3164,6 +3164,7 @@ window.FortressApp = function Fortress() {
   const particles = useRef([]);
   const prevExplCount = useRef(0);
   const lastFrameTime = useRef(0);
+  const waterCellsRef = useRef({ seed: null, cells: [] });
   const prevBigCount = useRef(0);
   const shakeRef = useRef(0);
   const reload = useRef({ 1: 1, 2: 1 });
@@ -5782,17 +5783,28 @@ window.FortressApp = function Fortress() {
     if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
     const WTa = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
     if (ter) {
+      // Wasserzellen einmal pro Terrain cachen (v3.19.4): statt jeden Frame alle
+      // 2992 Zellen zu scannen, nur die tatsächlichen Wasserzellen animieren.
+      const wSeed = (terObj && terObj.seed) != null ? terObj.seed : (terrainSeed.current || 0);
+      if (waterCellsRef.current.seed !== wSeed) {
+        const wc = [];
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++)
+            if (ter[r][c] === 3) wc.push(r * COLS + c);
+        waterCellsRef.current = { seed: wSeed, cells: wc };
+      }
       ctx.strokeStyle = `rgba(${WTa.waterAnim},${0.15 + 0.1 * Math.sin(now / 500)})`;
       ctx.lineWidth = 1;
       const wFrame = Math.floor(now / 600) % 8;
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++)
-          if (ter[r][c] === 3 && (r * 3 + c) % 8 === wFrame) {
-            ctx.beginPath();
-            ctx.moveTo(c * CELL + 2, r * CELL + CELL / 2);
-            ctx.lineTo(c * CELL + CELL - 2, r * CELL + CELL / 2);
-            ctx.stroke();
-          }
+      for (const idx of waterCellsRef.current.cells) {
+        const r = (idx / COLS) | 0, c = idx - r * COLS;
+        if ((r * 3 + c) % 8 === wFrame) {
+          ctx.beginPath();
+          ctx.moveTo(c * CELL + 2, r * CELL + CELL / 2);
+          ctx.lineTo(c * CELL + CELL - 2, r * CELL + CELL / 2);
+          ctx.stroke();
+        }
+      }
     }
     const fc = getFloodCache();
     // Zonen-Overlay gecacht (v3.15.5): ändert sich nur mit dem Grid — in
@@ -5823,6 +5835,9 @@ window.FortressApp = function Fortress() {
     ctx.drawImage(zoneCanvas.current, 0, 0);
     // Mauern/Trümmer als vorgerenderte Sprites blitten (v3.15.5) — pro Zelle
     // nur noch EIN drawImage statt Gradient + 6 Pfad-Operationen.
+    // wallHp ist meist leer (keine Panzermauern gekauft) → String-Concat pro
+    // Mauerzelle nur dann bauen, wenn überhaupt Risse existieren (v3.19.4).
+    const anyCrack = wallHp.current && Object.keys(wallHp.current).length > 0;
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const v = g[r][c];
@@ -5831,7 +5846,7 @@ window.FortressApp = function Fortress() {
         if (v === WALL1 || v === WALL2 || v === WALL3) {
           ctx.drawImage(wallSprite(v), px, py);
           // Panzermauer angeknackst (v3.16.0): Riss-Overlay
-          if (wallHp.current[r + "_" + c]) ctx.drawImage(crackSprite(), px, py);
+          if (anyCrack && wallHp.current[r + "_" + c]) ctx.drawImage(crackSprite(), px, py);
         }
         else if (v === RUBBLE) ctx.drawImage(rubbleSprite(), px, py);
       }
@@ -5992,7 +6007,7 @@ window.FortressApp = function Fortress() {
         const cy = cn.r * CELL + CELL / 2;
         const isClosed = isReady(cn);
         if (p1Flipped) p1CounterFlip(cx, cy);
-        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player]);
+        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player], now);
         if (p1Flipped) p1CounterFlipEnd();
         if (cn.hp < CANNON_HP) {
           const bw = CELL * 2.4, bx = cx - bw / 2, by = p1Flipped ? cy + CELL * 2.1 : cy - CELL * 2.1;
@@ -6377,7 +6392,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
