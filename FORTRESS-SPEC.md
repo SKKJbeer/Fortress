@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.18.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2213,3 +2213,22 @@ dadurch genau diese Platzierungen ab → man konnte ganz unten nichts mehr setze
   Touchscreen) — auf echten Geräten greift die Logik.
 
 Tests grün (211, 4 Läufe stabil). SW-Cache `fortress-v3.18.2`.
+
+### v3.19.0 — Balancing: Kanonen-Kill-Ökonomie repariert (CANNON_HP 15→8)
+Datengestützter Balancing-Pass (Bot-vs-Bot-Selbstspiel vermessen). Befund: Die
+Schrott-Ökonomie ist überwiegend gut austariert — Kanone-vs-Schnellladen hat
+einen sauberen Crossover (~3–4 Kanonen), Panzermauern/Reparatur sind fair
+bepreist. EINE Stellschraube war kaputt:
+- **CANNON_HP 15 → 8**: Eine Kanone brauchte 15 Treffer → ~2 Runden fokussiertes
+  Feuer für einen +12-Kill = unwirtschaftlich → NIEMAND zerstörte Kanonen (genau
+  das Ur-Problem, das die Ökonomie lösen sollte). Mit 8 HP ist ein Kill ~1 Runde
+  fokussiertes Feuer → die stärkste Einkommensquelle (+12 Schrott) + die
+  3×3-Explosion + das Verwehren einer Gegner-Kanone tragen jetzt die
+  Zerstör→Verdien→Kauf-Schleife. Gegenspiel bleibt: Panzermauern verdoppeln die
+  Trefferzahl bis zur Kanone, und Kanonenjagd kostet Tempo am Feind-Castle.
+- Alle übrigen Preise/Einkommen UNVERÄNDERT (bewusst diszipliniert, ohne
+  Playtest-Daten nicht mehr drehen als nötig).
+- Neue isolierte Suite `suiteCannonKill` (gated Hooks): 8 Treffer zerstören eine
+  Feindkanone und schreiben +12 Schrott gut.
+
+Tests grün (214). SW-Cache `fortress-v3.19.0`.

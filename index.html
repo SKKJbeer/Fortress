@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.18.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.19.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -730,7 +730,9 @@ function processAchievementEvents(profile, events) {
   }
   return { achievements: achs, newlyUnlocked, xpGained, goldGained };
 }
-const CANNON_HP = 15;
+const CANNON_HP = 8;  // v3.19.0: 15→8 — ein Kanonen-Kill ist ~1 Runde fokussiertes
+                       // Feuer (statt ~2), damit die +12-Schrott-Belohnung + Explosion
+                       // die Zerstör→Verdien→Kauf-Schleife trägt (war praktisch tot).
 const RELOAD_MS = 2500;
 const GRAV = 0.07;
 const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12;
@@ -2612,6 +2614,28 @@ window.FortressApp = function Fortress() {
     window.__forceReady = gated((p) => { setArmoryReady(p); return true; });
     // Testhilfe: Reset-Hover-Zustand lesen (v3.18.2, Bottom-Placement-Fix)
     window.__cancelHover = gated((p) => !!cancelHover.current[p]);
+    // Testhilfe: Kanonen-Kill auslösen (CANNON_HP Bälle auf eine Feindkanone)
+    window.__testCannonKill = gated((shooter) => {
+      const g = grid.current; if (!g) return null;
+      const ep = shooter === 1 ? 2 : 1;
+      const list = cannons.current[ep] || [];
+      if (!list.length) return null;
+      const cn = list[0];
+      const before = scrap.current[shooter] || 0;
+      for (let i = 0; i < CANNON_HP; i++) {
+        balls.current.push({ sx: cn.c * CELL + CELL / 2, sy: (cn.r + 6) * CELL, tx: cn.c * CELL + CELL / 2, ty: cn.r * CELL + CELL / 2, prog: 0.8, dur: 16, arcH: 6, player: shooter, alive: true, cannonIndex: 0, trail: [] });
+      }
+      return { before, beforeCannons: list.length, hp: CANNON_HP };
+    });
+    window.__enemyCannonCount = gated((shooter) => (cannons.current[shooter === 1 ? 2 : 1] || []).length);
+    // Balancing-Messung: vollständiger Ökonomie-Snapshot
+    window.__econFull = gated(() => ({
+      round: roundRefVal.current, phase: phase_r.current,
+      scrap: __spreadValues({}, scrap.current),
+      cannons: { 1: (cannons.current[1] || []).length, 2: (cannons.current[2] || []).length, 3: (cannons.current[3] || []).length },
+      up: JSON.parse(JSON.stringify(upgrades.current)),
+      elim: __spreadValues({}, eliminated.current)
+    }));
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
@@ -6306,7 +6330,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.18.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

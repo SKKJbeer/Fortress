@@ -2028,6 +2028,49 @@ async function suiteBallSettle(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE: Kanonen-Kill-Ökonomie (v3.19.0) — mit CANNON_HP=8 ist ein Kanonen-
+// Kill mit fokussiertem Feuer erreichbar und zahlt +12 Schrott.
+// ═══════════════════════════════════════════════════════════════
+async function suiteCannonKill(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Kanonen-Kill-Ökonomie\n' + '='.repeat(50));
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+    await page.waitForTimeout(250);
+    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
+    if (!canvas) { fail('Bot-Spiel startet nicht'); return { res, errs }; }
+    await page.evaluate(() => { window.__mmDebug = true; });
+    const start = await page.evaluate(async () => {
+      const deadline = Date.now() + 12000;
+      while (Date.now() < deadline) {
+        if (window.__phase && window.__phase() === 'shoot' && window.__enemyCannonCount(1) >= 1) {
+          const before = window.__testCannonKill(1);
+          if (before === null) return 'nokill';
+          return { before, cannonsBefore: window.__enemyCannonCount(1) };
+        }
+        await new Promise(r => setTimeout(r, 15));
+      }
+      return 'noshoot';
+    });
+    if (typeof start !== 'object') { fail(`Kanonen-Kill: Setup nicht erreicht (${start})`); return { res, errs }; }
+    await page.waitForTimeout(1000);
+    const rr = await page.evaluate((cb) => ({ scrap: window.__readScrap(1), cannons: window.__enemyCannonCount(1), before: cb }), start.before.before);
+    rr.cannons < start.cannonsBefore ? ok(`Kanonen-Kill: 8 HP → Feindkanone zerstört (${start.cannonsBefore}→${rr.cannons}) ✓`) : fail(`Kanonen-Kill: Kanone überlebt 8 Treffer (${start.cannonsBefore}→${rr.cannons})`);
+    rr.scrap >= rr.before + 12 ? ok(`Kanonen-Kill: +12 Schrott gutgeschrieben (${rr.before}→${rr.scrap}) ✓`) : fail(`Kanonen-Kill: Kill-Bonus fehlt (${rr.before}→${rr.scrap})`);
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Kanonen-Kill: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Kanonen-Kill-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE: Rüstphasen-„Fertig" (v3.18.1) — alle Spieler bestätigt →
 // Timer springt auf 3s (wenn > 3). Eigenes Spiel für saubere Isolation.
 // ═══════════════════════════════════════════════════════════════
@@ -2291,7 +2334,7 @@ async function suiteTutorial(browser) {
     const mm3 = await suiteOnline3P(browser, FB_PORT);
     return { mm, mm3 };
   })();
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -2310,6 +2353,7 @@ async function suiteTutorial(browser) {
     suiteTutorial(browser),
     suiteBallSettle(browser),
     suiteArmoryReady(browser),
+    suiteCannonKill(browser),
   ]);
 
   const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
@@ -2317,9 +2361,9 @@ async function suiteTutorial(browser) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
