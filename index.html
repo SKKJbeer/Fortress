@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.19.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.19.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3163,6 +3163,7 @@ window.FortressApp = function Fortress() {
   const explosions = useRef([]);
   const particles = useRef([]);
   const prevExplCount = useRef(0);
+  const lastFrameTime = useRef(0);
   const prevBigCount = useRef(0);
   const shakeRef = useRef(0);
   const reload = useRef({ 1: 1, 2: 1 });
@@ -5451,6 +5452,12 @@ window.FortressApp = function Fortress() {
       return;
     }
     const now = performance.now();
+    // Zeitbasierte Bewegung (v3.19.3): Kugel-Fortschritt an die reale Frame-Zeit
+    // koppeln statt an die Framerate. Sonst werden Kugeln bei FPS-Einbrüchen
+    // (viele Kanonen/Risse/Schrott-Popups) sichtbar langsamer. 1 = 60fps-Norm,
+    // gedeckelt auf 3, damit ein Stall die Kugel nicht überschießt.
+    const frameScale = lastFrameTime.current ? Math.min(3, (now - lastFrameTime.current) / (1e3 / 60)) : 1;
+    lastFrameTime.current = now;
     const players = playersList();
     const isGuest = online.current && myRole.current !== 1;
     if (isGuest && reloadProgRef.current) {
@@ -5465,7 +5472,7 @@ window.FortressApp = function Fortress() {
       if (!isGuest) {
         for (const ball of balls.current) {
           if (!ball.alive) continue;
-          ball.prog += 1 / ball.dur;
+          ball.prog += frameScale / ball.dur;
           if (ball.prog >= 1) {
             ball.alive = false;
             impactAt(ball);
@@ -5482,7 +5489,7 @@ window.FortressApp = function Fortress() {
       } else {
         for (const ball of balls.current) {
           if (!ball.alive) continue;
-          ball.prog += 1 / ball.dur;
+          ball.prog += frameScale / ball.dur;
           if (ball.prog >= 1) ball.alive = false;
         }
         balls.current = balls.current.filter((b) => b.alive);
@@ -6370,7 +6377,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

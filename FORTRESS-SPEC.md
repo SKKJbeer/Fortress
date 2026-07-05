@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2261,3 +2261,20 @@ Preis). Statt platzraubender Beschreibungszeilen jetzt zweistufig:
   überlagert. i18n de/en vollständig.
 
 Tests grün. SW-Cache `fortress-v3.19.2`.
+
+### v3.19.3 — Fix: Kugeln werden bei FPS-Einbrüchen langsamer (zeitbasierte Bewegung)
+Nutzer-Report „seit dem Balance-Update fliegen die Kugeln plötzlich langsam /
+werden langsamer beim Schießen". Ursache: Kugel-Fortschritt lief **pro Frame**
+(`ball.prog += 1 / ball.dur`), nicht pro Zeit. Seit der Schrott-Ökonomie sind
+mehr Objekte auf dem Feld (Riss-Sprites, Schrott-Popups, länger überlebende
+Kanonen) → FPS sinkt im Gefecht → jede Kugel bewegt sich pro Frame gleich weit,
+aber es gibt weniger Frames pro Sekunde → real langsamer. `ball.dur` selbst war
+unverändert (`Math.max(30, 26 + dist*0.09)`).
+- Neuer `frameScale` im Render-Loop: `min(3, Δt / (1000/60))` (1 = 60fps-Norm,
+  gedeckelt gegen Überschießen nach einem Stall), `lastFrameTime`-Ref.
+- Beide Kugel-Pfade (Host + Gast) nutzen `ball.prog += frameScale / ball.dur`.
+  Nachlade-Logik war bereits zeitbasiert. Einschlag bleibt endpunktbasiert
+  (prog≥1) → kein Tunneling durch große Δt.
+- Kugel-Geschwindigkeit jetzt konstant unabhängig von der Framerate/Geräteklasse.
+
+Tests grün. SW-Cache `fortress-v3.19.3`.
