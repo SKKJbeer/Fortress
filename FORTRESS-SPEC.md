@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2297,3 +2297,15 @@ Rein interne Optimierung, keine sichtbare/mechanische Änderung. Selbstmessung a
 Gerät: `window.__perfDbg=true` → `__frameMs` (Zeichendauer je Frame, gated).
 
 Tests grün (219). SW-Cache `fortress-v3.19.4`.
+
+### v3.19.5 — Result-Screen: redundanten „Neue Karte"-Button entfernt
+Nutzer-Report (Bot-Spiel): „Nächste Runde" und „Neue Karte" fühlen sich gleich
+an. Grund: `nextRound()` ruft `initGrid()` → erzeugt eine **neue Zufallskarte**,
+genau wie „Neue Karte" (`startGame()`). Einziger Unterschied war der Score
+(Nächste Runde behält ihn, Neue Karte setzt auf 0), optisch aber „beide = neue
+Karte". Im Nicht-Ranked-Result-Zweig (Bot/Lokal/Code-Join-Host) den sekundären
+„Neue Karte"-Button gestrichen → nur noch „Nächste Runde" (primär, Score bleibt)
++ „Hauptmenü" (kompletter Neustart). Tote `onlineNewGame2`/Alias-Vars entfernt.
+i18n-Keys `newMap` bleiben (ungenutzt, schadlos). Ranked-Zweig unverändert.
+
+Tests grün (219). SW-Cache `fortress-v3.19.5`.

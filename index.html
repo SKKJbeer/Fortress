@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.19.4</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.19.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -6392,7 +6392,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6995,11 +6995,7 @@ window.FortressApp = function Fortress() {
     let onlineNextRound2 = function() {
       if (!isHost) return;
       nextRound();
-    }, onlineNewGame2 = function() {
-      if (!isHost) return;
-      startGame();
     };
-    var onlineNextRound = onlineNextRound2, onlineNewGame = onlineNewGame2;
     const info = resultInfo || {};
     const isWin = !!info.winner;
     const isHost = !online.current || myRole.current === 1;
@@ -7202,14 +7198,9 @@ window.FortressApp = function Fortress() {
         fontSize: 16, fontWeight: 800, borderRadius: 14, cursor: "pointer",
         boxShadow: "0 4px 24px rgba(59,130,246,0.4)"
       }}, React.createElement(Icon, { name: "rotateCw", size: 18 }), t("nextRound")),
-      // SEKUNDÄR: Neue Karte
-      React.createElement("button", { onClick: onlineNewGame2, style: {
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        background: "rgba(255,255,255,0.06)", color: "#cbd5e1",
-        border: "1px solid rgba(255,255,255,0.12)", padding: "12px",
-        fontSize: 14, fontWeight: 600, borderRadius: 12, cursor: "pointer"
-      }}, React.createElement(Icon, { name: "globe", size: 15 }), t("newMap")),
-      // TERTIÄR: Hauptmenü
+      // SEKUNDÄR: Hauptmenü ("Neue Karte" entfernt v3.19.5 — war funktional
+      // identisch zu „Nächste Runde": beide erzeugen via initGrid eine neue
+      // Zufallskarte. Für einen kompletten Neustart → Hauptmenü.)
       React.createElement("button", { onClick: () => {
         scoresRef.current = { 1: 0, 2: 0 };
         setScores({ 1: 0, 2: 0 });
