@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.20.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.21.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -379,7 +379,7 @@ und beschiessen danach gegenseitig ihre Festungen.
 Infrastruktur, auf der Daily Tasks (14.3) und künftige Achievements aufsetzen.
 
 **Datenmodell** (Ref, kein React-State): `matchStats.current = { 1: {...}, 2: {...}, 3: {...} }`
-mit je `{ walls, cannons, scrap, shots, hits }`:
+mit je `{ walls, cannons, scrap, shots, hits, buys }`:
 
 | Zähler | Inkrement-Ort (Host-autoritativ) |
 |---|---|
@@ -387,9 +387,12 @@ mit je `{ walls, cannons, scrap, shots, hits }`:
 | `cannons` — Kanonen-Kills | `impactAt` Kanonen-Kill (wo `SCRAP_CANNON` gutgeschrieben wird) |
 | `scrap` — verdienter Schrott gesamt | alle Stellen, die `scrap.current[p]` erhöhen (Mauer, Kanone, Überleben) |
 | `shots` — abgefeuerte Kugeln | `fireMortar` (pro Kugel, inkl. Mehrfach-Kanonen) |
-| `hits` — Kugeln mit Zerstörung | `impactAt`, wenn der Einschlag ≥1 Mauer/Kanone zerstört |
+| `hits` — Kugeln mit Wirkung | `impactAt`: Zerstörung ODER Schaden (Kanonen-HP-Treffer, Panzermauer-Riss) |
+| `buys` — Rüstungs-Shop-Käufe | `buyUpgrade` nach erfolgreichem Kauf (für Daily Task `buy3`) |
 
-- Reset in `resetEconomy()` (läuft bei jedem Spielstart lokal+online).
+- Reset in `resetEconomy()` (jeder Spielstart lokal+online) UND in `nextRound()`
+  — die Bilanz zählt **pro Runde**, passend zum Result-Screen nach jeder Runde
+  und zur Daily-Task-Ernte (keine Doppelzählung über Runden).
 - **Online-Sync**: Host serialisiert `matchStats` in den State-Push (kleines
   Objekt); Gäste übernehmen es in `applyState`. Damit zeigt der Result-Screen
   auf allen Geräten dieselben Zahlen.
@@ -2470,3 +2473,28 @@ Umsetzung von SPEC-Abschnitt 14.1. Der Bot hatte genau eine Stärke (Streuung
 - Test angepasst: Suite prüft 3 Stufen-Buttons und startet über „Mittel“.
 
 Tests grün. SW-Cache `fortress-v3.20.0`.
+
+### v3.21.0 — Match-Statistik + Result-Bilanz (Meta-Progression Phase 2, Teil 2/4)
+Umsetzung von SPEC-Abschnitt 14.2 — die Zähler-Infrastruktur für Daily Tasks
+(14.3) und die sichtbare Match-Bilanz.
+- **`matchStats`-Ref** pro Spieler `{walls, cannons, scrap, shots, hits, buys}`;
+  Helfer `msZero()`/`msOf(p)`. Inkremente: `fireMortar` (shots je Kugel),
+  `impactAt` (walls/cannons/hits/scrap inkl. Explosions-Kollateral; Kanonen-
+  HP-Treffer und Panzermauer-Riss zählen als Wirkungstreffer), Überlebens-Sold
+  (scrap), `buyUpgrade` (buys).
+- **Semantik pro Runde**: Reset in `resetEconomy()` (Spielstart) und
+  `nextRound()`; Gast-Reset zusätzlich in `startOnlineGame` (bis der Host-Sync
+  greift).
+- **Online-Sync**: Feld `ms` im State-Push; `applyState` übernimmt mit
+  `msZero()`-Fallback je Spieler → alle Geräte zeigen dieselben Zahlen.
+- **Result-Screen**: 4-Kachel-Bilanz für den eigenen Spieler unter der
+  Score-Zeile — 🧱 Mauern · 💣 Kanonen · ⚙ Schrott · 🎯 Präzision
+  (hits/shots in %, „—“ ohne Schuss). i18n de/en.
+- **Konsolidierung**: `blocksDestroyedThisGameRef` entfernt;
+  `recordGameResult` liest Lebenszeit-Blocks jetzt aus `matchStats[meP].walls`.
+  Nebeneffekt-Fix: Gäste bekamen bisher IMMER 0 Blocks gutgeschrieben
+  (Host-only-Ref) — via synchronisiertem `matchStats` zählt es jetzt korrekt.
+- Gated Hook `__matchStats(p)`; Suite prüft Kill-, Hit-, Scrap- und
+  Wall-Zähler in den bestehenden Isolier-Suites.
+
+Tests grün. SW-Cache `fortress-v3.21.0`.

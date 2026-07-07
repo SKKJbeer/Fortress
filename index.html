@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.20.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.21.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1457,6 +1457,10 @@ const LANGS = {
     botLvlMid: "Mittel",
     botLvlHard: "Schwer",
     botLvlPick: "W\xE4hle die Bot-St\xE4rke:",
+    statWalls: "Mauern",
+    statCannons: "Kanonen",
+    statScrap: "Schrott",
+    statAcc: "Pr\xE4zision",
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Setze 2 Kanonen INNERHALB deiner Burgmauern (auf freie Fl\xE4chen tippen). Wichtig: Nur von Mauern UMSCHLOSSENE Kanonen k\xF6nnen feuern!",
@@ -1690,6 +1694,10 @@ const LANGS = {
     botLvlMid: "Medium",
     botLvlHard: "Hard",
     botLvlPick: "Pick the bot strength:",
+    statWalls: "Walls",
+    statCannons: "Cannons",
+    statScrap: "Scrap",
+    statAcc: "Accuracy",
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Place 2 cannons INSIDE your castle walls (tap free spots). Important: only cannons ENCLOSED by walls can fire!",
@@ -2563,10 +2571,12 @@ window.FortressApp = function Fortress() {
     // Lifetime gold
     const prevLifetimeGold = typeof profile.lifetimeGold === 'number' ? profile.lifetimeGold : 0;
     const newLifetimeGold = prevLifetimeGold + goldEarned;
-    // Blocks destroyed accumulated from game
+    // Blocks destroyed accumulated from game — aus der Match-Statistik (v3.21.0).
+    // Vorher zählte ein Host-only-Ref; Gäste bekamen 0. matchStats ist via
+    // State-Sync auf allen Geräten identisch → zählt auch für Gäste korrekt.
+    const meP = online.current ? (myRole.current || 1) : 1;
     const prevBlocks = typeof profile.blocksDestroyed === 'number' ? profile.blocksDestroyed : 0;
-    const newBlocks = prevBlocks + blocksDestroyedThisGameRef.current;
-    blocksDestroyedThisGameRef.current = 0;
+    const newBlocks = prevBlocks + ((matchStats.current[meP] || {}).walls || 0);
     const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, [peakEloKey]: newPeakElo, gold: newGold, level: newLevel, xp: newXp, winStreak: newWinStreak, lifetimeGold: newLifetimeGold, blocksDestroyed: newBlocks });
     // Process achievements
     const achEvents = [
@@ -2594,7 +2604,6 @@ window.FortressApp = function Fortress() {
   const [editWappen, setEditWappen] = useState("\u2654");
   const [editColor, setEditColor] = useState("#2563eb");
   const [achievementQueue, setAchievementQueue] = React.useState([]);
-  const blocksDestroyedThisGameRef = React.useRef(0);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   // Anzahl der Achievements, die der Spieler zuletzt gesehen hat (wie „gelesen"-Marker).
@@ -2629,6 +2638,7 @@ window.FortressApp = function Fortress() {
     const gated = (fn) => (...a) => window.__mmDebug ? fn(...a) : null;
     window.__grantScrap = gated((p, n) => { scrap.current[p] = (scrap.current[p] || 0) + n; setUiTick((t) => t + 1); return true; });
     window.__readScrap = gated((p) => scrap.current[p] || 0);
+    window.__matchStats = gated((p) => JSON.parse(JSON.stringify(matchStats.current[p] || {})));
     window.__phase = gated(() => phase_r.current);
     // Testhilfe: eine fast gelandete Kugel von `shooter` auf eine Feindmauer
     window.__spawnBallAtEnemy = gated((shooter) => {
@@ -3130,6 +3140,12 @@ window.FortressApp = function Fortress() {
   // Schrott-Ökonomie (v3.16.0): Währung, gekaufte Upgrades, angeknackste Mauern
   const scrap = useRef({ 1: 0, 2: 0, 3: 0 });
   const upgrades = useRef({ 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } });
+  // ── Match-Statistik (v3.21.0, SPEC 14.2) ────────────────────────────────
+  // Host-autoritativ gezählt, via State-Push synchronisiert. Speist den
+  // Result-Screen und die Daily Tasks. buys zählt Rüstungs-Shop-Käufe.
+  function msZero() { return { walls: 0, cannons: 0, scrap: 0, shots: 0, hits: 0, buys: 0 }; }
+  const matchStats = useRef({ 1: msZero(), 2: msZero(), 3: msZero() });
+  function msOf(p) { return matchStats.current[p] || (matchStats.current[p] = msZero()); }
   const wallHp = useRef({});
   // „Fertig"-Bestätigung in der Rüstphase (v3.18.1): Sind alle aktiven Spieler
   // bereit, springt der Timer auf 3s (wenn > 3) — wie das Auto-Vorspulen im Setup.
@@ -3232,6 +3248,7 @@ window.FortressApp = function Fortress() {
       upgrades: upgrades.current,
       wallHp: wallHp.current,
       armoryReady: armoryReady.current,
+      ms: matchStats.current,
       piece1: pieces.current[1] && pieces.current[1].cells,
       piece2: pieces.current[2] && pieces.current[2].cells,
       piece3: pieces.current[3] && pieces.current[3].cells,
@@ -3405,6 +3422,9 @@ window.FortressApp = function Fortress() {
         if (s.upgrades) upgrades.current = s.upgrades;
         wallHp.current = s.wallHp || {};
         if (s.armoryReady) armoryReady.current = s.armoryReady;
+        // Match-Statistik (v3.21.0): Host-Zahlen übernehmen; fehlende Spieler-
+        // Einträge auffüllen (Firebase lässt leere Objekte weg).
+        if (s.ms) matchStats.current = { 1: s.ms[1] || msZero(), 2: s.ms[2] || msZero(), 3: s.ms[3] || msZero() };
         if (s.scrapPops) scrapPops.current = s.scrapPops;
         if (s.eliminated) eliminated.current = s.eliminated;
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
@@ -4246,7 +4266,6 @@ window.FortressApp = function Fortress() {
     online.current = true;
     lastSeenPhase.current = null;
     statRecorded.current = false;
-    blocksDestroyedThisGameRef.current = 0;
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -4263,6 +4282,9 @@ window.FortressApp = function Fortress() {
       const players = playersList();
       pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
       eliminated.current = {};
+      // Gast: lokale Match-Statistik nullen (v3.21.0) — der Host-Sync
+      // überschreibt sie gleich, aber bis dahin darf nichts Altes stehen.
+      matchStats.current = { 1: msZero(), 2: msZero(), 3: msZero() };
       screenRef.current = "game";
       setScreen("game");
     }
@@ -4554,6 +4576,7 @@ window.FortressApp = function Fortress() {
     cannonBudget.current = players.reduce((o, p) => (o[p] = 0, o), {});
     for (const p of players) if (!eliminated.current[p]) {
       scrap.current[p] = (scrap.current[p] || 0) + SCRAP_SURVIVE;
+      msOf(p).scrap += SCRAP_SURVIVE; // Match-Statistik (v3.21.0)
       const ct = castles.current[p];
       if (ct) addScrapPop(ct.c * CELL + CELL / 2, ct.r * CELL - CELL, SCRAP_SURVIVE, p);
     }
@@ -4628,6 +4651,7 @@ window.FortressApp = function Fortress() {
     }
     lastShot.current[player] = now;
     SFX.shoot();
+    msOf(player).shots += ready.length; // Match-Statistik (v3.21.0): eine Kugel je schussbereiter Kanone
     ready.forEach((cn, index) => {
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
@@ -4737,12 +4761,16 @@ window.FortressApp = function Fortress() {
       const cn = cannons.current[ep].find((c) => Math.abs(hitR - c.r) <= 1 && Math.abs(hitC - c.c) <= 1);
       if (cn) {
         cn.hp -= 1;
+        if (ball.player !== ep) msOf(ball.player).hits += 1; // Wirkungstreffer (Kanonen-Schaden)
         if (cn.hp <= 0) {
           // Kill-Belohnung (v3.16.0): Schrott für den Schützen
           let killScrap = 0;
           if (ball.player !== ep) {
             killScrap = SCRAP_CANNON;
             scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_CANNON;
+            const ms = msOf(ball.player);
+            ms.cannons += 1;
+            ms.scrap += SCRAP_CANNON;
           }
           const newG2 = g.map((row) => [...row]);
           const enemyWallT = WALL_OF[ep];
@@ -4757,6 +4785,9 @@ window.FortressApp = function Fortress() {
                 if (ball.player !== ep) {
                   killScrap += SCRAP_WALL;
                   scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
+                  const msW = msOf(ball.player);
+                  msW.walls += 1;
+                  msW.scrap += SCRAP_WALL;
                 }
               }
             }
@@ -4798,6 +4829,7 @@ window.FortressApp = function Fortress() {
       // Panzermauern (v3.16.0): erster Treffer knackst nur an
       if ((upgrades.current[ep] || {}).armor && !wallHp.current[wkey]) {
         wallHp.current[wkey] = 1;
+        if (ball.player !== ep) msOf(ball.player).hits += 1; // Riss = Wirkungstreffer
       } else {
         delete wallHp.current[wkey];
         newG[hitR][hitC] = RUBBLE;
@@ -4805,11 +4837,12 @@ window.FortressApp = function Fortress() {
         if (ball.player !== ep) {
           scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
           addScrapPop(hitC * CELL + CELL / 2, hitR * CELL, SCRAP_WALL, ball.player);
+          const msD = msOf(ball.player);
+          msD.walls += 1;
+          msD.scrap += SCRAP_WALL;
+          msD.hits += 1;
         }
       }
-    }
-    if (wallDestroyed && ball.owner === myRole.current) {
-      blocksDestroyedThisGameRef.current = (blocksDestroyedThisGameRef.current || 0) + 1;
     }
     setGrid(newG);
     const castleClosedAfter = isCastleClosed(newG, ep, castles.current[ep]);
@@ -4911,6 +4944,7 @@ window.FortressApp = function Fortress() {
       showWarn(t("repairDone", { n: fixedN }));
     } else return false;
     scrap.current[player] = have - price;
+    msOf(player).buys += 1; // Match-Statistik (v3.21.0): Rüstungs-Shop-Käufe
     if (typeof window !== "undefined" && window.__mmDebug) (window.__buys = window.__buys || []).push(player + ":" + item);
     // Kauf-Pop-Animation triggern (v3.17.0, rein optisch)
     const bk = player + "_" + item;
@@ -6294,6 +6328,7 @@ window.FortressApp = function Fortress() {
     scrap.current = { 1: 15, 2: 15, 3: 15 };
     upgrades.current = { 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } };
     wallHp.current = {};
+    matchStats.current = { 1: msZero(), 2: msZero(), 3: msZero() };
   }
   function startGame() {
     initGrid();
@@ -6313,6 +6348,9 @@ window.FortressApp = function Fortress() {
   function nextRound() {
     initGrid();
     setRound((r) => r + 1);
+    // Match-Bilanz zählt pro Runde (v3.21.0): Result-Screen und Daily-Task-
+    // Ernte beziehen sich auf die gerade gespielte Runde, nicht die Session.
+    matchStats.current = { 1: msZero(), 2: msZero(), 3: msZero() };
     beginSetup();
   }
   const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
@@ -6443,7 +6481,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.20.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.21.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7162,6 +7200,31 @@ window.FortressApp = function Fortress() {
         React.createElement("span", { style: { color: "#34d399", fontSize: 26, fontWeight: 900, textShadow: "0 0 14px rgba(52,211,153,0.55)" }}, (scores[3] || 0) + " ♜")
       )
     ),
+    // ── MATCH-BILANZ (v3.21.0, SPEC 14.2): 4 Kacheln für den eigenen Spieler ──
+    (() => {
+      const meP = online.current ? (myRole.current || 1) : 1;
+      const ms = (matchStats.current && matchStats.current[meP]) || { walls: 0, cannons: 0, scrap: 0, shots: 0, hits: 0 };
+      const acc = ms.shots > 0 ? Math.round(ms.hits / ms.shots * 100) + "%" : "—";
+      const tiles = [
+        { icon: "🧱", val: ms.walls, label: t("statWalls") },
+        { icon: "💣", val: ms.cannons, label: t("statCannons") },
+        { icon: "⚙", val: ms.scrap, label: t("statScrap") },
+        { icon: "🎯", val: acc, label: t("statAcc") }
+      ];
+      return React.createElement("div", { style: { width: "100%", maxWidth: 320, marginBottom: 12 } },
+        React.createElement("div", { style: { display: "flex", gap: 6 } },
+          tiles.map((tl, i) => React.createElement("div", { key: i, style: {
+            flex: 1, minWidth: 0, padding: "8px 2px 7px", borderRadius: 12,
+            background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.09)",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 2
+          } },
+            React.createElement("span", { style: { fontSize: 14, lineHeight: 1 } }, tl.icon),
+            React.createElement("span", { style: { fontSize: 16, fontWeight: 900, color: "#e2e8f0", lineHeight: 1.1 } }, tl.val),
+            React.createElement("span", { style: { fontSize: 8.5, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
+          ))
+        )
+      );
+    })(),
     // ── BELOHNUNGS-KARTEN (ELO / GOLD / XP) ──────────────────
     online.current && React.createElement("div", { style: {
       display: "flex", flexDirection: "column", gap: 8,

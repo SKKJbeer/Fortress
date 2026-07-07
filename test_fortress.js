@@ -2043,6 +2043,9 @@ async function suiteBallSettle(browser) {
     rr.scrap > before ? ok(`Nachlauf: Schrott noch gutgeschrieben (${before}→${rr.scrap}) ✓`) : fail(`Nachlauf: kein Schrott (${before}→${rr.scrap})`);
     rr.phase !== 'shoot' ? ok(`Nachlauf: Schussphase danach verlassen (→ ${rr.phase}) ✓`) : fail('Nachlauf: hängt in Schussphase');
     rr.disc === 0 ? ok('Nachlauf: keine fliegende Kugel verworfen ✓') : fail(`Nachlauf: ${rr.disc} Kugel(n) verworfen`);
+    // Match-Statistik (v3.21.0): zerstörte Mauer wird gezählt
+    const msW = await page.evaluate(() => window.__matchStats && window.__matchStats(1));
+    (msW && msW.walls >= 1) ? ok(`Match-Statistik: Mauer-Zerstörung gezählt (walls=${msW.walls}) ✓`) : fail(`Match-Statistik: walls fehlt (${JSON.stringify(msW)})`);
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Nachlauf: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Nachlauf-Suite Ausnahme: ' + e.message);
@@ -2086,6 +2089,11 @@ async function suiteCannonKill(browser) {
     const rr = await page.evaluate((cb) => ({ scrap: window.__readScrap(1), cannons: window.__enemyCannonCount(1), before: cb }), start.before.before);
     rr.cannons < start.cannonsBefore ? ok(`Kanonen-Kill: 8 HP → Feindkanone zerstört (${start.cannonsBefore}→${rr.cannons}) ✓`) : fail(`Kanonen-Kill: Kanone überlebt 8 Treffer (${start.cannonsBefore}→${rr.cannons})`);
     rr.scrap >= rr.before + 12 ? ok(`Kanonen-Kill: +12 Schrott gutgeschrieben (${rr.before}→${rr.scrap}) ✓`) : fail(`Kanonen-Kill: Kill-Bonus fehlt (${rr.before}→${rr.scrap})`);
+    // Match-Statistik (v3.21.0): Kill + Wirkungstreffer + Schrott-Zähler
+    const ms = await page.evaluate(() => window.__matchStats && window.__matchStats(1));
+    (ms && ms.cannons >= 1) ? ok(`Match-Statistik: Kanonen-Kill gezählt (cannons=${ms.cannons}) ✓`) : fail(`Match-Statistik: Kill fehlt (${JSON.stringify(ms)})`);
+    (ms && ms.hits >= 1) ? ok(`Match-Statistik: Wirkungstreffer gezählt (hits=${ms.hits}) ✓`) : fail(`Match-Statistik: hits fehlt (${JSON.stringify(ms)})`);
+    (ms && ms.scrap >= 12) ? ok(`Match-Statistik: Schrott-Verdienst gezählt (scrap=${ms.scrap}) ✓`) : fail(`Match-Statistik: scrap fehlt (${JSON.stringify(ms)})`);
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Kanonen-Kill: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Kanonen-Kill-Suite Ausnahme: ' + e.message);
