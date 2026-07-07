@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.22.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.23.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2522,3 +2522,31 @@ Gold-Belohnung, der stärkste Retention-Hebel neben dem Streak.
   (Seed prog→9999, Gold steigt, collected gesetzt).
 
 Tests grün. SW-Cache `fortress-v3.22.0`.
+
+### v3.23.0 — Gold-Shop: Kosmetik (Meta-Progression Phase 2, Teil 4/4)
+Umsetzung von SPEC-Abschnitt 14.4 — die bislang fehlende Gold-Senke. Rein
+kosmetisch, nur mit erspieltem Gold (kein Pay2Win, kein Echtgeld).
+- **12 Artikel in 3 Kategorien** (`COSMETICS`, IDs mit Kategorie-Präfix):
+  Kugel-Trails (Standard 0 / Glut 150 / Frost 150 / Gift 250 / Gold 400),
+  Wappen-Rahmen (Kein 0 / Bronze 100 / Silber 250 / Gold 500 / Drache 800),
+  Sieges-Effekte (Konfetti 0 / Feuerwerk 200 / Goldregen 350).
+- **Datenmodell**: `profile.cosmetics = { owned:[ids], equipped:{trail,frame,win} }`;
+  `cosOf(profile)` normalisiert (Gratis-Artikel implizit besessen).
+- **Rendering**:
+  - Trail: Kugel-Schweif nutzt `TRAIL_COLOR[playerInfo[p].trail]`, sonst
+    Spielerfarbe — EIN Lookup pro Kugel pro Frame, keine neuen Per-Frame-Kosten.
+  - Rahmen: Zierring + Glow um das Wappen im Menü-Profil (`FRAME_STYLE`).
+  - Sieges-Effekt: `WinFx`-Komponente auf dem Result-Screen bei eigenem Sieg —
+    Konfetti (bestehend), Feuerwerk (`fwBurst`-Keyframe, 6 Burst-Punkte),
+    Goldregen (`coinFall`, 14 Münzen). Deterministisch, kein `Math.random()`.
+- **Online-Sichtbarkeit**: `trail`/`frame` in beiden join-Payloads, im Host-
+  `playerInfo` (Gast + Host-Selbst) und in `initBotMatchIdentity` → via
+  bestehendem playerInfo-Sync sehen Gegner die Trail-Farbe der Kugeln.
+  Fehlendes Feld (alte Clients) ⇒ Standard-Optik, abwärtskompatibel.
+- **UI**: 🛒-Button neben 📋; Modal mit Gold-Chip, 3 Sektionen, Karten mit
+  Vorschau (Farbkreis/Ring/Emoji), Preis bzw. „Besitzt“/„Angelegt ✓“.
+  Kauf = Gold-Abzug + sofort angelegt; Umrüsten gratis. i18n de/en.
+- Neue Suite `suiteGoldShop`: Kauf zieht Gold ab, owned/equipped korrekt,
+  Umrüsten auf Gratis-Artikel ohne Gold-Abzug.
+
+Tests grün. SW-Cache `fortress-v3.23.0`.

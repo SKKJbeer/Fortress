@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.22.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.23.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -37,6 +37,8 @@
     @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}
     @keyframes xpNumPop{0%{opacity:0;transform:scale(0.7) translateY(6px)}60%{transform:scale(1.12) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
     @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+    @keyframes fwBurst{0%{transform:scale(0.2);opacity:0}12%{opacity:1}55%{transform:scale(5);opacity:0.55}100%{transform:scale(7.5);opacity:0}}
+    @keyframes coinFall{0%{transform:translateY(0) rotate(0deg);opacity:0}8%{opacity:1}100%{transform:translateY(110vh) rotate(340deg);opacity:0.9}}
     @keyframes badgePop{0%{transform:scale(0.7);opacity:0.5}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
     @keyframes streakGlow{0%,100%{box-shadow:0 0 6px rgba(251,191,36,0.4)}50%{box-shadow:0 0 18px rgba(251,191,36,0.9)}}
     @keyframes dailyBounceIn{0%{transform:scale(0.7) translateY(20px);opacity:0}60%{transform:scale(1.08) translateY(-4px)}100%{transform:scale(1) translateY(0);opacity:1}}
@@ -1474,6 +1476,26 @@ const LANGS = {
     task_play4: "Spiele 4 Matches",
     task_win1: "Gewinne 1 Match",
     task_buy3: "Kaufe 3\xD7 im R\xFCstungs-Shop",
+    goldShopTitle: "Gold-Shop",
+    goldShopSub: "Kosmetik f\xFCr erspieltes Gold — kein Vorteil im Spiel",
+    cosSectionTrail: "🎇 Kugel-Trails",
+    cosSectionFrame: "🖼️ Wappen-Rahmen",
+    cosSectionWin: "🎉 Sieges-Effekte",
+    cosOwned: "Besitzt",
+    cosEquipped: "Angelegt ✓",
+    cos_trail_standard: "Standard",
+    cos_trail_ember: "Glut",
+    cos_trail_frost: "Frost",
+    cos_trail_venom: "Gift",
+    cos_trail_gold: "Gold",
+    cos_frame_none: "Kein",
+    cos_frame_bronze: "Bronze",
+    cos_frame_silver: "Silber",
+    cos_frame_gold: "Gold",
+    cos_frame_dragon: "Drache",
+    cos_win_confetti: "Konfetti",
+    cos_win_fireworks: "Feuerwerk",
+    cos_win_goldrain: "Goldregen",
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Setze 2 Kanonen INNERHALB deiner Burgmauern (auf freie Fl\xE4chen tippen). Wichtig: Nur von Mauern UMSCHLOSSENE Kanonen k\xF6nnen feuern!",
@@ -1724,6 +1746,26 @@ const LANGS = {
     task_play4: "Play 4 matches",
     task_win1: "Win 1 match",
     task_buy3: "Buy 3\xD7 in the armory shop",
+    goldShopTitle: "Gold shop",
+    goldShopSub: "Cosmetics for earned gold — no in-game advantage",
+    cosSectionTrail: "🎇 Ball trails",
+    cosSectionFrame: "🖼️ Crest frames",
+    cosSectionWin: "🎉 Victory effects",
+    cosOwned: "Owned",
+    cosEquipped: "Equipped ✓",
+    cos_trail_standard: "Default",
+    cos_trail_ember: "Ember",
+    cos_trail_frost: "Frost",
+    cos_trail_venom: "Venom",
+    cos_trail_gold: "Gold",
+    cos_frame_none: "None",
+    cos_frame_bronze: "Bronze",
+    cos_frame_silver: "Silver",
+    cos_frame_gold: "Gold",
+    cos_frame_dragon: "Dragon",
+    cos_win_confetti: "Confetti",
+    cos_win_fireworks: "Fireworks",
+    cos_win_goldrain: "Gold rain",
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Place 2 cannons INSIDE your castle walls (tap free spots). Important: only cannons ENCLOSED by walls can fire!",
@@ -2220,6 +2262,43 @@ window.FortressApp = function Fortress() {
       style: { position: "relative", height: 0, overflow: "visible", pointerEvents: "none" }
     }, ...particles);
   }
+  // Sieges-Effekt (v3.23.0, SPEC 14.4): Kosmetik auf dem Result-Screen.
+  // Deterministisch (keine Math.random) wie ConfettiBurst; fixed overlay,
+  // rein dekorativ (pointerEvents none).
+  function WinFx({ kind }) {
+    if (kind === "win_fireworks") {
+      const bursts = Array.from({ length: 6 }, (_, i) => {
+        const left = 15 + (i * 37) % 70;
+        const top = 8 + (i * 23) % 34;
+        const hue = ["#fbbf24", "#f87171", "#60a5fa", "#4ade80", "#e879f9", "#22d3ee"][i];
+        const delay = (i * 0.35).toFixed(2);
+        return React.createElement("div", { key: i, style: {
+          position: "absolute", left: left + "%", top: top + "%", width: 8, height: 8,
+          borderRadius: "50%", background: hue,
+          boxShadow: "0 0 18px 4px " + hue,
+          animation: "fwBurst 1.6s " + delay + "s ease-out infinite", pointerEvents: "none"
+        } });
+      });
+      return React.createElement("div", { style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...bursts);
+    }
+    if (kind === "win_goldrain") {
+      const coins = Array.from({ length: 14 }, (_, i) => {
+        const left = 4 + (i * 41) % 92;
+        const delay = ((i * 0.23) % 1.6).toFixed(2);
+        const dur = (2 + (i * 0.13) % 1.2).toFixed(2);
+        return React.createElement("span", { key: i, style: {
+          position: "absolute", left: left + "%", top: "-6%",
+          fontSize: 14 + (i % 3) * 5,
+          animation: "coinFall " + dur + "s " + delay + "s linear infinite", pointerEvents: "none",
+          filter: "drop-shadow(0 0 6px rgba(251,191,36,0.7))"
+        } }, "🪙");
+      });
+      return React.createElement("div", { style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...coins);
+    }
+    // Standard: Konfetti über die volle Breite
+    return React.createElement("div", { style: { position: "fixed", left: 0, right: 0, top: 0, pointerEvents: "none", zIndex: 5 } },
+      React.createElement(ConfettiBurst, { active: true }));
+  }
   function WappenAvatar({ id, size = 36 }) {
     const src = WAPPEN_SRC[id] || WAPPEN_SRC.skelett;
     return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
@@ -2332,6 +2411,44 @@ window.FortressApp = function Fortress() {
     { id: "win1", target: 1, gold: 40, stat: "won", icon: "🏆" },
     { id: "buy3", target: 3, gold: 30, stat: "buys", icon: "🛒" }
   ];
+  // ── Gold-Shop: Kosmetik (v3.23.0, SPEC 14.4) ─────────────────────────────
+  // Rein kosmetisch, nur mit erspieltem Gold. IDs global eindeutig
+  // (Kategorie-Präfix); Gratis-Artikel gelten implizit als besessen.
+  const COSMETICS = {
+    trail: [
+      { id: "trail_standard", price: 0 },
+      { id: "trail_ember", price: 150 },
+      { id: "trail_frost", price: 150 },
+      { id: "trail_venom", price: 250 },
+      { id: "trail_gold", price: 400 }
+    ],
+    frame: [
+      { id: "frame_none", price: 0 },
+      { id: "frame_bronze", price: 100 },
+      { id: "frame_silver", price: 250 },
+      { id: "frame_gold", price: 500 },
+      { id: "frame_dragon", price: 800 }
+    ],
+    win: [
+      { id: "win_confetti", price: 0 },
+      { id: "win_fireworks", price: 200 },
+      { id: "win_goldrain", price: 350 }
+    ]
+  };
+  const TRAIL_COLOR = { trail_ember: "#fb923c", trail_frost: "#7dd3fc", trail_venom: "#a3e635", trail_gold: "#fcd34d" };
+  const FRAME_STYLE = {
+    frame_bronze: { c: "#b45309", glow: "rgba(180,83,9,0.6)" },
+    frame_silver: { c: "#cbd5e1", glow: "rgba(203,213,225,0.6)" },
+    frame_gold: { c: "#fbbf24", glow: "rgba(251,191,36,0.65)" },
+    frame_dragon: { c: "#a78bfa", glow: "rgba(167,139,250,0.7)" }
+  };
+  function cosOf(p) {
+    const c = (p && p.cosmetics) || {};
+    return {
+      owned: Array.isArray(c.owned) ? c.owned : [],
+      equipped: __spreadValues({ trail: "trail_standard", frame: "frame_none", win: "win_confetti" }, c.equipped || {})
+    };
+  }
   function todayStr() { return new Date().toISOString().slice(0, 10); }
   function rollDailyTasks(dayStr) {
     const seed = (parseInt(dayStr.replace(/-/g, ""), 10) ^ 1597334677) >>> 0;
@@ -2876,6 +2993,27 @@ window.FortressApp = function Fortress() {
     SFX.win && SFX.win();
   }
   const tasksClaimable = tasksState.tasks.filter((tk) => { const d = taskDef(tk.id); return d && !tk.collected && (tk.prog || 0) >= d.target; }).length;
+  // ── Gold-Shop State (v3.23.0) ──
+  const [showGoldShop, setShowGoldShop] = useState(false);
+  function cosmeticOwned(cos, item) { return item.price === 0 || cos.owned.includes(item.id); }
+  function buyOrEquipCosmetic(cat, item) {
+    if (!profile) return;
+    const cos = cosOf(profile);
+    let updated;
+    if (cosmeticOwned(cos, item)) {
+      if (cos.equipped[cat] === item.id) return; // schon angelegt
+      updated = __spreadProps(__spreadValues({}, profile), { cosmetics: { owned: cos.owned, equipped: __spreadProps(__spreadValues({}, cos.equipped), { [cat]: item.id }) } });
+    } else {
+      const g = typeof profile.gold === "number" ? profile.gold : 100;
+      if (g < item.price) return;
+      updated = __spreadProps(__spreadValues({}, profile), {
+        gold: g - item.price,
+        cosmetics: { owned: [...cos.owned, item.id], equipped: __spreadProps(__spreadValues({}, cos.equipped), { [cat]: item.id }) }
+      });
+      SFX.win && SFX.win();
+    }
+    saveProfile(updated);
+  }
   useEffect(() => {
     if (screen === "result") harvestDailyTasks((resultInfo || {}).winner);
     else tasksHarvested.current = false; // nächste Runde/Spiel darf wieder ernten
@@ -3611,13 +3749,16 @@ window.FortressApp = function Fortress() {
         name: a.name || "Gast " + p2,
         wappen: a.wappen || (p2 === 2 ? "\u265A" : "\u265C"),
         color: a.color || (p2 === 2 ? "#dc2626" : "#059669"),
-        elo: typeof a.elo === "number" ? a.elo : 1e3
+        elo: typeof a.elo === "number" ? a.elo : 1e3,
+        trail: a.trail, frame: a.frame // Kosmetik (v3.23.0), undefined = Standard
       };
       playerInfo.current[1] = {
         name: (profile == null ? void 0 : profile.name) || "Host",
         wappen: (profile == null ? void 0 : profile.wappen) || "\u2654",
         color: (profile == null ? void 0 : profile.color) || "#2563eb",
-        elo: typeof (m3 ? profile == null ? void 0 : profile.elo3 : profile == null ? void 0 : profile.elo) === "number" ? m3 ? profile.elo3 : profile.elo : 1e3
+        elo: typeof (m3 ? profile == null ? void 0 : profile.elo3 : profile == null ? void 0 : profile.elo) === "number" ? m3 ? profile.elo3 : profile.elo : 1e3,
+        trail: cosOf(profile).equipped.trail,
+        frame: cosOf(profile).equipped.frame
       };
       joinedGuests.current[p2] = true;
       // Matchmaking: das Kandidat-Ticket dieses Gastes erst jetzt löschen, wo
@@ -3885,7 +4026,9 @@ window.FortressApp = function Fortress() {
       name: (profile == null ? void 0 : profile.name) || "Gast " + role2,
       wappen: (profile == null ? void 0 : profile.wappen) || (role2 === 2 ? "\u265A" : "\u265C"),
       color: (profile == null ? void 0 : profile.color) || (role2 === 2 ? "#dc2626" : "#059669"),
-      elo: myElo
+      elo: myElo,
+      trail: cosOf(profile).equipped.trail,
+      frame: cosOf(profile).equipped.frame
     });
     let role = 0;
     if (await fb.reserve(`games/${code}/guestAction2`, joinPayload(2))) {
@@ -3983,7 +4126,9 @@ window.FortressApp = function Fortress() {
       name: (profile == null ? void 0 : profile.name) || ("Gast " + role),
       wappen: (profile == null ? void 0 : profile.wappen) || (role === 2 ? "♚" : "♜"),
       color: (profile == null ? void 0 : profile.color) || (role === 2 ? "#dc2626" : "#059669"),
-      elo: myEloForMode(np)
+      elo: myEloForMode(np),
+      trail: cosOf(profile).equipped.trail,
+      frame: cosOf(profile).equipped.frame
     });
     // Existenz-Check (v3.15.3): Ist das Spiel schon wieder weg (Host-Watchdog/
     // Abbruch, veralteter matched-Status), NICHT per Reserve einen Orphan-Knoten
@@ -5121,7 +5266,9 @@ window.FortressApp = function Fortress() {
       name: (profile == null ? void 0 : profile.name) || t('playerFallback', { n: 1 }),
       wappen: (profile == null ? void 0 : profile.wappen) || "skelett",
       color: (profile == null ? void 0 : profile.color) || "#2563eb",
-      elo: 1e3
+      elo: 1e3,
+      trail: cosOf(profile).equipped.trail, // eigene Kosmetik auch im Bot-Spiel sichtbar
+      frame: cosOf(profile).equipped.frame
     };
     playerInfo.current[2] = {
       name: BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)],
@@ -6239,10 +6386,12 @@ window.FortressApp = function Fortress() {
       if (ball.trail) {
         ball.trail.push({ x: bx, y: drawY });
         if (ball.trail.length > 9) ball.trail.shift();
+        // Kosmetik-Trail (v3.23.0): gekaufte Trail-Farbe des Schützen, sonst Spielerfarbe
+        const trailCol = TRAIL_COLOR[(playerInfo.current[ball.player] || {}).trail] || BALL_MID[ball.player] || BALL_MID[1];
         for (let ti = 0; ti < ball.trail.length - 1; ti++) {
           const tp = ball.trail[ti];
           ctx.globalAlpha = (ti / ball.trail.length) * 0.4;
-          ctx.fillStyle = BALL_MID[ball.player] || BALL_MID[1];
+          ctx.fillStyle = trailCol;
           ctx.beginPath();
           ctx.arc(tp.x, tp.y, 1.5 + ti * 0.5, 0, Math.PI * 2);
           ctx.fill();
@@ -6514,16 +6663,21 @@ window.FortressApp = function Fortress() {
     padding: "12px 14px",
     marginBottom: 16,
     textAlign: "left"
-  } }, /* @__PURE__ */ React.createElement("div", { style: {
-    width: 72,
-    height: 72,
-    borderRadius: "50%",
-    flexShrink: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
-  } }, React.createElement(WappenAvatar, { id: profile.wappen, size: 72 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
+  } }, /* @__PURE__ */ React.createElement("div", { style: (() => {
+    // Wappen-Rahmen (v3.23.0): gekaufter Zierrahmen um das eigene Wappen
+    const fr = FRAME_STYLE[cosOf(profile).equipped.frame];
+    return {
+      width: 72,
+      height: 72,
+      borderRadius: "50%",
+      flexShrink: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      border: fr ? `3px solid ${fr.c}` : "none",
+      boxShadow: fr ? `0 0 14px ${fr.glow}, 0 0 26px ${profile.color}33` : `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
+    };
+  })() }, React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 64 : 72 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
     /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
@@ -6547,7 +6701,12 @@ window.FortressApp = function Fortress() {
     } },
       "📋",
       tasksClaimable > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#34d399", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, tasksClaimable) : null
-    )
+    ),
+    // Gold-Shop (v3.23.0): Kosmetik gegen erspieltes Gold
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowGoldShop(true), title: t('goldShopTitle'), style: {
+      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+      color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
+    } }, "🛒")
   )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, soundOn ? "\u{1F50A}" : "\u{1F507}"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, hapticsOn ? "\u{1F4F3}" : "\u{1F4F4}")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
@@ -6600,7 +6759,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.22.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.23.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6916,6 +7075,89 @@ window.FortressApp = function Fortress() {
         allDone && h("div", { style: { fontSize: 11.5, color: "#4ade80", fontWeight: 700, textAlign: "center", margin: "6px 0 2px" } }, t("tasksAllDone")),
         h("button", { onClick: () => setShowTasksModal(false), style: {
           width: "100%", marginTop: 10, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
+          borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.06)",
+          color: "#cbd5e1", fontSize: 13, fontWeight: 700
+        } }, t("close"))
+      )
+    );
+  })(),
+  // ── Gold-Shop-Modal (v3.23.0, SPEC 14.4) ──
+  showGoldShop && (() => {
+    const h = React.createElement;
+    const cos = cosOf(profile);
+    const gold = typeof (profile && profile.gold) === "number" ? profile.gold : 100;
+    const WIN_EMOJI = { win_confetti: "🎊", win_fireworks: "🎆", win_goldrain: "🪙" };
+    const preview = (cat, it) => {
+      if (cat === "trail") return h("div", { style: {
+        width: 26, height: 26, borderRadius: "50%",
+        background: TRAIL_COLOR[it.id] || "#93a4bd",
+        boxShadow: TRAIL_COLOR[it.id] ? "0 0 10px " + TRAIL_COLOR[it.id] : "none"
+      } });
+      if (cat === "frame") { const fr = FRAME_STYLE[it.id]; return h("div", { style: {
+        width: 26, height: 26, borderRadius: "50%",
+        border: fr ? "3px solid " + fr.c : "2px dashed rgba(255,255,255,0.25)",
+        boxShadow: fr ? "0 0 10px " + fr.glow : "none",
+        boxSizing: "border-box"
+      } }); }
+      return h("span", { style: { fontSize: 22, lineHeight: 1 } }, WIN_EMOJI[it.id] || "🎊");
+    };
+    const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 13 } },
+      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 7, textAlign: "left" } }, label),
+      h("div", { style: { display: "flex", gap: 6 } },
+        COSMETICS[cat].map((it) => {
+          const owned = cosmeticOwned(cos, it);
+          const equipped = cos.equipped[cat] === it.id;
+          const afford = gold >= it.price;
+          const clickable = equipped ? false : (owned || afford);
+          return h("button", { key: it.id, onClick: () => buyOrEquipCosmetic(cat, it), disabled: !clickable && !equipped, style: {
+            flex: 1, minWidth: 0, border: "none", borderRadius: 12, padding: "9px 2px 7px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+            cursor: clickable ? "pointer" : "default",
+            background: equipped ? "linear-gradient(180deg, rgba(52,211,153,0.2), rgba(10,14,24,0.6))" : owned ? "rgba(255,255,255,0.07)" : afford ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.03)",
+            boxShadow: equipped ? "inset 0 0 0 1.5px rgba(52,211,153,0.7)" : "inset 0 0 0 1px rgba(255,255,255,0.09)",
+            opacity: !owned && !afford ? 0.55 : 1
+          } },
+            preview(cat, it),
+            h("span", { style: { fontSize: 8.5, fontWeight: 800, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, t("cos_" + it.id)),
+            equipped
+              ? h("span", { style: { fontSize: 8, fontWeight: 900, color: "#34d399" } }, t("cosEquipped"))
+              : owned
+                ? h("span", { style: { fontSize: 8, fontWeight: 800, color: "#94a3b8" } }, t("cosOwned"))
+                : h("span", { style: { fontSize: 9, fontWeight: 900, color: afford ? "#fcd34d" : "#64748b" } }, it.price + " G")
+          );
+        })
+      )
+    );
+    return h("div", { onClick: () => setShowGoldShop(false), style: {
+      position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
+      backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 18
+    } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: {
+        maxWidth: 420, width: "100%", maxHeight: "88vh", overflowY: "auto",
+        background: "linear-gradient(180deg, rgba(30,41,66,0.98) 0%, rgba(11,16,30,0.99) 100%)",
+        border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "18px 16px 16px",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
+        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
+      } },
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
+          h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+            h("span", { style: { fontSize: 18 } }, "🛒"),
+            h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("goldShopTitle"))
+          ),
+          h("div", { style: {
+            display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
+            background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.55)",
+            boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7)"
+          } }, h("span", { style: { fontSize: 13, fontWeight: 900, color: "#3b2606" } }, gold + " G"))
+        ),
+        h("div", { style: { fontSize: 11.5, color: "#64748b", marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
+        section("trail", t("cosSectionTrail")),
+        section("frame", t("cosSectionFrame")),
+        section("win", t("cosSectionWin")),
+        h("button", { onClick: () => setShowGoldShop(false), style: {
+          width: "100%", marginTop: 4, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
           borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.06)",
           color: "#cbd5e1", fontSize: 13, fontWeight: 700
         } }, t("close"))
@@ -7317,6 +7559,8 @@ window.FortressApp = function Fortress() {
       textAlign: "center",
       overflowY: "auto"
     }},
+    // ── SIEGES-EFFEKT (v3.23.0): gekaufter Kosmetik-Effekt bei eigenem Sieg ──
+    wonState && !drawn && React.createElement(WinFx, { kind: cosOf(profile).equipped.win }),
     // ── ONLINE + SPIELERNAME CHIP ─────────────────────────────
     online.current && React.createElement("div", { style: {
       fontSize: 11, color: "#4ade80", marginBottom: 14, fontWeight: 700,

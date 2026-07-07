@@ -2065,6 +2065,69 @@ async function suiteDailyTasks(browser) {
   return { res, errs };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Gold-Shop Kosmetik (v3.23.0) — Kauf-, Anlege- und Gold-Flow
+// ═══════════════════════════════════════════════════════════════
+async function suiteGoldShop(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Gold-Shop\n' + '='.repeat(50));
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    const opened = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').includes('🛒'));
+      if (!b) return false; b.click(); return true;
+    });
+    opened ? ok('Gold-Shop: 🛒-Button im Menü ✓') : fail('Gold-Shop: Button fehlt');
+    await page.waitForTimeout(300);
+    const view = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        title: /Gold-Shop|Gold shop/.test(t),
+        sections: /Kugel-Trails|Ball trails/i.test(t) && /Wappen-Rahmen|Crest frames/i.test(t) && /Sieges-Effekte|Victory effects/i.test(t),
+        goldChip: /\d+ G/.test(t)
+      };
+    });
+    view.title ? ok('Gold-Shop: Modal mit Titel ✓') : fail('Gold-Shop: Modal fehlt');
+    view.sections ? ok('Gold-Shop: 3 Kategorien sichtbar ✓') : fail('Gold-Shop: Kategorien fehlen');
+    view.goldChip ? ok('Gold-Shop: Gold-Kontostand angezeigt ✓') : fail('Gold-Shop: Kontostand fehlt');
+    // ── Kauf: Glut-Trail (150 G) mit Startgold 175 ──
+    const goldBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('fortress_profile')).gold);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Glut|Ember/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(300);
+    const afterBuy = await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return { gold: p.gold, owned: (p.cosmetics && p.cosmetics.owned) || [], trail: p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.trail };
+    });
+    afterBuy.gold === goldBefore - 150 ? ok(`Gold-Shop: Kauf zieht Gold ab (${goldBefore}→${afterBuy.gold}) ✓`) : fail(`Gold-Shop: Gold falsch (${goldBefore}→${afterBuy.gold})`);
+    afterBuy.owned.includes('trail_ember') ? ok('Gold-Shop: Artikel in owned[] ✓') : fail('Gold-Shop: owned fehlt');
+    afterBuy.trail === 'trail_ember' ? ok('Gold-Shop: Artikel direkt angelegt ✓') : fail(`Gold-Shop: equipped falsch (${afterBuy.trail})`);
+    // ── Umrüsten auf Standard (gratis, kein Gold-Abzug) ──
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Standard|Default/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(300);
+    const afterEquip = await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return { gold: p.gold, trail: p.cosmetics.equipped.trail };
+    });
+    afterEquip.trail === 'trail_standard' && afterEquip.gold === afterBuy.gold
+      ? ok('Gold-Shop: Umrüsten gratis (Standard angelegt, Gold unverändert) ✓')
+      : fail(`Gold-Shop: Umrüsten fehlerhaft (${afterEquip.trail}, ${afterBuy.gold}→${afterEquip.gold})`);
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Gold-Shop: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Gold-Shop-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
 async function suiteBallSettle(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -2468,7 +2531,7 @@ async function suiteTutorial(browser) {
     const mm3 = await suiteOnline3P(browser, FB_PORT);
     return { mm, mm3 };
   })();
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -2489,6 +2552,7 @@ async function suiteTutorial(browser) {
     suiteArmoryReady(browser),
     suiteCannonKill(browser),
     suiteDailyTasks(browser),
+    suiteGoldShop(browser),
   ]);
 
   const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
@@ -2496,9 +2560,9 @@ async function suiteTutorial(browser) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

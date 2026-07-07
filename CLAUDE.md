@@ -146,6 +146,16 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 | `fortress_device_id` | Persistente Geräte-ID `d_...` (seit v3.14.12). Matchmaking-Ticket-Feld `dev` + `pid`-Fallback — verhindert Selbst-Matches über Reloads/fehlendes Profil hinweg. |
 | `fortress_my_game` | Crash-Marker `{code, ts}` des eigenen Spielknotens (seit v3.14.15). Bei sauberem Verlassen entfernt; nach Absturz löscht `gcOwnStaleGame()` (Marker >30 Min) den verwaisten Knoten beim nächsten Online-Einstieg. |
+| `fortress_bot_level` | Bot-Schwierigkeit `easy`/`mid`/`hard` (seit v3.20.0). „Übung gegen Bot" klappt eine 3-Knopf-Auswahl aus; `BOT_LEVELS` steuert Streuung/Feuer-Drossel/Einkauf via `botLvl()`. Tutorial nutzt immer `mid`. |
+| `fortress_tasks` | Daily Tasks `{day, tasks:[{id,prog,collected}]}` (seit v3.22.0). Rotation deterministisch aus dem Datum (`rollDailyTasks`), Ernte am Rundenende aus `matchStats` (Bot+Online zählen, Tutorial/lokales Duell nicht), 📋-Menü-Button mit Claim-Badge. |
+
+### Meta-Progression Phase 2 (v3.20–v3.23, SPEC Abschnitt 14)
+Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
+- **Bot-Stufen (v3.20.0)**: `BOT_LEVELS` easy/mid/hard (Streuung 2.4/1.0/0.4, Feuer-Faktor 1.8/1/1, Einkauf basic/standard/optimal, maxCannons 3/6/8). `wantsMore` (Fertig-Bestätigung) folgt der Stufe.
+- **Match-Statistik (v3.21.0)**: `matchStats`-Ref pro Spieler `{walls,cannons,scrap,shots,hits,buys}`; Reset pro Runde (`resetEconomy` + `nextRound`); Online-Sync via State-Feld `ms`; Result-Screen zeigt 4-Kachel-Bilanz. `blocksDestroyedThisGameRef` wurde dadurch ersetzt (Gäste-Lifetime-Blocks vorher immer 0!). Gated Hook: `__matchStats(p)`.
+- **Daily Tasks (v3.22.0)**: `DAILY_TASK_POOL` (8 Typen, Gold 25–50), Harvest-Effect auf `screen==="result"` mit `tasksHarvested`-Guard.
+- **Gold-Shop (v3.23.0)**: `COSMETICS` (trail/frame/win, 12 Artikel), `profile.cosmetics={owned,equipped}`, `cosOf()` normalisiert. Trail-Farbe läuft über `playerInfo[p].trail` (sync via join-Payload + playerInfo-State) → `TRAIL_COLOR`-Lookup im Kugel-Schweif. Rahmen im Menü-Avatar (`FRAME_STYLE`), Sieges-Effekt `WinFx` (Konfetti/Feuerwerk/Goldregen, deterministisch). 🛒-Menü-Button.
+- **Gold-Quellen** (für Balancing): Sieg 10–50 (`goldDelta`), Daily-Streak 10–50/Tag, Daily Tasks ~95–135/Tag, Achievements einmalig.
 
 ### Neue Konstanten
 - `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)
