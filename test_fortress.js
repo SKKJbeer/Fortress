@@ -140,6 +140,14 @@ async function makeCtx(browser) {
   return { ctx, page };
 }
 
+// Bot-Spiel starten (v3.20.0): "gegen Bot" öffnet die Stufen-Auswahl,
+// erst die Stufen-Wahl startet das Spiel.
+async function startBotGame(page, levelTexts = ['Mittel', 'Medium']) {
+  await jsClick(page, ['gegen Bot', 'vs Bot']);
+  await page.waitForTimeout(250);
+  await jsClick(page, levelTexts);
+}
+
 // Menü laden + Profil-Editor überspringen (falls PROFILE_INIT nicht gegriffen hat)
 async function loadMenu(page) {
   await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded', timeout: 10000 });
@@ -2006,7 +2014,7 @@ async function suiteBallSettle(browser) {
     await loadMenu(page);
     await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
     await page.waitForTimeout(250);
-    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    await startBotGame(page);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     if (!canvas) { fail('Bot-Spiel startet nicht'); return { res, errs }; }
     await page.evaluate(() => { window.__mmDebug = true; window.__lateImpacts = 0; window.__discardedAtEnd = 0; });
@@ -2057,7 +2065,7 @@ async function suiteCannonKill(browser) {
     await loadMenu(page);
     await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
     await page.waitForTimeout(250);
-    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    await startBotGame(page);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     if (!canvas) { fail('Bot-Spiel startet nicht'); return { res, errs }; }
     await page.evaluate(() => { window.__mmDebug = true; });
@@ -2101,7 +2109,7 @@ async function suiteArmoryReady(browser) {
     await loadMenu(page);
     await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
     await page.waitForTimeout(250);
-    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    await startBotGame(page);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     if (!canvas) { fail('Bot-Spiel startet nicht'); return { res, errs }; }
     await page.evaluate(() => { window.__mmDebug = true; });
@@ -2163,8 +2171,21 @@ async function suiteBot(browser) {
       Array.from(document.querySelectorAll('button')).some(b => /gegen Bot|vs Bot/i.test(b.textContent || '')));
     botBtn ? ok('Bot-Button im Lokal-Menü sichtbar ✓') : fail('Bot-Button fehlt');
 
-    // ── Bot-Spiel starten ─────────────────────────────────────
+    // ── Bot-Spiel starten (v3.20.0: erst Stufen-Auswahl, dann Start) ──
     await jsClick(page, ['gegen Bot', 'vs Bot']);
+    await page.waitForTimeout(250);
+    const lvlBtns = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button')).map(b => b.textContent || '');
+      return {
+        easy: btns.some(t2 => /Leicht|Easy/.test(t2)),
+        mid: btns.some(t2 => /Mittel|Medium/.test(t2)),
+        hard: btns.some(t2 => /Schwer|Hard/.test(t2))
+      };
+    });
+    (lvlBtns.easy && lvlBtns.mid && lvlBtns.hard)
+      ? ok('Bot-Stufen-Auswahl: 3 Schwierigkeitsgrade sichtbar ✓')
+      : fail(`Bot-Stufen-Auswahl unvollständig (${JSON.stringify(lvlBtns)})`);
+    await jsClick(page, ['Mittel', 'Medium']);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     canvas ? ok('Bot-Spiel gestartet (Canvas sichtbar) ✓') : fail('Bot-Spiel startet nicht');
     if (!canvas) return { res, errs };

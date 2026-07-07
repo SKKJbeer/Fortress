@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.19.5</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.20.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1453,6 +1453,10 @@ const LANGS = {
     playLocal: "LOKAL SPIELEN (1 Ger\xE4t)",
     playOnline: "ONLINE SPIELEN (2–3 Ger\xE4te)",
     vsBot: "\xDCbung gegen Bot",
+    botLvlEasy: "Leicht",
+    botLvlMid: "Mittel",
+    botLvlHard: "Schwer",
+    botLvlPick: "W\xE4hle die Bot-St\xE4rke:",
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Setze 2 Kanonen INNERHALB deiner Burgmauern (auf freie Fl\xE4chen tippen). Wichtig: Nur von Mauern UMSCHLOSSENE Kanonen k\xF6nnen feuern!",
@@ -1682,6 +1686,10 @@ const LANGS = {
     playLocal: "PLAY LOCAL (1 Device)",
     playOnline: "PLAY ONLINE (2–3 Devices)",
     vsBot: "Practice vs Bot",
+    botLvlEasy: "Easy",
+    botLvlMid: "Medium",
+    botLvlHard: "Hard",
+    botLvlPick: "Pick the bot strength:",
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Place 2 cannons INSIDE your castle walls (tap free spots). Important: only cannons ENCLOSED by walls can fire!",
@@ -2749,6 +2757,8 @@ window.FortressApp = function Fortress() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showShopInfo, setShowShopInfo] = useState(false);
+  const [botSelect, setBotSelect] = useState(false); // Bot-Stufen-Auswahl ausgeklappt (v3.20.0)
+  useEffect(() => { setBotSelect(false); }, [mpScreen]); // beim Panelwechsel einklappen
   const [dailyState, setDailyState] = useState(() => loadDailyState());
   const [showDailyModal, setShowDailyModal] = useState(false);
   const [dailyCollected, setDailyCollected] = useState(false);
@@ -5092,6 +5102,15 @@ window.FortressApp = function Fortress() {
     }
     return placed > 0;
   }
+  // Liegen Trümmer im Reparatur-Radius (≤10) der Bot-Burg? (v3.20.0, Schwer-Bot)
+  function botRubbleNearCastle(B) {
+    const g = grid.current, ct = castles.current[B];
+    if (!g || !ct) return false;
+    for (let r = Math.max(0, ct.r - 10); r <= Math.min(ROWS - 1, ct.r + 10); r++)
+      for (let c = Math.max(0, ct.c - 10); c <= Math.min(COLS - 1, ct.c + 10); c++)
+        if (g[r][c] === RUBBLE) return true;
+    return false;
+  }
   function botBuild(g, ter, B) {
     const castle = castles.current[B];
     // 1) Burg-Schutzmauer als sauberen Ring wieder aufbauen (Priorität). Falls der Soll-Ring
@@ -5113,7 +5132,8 @@ window.FortressApp = function Fortress() {
     // Tutorial: der Bot schießt EIN Loch in die noch geschlossene Spielerburg (authentisch);
     // sobald sie offen ist, bleibt er passiv → der Spieler muss die Lücke selbst schließen.
     if (tutorialMode.current && (!castles.current[1] || !isCastleClosed(g, 1, castles.current[1]))) return;
-    if (performance.now() - lastShot.current[B] < reloadMsOf(B)) return;
+    // Feuer-Drossel je Stufe (v3.20.0): Leicht wartet 1.8× Nachladezeit
+    if (performance.now() - lastShot.current[B] < reloadMsOf(B) * botLvl().fire) return;
     const E = B === 1 ? 2 : 1;
     const enemy = castles.current[E];
     if (!enemy) return;
@@ -5155,10 +5175,21 @@ window.FortressApp = function Fortress() {
       if (ok) tutorialBotShot.current = true;
       return;
     }
-    const jit = botDifficulty.current * 0.35; // kleine Streuung, trifft die Zielzelle zuverlässig
+    const jit = botLvl().spread * 0.35; // Streuung je Schwierigkeitsgrad (v3.20.0)
     fireMortar(B, tx + (Math.random() - 0.5) * jit * CELL, ty + (Math.random() - 0.5) * jit * CELL);
   }
-  const botDifficulty = useRef(1.0); // Ziel-Streuung in Zellen (1.0 = fair)
+  // ── Bot-Schwierigkeitsgrade (v3.20.0, SPEC 14.1) ──────────────────────
+  // Drei Stufen über Streuung / Feuer-Drossel / Einkauf. Bauverhalten (Burg
+  // schließen) bleibt auf allen Stufen gleich. Tutorial nutzt immer 'mid'.
+  const BOT_LEVELS = {
+    easy: { spread: 2.4, fire: 1.8, maxCannons: 3, buy: "basic" },
+    mid:  { spread: 1.0, fire: 1.0, maxCannons: 6, buy: "standard" },
+    hard: { spread: 0.4, fire: 1.0, maxCannons: 8, buy: "optimal" }
+  };
+  const botLevel = useRef((() => {
+    try { const v = localStorage.getItem("fortress_bot_level"); return BOT_LEVELS[v] ? v : "mid"; } catch { return "mid"; }
+  })());
+  function botLvl() { return BOT_LEVELS[tutorialMode.current ? "mid" : botLevel.current] || BOT_LEVELS.mid; }
   const botAimSeq = useRef(0); // rotiert die Zielmauer, damit das Feuer nicht auf einer Stelle klebt
   function botActFor(B) {
     if (eliminated.current[B]) return;
@@ -5168,14 +5199,29 @@ window.FortressApp = function Fortress() {
     // Setup + Kanonenphase: Kanonen setzen. Auch im Tutorial — so ist das Budget beider
     // Spieler schnell 0 und die Phase springt vorzeitig weiter (Tutorial läuft flotter).
     if (ph === "setup" || ph === "cannon") {
-      // Bot-Einkauf (v3.16.0): erst Kanone, dann Schnellladen, dann Panzerung
+      // Bot-Einkauf (v3.16.0, Stufen seit v3.20.0): Kaufstrategie je Schwierigkeit
       if (ph === "cannon" && !tutorialMode.current) {
+        const lvl = botLvl();
         const up = upgrades.current[B] || {};
         const have = scrap.current[B] || 0;
         const cPrice = SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
-        if (cannonBudget.current[B] <= 0 && have >= cPrice && (cannons.current[B] || []).length < 6) buyUpgrade(B, "cannon");
-        else if ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) buyUpgrade(B, "reload");
-        else if (!up.armor && have >= SHOP.armor.price) buyUpgrade(B, "armor");
+        const canCannon = cannonBudget.current[B] <= 0 && have >= cPrice && (cannons.current[B] || []).length < lvl.maxCannons;
+        if (lvl.buy === "basic") {
+          // Leicht: nur gelegentlich eine Kanone, keine Upgrades
+          if (canCannon && Math.random() < 0.5) buyUpgrade(B, "cannon");
+        } else if (lvl.buy === "optimal") {
+          // Schwer: Panzerung zuerst (stärkster Erstkauf), dann Schnellladen,
+          // dann Kanonen; Reparatur wenn Trümmer nahe der Burg liegen.
+          if (!up.armor && have >= SHOP.armor.price) buyUpgrade(B, "armor");
+          else if ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) buyUpgrade(B, "reload");
+          else if (canCannon) buyUpgrade(B, "cannon");
+          else if (have >= SHOP.repair.price + 20 && botRubbleNearCastle(B)) buyUpgrade(B, "repair");
+        } else {
+          // Mittel: bisherige Logik unverändert
+          if (canCannon) buyUpgrade(B, "cannon");
+          else if ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) buyUpgrade(B, "reload");
+          else if (!up.armor && have >= SHOP.armor.price) buyUpgrade(B, "armor");
+        }
       }
       let guard = 0;
       while (cannonBudget.current[B] > 0 && guard++ < 4) {
@@ -5184,10 +5230,15 @@ window.FortressApp = function Fortress() {
       // Bot bestätigt „Fertig", sobald er nichts mehr kaufen/platzieren kann
       // (v3.18.1) → mit-auslösend fürs Vorspulen auf 3s.
       if (ph === "cannon" && cannonBudget.current[B] <= 0 && !armoryReady.current[B]) {
+        const lvl = botLvl();
         const up = upgrades.current[B] || {};
         const have = scrap.current[B] || 0;
         const cPrice = SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
-        const wantsMore = (have >= cPrice && (cannons.current[B] || []).length < 6) || ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) || (!up.armor && have >= SHOP.armor.price);
+        // „Will noch etwas kaufen?“ muss zur Kaufstrategie der Stufe passen
+        // (v3.20.0), sonst bestätigt z. B. der Leicht-Bot nie „Fertig“.
+        const wantsMore = lvl.buy === "basic"
+          ? false
+          : (have >= cPrice && (cannons.current[B] || []).length < lvl.maxCannons) || ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) || (!up.armor && have >= SHOP.armor.price);
         if (!wantsMore) setArmoryReady(B);
       }
     } else if (ph === "build") {
@@ -6392,7 +6443,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.19.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.20.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6717,16 +6768,7 @@ window.FortressApp = function Fortress() {
     marginBottom: 10,
     letterSpacing: "0.03em",
     boxShadow: "0 6px 26px rgba(124,58,237,0.3)"
-  } }, "🎓 ", t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-    online.current = false;
-    botMode.current = true;
-    tutorialMode.current = false;
-    initBotMatchIdentity();
-    numPlayersRef.current = 2;
-    setNumPlayers(2);
-    setMpScreen(null);
-    fullReset();
-  }, style: {
+  } }, "🎓 ", t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -6738,12 +6780,37 @@ window.FortressApp = function Fortress() {
     padding: "16px",
     fontSize: 16,
     fontWeight: 800,
-    borderRadius: 14,
+    borderRadius: botSelect ? "14px 14px 0 0" : 14,
     cursor: "pointer",
-    marginBottom: 10,
+    marginBottom: botSelect ? 0 : 10,
     letterSpacing: "0.03em",
     boxShadow: "0 6px 26px rgba(8,145,178,0.3)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 18 }), t('vsBot')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 18 }), t('vsBot')), botSelect && /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex", gap: 6, marginBottom: 10, padding: "8px",
+    background: "rgba(8,145,178,0.12)", border: "1px solid rgba(34,197,94,0.3)",
+    borderRadius: "0 0 14px 14px", borderTop: "none"
+  } }, [
+    { k: "easy", emoji: "😴", label: t('botLvlEasy') },
+    { k: "mid", emoji: "⚔️", label: t('botLvlMid') },
+    { k: "hard", emoji: "💀", label: t('botLvlHard') }
+  ].map((lv) => /* @__PURE__ */ React.createElement("button", { key: lv.k, onClick: () => {
+    botLevel.current = lv.k;
+    try { localStorage.setItem("fortress_bot_level", lv.k); } catch (e) {}
+    setBotSelect(false);
+    online.current = false;
+    botMode.current = true;
+    tutorialMode.current = false;
+    initBotMatchIdentity();
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
+    setMpScreen(null);
+    fullReset();
+  }, style: {
+    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+    background: botLevel.current === lv.k ? "linear-gradient(135deg,#0891b2,#16a34a)" : "rgba(255,255,255,0.06)",
+    color: "white", border: botLevel.current === lv.k ? "1px solid rgba(34,197,94,0.7)" : "1px solid rgba(255,255,255,0.12)",
+    padding: "10px 4px", fontSize: 13, fontWeight: 800, borderRadius: 10, cursor: "pointer"
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, lv.emoji), lv.label))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     botMode.current = false;
     numPlayersRef.current = 2;

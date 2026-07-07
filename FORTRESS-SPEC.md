@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.19.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.20.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -331,6 +331,143 @@ und beschiessen danach gegenseitig ihre Festungen.
   - State enthält numPlayers, piece3, reloadProg[3], eliminated. Gast regeneriert
     bei numPlayers=3 das Y-Terrain aus dem Seed + baut sectorMap neu.
   - Guest-Checks im Code: `myRole.current !== 1` (statt ===2) = “bin ich Gast”.
+
+-----
+
+## 14. META-PROGRESSION PHASE 2 (Konzept, umgesetzt in v3.20–v3.23)
+
+> Design-Grundlage: Spieldesign-Review v3.19.5. Kernbefund: Der Match-Loop ist
+> fertig und ausbalanciert, aber die **Motivationskette der Meta-Ebene ist
+> unterbrochen** — Gold wird verdient (Siege, Daily-Streak, Achievements), hat
+> aber **keine Senke**; `dailyTasks[]`/`seasonXp` liegen ungenutzt im Profil;
+> der Bot hat genau eine Schwierigkeit; der Result-Screen zeigt keinen
+> Match-Fortschritt. Phase 2 schließt diese Löcher mit vier Bausteinen, die
+> sich gegenseitig füttern:
+>
+> **Match-Statistik** (Zähler) → speist **Daily Tasks** (Ziele) → geben **Gold**
+> → fließt in den **Gold-Shop** (Kosmetik) → sichtbar im Spiel → Motivation für
+> weitere Matches. **Bot-Stufen** senken parallel die Einstiegshürde.
+>
+> Reihenfolge der Umsetzung = Abhängigkeitsreihenfolge:
+> v3.20 Bot-Stufen (unabhängig, klein) → v3.21 Match-Statistik (Infrastruktur)
+> → v3.22 Daily Tasks (nutzt Zähler) → v3.23 Gold-Shop (nutzt Task-Gold).
+
+### 14.1 Bot-Schwierigkeitsgrade (v3.20.0)
+
+**Ziel**: Lernkurve nach dem Tutorial (Leicht), fairer Sparringspartner
+(Mittel = bisheriges Verhalten, unverändert), Herausforderung für Veteranen
+(Schwer). Bot-Spiele zählen weiterhin NICHT für ELO/Stats.
+
+**Drei Stellschrauben, alle bereits im Code vorhanden:**
+
+| Stufe | Ziel-Streuung (`botDifficulty`) | Feuer-Drossel (Faktor auf Nachladezeit) | Einkaufsverhalten |
+|---|---|---|---|
+| 😴 Leicht | 2.4 Zellen (verfehlt oft) | ×1.8 (schießt selten) | nur Kanonen, max. 3, kein Reload/Armor |
+| ⚔️ Mittel | 1.0 (bisheriger Wert) | ×1.0 | bisherige Logik (Kanone→Reload→Armor, max. 6) |
+| 💀 Schwer | 0.4 (präzise) | ×1.0 | optimierte Reihenfolge (Armor→Reload→Kanone, max. 8) + Reparatur bei Trümmern nahe Burg |
+
+- Bauverhalten (Burg schließen) bleibt auf allen Stufen gleich — eine offene
+  Bot-Burg wäre kein Spielspaß, sondern ein Sofort-Sieg.
+- **UI**: Tipp auf „Übung gegen Bot“ klappt eine 3-Knopf-Reihe aus
+  (😴 Leicht / ⚔️ Mittel / 💀 Schwer); Tipp auf eine Stufe startet das Spiel.
+  Letzte Wahl wird in `fortress_bot_level` gemerkt und vorausgewählt.
+- Tutorial nutzt intern immer „Mittel“-Werte (Coach-Verhalten unverändert).
+
+### 14.2 Match-Statistik & Result-Zusammenfassung (v3.21.0)
+
+**Ziel**: Fortschritt pro Match sichtbar machen; zugleich die Zähler-
+Infrastruktur, auf der Daily Tasks (14.3) und künftige Achievements aufsetzen.
+
+**Datenmodell** (Ref, kein React-State): `matchStats.current = { 1: {...}, 2: {...}, 3: {...} }`
+mit je `{ walls, cannons, scrap, shots, hits }`:
+
+| Zähler | Inkrement-Ort (Host-autoritativ) |
+|---|---|
+| `walls` — zerstörte Gegner-Mauern | `impactAt` Mauer-Treffer (wo `SCRAP_WALL` gutgeschrieben wird), inkl. Explosions-Kollateral |
+| `cannons` — Kanonen-Kills | `impactAt` Kanonen-Kill (wo `SCRAP_CANNON` gutgeschrieben wird) |
+| `scrap` — verdienter Schrott gesamt | alle Stellen, die `scrap.current[p]` erhöhen (Mauer, Kanone, Überleben) |
+| `shots` — abgefeuerte Kugeln | `fireMortar` (pro Kugel, inkl. Mehrfach-Kanonen) |
+| `hits` — Kugeln mit Zerstörung | `impactAt`, wenn der Einschlag ≥1 Mauer/Kanone zerstört |
+
+- Reset in `resetEconomy()` (läuft bei jedem Spielstart lokal+online).
+- **Online-Sync**: Host serialisiert `matchStats` in den State-Push (kleines
+  Objekt); Gäste übernehmen es in `applyState`. Damit zeigt der Result-Screen
+  auf allen Geräten dieselben Zahlen.
+- **Result-Screen**: unter der Score-Zeile eine 4-Kachel-Reihe für den eigenen
+  Spieler: 🧱 Mauern · 💣 Kanonen · ⚙ Schrott · 🎯 Treffsicherheit
+  (`hits/shots` in %, „—“ bei 0 Schüssen). Zweizeilig klein, kein Scrollen.
+- **Profil-Lebenszeit-Zähler**: `blocksDestroyedThisGameRef` (existiert) wird
+  auf `matchStats[me].walls` umgestellt → eine Quelle statt zwei parallele.
+
+### 14.3 Daily Tasks (v3.22.0)
+
+**Ziel**: Der stärkste Retention-Hebel neben dem Streak — 3 konkrete
+Tagesziele mit Gold-Belohnung. Ergänzt den bestehenden 7-Tage-Streak
+(`fortress_daily`), ersetzt ihn nicht.
+
+**Rotation**: deterministisch aus dem Datum — `seed = YYYY*10000+MM*100+DD`,
+`mulberry`-PRNG wählt 3 verschiedene Tasks aus dem Pool. Kein Server nötig,
+alle Geräte desselben Tages sehen dieselben Tasks (bewusst: Community-Gefühl).
+
+**Task-Pool v1 (8 Typen, Zähler aus 14.2):**
+
+| id | Text | Ziel | Gold |
+|---|---|---|---|
+| `walls30` | Zerstöre 30 Mauern | 30 × `walls` | 30 |
+| `walls80` | Zerstöre 80 Mauern | 80 | 50 |
+| `cannons2` | Zerstöre 2 Kanonen | 2 × `cannons` | 40 |
+| `scrap60` | Verdiene 60 Schrott | 60 × `scrap` | 30 |
+| `play2` | Spiele 2 Matches | 2 Matches beendet | 25 |
+| `play4` | Spiele 4 Matches | 4 | 45 |
+| `win1` | Gewinne 1 Match | 1 Sieg | 40 |
+| `buy3` | Kaufe 3× im Rüstungs-Shop | 3 Käufe | 30 |
+
+- **Zählung**: Bot- UND Online-Matches zählen (Tutorial nicht). Begründung:
+  Dailies sind Aktivitäts-Anreiz, kein Ranking — Bot-Farmen ist ok und zieht
+  Anfänger in die Spielroutine; ELO bleibt davon unberührt.
+- **Fortschritt** wird am **Match-Ende** aus `matchStats[eigene Rolle]`
+  aufsummiert (nicht live pro Treffer → kein Perf-Einfluss im Render-Loop).
+- **Persistenz**: `fortress_tasks` = `{ day:"YYYY-MM-DD", tasks:[{id,prog,done,collected}] }`.
+  Neuer Tag ⇒ neue Rotation, alter Fortschritt verfällt.
+- **UI**: Menü-Button „Aufgaben“ (📋) mit Badge (Anzahl abholbereiter Tasks);
+  Panel im Stil des DailyRewardModal: 3 Zeilen mit Fortschrittsbalken +
+  „Abholen“-Button (Gold ins Profil, `lifetimeGold` mitzählen → füttert
+  Gold-Achievements). Nach Abholen aller 3: kleiner Bonus-Hinweis auf morgen.
+
+### 14.4 Gold-Shop — Kosmetik (v3.23.0)
+
+**Ziel**: Die fehlende Gold-Senke. Rein kosmetisch (Design-Prinzip „kein
+Pay2Win“ bleibt: alles nur mit erspieltem Gold, kein Echtgeld).
+
+**Drei Kategorien, 12 Artikel (v1):**
+
+| Kategorie | Artikel (Preis) | Wirkung |
+|---|---|---|
+| 🎇 **Ball-Trails** | Standard (0, immer), Glut 🔥 (150), Frost ❄️ (150), Gift ☠️ (250), Gold ✨ (400) | Färbt die Kugel-Schweif-Partikel der EIGENEN Kugeln (Trail-Farbe statt `BALL_MID[player]`) |
+| 🖼️ **Wappen-Rahmen** | Kein (0), Bronze (100), Silber (250), Gold (500), Drachen 🐉 (800) | Zierrahmen um das eigene Wappen in Menü, Profil, Result-Screen und (online) beim Gegner |
+| 🎉 **Sieges-Effekte** | Konfetti (0, immer), Feuerwerk (200), Goldregen (350) | Partikel-Effekt auf dem eigenen Result-Screen bei Sieg |
+
+- **Preisspanne begründet**: Tages-Einkommen nach Phase 2 ≈ 100–150 Gold
+  (Streak 10–50 + 3 Tasks ~95–135 + Siege 10–50/Match). Erster Kauf nach
+  1–2 Tagen, Top-Artikel nach ~1 Woche — sichtbare, erreichbare Ziele.
+- **Datenmodell**: `profile.cosmetics = { owned: [ids], equipped: { trail, frame, win } }`.
+- **Online-Sichtbarkeit**: `trail` + `frame` wandern in `playerInfo`
+  (bestehender Sync-Kanal für Name/Wappen/ELO) → Gegner sehen Trail-Farbe der
+  gegnerischen Kugeln und den Rahmen im Result-Screen. Fallback bei alten
+  Clients: Feld fehlt ⇒ Standard-Optik (abwärtskompatibel).
+- **Rendering-Budget**: Trails nutzen den BESTEHENDEN Trail-Mechanismus
+  (nur andere Farbe pro Spieler-Lookup) — keine neuen Per-Frame-Kosten.
+  Rahmen/Sieges-Effekte sind reine Menü-/Result-UI (außerhalb des Loops).
+- **UI**: Menü-Button „Shop“ (🛒) → Modal mit 3 Tabs; Artikel-Karte zeigt
+  Vorschau, Preis oder „Besitzt“/„Angelegt“; Kauf = Gold-Abzug + sofort
+  angelegt. Gold-Kontostand im Shop-Header.
+
+### 14.5 Bewusst NICHT in Phase 2
+
+- Kanonen-/Mauer-Skins im Spielfeld (berühren den Sprite-Cache pro Spieler —
+  eigener sauberer Umbau, Phase 3).
+- Season-System/Ligen (braucht Spielerbasis), Freunde/Rematch, Emotes.
+- Balancing-Änderungen an der Schrott-Ökonomie (separater Messpass).
 
 -----
 
@@ -2309,3 +2446,27 @@ Karte". Im Nicht-Ranked-Result-Zweig (Bot/Lokal/Code-Join-Host) den sekundären
 i18n-Keys `newMap` bleiben (ungenutzt, schadlos). Ranked-Zweig unverändert.
 
 Tests grün (219). SW-Cache `fortress-v3.19.5`.
+
+### v3.20.0 — Bot-Schwierigkeitsgrade Leicht/Mittel/Schwer (Meta-Progression Phase 2, Teil 1/4)
+Umsetzung von SPEC-Abschnitt 14.1. Der Bot hatte genau eine Stärke (Streuung
+1.0) — zu stark für Anfänger nach dem Tutorial, zu schwach als Warm-up.
+- **`BOT_LEVELS`**: easy `{spread:2.4, fire:1.8, maxCannons:3, buy:'basic'}`,
+  mid `{1.0, 1.0, 6, 'standard'}` (= bisheriges Verhalten, unverändert),
+  hard `{0.4, 1.0, 8, 'optimal'}`. Zugriff via `botLvl()`; Tutorial nutzt
+  immer 'mid'. Alte Ref `botDifficulty` entfernt.
+- **Feuer-Drossel**: `botShoot` wartet `reloadMsOf(B) * lvl.fire` — der
+  Leicht-Bot schießt fast nur halb so oft.
+- **Einkauf je Stufe**: basic = nur gelegentlich Kanonen (50 %-Chance, max 3,
+  keine Upgrades); standard = bisherige Reihenfolge Kanone→Reload→Armor;
+  optimal = Armor→Reload→Kanone (stärkste Erstkauf-Reihenfolge) + Reparatur
+  wenn Trümmer ≤10 Felder um die Bot-Burg (`botRubbleNearCastle`).
+  `wantsMore` (Fertig-Bestätigung) folgt der Stufen-Strategie, sonst würde
+  der Leicht-Bot nie bestätigen.
+- **Bauverhalten unverändert** auf allen Stufen (offene Bot-Burg = kein Spaß).
+- **UI**: „Übung gegen Bot“ klappt eine 3-Knopf-Reihe aus (😴 Leicht /
+  ⚔️ Mittel / 💀 Schwer); Auswahl startet das Spiel. Letzte Wahl persistent in
+  `fortress_bot_level`, vorausgewählt markiert. Einklappen bei Panelwechsel.
+- Bot-Spiele zählen weiterhin nicht für ELO/Stats. i18n de/en.
+- Test angepasst: Suite prüft 3 Stufen-Buttons und startet über „Mittel“.
+
+Tests grün. SW-Cache `fortress-v3.20.0`.
