@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.21.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.22.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1461,6 +1461,19 @@ const LANGS = {
     statCannons: "Kanonen",
     statScrap: "Schrott",
     statAcc: "Pr\xE4zision",
+    tasksTitle: "Tagesaufgaben",
+    tasksSub: "3 neue Aufgaben jeden Tag \xB7 Bot- und Online-Matches z\xE4hlen",
+    tasksCollect: "Abholen",
+    tasksAllDone: "Alle Aufgaben erledigt — morgen gibt's neue! 🎉",
+    close: "Schlie\xDFen",
+    task_walls30: "Zerst\xF6re 30 Mauern",
+    task_walls80: "Zerst\xF6re 80 Mauern",
+    task_cannons2: "Zerst\xF6re 2 Kanonen",
+    task_scrap60: "Verdiene 60 Schrott",
+    task_play2: "Spiele 2 Matches",
+    task_play4: "Spiele 4 Matches",
+    task_win1: "Gewinne 1 Match",
+    task_buy3: "Kaufe 3\xD7 im R\xFCstungs-Shop",
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Setze 2 Kanonen INNERHALB deiner Burgmauern (auf freie Fl\xE4chen tippen). Wichtig: Nur von Mauern UMSCHLOSSENE Kanonen k\xF6nnen feuern!",
@@ -1698,6 +1711,19 @@ const LANGS = {
     statCannons: "Cannons",
     statScrap: "Scrap",
     statAcc: "Accuracy",
+    tasksTitle: "Daily tasks",
+    tasksSub: "3 fresh tasks every day \xB7 bot and online matches count",
+    tasksCollect: "Claim",
+    tasksAllDone: "All tasks done — new ones tomorrow! 🎉",
+    close: "Close",
+    task_walls30: "Destroy 30 walls",
+    task_walls80: "Destroy 80 walls",
+    task_cannons2: "Destroy 2 cannons",
+    task_scrap60: "Earn 60 scrap",
+    task_play2: "Play 2 matches",
+    task_play4: "Play 4 matches",
+    task_win1: "Win 1 match",
+    task_buy3: "Buy 3\xD7 in the armory shop",
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Place 2 cannons INSIDE your castle walls (tap free spots). Important: only cannons ENCLOSED by walls can fire!",
@@ -2292,6 +2318,41 @@ window.FortressApp = function Fortress() {
   function dailyWeekMult(streak) {
     return Math.min(1 + Math.floor(((streak || 0)) / 7) * 0.25, 3);
   }
+  // ── Daily Tasks (v3.22.0, SPEC 14.3) ─────────────────────────────────────
+  // 3 rotierende Tagesaufgaben, deterministisch aus dem Datum (alle Spieler
+  // desselben Tages sehen dieselben Tasks). Fortschritt kommt am Rundenende
+  // aus matchStats (Bot + Online zählen, Tutorial nicht).
+  const DAILY_TASK_POOL = [
+    { id: "walls30", target: 30, gold: 30, stat: "walls", icon: "🧱" },
+    { id: "walls80", target: 80, gold: 50, stat: "walls", icon: "🧱" },
+    { id: "cannons2", target: 2, gold: 40, stat: "cannons", icon: "💣" },
+    { id: "scrap60", target: 60, gold: 30, stat: "scrap", icon: "⚙" },
+    { id: "play2", target: 2, gold: 25, stat: "played", icon: "🎮" },
+    { id: "play4", target: 4, gold: 45, stat: "played", icon: "🎮" },
+    { id: "win1", target: 1, gold: 40, stat: "won", icon: "🏆" },
+    { id: "buy3", target: 3, gold: 30, stat: "buys", icon: "🛒" }
+  ];
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function rollDailyTasks(dayStr) {
+    const seed = (parseInt(dayStr.replace(/-/g, ""), 10) ^ 1597334677) >>> 0;
+    const rng = makeRng(seed);
+    const pool = [...DAILY_TASK_POOL];
+    const picked = [];
+    while (picked.length < 3 && pool.length) picked.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    return picked.map((tk) => ({ id: tk.id, prog: 0, collected: false }));
+  }
+  function loadTasksState() {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem("fortress_tasks")); } catch (e) {}
+    const day = todayStr();
+    if (!st || st.day !== day || !Array.isArray(st.tasks)) {
+      st = { day, tasks: rollDailyTasks(day) };
+      saveTasksState(st); // sofort persistieren — ein Tag = eine stabile Rotation
+    }
+    return st;
+  }
+  function saveTasksState(st) { try { localStorage.setItem("fortress_tasks", JSON.stringify(st)); } catch (e) {} }
+  function taskDef(id) { return DAILY_TASK_POOL.find((d) => d.id === id); }
   function DailyRewardModal({ daily, onCollect, onClose, collected }) {
     const [collecting, setCollecting] = useState(false);
     const canCollect = getDailyCollectable(daily);
@@ -2772,6 +2833,53 @@ window.FortressApp = function Fortress() {
   const [dailyState, setDailyState] = useState(() => loadDailyState());
   const [showDailyModal, setShowDailyModal] = useState(false);
   const [dailyCollected, setDailyCollected] = useState(false);
+  // ── Daily Tasks State (v3.22.0) ──
+  const [tasksState, setTasksState] = useState(() => loadTasksState());
+  const [showTasksModal, setShowTasksModal] = useState(false);
+  const tasksHarvested = useRef(false);
+  // Fortschritt am Rundenende aus matchStats ernten. Läuft als Effect NACH
+  // applyState/endShoot → matchStats ist auf Host UND Gast final.
+  function harvestDailyTasks(winner) {
+    if (tasksHarvested.current) return;
+    if (tutorialMode.current) return;
+    if (!botMode.current && !online.current) return; // lokales Duell am selben Gerät zählt nicht
+    tasksHarvested.current = true;
+    const meP = online.current ? (myRole.current || 1) : 1;
+    const ms = (matchStats.current && matchStats.current[meP]) || {};
+    const won = winner != null && winner === meP;
+    const st = loadTasksState();
+    let changed = false;
+    for (const tk of st.tasks) {
+      if (tk.collected) continue;
+      const def = taskDef(tk.id);
+      if (!def) continue;
+      const inc = def.stat === "played" ? 1 : def.stat === "won" ? (won ? 1 : 0) : (ms[def.stat] || 0);
+      if (inc > 0) { tk.prog = Math.min(def.target, (tk.prog || 0) + inc); changed = true; }
+    }
+    if (changed) { saveTasksState(st); setTasksState(st); }
+  }
+  function collectDailyTask(taskId) {
+    if (!profile) return;
+    const st = loadTasksState();
+    const tk = st.tasks.find((x) => x.id === taskId);
+    const def = taskDef(taskId);
+    if (!tk || !def || tk.collected || (tk.prog || 0) < def.target) return;
+    tk.collected = true;
+    saveTasksState(st);
+    setTasksState(st);
+    const oldGold = typeof profile.gold === "number" ? profile.gold : 100;
+    const updated = __spreadProps(__spreadValues({}, profile), {
+      gold: oldGold + def.gold,
+      lifetimeGold: (typeof profile.lifetimeGold === "number" ? profile.lifetimeGold : 0) + def.gold
+    });
+    saveProfile(updated);
+    SFX.win && SFX.win();
+  }
+  const tasksClaimable = tasksState.tasks.filter((tk) => { const d = taskDef(tk.id); return d && !tk.collected && (tk.prog || 0) >= d.target; }).length;
+  useEffect(() => {
+    if (screen === "result") harvestDailyTasks((resultInfo || {}).winner);
+    else tasksHarvested.current = false; // nächste Runde/Spiel darf wieder ernten
+  }, [screen, resultInfo]);
   async function quitGame() {
     setShowQuitConfirm(false);
     running.current = false;
@@ -6428,6 +6536,17 @@ window.FortressApp = function Fortress() {
     } },
       React.createElement(Icon, { name: "trophy", size: 16 }),
       achNew > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fbbf24", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, achNew) : null
+    ),
+    // Daily Tasks (v3.22.0): 📋-Button mit Badge (Anzahl abholbereiter Aufgaben)
+    /* @__PURE__ */ React.createElement("button", { onClick: () => { setTasksState(loadTasksState()); setShowTasksModal(true); }, title: t('tasksTitle'), style: {
+      background: tasksClaimable > 0 ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.08)",
+      border: tasksClaimable > 0 ? "1px solid rgba(52,211,153,0.4)" : "1px solid rgba(255,255,255,0.15)",
+      color: tasksClaimable > 0 ? "#34d399" : "#cbd5e1",
+      borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative",
+      animation: tasksClaimable > 0 ? "streakGlow 2s ease infinite" : "none"
+    } },
+      "📋",
+      tasksClaimable > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#34d399", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, tasksClaimable) : null
     )
   )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, soundOn ? "\u{1F50A}" : "\u{1F507}"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, hapticsOn ? "\u{1F4F3}" : "\u{1F4F4}")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
@@ -6481,7 +6600,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.21.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.22.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6737,7 +6856,72 @@ window.FortressApp = function Fortress() {
     onCollect: handleDailyCollect,
     onClose: () => setShowDailyModal(false),
     collected: dailyCollected
-  }), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
+  }),
+  // ── Daily-Tasks-Modal (v3.22.0, SPEC 14.3) ──
+  showTasksModal && (() => {
+    const h = React.createElement;
+    const allDone = tasksState.tasks.every((tk) => tk.collected);
+    return h("div", { onClick: () => setShowTasksModal(false), style: {
+      position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
+      backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 18
+    } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: {
+        maxWidth: 400, width: "100%",
+        background: "linear-gradient(180deg, rgba(30,41,66,0.98) 0%, rgba(11,16,30,0.99) 100%)",
+        border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "18px 16px 16px",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
+        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
+      } },
+        h("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
+          h("span", { style: { fontSize: 18 } }, "📋"),
+          h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("tasksTitle"))
+        ),
+        h("div", { style: { fontSize: 11.5, color: "#64748b", marginBottom: 14 } }, t("tasksSub")),
+        h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 6 } },
+          tasksState.tasks.map((tk) => {
+            const def = taskDef(tk.id);
+            if (!def) return null;
+            const prog = Math.min(def.target, tk.prog || 0);
+            const ready = !tk.collected && prog >= def.target;
+            const frac = prog / def.target;
+            return h("div", { key: tk.id, style: {
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 13,
+              background: tk.collected ? "rgba(74,222,128,0.06)" : ready ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.04)",
+              border: "1px solid " + (tk.collected ? "rgba(74,222,128,0.2)" : ready ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.08)")
+            } },
+              h("span", { style: { fontSize: 20, flexShrink: 0, filter: tk.collected ? "grayscale(1) opacity(0.5)" : "none" } }, def.icon),
+              h("div", { style: { flex: 1, minWidth: 0 } },
+                h("div", { style: { fontSize: 12.5, fontWeight: 700, color: tk.collected ? "#64748b" : "#e2e8f0", textDecoration: tk.collected ? "line-through" : "none" } }, t("task_" + tk.id)),
+                h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4 } },
+                  h("div", { style: { flex: 1, height: 5, borderRadius: 999, background: "rgba(0,0,0,0.4)", overflow: "hidden" } },
+                    h("div", { style: { width: Math.round(frac * 100) + "%", height: "100%", borderRadius: 999, background: tk.collected ? "#4ade80" : ready ? "linear-gradient(90deg,#34d399,#10b981)" : "linear-gradient(90deg,#60a5fa,#818cf8)", transition: "width 0.4s ease" } })
+                  ),
+                  h("span", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", flexShrink: 0 } }, prog + "/" + def.target)
+                )
+              ),
+              tk.collected
+                ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#4ade80", flexShrink: 0 } }, "✓")
+                : ready
+                  ? h("button", { onClick: () => collectDailyTask(tk.id), style: {
+                      flexShrink: 0, border: "none", cursor: "pointer", borderRadius: 9, padding: "7px 11px",
+                      background: "linear-gradient(180deg,#34d399,#059669)", color: "#052e1a",
+                      fontSize: 11.5, fontWeight: 900, boxShadow: "0 3px 10px rgba(16,185,129,0.4)",
+                      animation: "streakGlow 2s ease infinite"
+                    } }, t("tasksCollect"))
+                  : h("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", padding: "3px 8px", borderRadius: 8 } }, "+" + def.gold + " G")
+            );
+          })
+        ),
+        allDone && h("div", { style: { fontSize: 11.5, color: "#4ade80", fontWeight: 700, textAlign: "center", margin: "6px 0 2px" } }, t("tasksAllDone")),
+        h("button", { onClick: () => setShowTasksModal(false), style: {
+          width: "100%", marginTop: 10, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
+          borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.06)",
+          color: "#cbd5e1", fontSize: 13, fontWeight: 700
+        } }, t("close"))
+      )
+    );
+  })(), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
     style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(30,16,8,0.94)", border: "1px solid rgba(251,146,60,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }

@@ -2002,6 +2002,69 @@ async function suiteI18n(browser) {
 // treffen und schreiben Schrott gut, statt zu verschwinden. Eigenes Spiel,
 // damit die (bewusst vorzeitig beendete) Schussphase keine andere Suite stört.
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Daily Tasks (v3.22.0) — Rotation, Badge, Abhol-Flow
+// ═══════════════════════════════════════════════════════════════
+async function suiteDailyTasks(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Daily Tasks\n' + '='.repeat(50));
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    // ── 1) Frischer Tag: 📋-Button vorhanden, Modal zeigt 3 Aufgaben ──
+    const btn = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').includes('📋'));
+      if (!b) return false; b.click(); return true;
+    });
+    btn ? ok('Daily Tasks: 📋-Button im Menü ✓') : fail('Daily Tasks: Button fehlt');
+    await page.waitForTimeout(300);
+    const modal = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const bars = document.querySelectorAll('div[style*="border-radius: 999px"], div[style*="border-radius:999px"]');
+      return {
+        title: /Tagesaufgaben|Daily tasks/.test(t),
+        count: (t.match(/\d+\/\d+/g) || []).length
+      };
+    });
+    modal.title ? ok('Daily Tasks: Modal mit Titel ✓') : fail('Daily Tasks: Modal fehlt');
+    modal.count >= 3 ? ok(`Daily Tasks: 3 Aufgaben mit Fortschritt (${modal.count}) ✓`) : fail(`Daily Tasks: nur ${modal.count} Fortschritts-Anzeigen`);
+    await jsClick(page, ['Schließen', 'Close']);
+    // ── 2) Abhol-Flow: Task künstlich erfüllen → Badge + Abholen → Gold steigt ──
+    const seeded = await page.evaluate(() => {
+      let st = null;
+      try { st = JSON.parse(localStorage.getItem('fortress_tasks')); } catch (e) {}
+      if (!st || !st.tasks || !st.tasks.length) return null;
+      st.tasks[0].prog = 9999; // >= jedes Ziel
+      localStorage.setItem('fortress_tasks', JSON.stringify(st));
+      return st.tasks[0].id;
+    });
+    if (!seeded) { fail('Daily Tasks: Seed fehlgeschlagen (kein fortress_tasks)'); return { res, errs }; }
+    const goldBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('fortress_profile')).gold);
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').includes('📋')); b && b.click(); });
+    await page.waitForTimeout(300);
+    const claim = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Abholen|Claim/.test(x.textContent || ''));
+      if (!b) return false; b.click(); return true;
+    });
+    claim ? ok('Daily Tasks: Abholen-Button bei erfülltem Task ✓') : fail('Daily Tasks: Abholen-Button fehlt');
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({
+      gold: JSON.parse(localStorage.getItem('fortress_profile')).gold,
+      collected: JSON.parse(localStorage.getItem('fortress_tasks')).tasks[0].collected,
+      done: /✓/.test(document.body.innerText)
+    }));
+    after.gold > goldBefore ? ok(`Daily Tasks: Gold gutgeschrieben (${goldBefore}→${after.gold}) ✓`) : fail(`Daily Tasks: kein Gold (${goldBefore}→${after.gold})`);
+    after.collected ? ok('Daily Tasks: Task als abgeholt markiert ✓') : fail('Daily Tasks: collected-Flag fehlt');
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Daily Tasks: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Daily-Tasks-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
 async function suiteBallSettle(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -2405,7 +2468,7 @@ async function suiteTutorial(browser) {
     const mm3 = await suiteOnline3P(browser, FB_PORT);
     return { mm, mm3 };
   })();
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -2425,6 +2488,7 @@ async function suiteTutorial(browser) {
     suiteBallSettle(browser),
     suiteArmoryReady(browser),
     suiteCannonKill(browser),
+    suiteDailyTasks(browser),
   ]);
 
   const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
@@ -2432,9 +2496,9 @@ async function suiteTutorial(browser) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

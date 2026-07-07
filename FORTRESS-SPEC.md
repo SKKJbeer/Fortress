@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.21.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.22.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2498,3 +2498,27 @@ Umsetzung von SPEC-Abschnitt 14.2 — die Zähler-Infrastruktur für Daily Tasks
   Wall-Zähler in den bestehenden Isolier-Suites.
 
 Tests grün. SW-Cache `fortress-v3.21.0`.
+
+### v3.22.0 — Daily Tasks (Meta-Progression Phase 2, Teil 3/4)
+Umsetzung von SPEC-Abschnitt 14.3 — 3 rotierende Tagesaufgaben mit
+Gold-Belohnung, der stärkste Retention-Hebel neben dem Streak.
+- **Pool (8 Typen)**: walls30/80, cannons2, scrap60, play2/4, win1, buy3
+  (Gold 25–50). Rotation deterministisch aus dem Datum (`makeRng(dateSeed)`,
+  3 verschiedene) — alle Spieler desselben Tages sehen dieselben Aufgaben.
+- **Persistenz**: `fortress_tasks` = `{day, tasks:[{id, prog, collected}]}`;
+  neuer Tag ⇒ neue Rotation, alter Fortschritt verfällt.
+- **Ernte**: `useEffect` auf `screen==="result"` liest `matchStats[meP]`
+  (walls/cannons/scrap/buys) + Match-gespielt/-gewonnen; Guard
+  `tasksHarvested` (Reset beim Verlassen des Result-Screens). Bot- UND
+  Online-Matches zählen; Tutorial und lokales Duell am selben Gerät nicht.
+  Effect-Timing garantiert: matchStats ist auf Host und Gast final, bevor
+  geerntet wird.
+- **Abholen**: Gold + `lifetimeGold` ins Profil (füttert Gold-Achievements);
+  `collected`-Flag verhindert Doppelabholung.
+- **UI**: 📋-Button neben dem Achievements-Button (Badge = abholbereite
+  Aufgaben, Glow-Animation); Modal mit 3 Zeilen — Icon, Text, Fortschritts-
+  balken x/Ziel, Gold-Chip bzw. „Abholen“-Button bzw. ✓. i18n de/en.
+- Neue Suite `suiteDailyTasks`: Button, Modal (3 Aufgaben), Abhol-Flow
+  (Seed prog→9999, Gold steigt, collected gesetzt).
+
+Tests grün. SW-Cache `fortress-v3.22.0`.
