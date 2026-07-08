@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.23.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.24.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2550,3 +2550,40 @@ kosmetisch, nur mit erspieltem Gold (kein Pay2Win, kein Echtgeld).
   Umrüsten auf Gratis-Artikel ohne Gold-Abzug.
 
 Tests grün. SW-Cache `fortress-v3.23.0`.
+
+### v3.24.0 — Balancing-Messpass: Panzerung 35→45, Reparatur-Preis-Staffel
+Datenbasierter Pass (Review-Punkt 5). **Messaufbau**: Bot-Selfplay
+(`__botSelfPlay`), 2 Konfigurationen × 2 parallele Läufe × 7 Min bei
+moderatem 4×-Tempo (Phasen ≥900ms→250ms, Bot-Tick 600→150ms — hält das
+Verhältnis Bot-Aktionen/Phase; Nachladezeit bleibt Echtzeit → absolute Werte
+verzerrt, aber beide Konfigurationen identisch verzerrt = relativer Vergleich
+gültig). Kurze Degenerat-Spiele (Burg in Runde 1 nicht geschlossen,
+15s-Artefakte des Speedups) aus der Wertung genommen.
+
+**Daten (aussagekräftige lange Spiele):**
+| Konfiguration | Spieldauer (4×-s) | Kanonen/Sp. Ende | Restschrott/Sp. |
+|---|---|---|---|
+| Mittel vs. Mittel (Kanone→Reload→Armor) | 59–113, Ø ~90 | 4 | 1–29, Ø ~12 |
+| Schwer vs. Schwer, beide MIT Panzerung | **146–187** | 4–5 | **20–31** |
+
+**Befunde & Entscheidungen:**
+1. **Panzerung verlängert beidseitig gekaufte Spiele auf fast das Doppelte**
+   und führt zu Schrott-Hortung (Verteidigung übersättigt). → Preis **35→45**:
+   Panzerung landet erst Mitte des Matches statt in Runde 1–2, bleibt aber
+   erreichbar. Neue Preisleiter: Kanone 20 < Reload 25 < Armor 45 < Reload II 50.
+2. **Reparatur wurde in KEINEM Selfplay-Spiel gekauft** → keine Missbrauchs-
+   Daten, aber der Flat-Preis (⚙15, beliebig oft) bleibt das strukturelle
+   Patt-Risiko aus dem Review. → **Preis-Staffel 15→20→25…** (`repair:
+   {base:15, step:5}`, Zähler `up.repair`, Reset pro Karte in `beginSetup`
+   analog Kanonen-Staffel). 1–2 Notfall-Reparaturen bleiben billig, Dauer-
+   Abo wird teuer. Präventiv, minimal-invasiv.
+3. **Überlebens-Sold +6 unverändert**: Restschrott Ø ~12 = gesunde
+   Ausgabenquote, keine Hortung im Normalspiel. Die Review-Idee
+   (+Aggro-Kopplung) bleibt Hypothese — keine Änderung ohne Spielerdaten.
+4. **CANNON_HP 8 unverändert**: lange Spiele enden weiterhin entscheidbar.
+
+Umsetzung: `SHOP.armor.price=45`; `SHOP.repair={base,step}` an allen 3
+Stellen (buyUpgrade, Shop-Karte, Schwer-Bot); `up.repair`-Inkrement +
+Rundenreset; Shop-Info-Text erwähnt die Staffel. i18n de/en.
+
+Tests grün. SW-Cache `fortress-v3.24.0`.

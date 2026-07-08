@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.23.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.24.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -585,8 +585,13 @@ const SCRAP_WALL = 1, SCRAP_CANNON = 12, SCRAP_SURVIVE = 6;
 const SHOP = {
   cannon: { base: 20, step: 8 },       // Preis steigt je Kauf (Selbstlimitierung)
   reload: { prices: [25, 50], factors: [1, 0.8, 0.65] }, // globaler Nachlade-Faktor
-  armor:  { price: 35 },               // Mauern halten 2 Treffer
-  repair: { price: 15 }                // +3 eigene Trümmer → Mauern (nächste Bauphase)
+  // Balancing-Messpass v3.24.0 (Selfplay-Daten, SPEC-Changelog): Panzerung
+  // verlängerte beidseitig gekaufte Spiele auf fast das Doppelte → 35→45
+  // (landet damit erst mitte Match statt Runde 1–2). Reparatur bekam eine
+  // Preis-Staffel wie Kanonen (Anti-Patt: unbegrenzte Flat-Reparatur war das
+  // strukturelle Risiko; 1–2 Reparaturen pro Karte bleiben billig).
+  armor:  { price: 45 },               // Mauern halten 2 Treffer
+  repair: { base: 15, step: 5 }        // +3 Trümmer → Mauern; Preis steigt je Kauf (Staffel pro Karte)
 };
 // ── Premium-Shop-Design (v3.17.0): pro Upgrade eine Farbwelt + maßgeschneidertes
 // SVG-Icon (kein Emoji). Rein optisch — Preise/Mechanik unverändert.
@@ -1579,7 +1584,7 @@ const LANGS = {
     shopInfoCannonDesc: "Eine zus\xE4tzliche Kanone f\xFCr die n\xE4chste Bauphase. Der Preis steigt mit jedem Kauf (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Deine Kanonen laden schneller nach – mehr Sch\xFCsse pro Runde. 2 Stufen: 2,5s → 2,0s → 1,6s.",
     shopInfoArmorDesc: "Alle deine Mauern halten 2 Treffer statt 1. Der erste Treffer macht nur einen Riss.",
-    shopInfoRepairDesc: "Verwandelt bis zu 3 deiner Tr\xFCmmer nahe der Burg sofort zur\xFCck in Mauern. Notfall-Reparatur, beliebig oft.",
+    shopInfoRepairDesc: "Verwandelt bis zu 3 deiner Tr\xFCmmer nahe der Burg sofort zur\xFCck in Mauern. Preis steigt je Kauf (15 → 20 → 25 …), neue Karte = wieder g\xFCnstig.",
     shopInfoClose: "Verstanden",
     armoryPlaceHint: "\u{1F3AF} Tippe aufs Feld, um die Kanone zu platzieren",
     armoryDone: "Fertig",
@@ -1849,7 +1854,7 @@ const LANGS = {
     shopInfoCannonDesc: "One extra cannon for the next build phase. The price rises with each purchase (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Your cannons reload faster – more shots per round. 2 tiers: 2.5s → 2.0s → 1.6s.",
     shopInfoArmorDesc: "All your walls take 2 hits instead of 1. The first hit only cracks them.",
-    shopInfoRepairDesc: "Instantly turns up to 3 of your rubble tiles near the castle back into walls. Emergency repair, any number of times.",
+    shopInfoRepairDesc: "Instantly turns up to 3 of your rubble tiles near the castle back into walls. Price rises per purchase (15 → 20 → 25 …), fresh map = cheap again.",
     shopInfoClose: "Got it",
     armoryPlaceHint: "\u{1F3AF} Tap the field to place your cannon",
     armoryDone: "Ready",
@@ -5187,13 +5192,15 @@ window.FortressApp = function Fortress() {
       if (have < price) return false;
       up.armor = 1;
     } else if (item === "repair") {
-      price = SHOP.repair.price;
+      // Preis-Staffel (v3.24.0): 15 → 20 → 25 … pro Karte (Reset in beginSetup)
+      price = SHOP.repair.base + SHOP.repair.step * (up.repair || 0);
       if (have < price) return false;
       // SOFORT reparieren (v3.16.4): bis zu 3 Trümmer nahe der eigenen Burg
       // werden augenblicklich wieder zu Mauern — sichtbarer Effekt statt
       // unsichtbarer Gutschrift für später.
       const fixedN = repairRubble(player, 3);
       if (fixedN === 0) return false;
+      up.repair = (up.repair || 0) + 1;
       showWarn(t("repairDone", { n: fixedN }));
     } else return false;
     scrap.current[player] = have - price;
@@ -5504,7 +5511,7 @@ window.FortressApp = function Fortress() {
           if (!up.armor && have >= SHOP.armor.price) buyUpgrade(B, "armor");
           else if ((up.reload || 0) < 2 && have >= SHOP.reload.prices[up.reload || 0]) buyUpgrade(B, "reload");
           else if (canCannon) buyUpgrade(B, "cannon");
-          else if (have >= SHOP.repair.price + 20 && botRubbleNearCastle(B)) buyUpgrade(B, "repair");
+          else if (have >= SHOP.repair.base + SHOP.repair.step * (up.repair || 0) + 20 && botRubbleNearCastle(B)) buyUpgrade(B, "repair");
         } else {
           // Mittel: bisherige Logik unverändert
           if (canCannon) buyUpgrade(B, "cannon");
@@ -6562,6 +6569,7 @@ window.FortressApp = function Fortress() {
       if (typeof scrap.current[p] !== "number") scrap.current[p] = 0;
       const up = upgrades.current[p] || (upgrades.current[p] = { reload: 0, armor: 0, repair: 0, cbought: 0 });
       up.cbought = 0;
+      up.repair = 0; // Reparatur-Staffel pro Karte (v3.24.0), analog Kanonenpreis
     }
     wallHp.current = {};
     if (numPlayersRef.current === 3) {
@@ -6759,7 +6767,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.23.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.24.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7924,7 +7932,7 @@ window.FortressApp = function Fortress() {
         { k: "cannon", label: t("shopCannon"), tag: t("shopTagCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
         { k: "reload", label: t("shopReload"), tag: t("shopTagReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
         { k: "armor", label: t("shopArmor"), tag: t("shopTagArmor"), price: SHOP.armor.price, max: !!up.armor },
-        { k: "repair", label: t("shopRepair"), tag: t("shopTagRepair"), price: SHOP.repair.price, max: false, noNeed: (() => {
+        { k: "repair", label: t("shopRepair"), tag: t("shopTagRepair"), price: SHOP.repair.base + SHOP.repair.step * (up.repair || 0), max: false, noNeed: (() => {
           const gg = grid.current, ctl = castles.current[sp];
           if (!gg || !ctl) return true;
           for (let rr = Math.max(0, ctl.r - 10); rr <= Math.min(ROWS - 1, ctl.r + 10); rr++)
