@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.26.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.26.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2640,3 +2640,19 @@ wechselt in den Shop. `WIN_EMOJI` auf Komponenten-Ebene gehoist (Shop + Inventar
 teilen sie). i18n: `invTitle`, `invTapEquip`, `invMoreInShop` (de/en).
 
 Tests grün (inkl. neuem Persistenz-Regressionstest). SW-Cache `fortress-v3.26.1`.
+
+### v3.26.2 — Gold-Shop: Kauf-Bestätigungsdialog
+Nutzer-Wunsch: „Es braucht ein Kaufen-bestätigen-Button, ob man sich sicher
+ist." Bisher kaufte EIN Tipp auf eine unbesessene Karte sofort (versehentliche
+Käufe möglich). Jetzt zweistufig:
+- Tipp auf **unbesessenen** Artikel → Bestätigungs-Overlay (`confirmBuy`-State,
+  z-Index über dem Shop): Artikel-Preview + Name, Preis-/Danach-Anzeige
+  (Restgold, rot wenn nicht zahlbar), „✓ Kaufen" (Gold-Gradient) + „Abbrechen".
+- Tipp auf **besessenen** Artikel → wie bisher direkt anlegen (gratis, keine
+  Bestätigung nötig). Inventar im Profil unverändert (nur Anlegen).
+- Abbrechen/Backdrop/Shop-Schließen setzen `confirmBuy` zurück — kein
+  hängender Dialog. i18n: `confirmBuyQuestion/Price/After/Yes` (de/en).
+- Suite: Kauf-Flow zweistufig getestet (Dialog erscheint, Abbrechen kauft
+  NICHT + Gold unverändert, Bestätigen kauft + Restgold korrekt).
+
+Tests grün. SW-Cache `fortress-v3.26.2`.

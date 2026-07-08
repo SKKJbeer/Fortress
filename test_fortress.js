@@ -2136,10 +2136,47 @@ async function suiteGoldShop(browser) {
     view.title ? ok('Gold-Shop: Modal mit Titel ✓') : fail('Gold-Shop: Modal fehlt');
     view.sections ? ok('Gold-Shop: 3 Kategorien sichtbar ✓') : fail('Gold-Shop: Kategorien fehlen');
     view.goldChip ? ok('Gold-Shop: Gold-Kontostand angezeigt ✓') : fail('Gold-Shop: Kontostand fehlt');
-    // ── Kauf: Glut-Trail (150 G) mit Startgold 175 ──
+    // ── Kauf: Glut-Trail (150 G) mit Startgold 175 — zweistufig (v3.26.2) ──
     const goldBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('fortress_profile')).gold);
     await page.evaluate(() => {
       const b = [...document.querySelectorAll('button')].find(x => /Glut|Ember/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(300);
+    // Bestätigungsdialog muss erscheinen — Kauf darf noch NICHT passiert sein
+    const dlg = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return {
+        visible: /wirklich kaufen|Buy this item/.test(t),
+        priceShown: /150 G/.test(t),
+        notBoughtYet: !((p.cosmetics && p.cosmetics.owned) || []).includes('trail_ember')
+      };
+    });
+    dlg.visible ? ok('Kauf-Dialog: erscheint vor dem Kauf ✓') : fail('Kauf-Dialog: fehlt');
+    dlg.priceShown ? ok('Kauf-Dialog: Preis angezeigt ✓') : fail('Kauf-Dialog: Preis fehlt');
+    dlg.notBoughtYet ? ok('Kauf-Dialog: Ein-Tipp kauft NICHT sofort ✓') : fail('Kauf-Dialog: Kauf passierte ohne Bestätigung!');
+    // Abbrechen → kein Kauf, Gold unverändert
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Abbrechen|Cancel/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(250);
+    const afterCancel = await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return { gold: p.gold, owned: ((p.cosmetics && p.cosmetics.owned) || []).includes('trail_ember'), dlgGone: !/wirklich kaufen|Buy this item/.test(document.body.innerText) };
+    });
+    afterCancel.dlgGone && !afterCancel.owned && afterCancel.gold === goldBefore
+      ? ok('Kauf-Dialog: Abbrechen kauft nicht (Gold unverändert) ✓')
+      : fail(`Kauf-Dialog: Abbrechen fehlerhaft (owned=${afterCancel.owned}, ${goldBefore}→${afterCancel.gold})`);
+    // Erneut antippen + bestätigen → Kauf
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Glut|Ember/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(250);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /✓ Kaufen|✓ Buy/.test(x.textContent || ''));
       b && b.click();
     });
     await page.waitForTimeout(300);
@@ -2147,7 +2184,7 @@ async function suiteGoldShop(browser) {
       const p = JSON.parse(localStorage.getItem('fortress_profile'));
       return { gold: p.gold, owned: (p.cosmetics && p.cosmetics.owned) || [], trail: p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.trail };
     });
-    afterBuy.gold === goldBefore - 150 ? ok(`Gold-Shop: Kauf zieht Gold ab (${goldBefore}→${afterBuy.gold}) ✓`) : fail(`Gold-Shop: Gold falsch (${goldBefore}→${afterBuy.gold})`);
+    afterBuy.gold === goldBefore - 150 ? ok(`Gold-Shop: Kauf nach Bestätigung zieht Gold ab (${goldBefore}→${afterBuy.gold}) ✓`) : fail(`Gold-Shop: Gold falsch (${goldBefore}→${afterBuy.gold})`);
     afterBuy.owned.includes('trail_ember') ? ok('Gold-Shop: Artikel in owned[] ✓') : fail('Gold-Shop: owned fehlt');
     afterBuy.trail === 'trail_ember' ? ok('Gold-Shop: Artikel direkt angelegt ✓') : fail(`Gold-Shop: equipped falsch (${afterBuy.trail})`);
     // ── Umrüsten auf Standard (gratis, kein Gold-Abzug) ──

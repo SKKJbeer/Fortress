@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.26.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.26.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1490,6 +1490,10 @@ const LANGS = {
     invTitle: "Inventar",
     invTapEquip: "Anlegen",
     invMoreInShop: "Mehr im Gold-Shop",
+    confirmBuyQuestion: "Diesen Artikel wirklich kaufen?",
+    confirmBuyPrice: "Preis",
+    confirmBuyAfter: "Danach",
+    confirmBuyYes: "Kaufen",
     cosSectionTrail: "🎇 Kugel-Trails",
     cosSectionFrame: "🖼️ Wappen-Rahmen",
     cosSectionWin: "🎉 Sieges-Effekte",
@@ -1772,6 +1776,10 @@ const LANGS = {
     invTitle: "Inventory",
     invTapEquip: "Equip",
     invMoreInShop: "More in the gold shop",
+    confirmBuyQuestion: "Buy this item?",
+    confirmBuyPrice: "Price",
+    confirmBuyAfter: "After",
+    confirmBuyYes: "Buy",
     cosSectionTrail: "🎇 Ball trails",
     cosSectionFrame: "🖼️ Crest frames",
     cosSectionWin: "🎉 Victory effects",
@@ -3038,6 +3046,8 @@ window.FortressApp = function Fortress() {
   const tasksClaimable = tasksState.tasks.filter((tk) => { const d = taskDef(tk.id); return d && !tk.collected && (tk.prog || 0) >= d.target; }).length;
   // ── Gold-Shop State (v3.23.0) ──
   const [showGoldShop, setShowGoldShop] = useState(false);
+  // Kauf-Bestätigung (v3.26.2): {cat, item} des zur Bestätigung anstehenden Kaufs
+  const [confirmBuy, setConfirmBuy] = useState(null);
   function cosmeticOwned(cos, item) { return item.price === 0 || cos.owned.includes(item.id); }
   function buyOrEquipCosmetic(cat, item) {
     if (!profile) return;
@@ -6845,7 +6855,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.26.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.26.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7250,7 +7260,9 @@ window.FortressApp = function Fortress() {
           const equipped = cos.equipped[cat] === it.id;
           const afford = gold >= it.price;
           const clickable = equipped ? false : (owned || afford);
-          return h("button", { key: it.id, onClick: () => buyOrEquipCosmetic(cat, it), disabled: !clickable && !equipped, style: {
+          // Kauf-Bestätigung (v3.26.2): Besessenes wird direkt angelegt (gratis),
+          // unbesessene Artikel öffnen erst den Bestätigungsdialog.
+          return h("button", { key: it.id, onClick: () => owned ? buyOrEquipCosmetic(cat, it) : setConfirmBuy({ cat, item: it }), disabled: !clickable && !equipped, style: {
             flex: 1, minWidth: 0, border: "none", borderRadius: 12, padding: "9px 2px 7px",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
             cursor: clickable ? "pointer" : "default",
@@ -7269,7 +7281,7 @@ window.FortressApp = function Fortress() {
         })
       )
     );
-    return h("div", { onClick: () => setShowGoldShop(false), style: {
+    return h("div", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: {
       position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
       backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 18
@@ -7297,12 +7309,60 @@ window.FortressApp = function Fortress() {
         section("trail", t("cosSectionTrail")),
         section("frame", t("cosSectionFrame")),
         section("win", t("cosSectionWin")),
-        h("button", { onClick: () => setShowGoldShop(false), style: {
+        h("button", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: {
           width: "100%", marginTop: 4, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
           borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.06)",
           color: "#cbd5e1", fontSize: 13, fontWeight: 700
         } }, t("close"))
-      )
+      ),
+      // ── Kauf-Bestätigung (v3.26.2): Overlay über dem Shop ──
+      confirmBuy && (() => {
+        const it = confirmBuy.item, cat = confirmBuy.cat;
+        const canPay = gold >= it.price;
+        return h("div", { onClick: (e) => { e.stopPropagation(); setConfirmBuy(null); }, style: {
+          position: "fixed", inset: 0, zIndex: 1470, background: "rgba(2,6,15,0.75)",
+          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 24
+        } },
+          h("div", { onClick: (e) => e.stopPropagation(), style: {
+            maxWidth: 320, width: "100%", textAlign: "center",
+            background: "linear-gradient(180deg, rgba(38,50,78,0.99) 0%, rgba(13,18,33,0.99) 100%)",
+            border: "1px solid rgba(251,191,36,0.35)", borderRadius: 18, padding: "20px 18px 16px",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12)",
+            animation: "dailyBounceIn 0.32s cubic-bezier(.36,1.5,.56,1) both"
+          } },
+            h("div", { style: { display: "flex", justifyContent: "center", marginBottom: 10 } }, preview(cat, it)),
+            h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", marginBottom: 3 } }, t("cos_" + it.id)),
+            h("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 12 } }, t("confirmBuyQuestion")),
+            h("div", { style: {
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 15,
+              padding: "8px 10px", borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)"
+            } },
+              h("div", null,
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
+                h("div", { style: { fontSize: 15, fontWeight: 900, color: "#fcd34d" } }, it.price + " G")
+              ),
+              h("div", { style: { width: 1, height: 26, background: "rgba(255,255,255,0.1)" } }),
+              h("div", null,
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
+                h("div", { style: { fontSize: 15, fontWeight: 900, color: canPay ? "#e2e8f0" : "#ef4444" } }, (gold - it.price) + " G")
+              )
+            ),
+            h("button", { onClick: () => { buyOrEquipCosmetic(cat, it); setConfirmBuy(null); }, disabled: !canPay, style: {
+              width: "100%", border: "none", cursor: canPay ? "pointer" : "default", borderRadius: 12, padding: "12px",
+              background: canPay ? "linear-gradient(180deg,#fde68a,#f59e0b)" : "rgba(255,255,255,0.06)",
+              color: canPay ? "#3b2606" : "#64748b", fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
+              boxShadow: canPay ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 14px rgba(245,158,11,0.4)" : "none",
+              marginBottom: 8
+            } }, "✓ " + t("confirmBuyYes")),
+            h("button", { onClick: () => setConfirmBuy(null), style: {
+              width: "100%", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
+              borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.05)",
+              color: "#cbd5e1", fontSize: 13, fontWeight: 700
+            } }, t("cancel"))
+          )
+        );
+      })()
     );
   })(), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
