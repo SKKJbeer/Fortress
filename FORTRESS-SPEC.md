@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.24.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.25.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2587,3 +2587,21 @@ Stellen (buyUpgrade, Shop-Karte, Schwer-Bot); `up.repair`-Inkrement +
 Rundenreset; Shop-Info-Text erwähnt die Staffel. i18n de/en.
 
 Tests grün. SW-Cache `fortress-v3.24.0`.
+
+### v3.25.0 — Emotes im Online-Match (Review-Punkt 6)
+6 vordefinierte Reaktionen (`EMOTES` = 👍 😄 😮 😡 🏰 💥) — bewusst kein
+Freitext (keine Moderationslast, keine Übersetzung nötig).
+- **Transport host-autoritativ**: Gäste senden `{type:'emote', e:Index}` als
+  Action (sanitizeAction validiert 0–7); der Host prüft das Rate-Limit
+  (3 s/Spieler, `emoteLastAt`), setzt `emoteCur = {p, e, n:seq}` und pusht —
+  Gäste zeigen die Bubble ausschließlich über das State-Echo (Feld `emo`,
+  Dedupe via Sequenznummer `emoteSeen`). Der Host zeigt lokal sofort.
+- **UI**: 😊-Button links unten (nur online, `aria-label="Emote"`), klappt
+  eine 6er-Leiste auf; Senden schließt die Leiste, lokale Sperre 3 s.
+  Anzeige als Bubble oben mittig: großes Emoji + Spielername, Rand in
+  Spielerfarbe, `badgePop`-Animation, auto-hide nach 2,6 s.
+- Suite (Online-2P): Host sendet 👍 → eigene Bubble + Gast-Empfang via State;
+  Gast sendet 😮 → Host-Empfang via Action→State (Emoji-Wahl kollidiert
+  bewusst nicht mit Phasenbanner-Emojis 🏰/💥).
+
+Tests grün. SW-Cache `fortress-v3.25.0`.

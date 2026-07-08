@@ -1012,6 +1012,45 @@ async function suiteOnline2P(browser, fbPort) {
       ? ok('Kein falscher Reconnect-Banner bei aktiver Verbindung (Host+Gast) ✓')
       : fail(`Reconnect-Banner false-positive (Host=${bannerH}, Gast=${bannerG})`);
 
+    // ── Emotes (v3.25.0): Host sendet → beide sehen; Gast sendet → Host sieht ──
+    {
+      const emoteBtn = await pH.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Emote');
+        if (!b) return false; b.click(); return true;
+      });
+      emoteBtn ? ok('Emote: Button beim Host sichtbar ✓') : fail('Emote: Button fehlt (Host)');
+      await pH.waitForTimeout(200);
+      await pH.evaluate(() => {
+        const btns = [...document.querySelectorAll('button')].filter(x => /^👍$/.test((x.textContent || '').trim()));
+        btns[0] && btns[0].click();
+      });
+      await pH.waitForTimeout(250);
+      const hostBubble = await pH.evaluate(() => /👍/.test(document.body.innerText));
+      hostBubble ? ok('Emote: Host sieht eigene Bubble ✓') : fail('Emote: Host-Bubble fehlt');
+      let guestSaw = false;
+      for (let i = 0; i < 10 && !guestSaw; i++) {
+        guestSaw = await pG.evaluate(() => /👍/.test(document.body.innerText));
+        if (!guestSaw) await pG.waitForTimeout(300);
+      }
+      guestSaw ? ok('Emote: Gast empfängt Host-Emote via State ✓') : fail('Emote: Gast sieht Host-Emote nicht');
+      // Gast → Host (😮 kollidiert mit keinem Phasenbanner-Emoji)
+      await pG.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Emote');
+        b && b.click();
+      });
+      await pG.waitForTimeout(200);
+      await pG.evaluate(() => {
+        const btns = [...document.querySelectorAll('button')].filter(x => /^😮$/.test((x.textContent || '').trim()));
+        btns[0] && btns[0].click();
+      });
+      let hostSaw = false;
+      for (let i = 0; i < 10 && !hostSaw; i++) {
+        hostSaw = await pH.evaluate(() => document.body.innerText.includes('😮'));
+        if (!hostSaw) await pH.waitForTimeout(300);
+      }
+      hostSaw ? ok('Emote: Host empfängt Gast-Emote (Action→State) ✓') : fail('Emote: Host sieht Gast-Emote nicht');
+    }
+
     // ── JS-Fehler ─────────────────────────────────────────────
     errs1.length === 0 ? ok('Host: Keine JS-Fehler ✓') : errs1.forEach(e => fail(`Host JS: ${e.slice(0,80)}`));
     errs2.length === 0 ? ok('Gast: Keine JS-Fehler ✓') : errs2.forEach(e => fail(`Gast JS: ${e.slice(0,80)}`));

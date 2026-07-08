@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.24.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.25.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -553,9 +553,10 @@ function sanitizeAction(raw) {
     return null;
   }
   if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy", "ready"];
+  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy", "ready", "emote"];
   if (!validTypes.includes(a.type)) return null;
   if (a.type === "buy" && !["cannon", "reload", "armor", "repair"].includes(a.item)) return null;
+  if (a.type === "emote" && (typeof a.e !== "number" || a.e < 0 || a.e > 7)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
   if (a.tx !== void 0 && (typeof a.tx !== "number" || a.tx < 0 || a.tx > W * 2)) return null;
@@ -607,6 +608,9 @@ const SHOP_ICONS = {
   armor:  '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M12 2.2 L20 5.1 v5.7 c0 5-3.4 8.4-8 11 -4.6-2.6-8-6-8-11 V5.1 z"/><path fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" d="M8.4 12.1 l2.5 2.5 4.7-5"/></svg>',
   repair: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M20.9 6 a4.1 4.1 0 0 1-5.15 5.15 L8.2 18.7 a1.95 1.95 0 0 1-2.76-2.76 L13 8.4 A4.1 4.1 0 0 1 18.15 3.25 L15.5 5.9 a1.25 1.25 0 0 0 1.77 1.77 z"/></svg>'
 };
+// Emotes (v3.25.0): 6 vordefinierte Reaktionen fürs Online-Match — kein
+// Freitext (keine Moderationslast), Übertragung als Index via Action/State.
+const EMOTES = ["👍", "😄", "😮", "😡", "🏰", "💥"];
 const PHASE_BANNERS = {
   setup:  { emoji: "\u{1F3F0}", title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
   build:  { emoji: "\u{1F9F1}", title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
@@ -3401,6 +3405,38 @@ window.FortressApp = function Fortress() {
   // „Fertig"-Bestätigung in der Rüstphase (v3.18.1): Sind alle aktiven Spieler
   // bereit, springt der Timer auf 3s (wenn > 3) — wie das Auto-Vorspulen im Setup.
   const armoryReady = useRef({ 1: false, 2: false, 3: false });
+  // ── Emotes (v3.25.0) ────────────────────────────────────────────────────
+  // Host-autoritativ: Gäste senden {type:'emote', e}; der Host prüft das
+  // Rate-Limit (3s/Spieler), setzt emoteCur (State-Feld `emo`) und zeigt
+  // lokal an. Gäste zeigen ausschließlich über das State-Echo (Dedupe via n).
+  const emoteCur = useRef(null);
+  const emoteSeq = useRef(0);
+  const emoteLastAt = useRef({});
+  const emoteSeen = useRef(0);
+  const emoteHideTimer = useRef(null);
+  const emoteSentAt = useRef(0);
+  const [emoteShow, setEmoteShow] = useState(null);
+  const [emoteBarOpen, setEmoteBarOpen] = useState(false);
+  function displayEmote(p, e) {
+    setEmoteShow({ p, e, key: Date.now() });
+    clearTimeout(emoteHideTimer.current);
+    emoteHideTimer.current = setTimeout(() => setEmoteShow(null), 2600);
+  }
+  function hostEmote(p, e) {
+    const now = Date.now();
+    if (now - (emoteLastAt.current[p] || 0) < 3000) return;
+    emoteLastAt.current[p] = now;
+    emoteCur.current = { p, e, n: ++emoteSeq.current };
+    displayEmote(p, e);
+  }
+  function sendEmote(e) {
+    const now = Date.now();
+    if (now - emoteSentAt.current < 3000) return;
+    emoteSentAt.current = now;
+    setEmoteBarOpen(false);
+    if (myRole.current === 1) { hostEmote(1, e); pushState(true); }
+    else sendAction({ type: "emote", e });
+  }
   function checkArmoryReady() {
     if (phase_r.current !== "cannon") return;
     const active = playersList().filter((p) => !eliminated.current[p]);
@@ -3500,6 +3536,7 @@ window.FortressApp = function Fortress() {
       wallHp: wallHp.current,
       armoryReady: armoryReady.current,
       ms: matchStats.current,
+      emo: emoteCur.current,
       piece1: pieces.current[1] && pieces.current[1].cells,
       piece2: pieces.current[2] && pieces.current[2].cells,
       piece3: pieces.current[3] && pieces.current[3].cells,
@@ -3676,6 +3713,12 @@ window.FortressApp = function Fortress() {
         // Match-Statistik (v3.21.0): Host-Zahlen übernehmen; fehlende Spieler-
         // Einträge auffüllen (Firebase lässt leere Objekte weg).
         if (s.ms) matchStats.current = { 1: s.ms[1] || msZero(), 2: s.ms[2] || msZero(), 3: s.ms[3] || msZero() };
+        // Emote-Echo (v3.25.0): neue Sequenznummer → Bubble zeigen (nur Gast;
+        // der Host hat lokal schon angezeigt).
+        if (s.emo && s.emo.n && s.emo.n !== emoteSeen.current) {
+          emoteSeen.current = s.emo.n;
+          if (myRole.current !== 1) displayEmote(s.emo.p, s.emo.e);
+        }
         if (s.scrapPops) scrapPops.current = s.scrapPops;
         if (s.eliminated) eliminated.current = s.eliminated;
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
@@ -3837,6 +3880,7 @@ window.FortressApp = function Fortress() {
     else if (a.type === "fire" && ph === "shoot") fireMortar(p, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[p] = a.angle;
     else if (a.type === "rotate") pieces.current[p].cells = rotateCW(pieces.current[p].cells);
+    else if (a.type === "emote") hostEmote(p, a.e);
     pushState(true);
   }
   const joinedGuests = useRef({ 2: false, 3: false });
@@ -6767,7 +6811,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.24.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.25.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -8096,6 +8140,50 @@ window.FortressApp = function Fortress() {
           fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)"
         } }, "✓ " + t("shopInfoClose"))
+      )
+    );
+  })(),
+  // ── Emotes (v3.25.0): Button + Leiste (nur online) ──
+  online.current && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed", left: 8, bottom: "calc(env(safe-area-inset-bottom, 0px) + 118px)",
+    zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6
+  } },
+    emoteBarOpen && /* @__PURE__ */ React.createElement("div", { style: {
+      display: "flex", gap: 4, padding: "6px 7px", borderRadius: 999,
+      background: "linear-gradient(180deg, rgba(30,41,66,0.95), rgba(11,16,30,0.96))",
+      border: "1px solid rgba(255,255,255,0.14)",
+      boxShadow: "0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
+      backdropFilter: "blur(10px)", animation: "badgePop 0.22s ease both"
+    } }, EMOTES.map((em, i) => /* @__PURE__ */ React.createElement("button", { key: i, onClick: () => sendEmote(i), style: {
+      width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)",
+      background: "rgba(255,255,255,0.06)", fontSize: 17, cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 0
+    } }, em))),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setEmoteBarOpen((v) => !v), "aria-label": "Emote", style: {
+      width: 36, height: 36, borderRadius: "50%", cursor: "pointer",
+      border: "1px solid rgba(255,255,255,0.18)", fontSize: 17, padding: 0,
+      background: emoteBarOpen ? "linear-gradient(180deg,#2563eb,#7c3aed)" : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
+      boxShadow: "0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
+      display: "flex", alignItems: "center", justifyContent: "center"
+    } }, "😊")
+  ),
+  // ── Emote-Bubble: schwebt oben mittig, Spielerfarbe + Name ──
+  emoteShow && (() => {
+    const pi = playerInfo.current[emoteShow.p] || {};
+    const col = pi.color || (emoteShow.p === 1 ? "#2563eb" : emoteShow.p === 2 ? "#dc2626" : "#059669");
+    return /* @__PURE__ */ React.createElement("div", { key: "emote" + emoteShow.key, style: {
+      position: "fixed", left: 0, right: 0, top: "calc(env(safe-area-inset-top, 0px) + 92px)",
+      zIndex: 1240, display: "flex", justifyContent: "center", pointerEvents: "none"
+    } },
+      /* @__PURE__ */ React.createElement("div", { style: {
+        display: "flex", alignItems: "center", gap: 8, padding: "7px 16px 7px 12px", borderRadius: 999,
+        background: "linear-gradient(180deg, rgba(30,41,66,0.95), rgba(11,16,30,0.96))",
+        border: "1.5px solid " + col,
+        boxShadow: "0 8px 30px rgba(0,0,0,0.55), 0 0 18px " + col + "55",
+        backdropFilter: "blur(10px)", animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both"
+      } },
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 26, lineHeight: 1 } }, EMOTES[emoteShow.e] || "👍"),
+        pi.name && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: "#e2e8f0", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, pi.name)
       )
     );
   })(), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
