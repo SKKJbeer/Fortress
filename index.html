@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.25.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.26.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -1541,6 +1541,15 @@ const LANGS = {
     searchingOpponent: "Suche Gegner…",
     searchingSince: "Seit {s}s in der Warteschlange",
     searchingRadius: "Such-ELO-Radius: \xB1{r}",
+    queueTipLabel: "TIPP",
+    queueTip_0: "Kanonen feuern nur, wenn sie zu Beginn der Schussrunde komplett ummauert sind.",
+    queueTip_1: "Eine zerst\xF6rte Gegner-Kanone bringt +12 Schrott — das lohnt sich mehr als Mauern.",
+    queueTip_2: "Panzermauern halten 2 Treffer — der erste Treffer macht nur einen Riss.",
+    queueTip_3: "Die Reparatur verwandelt bis zu 3 Tr\xFCmmer nahe deiner Burg sofort in Mauern.",
+    queueTip_4: "Schnellladen wirkt auf ALLE deine Kanonen — stark ab 2+ Kanonen.",
+    queueTip_5: "Platzierung abbrechen: Finger auf das Vorschaubild ganz unten ziehen und loslassen.",
+    queueTip_6: "Jede \xFCberlebte Runde bringt +6 Schrott in der R\xFCstphase.",
+    queueTip_7: "Tagesaufgaben (📋) geben bis zu ~135 Gold pro Tag f\xFCr den Gold-Shop.",
     cancelSearch: "Suche abbrechen",
     playerCount: "SPIELERANZAHL (zum Erstellen)",
     createGame: "Spiel erstellen ({n} Spieler)",
@@ -1811,6 +1820,15 @@ const LANGS = {
     searchingOpponent: "Searching for opponent…",
     searchingSince: "Waiting {s}s in queue",
     searchingRadius: "Search ELO radius: \xB1{r}",
+    queueTipLabel: "TIP",
+    queueTip_0: "Cannons only fire if they are fully walled in when the shooting round starts.",
+    queueTip_1: "Destroying an enemy cannon earns +12 scrap — worth more than farming walls.",
+    queueTip_2: "Armored walls take 2 hits — the first hit only cracks them.",
+    queueTip_3: "The repair crew instantly turns up to 3 rubble tiles near your castle into walls.",
+    queueTip_4: "Fast reload applies to ALL your cannons — strongest with 2+ cannons.",
+    queueTip_5: "Cancel a placement: drag your finger onto the preview at the very bottom and release.",
+    queueTip_6: "Every survived round earns +6 scrap in the armory phase.",
+    queueTip_7: "Daily tasks (📋) grant up to ~135 gold per day for the gold shop.",
     cancelSearch: "Cancel search",
     playerCount: "PLAYER COUNT (to create)",
     createGame: "Create game ({n} players)",
@@ -6811,7 +6829,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.25.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.26.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7473,7 +7491,23 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     animation: "radarSpin 3s linear infinite",
     filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))"
-  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 22 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: cancelMatchmaking, style: {
+  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 14 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), (() => {
+    // Tipps-Karussell (v3.26.0): nutzt den laufenden mmElapsed-Ticker —
+    // alle 5s der nächste Tipp, kein zusätzlicher Timer.
+    const tipIdx = Math.floor(mmElapsed / 5) % 8;
+    return /* @__PURE__ */ React.createElement("div", { key: "qtip" + tipIdx, style: {
+      marginBottom: 20, padding: "10px 14px", borderRadius: 12, textAlign: "left",
+      background: "rgba(34,211,238,0.07)", border: "1px solid rgba(34,211,238,0.22)",
+      display: "flex", alignItems: "flex-start", gap: 9,
+      animation: "badgePop 0.35s ease both"
+    } },
+      /* @__PURE__ */ React.createElement("span", { style: {
+        flexShrink: 0, fontSize: 9, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.12em",
+        background: "rgba(34,211,238,0.14)", borderRadius: 6, padding: "3px 7px", marginTop: 1
+      } }, "💡 " + t('queueTipLabel')),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#94a3b8", lineHeight: 1.45 } }, t('queueTip_' + tipIdx))
+    );
+  })(), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: cancelMatchmaking, style: {
     width: "100%",
     background: "rgba(255,255,255,0.08)",
     color: "#e2e8f0",

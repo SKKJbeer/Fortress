@@ -1110,6 +1110,9 @@ async function suiteMatchmaking(browser, fbPort) {
 
     // ── Match 1: beide finden sich über die Queue ─────────────
     await startMM(pA);
+    // Tipps-Karussell (v3.26.0): im Queue-Screen ist ein Gameplay-Tipp sichtbar
+    const tipSeen = await pA.evaluate(() => /TIPP|TIP/.test(document.body.innerText) && /💡/.test(document.body.innerText));
+    tipSeen ? ok('Queue: Tipps-Karussell sichtbar ✓') : fail('Queue: Tipp fehlt im Suche-Screen');
     await startMM(pB);
     const [m1a, m1b] = await Promise.all([inGame(pA, 15000), inGame(pB, 15000)]);
     m1a && m1b ? ok('Quick Match: beide Clients im Spiel ✓')

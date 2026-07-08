@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.25.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.26.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2605,3 +2605,16 @@ Freitext (keine Moderationslast, keine Übersetzung nötig).
   bewusst nicht mit Phasenbanner-Emojis 🏰/💥).
 
 Tests grün. SW-Cache `fortress-v3.25.0`.
+
+### v3.26.0 — Matchmaking-Wartezeit: Tipps-Karussell (Review-Punkt „Wartezeit nutzen“)
+Der Queue-Screen zeigte nur Spinner + Sekunden — tote Wartezeit.
+- **8 Gameplay-Tipps** (i18n `queueTip_0..7`): Kanonen-Ummauerung,
+  Kanonen-Kill-Ökonomie, Panzermauern, Reparatur, Schnellladen,
+  Abbrech-Geste, Überlebens-Sold, Daily Tasks.
+- **Rotation ohne neuen Timer**: `tipIdx = floor(mmElapsed / 5) % 8` — nutzt
+  den vorhandenen Warteschlangen-Ticker; `key`-Wechsel triggert die
+  `badgePop`-Einblendung pro Tipp.
+- Dezente Karte (Cyan-Rahmen, 💡 TIPP-Label) zwischen ELO-Radius und
+  Abbrechen-Button. Suite prüft Sichtbarkeit im Suche-Screen.
+
+Tests grün. SW-Cache `fortress-v3.26.0`.

@@ -66,7 +66,9 @@ index.html direkt editieren
 ## Spielmechanik (Kurzreferenz)
 
 - **Phasen**: Setup (20s) → Build (25s) → Shoot (20s, seit v3.14.11) → Rüstphase/Cannon (15s, seit v3.16.0) → Build ...
-- **Schrott-Ökonomie (seit v3.16.0)**: In-Match-Währung `scrap` (Mauer +1, Kanone +12, Überleben +6/Rüstphase). KEIN Gratis-Kanonen-Nachschub mehr — Shop in der Rüstphase (Kanone ⚙20+8, Schnellladen ⚙25/50 → `reloadMsOf()`, Panzermauern ⚙35 → `wallHp`-Map + Riss-Sprite, Reparatur ⚙15). Match-persistent über Runden (Reset nur bei neuem Spiel via `startGame`; `beginSetup` resettet nur wallHp + Kanonenpreis-Staffel). Kanonen-Kill sprengt 3×3-Mauern des Besitzers mit. Host-autoritativ; Gäste senden `buy`-Action. Gated Debug: `__buys`/`__econ`/`__botSelfPlay`.
+- **Schrott-Ökonomie (seit v3.16.0, Balancing-Messpass v3.24.0)**: In-Match-Währung `scrap` (Mauer +1, Kanone +12, Überleben +6/Rüstphase, Start ⚙15). KEIN Gratis-Kanonen-Nachschub mehr — Shop in der Rüstphase (Kanone ⚙20+8, Schnellladen ⚙25/50 → `reloadMsOf()`, Panzermauern ⚙45 → `wallHp`-Map + Riss-Sprite, Reparatur ⚙15+5-Staffel via `up.repair`). Match-persistent über Runden (Reset nur bei neuem Spiel; `beginSetup` resettet wallHp + Kanonen- UND Reparatur-Staffel). Kanonen-Kill sprengt 3×3-Mauern des Besitzers mit. Host-autoritativ; Gäste senden `buy`-Action. Gated Debug: `__buys`/`__econ`/`__botSelfPlay`. Messpass-Daten im SPEC-Changelog v3.24.0 (Armor verlängerte Spiele ~2× → 35→45).
+- **Emotes (seit v3.25.0)**: `EMOTES` (6, Index-Übertragung). Gast → `{type:'emote',e}`-Action; Host rate-limitet 3s/Spieler, synct via State-Feld `emo` (Dedupe `emoteSeen`). 😊-Button nur online. Emoji-Wahl in Tests darf nicht mit Phasenbanner-Emojis (🏰/💥) kollidieren.
+- **Queue-Tipps (seit v3.26.0)**: 8 i18n-Tipps im Matchmaking-Screen, Rotation `floor(mmElapsed/5)%8` — kein eigener Timer.
 - **Verlust**: Burg am Bauende nicht vollständig von Mauern umschlossen (Flood-Fill)
 - **Kanonen**: schießen nur wenn zu Beginn der Schussrunde vollständig ummauert (`frozenReady`)
 - **Grid**: 44×68 Zellen, 14px pro Zelle (W=616, H=952)
