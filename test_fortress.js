@@ -2163,6 +2163,72 @@ async function suiteGoldShop(browser) {
     afterEquip.trail === 'trail_standard' && afterEquip.gold === afterBuy.gold
       ? ok('Gold-Shop: Umrüsten gratis (Standard angelegt, Gold unverändert) ✓')
       : fail(`Gold-Shop: Umrüsten fehlerhaft (${afterEquip.trail}, ${afterBuy.gold}→${afterEquip.gold})`);
+    // ── v3.26.1 Regression: Käufe überleben Reload (loadProfile-Whitelist) ──
+    // WICHTIG: nicht page.reload() — das würde PROFILE_INIT (addInitScript)
+    // erneut ausführen und localStorage mit dem cosmetics-losen Testprofil
+    // überschreiben. Stattdessen frische Page OHNE Init-Skripte (localStorage
+    // ist im Context geteilt) → echter loadProfile-Durchlauf.
+    const page2 = await ctx.newPage();
+    page2.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    await page2.route('**unpkg.com**react@18**react.production.min.js**',
+      r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
+    await page2.route('**unpkg.com**react-dom@18**react-dom.production.min.js**',
+      r => r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
+    await page2.route('**firebase**',   r => r.abort());
+    await page2.route('**gstatic**',    r => r.abort());
+    await page2.route('**googleapis**', r => r.abort());
+    await page2.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page2.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 8000 });
+    await page2.waitForTimeout(500);
+    const afterReload = await page2.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return { owned: (p.cosmetics && p.cosmetics.owned) || [] };
+    });
+    afterReload.owned.includes('trail_ember')
+      ? ok('Persistenz: Kauf überlebt Reload ✓')
+      : fail('Persistenz: Kauf nach Reload weg (loadProfile verwirft cosmetics)');
+    // ── v3.26.1: Inventar im Profil-Editor + Käufe überleben Profil-Speichern ──
+    const editorOpened = await page2.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Profil bearbeiten|Edit profile/.test(x.title || ''));
+      if (!b) return false; b.click(); return true;
+    });
+    editorOpened ? ok('Profil-Editor geöffnet ✓') : fail('Profil-Editor-Button fehlt');
+    await page2.waitForTimeout(300);
+    const inv = await page2.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        title: /Inventar|Inventory/.test(t),
+        item: /Glut|Ember/.test(t),
+        shopLink: /Mehr im Gold-Shop|More in the gold shop/.test(t)
+      };
+    });
+    inv.title ? ok('Inventar: 🎒-Sektion im Profil ✓') : fail('Inventar: Sektion fehlt');
+    inv.item ? ok('Inventar: gekaufter Artikel (Glut) sichtbar ✓') : fail('Inventar: Kauf fehlt');
+    inv.shopLink ? ok('Inventar: Gold-Shop-Link ✓') : fail('Inventar: Shop-Link fehlt');
+    // Anlegen aus dem Inventar: Glut-Karte tippen → equipped
+    await page2.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Glut|Ember/.test(x.textContent || '') && /Anlegen|Equip|Angelegt|Equipped/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page2.waitForTimeout(250);
+    const invEquip = await page2.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.trail;
+    });
+    invEquip === 'trail_ember' ? ok('Inventar: Anlegen per Tipp ✓') : fail(`Inventar: Anlegen fehlgeschlagen (${invEquip})`);
+    // Profil speichern → Käufe müssen bleiben (saveProfileEditor-Whitelist)
+    await page2.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /💾/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page2.waitForTimeout(300);
+    const afterSave = await page2.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return { owned: (p.cosmetics && p.cosmetics.owned) || [], trail: p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.trail };
+    });
+    afterSave.owned.includes('trail_ember') && afterSave.trail === 'trail_ember'
+      ? ok('Persistenz: Kauf überlebt Profil-Speichern ✓')
+      : fail('Persistenz: Profil-Speichern löscht Käufe (saveProfileEditor)');
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Gold-Shop: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Gold-Shop-Suite Ausnahme: ' + e.message);

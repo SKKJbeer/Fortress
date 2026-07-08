@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.26.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.26.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2618,3 +2618,25 @@ Der Queue-Screen zeigte nur Spinner + Sekunden — tote Wartezeit.
   Abbrechen-Button. Suite prüft Sichtbarkeit im Suche-Screen.
 
 Tests grün. SW-Cache `fortress-v3.26.0`.
+
+### v3.26.1 — Fix: Gold-Shop-Käufe gingen verloren + Inventar im Profil
+Nutzer-Report: „Der Shop soll permanent sein — wenn man etwas gekauft hat, dann
+hat man es auch wirklich." Käufe wurden zwar in `profile.cosmetics` gespeichert,
+aber ZWEI Whitelist-Stellen bauten das Profil ohne dieses Feld neu auf:
+- `loadProfile()` — beim App-Start wurde `cosmetics` verworfen; bei Migrations-
+  `needsSave` sogar sofort ohne Käufe zurückgeschrieben → Käufe endgültig weg.
+- `saveProfileEditor()` — jede Profiländerung (Name/Wappen/Farbe) löschte die
+  Käufe ebenfalls.
+Beide reichen `cosmetics {owned[], equipped{}}` jetzt (sanitisiert) durch.
+**Regel: Neue Profil-Felder MÜSSEN in beide Whitelists (loadProfile +
+saveProfileEditor) aufgenommen werden** — alle anderen Speicherpfade nutzen
+Spread und sind sicher.
+
+Außerdem NEU: **Inventar im Profil-Editor** (🎒, zwischen Avatar-Galerie und
+Speichern): zeigt alle besessenen Kosmetik-Artikel je Kategorie (Trails/Rahmen/
+Sieges-Effekte) mit Preview; Tippen legt an (grüner Rahmen = angelegt, nutzt
+`buyOrEquipCosmetic`, kauft hier nichts). Footer-Button „Mehr im Gold-Shop"
+wechselt in den Shop. `WIN_EMOJI` auf Komponenten-Ebene gehoist (Shop + Inventar
+teilen sie). i18n: `invTitle`, `invTapEquip`, `invMoreInShop` (de/en).
+
+Tests grün (inkl. neuem Persistenz-Regressionstest). SW-Cache `fortress-v3.26.1`.
