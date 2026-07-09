@@ -10,10 +10,13 @@ const REACT_DOM_JS = fs.readFileSync('/tmp/react-dom.min.js', 'utf8');
 // Damit dauert ein kompletter Phasenzyklus ~10s statt ~100s.
 const TIMER_SPEEDUP = `
   const _osi = window.setInterval;
-  window.setInterval = (fn, ms, ...a) => _osi(fn, ms >= 900 ? 50 : ms, ...a);
+  window.setInterval = (fn, ms, ...a) => _osi(fn, ms >= 900 ? 50 : ms === 600 ? 60 : ms, ...a);
   const _ost = window.setTimeout;
   window.setTimeout = (fn, ms, ...a) => _ost(fn, ms >= 2000 ? Math.round(ms / 5) : ms, ...a);
 `;
+// Hinweis: ms === 600 → 60 skaliert den Bot-KI-Tick proportional zum 20×-Phasen-
+// Speedup — sonst bekäme der Bot in der gerafften Bauphase nur ~2 statt ~40
+// Ticks und wirkt fälschlich untätig (Versiegelungs-Test würde scheitern).
 
 // Profil vorab in localStorage setzen, damit der Profil-Editor nie erscheint.
 // Der Profil-Editor zeigt "WAPPEN" als Label (6 Großbuchstaben), das sonst
@@ -2469,6 +2472,16 @@ async function suiteBot(browser) {
     (lvlBtns.easy && lvlBtns.mid && lvlBtns.hard)
       ? ok('Bot-Stufen-Auswahl: 3 Schwierigkeitsgrade sichtbar ✓')
       : fail(`Bot-Stufen-Auswahl unvollständig (${JSON.stringify(lvlBtns)})`);
+    // ── Keine Vorauswahl (v3.29.0): alle 3 Stufen-Buttons sehen identisch aus ──
+    const noPreselect = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button')).filter(b =>
+        /Leicht|Easy|Mittel|Medium|Schwer|Hard/.test(b.textContent || '') && b.querySelector('svg'));
+      if (btns.length < 3) return { n: btns.length, same: false };
+      const bgs = btns.map(b => getComputedStyle(b).background);
+      return { n: btns.length, same: bgs.every(bg => bg === bgs[0]) };
+    });
+    noPreselect.same ? ok('Bot-Stufen-Auswahl: KEINE Vorauswahl (alle Buttons gleich) ✓')
+                     : fail(`Bot-Stufen-Auswahl: eine Stufe wirkt vorausgewählt (${noPreselect.n} Buttons, uneinheitlich)`);
     await jsClick(page, ['Mittel', 'Medium']);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     canvas ? ok('Bot-Spiel gestartet (Canvas sichtbar) ✓') : fail('Bot-Spiel startet nicht');
@@ -2503,6 +2516,31 @@ async function suiteBot(browser) {
       await page.waitForTimeout(100);
     }
     placed ? ok('Bot (P2) platziert selbstständig Kanonen ✓') : fail('Bot platziert keine Kanonen (KI inaktiv?)');
+
+    // ── Bau-KI (v3.29.0): Bot schließt eine geschossene Bresche wieder ──
+    // Bresche (3 Mauerzellen → Trümmer) in die Bot-Burg schlagen → Burg offen.
+    // Der Bot muss sie über die nächsten Bauphasen wieder versiegeln (Trümmer
+    // sind NICHT bebaubar → erzwingt den Umgehungs-Ring des Leck-Versieglers).
+    {
+      await page.evaluate(() => { window.__mmDebug = true; });
+      const blasted = await page.evaluate(() => {
+        const n = window.__blastWall ? window.__blastWall(2, 3) : 0;
+        return { n, open: window.__castleClosed ? window.__castleClosed(2) === false : null };
+      });
+      if (blasted.n >= 1 && blasted.open) {
+        ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen) ✓`);
+        let sealed = false;
+        const sealDeadline = Date.now() + 25000;
+        while (Date.now() < sealDeadline) {
+          if (await page.evaluate(() => window.__castleClosed && window.__castleClosed(2) === true)) { sealed = true; break; }
+          await page.waitForTimeout(300);
+        }
+        sealed ? ok('Bau-KI: Bot hat die Bresche wieder versiegelt (Burg zu) ✓')
+               : fail('Bau-KI: Burg nach 25s immer noch offen — Bot dichtet nicht');
+      } else {
+        fail(`Bau-KI: Bresche nicht erzeugbar (n=${blasted.n}, open=${blasted.open})`);
+      }
+    }
 
     // ── Stabil über mehrere Phasen (KI-Tick läuft in allen Phasen) ──
     const sawShoot = await waitForPhase(page, ['FEUER'], 6000);

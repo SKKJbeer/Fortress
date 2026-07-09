@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.28.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.29.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -366,12 +366,43 @@ und beschiessen danach gegenseitig ihre Festungen.
 | ⚔️ Mittel | 1.0 (bisheriger Wert) | ×1.0 | bisherige Logik (Kanone→Reload→Armor, max. 6) |
 | 💀 Schwer | 0.4 (präzise) | ×1.0 | optimierte Reihenfolge (Armor→Reload→Kanone, max. 8) + Reparatur bei Trümmern nahe Burg |
 
-- Bauverhalten (Burg schließen) bleibt auf allen Stufen gleich — eine offene
-  Bot-Burg wäre kein Spielspaß, sondern ein Sofort-Sieg.
+- Bauverhalten (Burg schließen) ist auf allen Stufen gleich — eine offene
+  Bot-Burg wäre kein Spielspaß, sondern ein Sofort-Sieg. Seit v3.29.0 ist es
+  ECHT zuverlässig: abdeckungs-genaues Platzieren (`botPlaceCovering`) +
+  Leck-Versiegler (`botSealCastle`, umbaut Trümmer) — siehe 14.1b.
 - **UI**: Tipp auf „Übung gegen Bot“ klappt eine 3-Knopf-Reihe aus
   (😴 Leicht / ⚔️ Mittel / 💀 Schwer); Tipp auf eine Stufe startet das Spiel.
-  Letzte Wahl wird in `fortress_bot_level` gemerkt und vorausgewählt.
+  **Seit v3.29.0 bewusst OHNE Vorauswahl**: keine Stufe ist hervorgehoben,
+  nichts wird gespeichert (`fortress_bot_level` entfernt) — der Spieler trifft
+  bei jedem Start eine aktive Wahl.
 - Tutorial nutzt intern immer „Mittel“-Werte (Coach-Verhalten unverändert).
+
+### 14.1b Bau-KI: Versiegelungs-Intelligenz (v3.29.0)
+
+Nutzer-Report: „Die Bots sind noch zu dumm und schließen nicht wirklich ihre
+Burg." Zwei strukturelle Schwächen der alten Bau-KI, beide behoben:
+
+1. **Abdeckungs-genaues Platzieren (`botPlaceCovering`)**: Die alte KI
+   platzierte Teile, die zwar NEBEN die Lücke passten, die Lückenzelle aber
+   oft nicht abdeckten (`placePiece` prüft nur „passt", nicht „deckt ab") —
+   der Bot baute Müll neben das Loch und hielt es für repariert. Jetzt werden
+   alle 4 Rotationen × alle Zell-Offsets geprüft, sodass eine Teil-Zelle die
+   Zielzelle EXAKT abdeckt; platziert wird nur bei echter Abdeckung.
+2. **Leck-Versiegler (`botSealCastle`)**: Solange die Burg offen ist, wird die
+   außen-erreichbare bebaubare Zelle mit kleinstem Burg-Abstand (Chebyshev
+   2–9) abdeckend bebaut und neu geprüft. Konvergiert auch bei Trümmern in der
+   Soll-Mauer (nicht bebaubar!) — es entsteht automatisch ein Umgehungs-Ring.
+
+Bau-Kette in `botBuild`: Rechteck-Ring (hübsch, jetzt deckend) → Versiegler
+(robust) → FillNear (verbrennt ein nirgends abdeckend passendes Teil → nächster
+Tick bekommt ein neues Zufallsteil). Solange die Burg offen ist, baut der Bot
+NICHT an Kanonen weiter.
+
+**Tests**: `TIMER_SPEEDUP` skaliert den KI-Tick proportional (600→60 ms), sonst
+bekäme der Bot in der 20× gerafften Bauphase nur ~2 statt ~40 Ticks. Gated
+Hooks `__castleClosed(p)` / `__blastWall(p,n)`. Suite-Beweis: 3-Zellen-Bresche
+in die Bot-Burg → Bot versiegelt sie (inkl. Trümmer-Umbau) innerhalb 25 s;
+Stufen-Menü: alle 3 Buttons identisch gestylt (keine Vorauswahl).
 
 ### 14.2 Match-Statistik & Result-Zusammenfassung (v3.21.0)
 
@@ -2723,3 +2754,21 @@ Oszillator synthetisierten Töne sind durch kuratierte **CC0-Samples** ersetzt
   7 Dateien (offline/TWA-tauglich).
 
 Tests grün. SW-Cache `fortress-v3.28.0`.
+
+### v3.29.0 — Bau-KI: echte Versiegelungs-Intelligenz + Stufenwahl ohne Vorauswahl
+Nutzer-Report: „Die Bots sind noch zu dumm und schließen nicht wirklich ihre
+Burg" + „bei der Schwierigkeitswahl ist eins immer vordefiniert".
+- **Bau-KI-Kernfix**: `botPlaceCovering` platziert Teile nur, wenn eine
+  Teil-Zelle die Ziellücke WIRKLICH abdeckt (alle 4 Rotationen × Zell-Offsets).
+  Vorher baute der Bot passende Teile NEBEN das Loch. Neuer Leck-Versiegler
+  `botSealCastle` dichtet die Burg von innen nach außen und umbaut Trümmer in
+  der Soll-Mauer (Umgehungs-Ring). Burg offen → kein Kanonen-Weiterbau.
+  Details: Abschnitt 14.1b.
+- **Stufenwahl ohne Vorauswahl**: Hervorhebung der zuletzt gewählten Stufe und
+  `fortress_bot_level`-Persistenz entfernt — alle 3 Buttons gleichwertig, der
+  Spieler wählt bei jedem Start aktiv (Wahl startet das Spiel).
+- **Tests**: KI-Tick im Speedup proportional (600→60 ms), Hooks
+  `__castleClosed`/`__blastWall`, Versiegelungs-Beweis (Bresche → Bot dichtet
+  in 25 s), Keine-Vorauswahl-Check (identische Button-Styles).
+
+Tests grün. SW-Cache `fortress-v3.29.0`.

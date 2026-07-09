@@ -169,7 +169,7 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 | `fortress_device_id` | Persistente Geräte-ID `d_...` (seit v3.14.12). Matchmaking-Ticket-Feld `dev` + `pid`-Fallback — verhindert Selbst-Matches über Reloads/fehlendes Profil hinweg. |
 | `fortress_my_game` | Crash-Marker `{code, ts}` des eigenen Spielknotens (seit v3.14.15). Bei sauberem Verlassen entfernt; nach Absturz löscht `gcOwnStaleGame()` (Marker >30 Min) den verwaisten Knoten beim nächsten Online-Einstieg. |
-| `fortress_bot_level` | Bot-Schwierigkeit `easy`/`mid`/`hard` (seit v3.20.0). „Übung gegen Bot" klappt eine 3-Knopf-Auswahl aus; `BOT_LEVELS` steuert Streuung/Feuer-Drossel/Einkauf via `botLvl()`. Tutorial nutzt immer `mid`. |
+| ~~`fortress_bot_level`~~ | ENTFERNT in v3.29.0 (keine Vorauswahl mehr — Stufe wird bei jedem Bot-Start aktiv gewählt, Wahl startet das Spiel). `BOT_LEVELS` steuert weiterhin Streuung/Feuer-Drossel/Einkauf via `botLvl()`; Bau-KI seit v3.29.0 mit Versiegelungs-Intelligenz (`botPlaceCovering`/`botSealCastle`, SPEC 14.1b). Tutorial nutzt immer `mid`. |
 | `fortress_tasks` | Daily Tasks `{day, tasks:[{id,prog,collected}]}` (seit v3.22.0). Rotation deterministisch aus dem Datum (`rollDailyTasks`), Ernte am Rundenende aus `matchStats` (Bot+Online zählen, Tutorial/lokales Duell nicht), 📋-Menü-Button mit Claim-Badge. |
 
 ### Meta-Progression Phase 2 (v3.20–v3.23, SPEC Abschnitt 14)

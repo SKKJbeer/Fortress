@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.28.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.29.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2970,6 +2970,33 @@ window.FortressApp = function Fortress() {
       return { before, beforeCannons: list.length, hp: CANNON_HP };
     });
     window.__enemyCannonCount = gated((shooter) => (cannons.current[shooter === 1 ? 2 : 1] || []).length);
+    // Testhilfen Bot-KI (v3.29.0): Burg-Status lesen + gezielt eine Bresche
+    // in die Schutzmauer von Spieler p schlagen (n zusammenhängende Mauerzellen → Trümmer).
+    window.__castleClosed = gated((p) => {
+      const g = grid.current, ct = castles.current[p];
+      if (!g || !ct) return null;
+      return isCastleClosed(g, p, ct);
+    });
+    window.__blastWall = gated((p, n) => {
+      const g = grid.current, ct = castles.current[p];
+      if (!g || !ct) return 0;
+      const wall = WALL_OF[p];
+      let start = null;
+      for (let d = 1; d <= 8 && !start; d++)
+        for (let c = ct.c - d; c <= ct.c + d && !start; c++) {
+          if (ct.r - d >= 0 && g[ct.r - d][c] === wall) start = { r: ct.r - d, c };
+          else if (ct.r + d < ROWS && g[ct.r + d][c] === wall) start = { r: ct.r + d, c };
+        }
+      if (!start) return 0;
+      const newG = g.map((row) => [...row]);
+      let done = 0;
+      for (let dc = 0; dc < (n || 1) + 4 && done < (n || 1); dc++) {
+        const cc = start.c + dc;
+        if (cc < COLS && newG[start.r][cc] === wall) { newG[start.r][cc] = RUBBLE; done++; }
+      }
+      setGrid(newG);
+      return done;
+    });
     // Balancing-Messung: vollständiger Ökonomie-Snapshot
     window.__econFull = gated(() => ({
       round: roundRefVal.current, phase: phase_r.current,
@@ -5525,9 +5552,39 @@ window.FortressApp = function Fortress() {
     }
     return placed > 0;
   }
+  // ── Abdeckungs-genaues Platzieren (v3.29.0) ───────────────────────────────
+  // Platziert das AKTUELLE Bauteil so, dass eine seiner Zellen EXAKT (tr,tc)
+  // abdeckt. Probiert alle 4 Rotationen × alle Zell-Offsets. Das ist der
+  // Kern-Fix der Bau-KI: vorher wurden Teile platziert, die zwar NEBEN die
+  // Lücke passten, sie aber nicht abdeckten — der Bot baute Müll neben das
+  // Loch und hielt es für repariert.
+  function botPlaceCovering(B, tr, tc, ter) {
+    for (let rot = 0; rot < 4; rot++) {
+      const cells = pieces.current[B].cells;
+      const maxR = Math.max(...cells.map(([r]) => r));
+      const maxC = Math.max(...cells.map(([, c]) => c));
+      for (const [dr, dc] of cells) {
+        const offR = tr - dr, offC = tc - dc;
+        let fits = true;
+        for (const [er, ec] of cells) {
+          const rr = er + offR, cc = ec + offC;
+          if (rr < 1 || rr >= ROWS - 1 || cc < 1 || cc >= COLS - 1 || grid.current[rr][cc] !== EMPTY || !isBuildable(ter, rr, cc, B)) { fits = false; break; }
+        }
+        if (!fits) continue;
+        // placePiece zentriert das Teil um (gr,gc) — Anker so wählen, dass offR/offC reproduziert werden
+        const gr = offR + Math.floor(maxR / 2), gc = offC + Math.floor(maxC / 2);
+        const gv = grid.current;
+        placePiece(B, gr, gc);
+        if (grid.current !== gv) return true;
+      }
+      pieces.current[B].cells = rotateCW(pieces.current[B].cells);
+    }
+    return false;
+  }
   // Baut die SOLL-Mauer als sauberes Rechteck (wie die Start-Mauer) wieder auf: füllt die
   // Lücken exakt auf dem Mauer-Rand um obj (±hH Zeilen, ±hW Spalten) → sieht aus wie eine
-  // reparierte Mauer, nicht wie ein zufälliger Klotz.
+  // reparierte Mauer, nicht wie ein zufälliger Klotz. Seit v3.29.0 nur noch mit
+  // Platzierungen, die die Lückenzelle WIRKLICH abdecken.
   function botRebuildRing(g, ter, B, obj, hH, hW, maxPlace) {
     const gaps = [];
     for (let dr = -hH; dr <= hH; dr++) for (let dc = -hW; dc <= hW; dc++) {
@@ -5540,17 +5597,37 @@ window.FortressApp = function Fortress() {
     for (const gap of gaps) {
       if (placed >= maxPlace) break;
       if (grid.current[gap.r][gap.c] !== EMPTY) continue; // schon durch ein vorheriges Teil gefüllt
-      const anchors = [[gap.r, gap.c], [gap.r - 1, gap.c], [gap.r + 1, gap.c], [gap.r, gap.c - 1], [gap.r, gap.c + 1]];
-      for (const [ar, ac] of anchors) {
-        let done = false;
-        for (let rot = 0; rot < 4; rot++) {
-          const gv = grid.current;
-          placePiece(B, ar, ac);
-          if (grid.current !== gv) { placed++; done = true; break; }
-          pieces.current[B].cells = rotateCW(pieces.current[B].cells);
-        }
-        if (done) break;
+      if (botPlaceCovering(B, gap.r, gap.c, ter)) placed++;
+    }
+    return placed > 0;
+  }
+  // ── Leck-Versiegler (v3.29.0) ────────────────────────────────────────────
+  // Solange die Burg offen ist: die außen-erreichbare, bebaubare Zelle mit dem
+  // kleinsten Burg-Abstand ABDECKEND bebauen und neu prüfen. Konvergiert auch,
+  // wenn Trümmer (nicht bebaubar!) in der Soll-Mauer liegen — dann entsteht
+  // automatisch ein Umgehungs-Ring um die Trümmerzelle. Das konnte die alte KI
+  // nicht: sie kannte nur den Rechteck-Ring und blindes Auffüllen.
+  function botSealCastle(B, ter, maxPlace) {
+    let placed = 0;
+    while (placed < maxPlace) {
+      const g = grid.current;
+      const castle = castles.current[B];
+      if (!castle || isCastleClosed(g, B, castle)) break;
+      const outside = computeOutsideMap(g, B);
+      const cands = [];
+      for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
+        if (!outside[r * COLS + c] || g[r][c] !== EMPTY || !isBuildable(ter, r, c, B)) continue;
+        const d = Math.max(Math.abs(r - castle.r), Math.abs(c - castle.c));
+        if (d < 2 || d > 9) continue; // d≥2: direkt an der Burg dichtet nicht (isObjectClosed prüft die 3×3-Nachbarn)
+        cands.push({ r, c, d });
       }
+      if (!cands.length) break;
+      cands.sort((a, b) => a.d - b.d);
+      let ok = false;
+      for (let i = 0; i < Math.min(cands.length, 24) && !ok; i++)
+        ok = botPlaceCovering(B, cands[i].r, cands[i].c, ter);
+      if (!ok) break; // aktuelles Teil passt nirgends abdeckend → Fallback (FillNear) verbrennt es
+      placed++;
     }
     return placed > 0;
   }
@@ -5565,11 +5642,16 @@ window.FortressApp = function Fortress() {
   }
   function botBuild(g, ter, B) {
     const castle = castles.current[B];
-    // 1) Burg-Schutzmauer als sauberen Ring wieder aufbauen (Priorität). Falls der Soll-Ring
-    //    gerade keine passende Lücke bietet, allgemeines Auffüllen als Fallback.
+    // 1) Burg schließen — HÖCHSTE Priorität, dreistufig (v3.29.0):
+    //    a) Soll-Ring sauber wieder aufbauen (hübsches Rechteck, deckend),
+    //    b) Leck-Versiegler (umbaut auch Trümmer in der Soll-Mauer),
+    //    c) Auffüllen nahe der Burg (verbrennt ein Teil, das nirgends
+    //       abdeckend passt → nächster Tick bekommt ein neues Zufallsteil).
     if (castle && !isCastleClosed(g, B, castle)) {
       if (botRebuildRing(g, ter, B, castle, 3, 6, 2)) return;
-      if (botFillNear(g, ter, B, computeOutsideMap(g, B), castle, 2)) return;
+      if (botSealCastle(B, ter, 2)) return;
+      if (botFillNear(g, ter, B, computeOutsideMap(g, B), castle, 1)) return;
+      return; // Burg offen, aber nichts platzierbar → nicht an Kanonen weiterbauen
     }
     if (tutorialMode.current) return; // Tutorial: nur Burg sichern, keine Kanonen-Ummauerung/Wachstum
     // 2) Noch offene Kanonen mit engem Ring einmauern → werden schussbereit (wachsende Feuerkraft).
@@ -5638,9 +5720,11 @@ window.FortressApp = function Fortress() {
     mid:  { spread: 1.0, fire: 1.0, maxCannons: 6, buy: "standard" },
     hard: { spread: 0.4, fire: 1.0, maxCannons: 8, buy: "optimal" }
   };
-  const botLevel = useRef((() => {
-    try { const v = localStorage.getItem("fortress_bot_level"); return BOT_LEVELS[v] ? v : "mid"; } catch { return "mid"; }
-  })());
+  // KEINE Vorauswahl (v3.29.0): Die Stufe wird bei JEDEM Bot-Start aktiv im
+  // Auswahlmenü angetippt (der Tipp startet das Spiel) — nichts ist vordefiniert
+  // oder hervorgehoben, nichts wird gespeichert. "mid" hier ist nur ein inerter
+  // Laufzeit-Fallback (z. B. Tutorial), keine UI-Vorauswahl.
+  const botLevel = useRef("mid");
   function botLvl() { return BOT_LEVELS[tutorialMode.current ? "mid" : botLevel.current] || BOT_LEVELS.mid; }
   const botAimSeq = useRef(0); // rotiert die Zielmauer, damit das Feuer nicht auf einer Stelle klebt
   function botActFor(B) {
@@ -6923,7 +7007,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.28.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.29.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7528,8 +7612,9 @@ window.FortressApp = function Fortress() {
     { k: "mid", icon: "swords", label: t('botLvlMid') },
     { k: "hard", icon: "skull", label: t('botLvlHard') }
   ].map((lv) => /* @__PURE__ */ React.createElement("button", { key: lv.k, onClick: () => {
+    // Aktive Wahl startet das Spiel — bewusst KEINE Hervorhebung/Persistenz
+    // einer Stufe (v3.29.0): nichts ist vordefiniert.
     botLevel.current = lv.k;
-    try { localStorage.setItem("fortress_bot_level", lv.k); } catch (e) {}
     setBotSelect(false);
     online.current = false;
     botMode.current = true;
@@ -7541,8 +7626,8 @@ window.FortressApp = function Fortress() {
     fullReset();
   }, style: {
     flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-    background: botLevel.current === lv.k ? "linear-gradient(135deg,#0891b2,#16a34a)" : "rgba(255,255,255,0.06)",
-    color: "white", border: botLevel.current === lv.k ? "1px solid rgba(34,197,94,0.7)" : "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white", border: "1px solid rgba(255,255,255,0.12)",
     padding: "10px 4px", fontSize: 13, fontWeight: 800, borderRadius: 10, cursor: "pointer"
   } }, /* @__PURE__ */ React.createElement(Icon, { name: lv.icon, size: 17 }), lv.label))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
