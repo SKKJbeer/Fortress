@@ -2390,6 +2390,43 @@ async function suiteCannonKill(browser) {
     (ms && ms.cannons >= 1) ? ok(`Match-Statistik: Kanonen-Kill gezählt (cannons=${ms.cannons}) ✓`) : fail(`Match-Statistik: Kill fehlt (${JSON.stringify(ms)})`);
     (ms && ms.hits >= 1) ? ok(`Match-Statistik: Wirkungstreffer gezählt (hits=${ms.hits}) ✓`) : fail(`Match-Statistik: hits fehlt (${JSON.stringify(ms)})`);
     (ms && ms.scrap >= 12) ? ok(`Match-Statistik: Schrott-Verdienst gezählt (scrap=${ms.scrap}) ✓`) : fail(`Match-Statistik: scrap fehlt (${JSON.stringify(ms)})`);
+
+    // ── Wiederaufbau-Paket (v3.30.0): letzte Bot-Kanone töten → A/B/C prüfen ──
+    // Alles in EINER Schussphase (Nachlauf hält sie offen), damit der Bot
+    // nicht zwischendurch in einer Rüstphase nachkauft.
+    const aid = await page.evaluate(async () => {
+      const deadline = Date.now() + 20000;
+      while (Date.now() < deadline) {
+        const ph = window.__phase && window.__phase();
+        const cnt = window.__enemyCannonCount(1);
+        if (ph === 'shoot' && cnt >= 1 && window.__readTimer() > 10) {
+          window.__testCannonKill(1);
+          const d2 = Date.now() + 3000;
+          while (Date.now() < d2 && window.__enemyCannonCount(1) >= cnt) await new Promise(r => setTimeout(r, 30));
+          if (window.__enemyCannonCount(1) > 0) continue; // noch eine übrig → nächster Durchlauf
+          // 0 Kanonen: Status (A: aktiv, B: Basispreis) + C: Bergung sofort testen
+          const info = window.__rebuildAid(2);
+          const before = window.__readScrap(2);
+          window.__spawnBallAtEnemy(1);
+          const d3 = Date.now() + 2500;
+          let after = before;
+          while (Date.now() < d3) {
+            after = window.__readScrap(2);
+            if (after > before) break;
+            await new Promise(r => setTimeout(r, 40));
+          }
+          return { info, before, after };
+        }
+        await new Promise(r => setTimeout(r, 40));
+      }
+      return null;
+    });
+    if (!aid) { fail('Wiederaufbau: 0-Kanonen-Zustand nicht erreicht'); }
+    else {
+      (aid.info && aid.info.active) ? ok('Wiederaufbau: Status aktiv bei 0 Kanonen ✓') : fail(`Wiederaufbau: Status inaktiv (${JSON.stringify(aid.info)})`);
+      (aid.info && aid.info.price === 20) ? ok('Wiederaufbau: Kanone zum Basispreis 20 ✓') : fail(`Wiederaufbau: Preis ${aid.info && aid.info.price} statt 20`);
+      aid.after > aid.before ? ok(`Wiederaufbau: Trümmer-Bergung +1 beim Verteidiger (${aid.before}→${aid.after}) ✓`) : fail(`Wiederaufbau: keine Bergung (${aid.before}→${aid.after})`);
+    }
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Kanonen-Kill: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Kanonen-Kill-Suite Ausnahme: ' + e.message);

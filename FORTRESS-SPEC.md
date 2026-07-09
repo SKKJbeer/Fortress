@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.29.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2790,3 +2790,30 @@ Kaufdialog waren noch Emojis (🎊/🎆/🪙).
   Gold-Shop-Check (keine Emoji-Codepoints im Modal).
 
 Tests grün. SW-Cache `fortress-v3.29.1`.
+
+### v3.30.0 — Wiederaufbau-Paket: Comeback-Ökonomie ohne Kanonen (Konzept A+B+C)
+Konzeptphase mit Nutzer: „Was passiert, wenn ein Spieler keine Kanonen mehr
+hat? Dann bekommt er ja kein Einkommen mehr durch Schießen." Analyse: Ohne
+Kanonen blieb nur der Überlebens-Sold (+6), die nächste Kanone kostete durch
+die Preisstaffel 20–44+ → 3–6 Rüstphasen erzwungene Passivität (Todesspirale),
+zugleich Igel-Patt-Gefahr. Entschieden: Paket A+B+C, aktiv NUR solange ein
+Spieler keine einsatzfähige Kanone hat (auch keine gekaufte unplatzierte);
+Helfer `rebuildAidActive(p)` / `cannonPriceOf(p)`:
+- **A) Wiederaufbau-Sold**: Überlebens-Sold verdoppelt (`SCRAP_REBUILD` 12
+  statt 6) — „das Volk sammelt Trümmer".
+- **B) Schmied-Rabatt**: nächste Kanone zum Basispreis 20 (Staffel pausiert
+  für diesen Kauf; `cbought` zählt weiter). Wirkt in Kauf-Logik, Shop-Karte
+  und Bot-Einkauf (alle über `cannonPriceOf`).
+- **C) Trümmer-Bergung**: +1 Schrott an den Verteidiger je EIGENER zerstörter
+  Mauer (Direkttreffer + Kanonen-Explosions-Splash; eigener Schrott-Popup in
+  Spielerfarbe unterhalb des Angreifer-Popups). Einkommen wächst proportional
+  zum erlittenen Beschuss. Kein Selbst-Farm möglich (eigene Treffer auf
+  eigene Mauern geben weiter nichts).
+Nicht ausnutzbar: Kanonenverlust kostet die Investition UND schenkt dem Gegner
++12 — die Hilfen kompensieren nur teilweise. Wiedereinstieg jetzt in 1–2 statt
+3–6+ Rüstphasen. Shop-Info-Overlay erklärt die Regel (Zeile unter der
+Verdienst-Tabelle, i18n de/en). Gated Hook `__rebuildAid(p)`; Suite-Beweis in
+der Kanonen-Kill-Suite: letzte Bot-Kanone töten → Status aktiv, Preis 20,
+Bergung +1 beim Verteidiger (alles in einer Schussphase, Nachlauf hält offen).
+
+Tests grün. SW-Cache `fortress-v3.30.0`.

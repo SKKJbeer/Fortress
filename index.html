@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.29.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.30.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -646,6 +646,10 @@ const SETUP_TIME = 20;
 // Überleben (+4 je Rüstphase). KEIN Gratis-Kanonen-Nachschub mehr — alles
 // nach den 2 Setup-Kanonen wird im Shop der Rüstphase gekauft.
 const SCRAP_WALL = 1, SCRAP_CANNON = 12, SCRAP_SURVIVE = 6;
+// Wiederaufbau-Paket (v3.30.0): Überlebens-Sold, wenn ein Spieler KEINE
+// einsatzfähige Kanone mehr hat — verhindert die Todesspirale (ohne Kanonen
+// kein Schieß-Einkommen → nie wieder Kanone leistbar).
+const SCRAP_REBUILD = 12;
 const SHOP = {
   cannon: { base: 20, step: 8 },       // Preis steigt je Kauf (Selbstlimitierung)
   reload: { prices: [25, 50], factors: [1, 0.8, 0.65] }, // globaler Nachlade-Faktor
@@ -1664,6 +1668,7 @@ const LANGS = {
     shopInfoEarnCannon: "Gegner-Kanone zerst\xF6ren",
     shopInfoEarnSurvive: "Runde \xFCberleben",
     shopInfoEarnStart: "Startkapital (pro Spiel)",
+    shopInfoEarnRebuild: "Ohne Kanonen: Sold verdoppelt, Kanone zum Basispreis, +1 je eigener zerst\xF6rter Mauer",
     shopInfoCannonDesc: "Eine zus\xE4tzliche Kanone f\xFCr die n\xE4chste Bauphase. Der Preis steigt mit jedem Kauf (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Deine Kanonen laden schneller nach – mehr Sch\xFCsse pro Runde. 2 Stufen: 2,5s → 2,0s → 1,6s.",
     shopInfoArmorDesc: "Alle deine Mauern halten 2 Treffer statt 1. Der erste Treffer macht nur einen Riss.",
@@ -1950,6 +1955,7 @@ const LANGS = {
     shopInfoEarnCannon: "Destroy an enemy cannon",
     shopInfoEarnSurvive: "Survive a round",
     shopInfoEarnStart: "Starting capital (per game)",
+    shopInfoEarnRebuild: "No cannons left: double pay, cannon at base price, +1 per own destroyed wall",
     shopInfoCannonDesc: "One extra cannon for the next build phase. The price rises with each purchase (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Your cannons reload faster – more shots per round. 2 tiers: 2.5s → 2.0s → 1.6s.",
     shopInfoArmorDesc: "All your walls take 2 hits instead of 1. The first hit only cracks them.",
@@ -2981,6 +2987,8 @@ window.FortressApp = function Fortress() {
     window.__enemyCannonCount = gated((shooter) => (cannons.current[shooter === 1 ? 2 : 1] || []).length);
     // Testhilfen Bot-KI (v3.29.0): Burg-Status lesen + gezielt eine Bresche
     // in die Schutzmauer von Spieler p schlagen (n zusammenhängende Mauerzellen → Trümmer).
+    // Wiederaufbau-Paket (v3.30.0): Comeback-Status + wirksamer Kanonenpreis
+    window.__rebuildAid = gated((p) => ({ active: rebuildAidActive(p), price: cannonPriceOf(p) }));
     window.__castleClosed = gated((p) => {
       const g = grid.current, ct = castles.current[p];
       if (!g || !ct) return null;
@@ -5024,10 +5032,12 @@ window.FortressApp = function Fortress() {
     // werden im Shop gekauft. Überlebens-Sold für alle aktiven Spieler.
     cannonBudget.current = players.reduce((o, p) => (o[p] = 0, o), {});
     for (const p of players) if (!eliminated.current[p]) {
-      scrap.current[p] = (scrap.current[p] || 0) + SCRAP_SURVIVE;
-      msOf(p).scrap += SCRAP_SURVIVE; // Match-Statistik (v3.21.0)
+      // Wiederaufbau-Paket A (v3.30.0): ohne Kanonen doppelter Sold (+12)
+      const sold = rebuildAidActive(p) ? SCRAP_REBUILD : SCRAP_SURVIVE;
+      scrap.current[p] = (scrap.current[p] || 0) + sold;
+      msOf(p).scrap += sold; // Match-Statistik (v3.21.0)
       const ct = castles.current[p];
-      if (ct) addScrapPop(ct.c * CELL + CELL / 2, ct.r * CELL - CELL, SCRAP_SURVIVE, p);
+      if (ct) addScrapPop(ct.c * CELL + CELL / 2, ct.r * CELL - CELL, sold, p);
     }
     if (typeof window !== "undefined" && window.__mmDebug) window.__econ = { scrap: { ...scrap.current }, up: JSON.parse(JSON.stringify(upgrades.current)), t: Date.now() };
     activeBuild.current = mk(null);
@@ -5223,6 +5233,11 @@ window.FortressApp = function Fortress() {
           }
           const newG2 = g.map((row) => [...row]);
           const enemyWallT = WALL_OF[ep];
+          // Wiederaufbau-Paket C (v3.30.0): war das die LETZTE Kanone (die
+          // sterbende hat hp<=0 und zählt nicht mehr), birgt der Verteidiger
+          // +1 Schrott je eigener Mauer, die die Explosion mitreißt.
+          const salvage = rebuildAidActive(ep) && !eliminated.current[ep];
+          let salvaged = 0;
           for (let dr = -1; dr <= 1; dr++)
             for (let dc = -1; dc <= 1; dc++) {
               const r = cn.r + dr, c = cn.c + dc;
@@ -5237,10 +5252,16 @@ window.FortressApp = function Fortress() {
                   const msW = msOf(ball.player);
                   msW.walls += 1;
                   msW.scrap += SCRAP_WALL;
+                  if (salvage) {
+                    salvaged += SCRAP_WALL;
+                    scrap.current[ep] = (scrap.current[ep] || 0) + SCRAP_WALL;
+                    msOf(ep).scrap += SCRAP_WALL;
+                  }
                 }
               }
             }
           if (killScrap > 0) addScrapPop(cn.c * CELL + CELL / 2, cn.r * CELL, killScrap, ball.player);
+          if (salvaged > 0) addScrapPop(cn.c * CELL + CELL / 2, cn.r * CELL + CELL * 1.8, salvaged, ep);
           setGrid(newG2);
           cannons.current[ep] = cannons.current[ep].filter((c) => c.id !== cn.id);
           explosions.current.push({ x: cn.c * CELL + CELL / 2, y: cn.r * CELL + CELL / 2, frame: 0, big: true });
@@ -5290,6 +5311,13 @@ window.FortressApp = function Fortress() {
           msD.walls += 1;
           msD.scrap += SCRAP_WALL;
           msD.hits += 1;
+          // Wiederaufbau-Paket C (v3.30.0): Trümmer-Bergung — der kanonenlose
+          // Verteidiger birgt +1 Schrott aus der eigenen zerstörten Mauer.
+          if (rebuildAidActive(ep) && !eliminated.current[ep]) {
+            scrap.current[ep] = (scrap.current[ep] || 0) + SCRAP_WALL;
+            msOf(ep).scrap += SCRAP_WALL;
+            addScrapPop(hitC * CELL + CELL / 2, hitR * CELL + CELL * 1.6, SCRAP_WALL, ep);
+          }
         }
       }
     }
@@ -5369,7 +5397,9 @@ window.FortressApp = function Fortress() {
     const have = scrap.current[player] || 0;
     let price = 0;
     if (item === "cannon") {
-      price = SHOP.cannon.base + SHOP.cannon.step * up.cbought;
+      // Wiederaufbau-Paket B (v3.30.0): ohne Kanonen gilt der Basispreis
+      // (Staffel pausiert für diesen Kauf, cbought zählt trotzdem weiter)
+      price = cannonPriceOf(player);
       if (have < price) return false;
       up.cbought += 1;
       cannonBudget.current[player] = (cannonBudget.current[player] || 0) + 1;
@@ -5640,6 +5670,22 @@ window.FortressApp = function Fortress() {
     }
     return placed > 0;
   }
+  // ── Wiederaufbau-Paket (v3.30.0): Comeback-Hilfe ohne Kanonen ──────────────
+  // Aktiv, wenn ein Spieler KEINE einsatzfähige Kanone mehr hat (auch keine
+  // gekaufte, noch unplatzierte). Dann greifen drei Hilfen:
+  //   A) Überlebens-Sold verdoppelt (SCRAP_REBUILD statt SCRAP_SURVIVE),
+  //   B) nächste Kanone zum Basispreis (Preisstaffel pausiert diesen Kauf),
+  //   C) Trümmer-Bergung: +1 Schrott, wenn die EIGENE Mauer zerstört wird.
+  // Nicht ausnutzbar: Kanonen verlieren kostet die Investition UND schenkt dem
+  // Gegner +12 pro Kill — die Hilfen kompensieren nur teilweise.
+  function rebuildAidActive(p) {
+    const alive = (cannons.current[p] || []).filter((c) => c.hp > 0).length;
+    return alive + (cannonBudget.current[p] || 0) <= 0;
+  }
+  function cannonPriceOf(p) {
+    const up = upgrades.current[p] || {};
+    return rebuildAidActive(p) ? SHOP.cannon.base : SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
+  }
   // Liegen Trümmer im Reparatur-Radius (≤10) der Bot-Burg? (v3.20.0, Schwer-Bot)
   function botRubbleNearCastle(B) {
     const g = grid.current, ct = castles.current[B];
@@ -5749,7 +5795,7 @@ window.FortressApp = function Fortress() {
         const lvl = botLvl();
         const up = upgrades.current[B] || {};
         const have = scrap.current[B] || 0;
-        const cPrice = SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
+        const cPrice = cannonPriceOf(B); // v3.30.0: Basispreis bei 0 Kanonen
         const canCannon = cannonBudget.current[B] <= 0 && have >= cPrice && (cannons.current[B] || []).length < lvl.maxCannons;
         if (lvl.buy === "basic") {
           // Leicht: nur gelegentlich eine Kanone, keine Upgrades
@@ -5778,7 +5824,7 @@ window.FortressApp = function Fortress() {
         const lvl = botLvl();
         const up = upgrades.current[B] || {};
         const have = scrap.current[B] || 0;
-        const cPrice = SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0);
+        const cPrice = cannonPriceOf(B); // v3.30.0: Basispreis bei 0 Kanonen
         // „Will noch etwas kaufen?“ muss zur Kaufstrategie der Stufe passen
         // (v3.20.0), sonst bestätigt z. B. der Leicht-Bot nie „Fertig“.
         const wantsMore = lvl.buy === "basic"
@@ -7016,7 +7062,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.29.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.30.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -8314,7 +8360,7 @@ window.FortressApp = function Fortress() {
       const up = upgrades.current[sp] || {};
       const have = scrap.current[sp] || 0;
       const items = [
-        { k: "cannon", label: t("shopCannon"), tag: t("shopTagCannon"), price: SHOP.cannon.base + SHOP.cannon.step * (up.cbought || 0), max: false },
+        { k: "cannon", label: t("shopCannon"), tag: t("shopTagCannon"), price: cannonPriceOf(sp), max: false },
         { k: "reload", label: t("shopReload"), tag: t("shopTagReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
         { k: "armor", label: t("shopArmor"), tag: t("shopTagArmor"), price: SHOP.armor.price, max: !!up.armor },
         { k: "repair", label: t("shopRepair"), tag: t("shopTagRepair"), price: SHOP.repair.base + SHOP.repair.step * (up.repair || 0), max: false, noNeed: (() => {
@@ -8456,7 +8502,9 @@ window.FortressApp = function Fortress() {
           earn.map((e, i) => h("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5, color: "#e2e8f0" } },
             h("span", null, e.l),
             h("span", { style: { fontWeight: 900, color: "#fcd34d" } }, "⚙ " + e.v)
-          ))
+          )),
+          // Wiederaufbau-Paket (v3.30.0): Comeback-Regel transparent machen
+          h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.35, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(245,158,11,0.18)" } }, t("shopInfoEarnRebuild"))
         ),
         h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 } },
           rows.map((it) => {
