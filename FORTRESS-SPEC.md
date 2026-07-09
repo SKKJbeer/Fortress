@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.27.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.28.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2700,3 +2700,26 @@ auch als Regel." Das UI verwendet jetzt durchgängig die `Icon`-Komponente
   Selektoren (title/aria-label) umgestellt.
 
 Tests grün. SW-Cache `fortress-v3.27.0`.
+
+### v3.28.0 — Hochwertige CC0-Sounds statt prozeduraler Töne
+Nutzer-Feedback: „Die Sounds hören sich noch billig an." Die per Web-Audio-
+Oszillator synthetisierten Töne sind durch kuratierte **CC0-Samples** ersetzt
+(Public Domain, kostenlos — Zero-Cost-konform):
+- **Quellen**: Kenney.nl (Impact Sounds, Sci-Fi Sounds, Casino Audio — CC0) und
+  OpenGameArt.org („Classic fanfare lick" fanfare_3, „Game Over #10" — CC0).
+- **Mapping**: shoot=explosionCrunch (Kanonendonner), impact=impactPlate_heavy
+  (Steintreffer), destroy=lowFrequency_explosion (tiefes Grollen),
+  place=impactWood (Baustein), buy=chips-handle (Schrott/Gold-Kauf),
+  win=Orchester-Fanfare (2,9s), lose=Game-Over-Sting (1,4s).
+- **Technik**: `sounds/*.mp3` (mono, 44,1 kHz, loudnorm −16 LUFS, ~88 KB gesamt).
+  `SFX._load()` lädt+dekodiert beim ersten Pointer-Event (Autoplay-Policy),
+  `SFX._play(name, vol)` spielt via BufferSource+Gain. Die alten prozeduralen
+  Töne bleiben als **Fallback**, bis Samples bereit sind bzw. wenn der Codec
+  fehlt (Playwright-Chromium dekodiert kein MP3 → Tests laufen unverändert).
+- **Neu verdrahtet**: `SFX.place()` (war toter Guard-Aufruf) beim Platzieren;
+  `SFX.buy()` im Rüstphasen-Shop (`doBuy`) und im Gold-Shop (ersetzt dort die
+  unpassende win-Fanfare). Ungenutztes `SFX.cannon()` entfernt.
+- Haptik/Vibrationsmuster und Sound-Toggle unverändert. SW precached die
+  7 Dateien (offline/TWA-tauglich).
+
+Tests grün. SW-Cache `fortress-v3.28.0`.

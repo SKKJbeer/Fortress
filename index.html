@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.27.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.28.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -184,7 +184,10 @@ const ICON_PATHS = {
   lightbulb:   ["M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5", "M9 18h6", "M10 22h4"],
   moon:        ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"],
 };
-// ── Sound & Haptik (Web Audio API, prozedural — keine Asset-Dateien, offline/TWA-tauglich) ──
+// ── Sound & Haptik (v3.28.0): echte CC0-Samples (Kenney.nl + OpenGameArt, Public
+// Domain) via Web Audio Buffer. Prozedurale Töne bleiben als Fallback, bis die
+// Samples geladen/dekodiert sind (oder falls der Codec fehlt, z. B. Headless-Tests).
+// Dateien in sounds/*.mp3 (mono, -16 LUFS, ~88 KB gesamt), SW-precached → offline/TWA-tauglich. ──
 const SFX = {
   ctx: null,
   enabled: true,
@@ -199,6 +202,39 @@ const SFX = {
   },
   resume() {
     try { const c = this._ensure(); if (c && c.state === "suspended") c.resume().catch(() => {}); } catch (e) {}
+    this._load();
+  },
+  _bufs: {},
+  _loading: false,
+  _load() {
+    if (this._loading) return;
+    this._loading = true;
+    const c = this._ensure();
+    if (!c) return;
+    for (const n of ["shoot", "impact", "destroy", "place", "buy", "win", "lose"]) {
+      fetch("sounds/" + n + ".mp3")
+        .then((r) => r.ok ? r.arrayBuffer() : Promise.reject(0))
+        .then((ab) => c.decodeAudioData(ab))
+        .then((buf) => { this._bufs[n] = buf; })
+        .catch(() => {});
+    }
+  },
+  // Sample abspielen; false wenn (noch) kein Buffer → Aufrufer nutzt Fallback-Töne
+  _play(name, vol) {
+    if (!this.enabled) return true;
+    const buf = this._bufs[name];
+    if (!buf) return false;
+    try {
+      const c = this._ensure();
+      if (!c) return false;
+      const s = c.createBufferSource();
+      s.buffer = buf;
+      const g = c.createGain();
+      g.gain.value = vol != null ? vol : 1;
+      s.connect(g).connect(c.destination);
+      s.start();
+      return true;
+    } catch (e) { return false; }
   },
   _tone(o) {
     if (!this.enabled) return;
@@ -248,12 +284,13 @@ const SFX = {
     if (!this.haptics) return;
     try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {}
   },
-  shoot() { this._tone({ freq: 320, freqEnd: 90, type: "sawtooth", dur: 0.18, vol: 0.16 }); this._noise({ dur: 0.12, vol: 0.10, filterFreq: 800 }); this.vibrate(15); },
-  impact() { this._noise({ dur: 0.25, vol: 0.20, filterFreq: 600 }); this._tone({ freq: 120, freqEnd: 40, type: "square", dur: 0.2, vol: 0.10 }); this.vibrate(25); },
-  destroy() { this._noise({ dur: 0.4, vol: 0.26, filterFreq: 500 }); this._tone({ freq: 90, freqEnd: 30, type: "sawtooth", dur: 0.35, vol: 0.16 }); this.vibrate([30, 40, 60]); },
-  cannon() { this._tone({ freq: 680, freqEnd: 880, type: "triangle", dur: 0.1, vol: 0.12 }); this.vibrate(10); },
-  win() { [523, 659, 784, 1047].forEach((f, i) => this._tone({ freq: f, type: "triangle", dur: 0.18, vol: 0.2, delay: i * 0.12 })); this.vibrate([20, 40, 20, 40, 60]); },
-  lose() { [392, 330, 262, 196].forEach((f, i) => this._tone({ freq: f, type: "sawtooth", dur: 0.22, vol: 0.15, delay: i * 0.14 })); this.vibrate([80, 60, 120]); }
+  shoot() { if (!this._play("shoot", 0.85)) { this._tone({ freq: 320, freqEnd: 90, type: "sawtooth", dur: 0.18, vol: 0.16 }); this._noise({ dur: 0.12, vol: 0.10, filterFreq: 800 }); } this.vibrate(15); },
+  impact() { if (!this._play("impact", 0.9)) { this._noise({ dur: 0.25, vol: 0.20, filterFreq: 600 }); this._tone({ freq: 120, freqEnd: 40, type: "square", dur: 0.2, vol: 0.10 }); } this.vibrate(25); },
+  destroy() { if (!this._play("destroy", 1)) { this._noise({ dur: 0.4, vol: 0.26, filterFreq: 500 }); this._tone({ freq: 90, freqEnd: 30, type: "sawtooth", dur: 0.35, vol: 0.16 }); } this.vibrate([30, 40, 60]); },
+  place() { if (!this._play("place", 0.65)) this._tone({ freq: 300, freqEnd: 220, type: "triangle", dur: 0.08, vol: 0.10 }); this.vibrate(8); },
+  buy() { if (!this._play("buy", 0.8)) this._tone({ freq: 680, freqEnd: 880, type: "triangle", dur: 0.1, vol: 0.12 }); this.vibrate(10); },
+  win() { if (!this._play("win", 0.9)) [523, 659, 784, 1047].forEach((f, i) => this._tone({ freq: f, type: "triangle", dur: 0.18, vol: 0.2, delay: i * 0.12 })); this.vibrate([20, 40, 20, 40, 60]); },
+  lose() { if (!this._play("lose", 0.85)) [392, 330, 262, 196].forEach((f, i) => this._tone({ freq: f, type: "sawtooth", dur: 0.22, vol: 0.15, delay: i * 0.14 })); this.vibrate([80, 60, 120]); }
 };
 function Icon(props) {
   const { name, size = 16, color, style = {} } = props || {};
@@ -3093,7 +3130,7 @@ window.FortressApp = function Fortress() {
         gold: g - item.price,
         cosmetics: { owned: [...cos.owned, item.id], equipped: __spreadProps(__spreadValues({}, cos.equipped), { [cat]: item.id }) }
       });
-      SFX.win && SFX.win();
+      SFX.buy && SFX.buy();
     }
     saveProfile(updated);
   }
@@ -5260,6 +5297,7 @@ window.FortressApp = function Fortress() {
   }
   // UI-Einstieg: Gast sendet Action, Host/lokal kauft direkt (v3.16.0)
   function doBuy(player, item) {
+    SFX.buy && SFX.buy();
     if (online.current && myRole.current !== 1) {
       sendAction({ type: "buy", item });
       return;
@@ -6885,7 +6923,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.27.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.28.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

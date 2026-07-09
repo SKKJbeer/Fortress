@@ -1959,7 +1959,7 @@ async function suiteSound(browser) {
 
     // ── SFX-Aufrufe werfen keine Fehler (auch ohne echtes Audio) ─
     const callsOk = await page.evaluate(() => {
-      try { SFX.shoot(); SFX.impact(); SFX.destroy(); SFX.cannon(); SFX.win(); SFX.lose(); SFX.vibrate(10); SFX.resume(); return true; }
+      try { SFX.shoot(); SFX.impact(); SFX.destroy(); SFX.place(); SFX.buy(); SFX.win(); SFX.lose(); SFX.vibrate(10); SFX.resume(); return true; }
       catch (e) { return false; }
     });
     callsOk ? ok('Alle SFX-Methoden laufen fehlerfrei ✓') : fail('SFX-Methode wirft Fehler');
