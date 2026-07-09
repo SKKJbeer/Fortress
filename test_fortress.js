@@ -1111,7 +1111,11 @@ async function suiteMatchmaking(browser, fbPort) {
     // ── Match 1: beide finden sich über die Queue ─────────────
     await startMM(pA);
     // Tipps-Karussell (v3.26.0): im Queue-Screen ist ein Gameplay-Tipp sichtbar
-    const tipSeen = await pA.evaluate(() => /TIPP|TIP/.test(document.body.innerText) && /💡/.test(document.body.innerText));
+    let tipSeen = false;
+    for (let i = 0; i < 20 && !tipSeen; i++) {
+      tipSeen = await pA.evaluate(() => /TIPP|TIP/.test(document.body.innerText));
+      if (!tipSeen) await pA.waitForTimeout(150);
+    }
     tipSeen ? ok('Queue: Tipps-Karussell sichtbar ✓') : fail('Queue: Tipp fehlt im Suche-Screen');
     await startMM(pB);
     const [m1a, m1b] = await Promise.all([inGame(pA, 15000), inGame(pB, 15000)]);
@@ -1640,9 +1644,9 @@ async function suiteAchievements(browser) {
     // Modal-Titel
     const modalTitle = await page.evaluate(() =>
       Array.from(document.querySelectorAll('div')).some(d =>
-        d.children.length === 0 && (d.textContent || '').trim() === '🏆 Achievements')
+        (d.textContent || '').trim() === 'Achievements' && d.querySelector('svg'))
     );
-    modalTitle ? ok('Achievement-Modal: Titel "🏆 Achievements" ✓') : fail('Achievement-Modal: Titel fehlt');
+    modalTitle ? ok('Achievement-Modal: Titel "Achievements" mit Icon ✓') : fail('Achievement-Modal: Titel fehlt');
 
     // Zähler "X/N freigeschaltet" (N = ACHIEVEMENTS.length, aktuell 20)
     const counterOk = await page.evaluate(() => /\d+\/\d+\s*freigeschaltet/.test(document.body.innerText));
@@ -1679,7 +1683,8 @@ async function suiteAchievements(browser) {
 
     // Modal schließbar via ✕
     await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === '✕');
+      const btn = Array.from(document.querySelectorAll('button')).find(b =>
+        b.getAttribute('aria-label') === 'Schließen' || b.textContent.trim() === '✕');
       if (btn) btn.click();
     });
     await page.waitForTimeout(150);
@@ -2058,7 +2063,7 @@ async function suiteDailyTasks(browser) {
     await loadMenu(page);
     // ── 1) Frischer Tag: 📋-Button vorhanden, Modal zeigt 3 Aufgaben ──
     const btn = await page.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').includes('📋'));
+      const b = [...document.querySelectorAll('button')].find(x => /Aufgaben|Tasks/i.test(x.getAttribute('title') || '') || (x.textContent || '').includes('📋'));
       if (!b) return false; b.click(); return true;
     });
     btn ? ok('Daily Tasks: 📋-Button im Menü ✓') : fail('Daily Tasks: Button fehlt');
@@ -2085,7 +2090,7 @@ async function suiteDailyTasks(browser) {
     });
     if (!seeded) { fail('Daily Tasks: Seed fehlgeschlagen (kein fortress_tasks)'); return { res, errs }; }
     const goldBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('fortress_profile')).gold);
-    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').includes('📋')); b && b.click(); });
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Aufgaben|Tasks/i.test(x.getAttribute('title') || '') || (x.textContent || '').includes('📋')); b && b.click(); });
     await page.waitForTimeout(300);
     const claim = await page.evaluate(() => {
       const b = [...document.querySelectorAll('button')].find(x => /Abholen|Claim/.test(x.textContent || ''));
@@ -2120,7 +2125,7 @@ async function suiteGoldShop(browser) {
   try {
     await loadMenu(page);
     const opened = await page.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').includes('🛒'));
+      const b = [...document.querySelectorAll('button')].find(x => /Gold-Shop|Gold shop/i.test(x.getAttribute('title') || '') || (x.textContent || '').includes('🛒'));
       if (!b) return false; b.click(); return true;
     });
     opened ? ok('Gold-Shop: 🛒-Button im Menü ✓') : fail('Gold-Shop: Button fehlt');

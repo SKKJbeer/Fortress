@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.26.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.27.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2656,3 +2656,47 @@ Käufe möglich). Jetzt zweistufig:
   NICHT + Gold unverändert, Bestätigen kauft + Restgold korrekt).
 
 Tests grün. SW-Cache `fortress-v3.26.2`.
+
+### v3.27.0 — UI-Politur: alle Emojis durch professionelle SVG-Icons ersetzt (+ Design-Regel)
+Nutzer-Wunsch: „ersetze überall die Emojis mit professionellen Icons — mache das
+auch als Regel." Das UI verwendet jetzt durchgängig die `Icon`-Komponente
+(Lucide-Stil, `ICON_PATHS`, stroke-basiert).
+
+**Neue Design-Regel (verbindlich, auch in CLAUDE.md):**
+- KEINE Emojis im UI. Symbole laufen über `Icon`/`ICON_PATHS` (SVG).
+- Erlaubte typografische Glyphen (monochrom): ✓ ✕ ⚠ ★ ← ↑ · sowie die
+  Spiel-Glyphen ⚙ (Schrott-Währung) und ♔ ♚ ♜ (Spielerfarben).
+- **Inhalts-Ausnahmen** (Emoji IST das Produkt/die Nachricht): `EMOTES`
+  (Spieler-Kommunikation), `WIN_EMOJI`/WinFx-Goldregen (gekaufte
+  Sieges-Effekte), `shareResult`-Text (externe Chat-Nachricht).
+
+**Umgesetzt:**
+- 27 neue `ICON_PATHS` (star, medal, award, gamepad, bomb, gem, barChart,
+  trendingUp, rocket, sparkles, skull, lock, hammer, gradCap, save, clipboard,
+  helpCircle, volume2, volumeX, vibrate, vibrateOff, shoppingCart, backpack,
+  smile, lightbulb, moon …).
+- Achievements: `icon`-Feld = ICON_PATHS-Name; Liste, Kategorie-Chips
+  (`{key,icon,label}`), Hidden-? (helpCircle) und Unlock-Toast rendern `Icon`.
+- Daily Tasks: Definitions-Icons (zap/bomb/gamepad/trophy/shoppingCart),
+  📋-Menü-Button + Modal-Header → clipboard.
+- Gold-Shop: 🛒-Button + Modal-Header → shoppingCart; Inventar 🎒 → backpack;
+  Sektions-Titel ohne Emoji.
+- Match-Statistik-Kacheln: 🧱💣⚙🎯 → zap/bomb/coins/target als Icon.
+- Bot-Stufen: 😴⚔️💀 → moon/swords/skull (`icon`-Feld statt `emoji`).
+- Menü/Einstellungen: „DE/EN" statt Flaggen, Sound → volume2/volumeX,
+  Vibration → vibrate/vibrateOff; Emote-Auslöser 😊 → smile-Icon
+  (EMOTE-Inhalte selbst bleiben Emojis).
+- Profil: Galerie (sparkles), Locks (lock), Speichern/Erstellen (save/swords).
+- Leaderboard: 🥇🥈🥉 → medal-Icon Gold/Silber/Bronze; Zeilen-Stats ohne
+  🏆/💀; 3P-Tab crown.
+- Queue-Tipp 💡 → lightbulb; Shop ⚒️ → hammer; Tutorial 🎓 → gradCap;
+  Tutorial-Ende 🌐 → globe; Code einfügen 📋 → clipboard.
+- Phasen-Banner: totes `emoji`-Feld entfernt; Welt-Badge (Canvas) ohne Emoji.
+- i18n: Emojis aus Strings entfernt (resultWin, tipShoot, repairDone,
+  armoryPlaceHint, coachDone, tutorialDoneTitle, profileCreate, onbStart,
+  tasksAllDone, cosSection*, queueTip_7 …), de/en.
+- Achievements-Modal: Schließen-Button mit `aria-label="Schließen"` (a11y).
+- Tests: Modal-Titel/Schließen, 💡-Tipp, 📋/🛒-Buttons auf Icon-basierte
+  Selektoren (title/aria-label) umgestellt.
+
+Tests grün. SW-Cache `fortress-v3.27.0`.

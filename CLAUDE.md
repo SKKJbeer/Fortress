@@ -63,11 +63,31 @@ index.html direkt editieren
 
 ---
 
+## ⛔ Design-Regel: KEINE Emojis im UI (seit v3.27.0)
+
+**Alle Symbole im UI laufen über die `Icon`-Komponente + `ICON_PATHS`**
+(Lucide-Stil, stroke-basierte SVG-Pfade, `viewBox 0 0 24 24`). Neue Symbole:
+Pfad in `ICON_PATHS` ergänzen, dann `React.createElement(Icon, { name, size, color })`.
+Niemals Emoji-Zeichen in JSX-Children, i18n-Strings oder gerenderten
+Datenfeldern (z. B. `ACHIEVEMENTS[].icon`, `DAILY_TASK_POOL[].icon`,
+`BOT_LEVELS[].icon` = ICON_PATHS-Namen, keine Emojis).
+
+**Erlaubte typografische Glyphen** (monochrom, kein Emoji-Rendering):
+`✓ ✕ ⚠ ★ ← ↑ ·` sowie die Spiel-Glyphen `⚙` (Schrott-Währung, auch im Canvas
+und in Tests: `/⚙ \d+/`) und `♔ ♚ ♜` (Spielerfarben, `FLAG_OF`).
+
+**Inhalts-Ausnahmen** (das Emoji IST das Produkt/die Nachricht, kein UI-Chrome):
+- `EMOTES` (Spieler-Kommunikation im Match; der Auslöse-Button ist ein Icon)
+- `WIN_EMOJI` + WinFx-Goldregen (gekaufte Sieges-Effekte aus dem Gold-Shop)
+- `shareResult`-Text (WhatsApp/Share-Nachricht an externe Chats)
+
+---
+
 ## Spielmechanik (Kurzreferenz)
 
 - **Phasen**: Setup (20s) → Build (25s) → Shoot (20s, seit v3.14.11) → Rüstphase/Cannon (15s, seit v3.16.0) → Build ...
 - **Schrott-Ökonomie (seit v3.16.0, Balancing-Messpass v3.24.0)**: In-Match-Währung `scrap` (Mauer +1, Kanone +12, Überleben +6/Rüstphase, Start ⚙15). KEIN Gratis-Kanonen-Nachschub mehr — Shop in der Rüstphase (Kanone ⚙20+8, Schnellladen ⚙25/50 → `reloadMsOf()`, Panzermauern ⚙45 → `wallHp`-Map + Riss-Sprite, Reparatur ⚙15+5-Staffel via `up.repair`). Match-persistent über Runden (Reset nur bei neuem Spiel; `beginSetup` resettet wallHp + Kanonen- UND Reparatur-Staffel). Kanonen-Kill sprengt 3×3-Mauern des Besitzers mit. Host-autoritativ; Gäste senden `buy`-Action. Gated Debug: `__buys`/`__econ`/`__botSelfPlay`. Messpass-Daten im SPEC-Changelog v3.24.0 (Armor verlängerte Spiele ~2× → 35→45).
-- **Emotes (seit v3.25.0)**: `EMOTES` (6, Index-Übertragung). Gast → `{type:'emote',e}`-Action; Host rate-limitet 3s/Spieler, synct via State-Feld `emo` (Dedupe `emoteSeen`). 😊-Button nur online. Emoji-Wahl in Tests darf nicht mit Phasenbanner-Emojis (🏰/💥) kollidieren.
+- **Emotes (seit v3.25.0)**: `EMOTES` (6, Index-Übertragung). Gast → `{type:'emote',e}`-Action; Host rate-limitet 3s/Spieler, synct via State-Feld `emo` (Dedupe `emoteSeen`). Auslöse-Button = smile-Icon (aria-label "Emote"), nur online. EMOTE-Inhalte sind bewusst Emojis (Inhalts-Ausnahme der Emoji-Regel).
 - **Queue-Tipps (seit v3.26.0)**: 8 i18n-Tipps im Matchmaking-Screen, Rotation `floor(mmElapsed/5)%8` — kein eigener Timer.
 - **Verlust**: Burg am Bauende nicht vollständig von Mauern umschlossen (Flood-Fill)
 - **Kanonen**: schießen nur wenn zu Beginn der Schussrunde vollständig ummauert (`frozenReady`)

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.26.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.27.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -121,7 +121,7 @@
     <div id="splash-bar"><span></span></div>
   </div>
   <div id="ios-hint">
-    <p>📲 Als App speichern:<br/>Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm“</b></p>
+    <p>Als App speichern:<br/>Tippe auf <b>Teilen ↑</b> → <b>„Zum Home-Bildschirm“</b></p>
     <button onclick="this.closest('#ios-hint').style.display='none'">Verstanden ✓</button>
   </div>
   <div id="root"></div>
@@ -157,6 +157,32 @@ const ICON_PATHS = {
   globe:       ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20"],
   coins:       ["M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z", "M18.09 10.37A6 6 0 1 1 10.34 18", "M7 6h1v4", "m16.71 13.88.7.71-2.82 2.82"],
   hourglass:   ["M5 22h14", "M5 2h14", "M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22", "M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"],
+  star:        ["M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"],
+  medal:       ["M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15", "M11 12 5.12 2.2", "m13 12 5.88-9.8", "M8 7h8", "M12 22a5 5 0 1 0 0-10 5 5 0 0 0 0 10", "M12 18v-2h-.5"],
+  award:       ["m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526", "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14"],
+  gamepad:     ["M6 12h4", "M8 10v4", "M15 13h.01", "M18 11h.01", "M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"],
+  bomb:        ["M11 22a9 9 0 1 0 0-18 9 9 0 0 0 0 18", "m17.5 6.5 2.1-2.1", "M21.5 2.5l-.9.9"],
+  gem:         ["M6 3h12l4 6-10 13L2 9Z", "M11 3 8 9l4 13 4-13-3-6", "M2 9h20"],
+  barChart:    ["M3 3v18h18", "M18 17V9", "M13 17V5", "M8 17v-3"],
+  trendingUp:  ["M22 7 13.5 15.5 8.5 10.5 2 17", "M16 7h6v6"],
+  rocket:      ["M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z", "m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z", "M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0", "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"],
+  sparkles:    ["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z", "M20 3v4", "M22 5h-4"],
+  skull:       ["m12.5 17-.5-1-.5 1h1z", "M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z", "M9 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2", "M15 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2"],
+  lock:        ["M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2Z", "M7 11V7a5 5 0 0 1 10 0v4"],
+  hammer:      ["m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9", "m18 15 4-4", "m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172V7l-2.26-2.26a6 6 0 0 0-4.202-1.756L9 2.96l.92.82A6.18 6.18 0 0 1 12 8.4V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5"],
+  gradCap:     ["M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z", "M22 10v6", "M6 12.5V16a6 3 0 0 0 12 0v-3.5"],
+  save:        ["M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", "M7 3v4a1 1 0 0 0 1 1h7"],
+  clipboard:   ["M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2", "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z"],
+  helpCircle:  ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.01"],
+  volume2:     ["M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z", "M16 9a5 5 0 0 1 0 6", "M19.364 18.364a9 9 0 0 0 0-12.728"],
+  volumeX:     ["M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z", "m22 9-6 6", "m16 9 6 6"],
+  vibrate:     ["m2 8 2 2-2 2 2 2-2 2", "m22 8-2 2 2 2-2 2 2 2", "M9 4h6a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"],
+  vibrateOff:  ["M9 4h6a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z", "m4 4 16 16"],
+  shoppingCart:["M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2", "M19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2", "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"],
+  backpack:    ["M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z", "M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2", "M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5", "M8 10h8"],
+  smile:       ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"],
+  lightbulb:   ["M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5", "M9 18h6", "M10 22h4"],
+  moon:        ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"],
 };
 // ── Sound & Haptik (Web Audio API, prozedural — keine Asset-Dateien, offline/TWA-tauglich) ──
 const SFX = {
@@ -612,10 +638,10 @@ const SHOP_ICONS = {
 // Freitext (keine Moderationslast), Übertragung als Index via Action/State.
 const EMOTES = ["👍", "😄", "😮", "😡", "🏰", "💥"];
 const PHASE_BANNERS = {
-  setup:  { emoji: "\u{1F3F0}", title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
-  build:  { emoji: "\u{1F9F1}", title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
-  shoot:  { emoji: "\u{1F4A5}", title: "FEUER FREI!", sub: "Zieh von deiner Kanone weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
-  cannon: { emoji: "\u2699\uFE0F", title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
+  setup:  { title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
+  build:  { title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
+  shoot:  { title: "FEUER FREI!", sub: "Zieh von deiner Kanone weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
+  cannon: { title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
 };
 // ── Game Event Bus ─────────────────────────────────────────────
 const createEventBus = () => {
@@ -637,31 +663,31 @@ const GAME_EVENTS = {
 };
 const ACHIEVEMENTS = [
   // Siege
-  { id:'first_win',  title:'Erste Festung zerstört', desc:'Gewinne dein erstes Online-Spiel',       icon:'⚔️',  cat:'siege',       target:1,     xp:50,   gold:25,  hidden:false },
-  { id:'wins_10',    title:'10 Siege',                desc:'Gewinne 10 Online-Spiele',               icon:'🏆',  cat:'siege',       target:10,    xp:100,  gold:50,  hidden:false },
-  { id:'wins_50',    title:'50 Siege',                desc:'Gewinne 50 Online-Spiele',               icon:'👑',  cat:'siege',       target:50,    xp:300,  gold:150, hidden:false },
-  { id:'wins_100',   title:'100 Siege',               desc:'Gewinne 100 Online-Spiele',              icon:'🌟',  cat:'siege',       target:100,   xp:500,  gold:300, hidden:false },
+  { id:'first_win',  title:'Erste Festung zerstört', desc:'Gewinne dein erstes Online-Spiel',       icon:'swords',  cat:'siege',       target:1,     xp:50,   gold:25,  hidden:false },
+  { id:'wins_10',    title:'10 Siege',                desc:'Gewinne 10 Online-Spiele',               icon:'trophy',  cat:'siege',       target:10,    xp:100,  gold:50,  hidden:false },
+  { id:'wins_50',    title:'50 Siege',                desc:'Gewinne 50 Online-Spiele',               icon:'crown',  cat:'siege',       target:50,    xp:300,  gold:150, hidden:false },
+  { id:'wins_100',   title:'100 Siege',               desc:'Gewinne 100 Online-Spiele',              icon:'star',  cat:'siege',       target:100,   xp:500,  gold:300, hidden:false },
   // Spiele
-  { id:'first_game', title:'Erstes Spiel',            desc:'Spiele dein erstes Online-Spiel',        icon:'🎮',  cat:'spiele',      target:1,     xp:30,   gold:20,  hidden:false },
-  { id:'games_25',   title:'25 Spiele',               desc:'Spiele 25 Online-Spiele',                icon:'🎯',  cat:'spiele',      target:25,    xp:100,  gold:50,  hidden:false },
-  { id:'games_100',  title:'100 Spiele',              desc:'Spiele 100 Online-Spiele',               icon:'🎖️', cat:'spiele',      target:100,   xp:250,  gold:125, hidden:false },
-  { id:'games_500',  title:'500 Spiele',              desc:'Spiele 500 Online-Spiele',               icon:'🏅',  cat:'spiele',      target:500,   xp:1000, gold:500, hidden:false },
+  { id:'first_game', title:'Erstes Spiel',            desc:'Spiele dein erstes Online-Spiel',        icon:'gamepad',  cat:'spiele',      target:1,     xp:30,   gold:20,  hidden:false },
+  { id:'games_25',   title:'25 Spiele',               desc:'Spiele 25 Online-Spiele',                icon:'target',  cat:'spiele',      target:25,    xp:100,  gold:50,  hidden:false },
+  { id:'games_100',  title:'100 Spiele',              desc:'Spiele 100 Online-Spiele',               icon:'medal', cat:'spiele',      target:100,   xp:250,  gold:125, hidden:false },
+  { id:'games_500',  title:'500 Spiele',              desc:'Spiele 500 Online-Spiele',               icon:'award',  cat:'spiele',      target:500,   xp:1000, gold:500, hidden:false },
   // Zerstörung
-  { id:'blocks_100',  title:'100 Blöcke',    desc:'Zerstöre 100 feindliche Blöcke',  icon:'💥', cat:'zerstoerung', target:100,  xp:75,  gold:40,  hidden:false },
-  { id:'blocks_1000', title:'1000 Blöcke',   desc:'Zerstöre 1000 feindliche Blöcke', icon:'💣', cat:'zerstoerung', target:1000, xp:200, gold:100, hidden:false },
-  { id:'blocks_5000', title:'5000 Blöcke',   desc:'Zerstöre 5000 feindliche Blöcke', icon:'☢️', cat:'zerstoerung', target:5000, xp:600, gold:300, hidden:false },
+  { id:'blocks_100',  title:'100 Blöcke',    desc:'Zerstöre 100 feindliche Blöcke',  icon:'zap', cat:'zerstoerung', target:100,  xp:75,  gold:40,  hidden:false },
+  { id:'blocks_1000', title:'1000 Blöcke',   desc:'Zerstöre 1000 feindliche Blöcke', icon:'bomb', cat:'zerstoerung', target:1000, xp:200, gold:100, hidden:false },
+  { id:'blocks_5000', title:'5000 Blöcke',   desc:'Zerstöre 5000 feindliche Blöcke', icon:'skull', cat:'zerstoerung', target:5000, xp:600, gold:300, hidden:false },
   // Gold
-  { id:'gold_500',   title:'500 Gold',   desc:'Verdiene insgesamt 500 Gold',   icon:'💰', cat:'gold', target:500,   xp:80,  gold:0, hidden:false },
-  { id:'gold_2000',  title:'2000 Gold',  desc:'Verdiene insgesamt 2000 Gold',  icon:'💎', cat:'gold', target:2000,  xp:200, gold:0, hidden:false },
-  { id:'gold_10000', title:'10000 Gold', desc:'Verdiene insgesamt 10000 Gold', icon:'👑', cat:'gold', target:10000, xp:750, gold:0, hidden:false },
+  { id:'gold_500',   title:'500 Gold',   desc:'Verdiene insgesamt 500 Gold',   icon:'coins', cat:'gold', target:500,   xp:80,  gold:0, hidden:false },
+  { id:'gold_2000',  title:'2000 Gold',  desc:'Verdiene insgesamt 2000 Gold',  icon:'gem', cat:'gold', target:2000,  xp:200, gold:0, hidden:false },
+  { id:'gold_10000', title:'10000 Gold', desc:'Verdiene insgesamt 10000 Gold', icon:'crown', cat:'gold', target:10000, xp:750, gold:0, hidden:false },
   // ELO
-  { id:'elo_1000', title:'1000 ELO', desc:'Erreiche 1000 ELO',  icon:'📊', cat:'elo', target:1000, xp:50,  gold:25,  hidden:false },
-  { id:'elo_1200', title:'1200 ELO', desc:'Erreiche 1200 ELO',  icon:'📈', cat:'elo', target:1200, xp:150, gold:75,  hidden:false },
-  { id:'elo_1400', title:'1400 ELO', desc:'Erreiche 1400 ELO',  icon:'🚀', cat:'elo', target:1400, xp:400, gold:200, hidden:false },
+  { id:'elo_1000', title:'1000 ELO', desc:'Erreiche 1000 ELO',  icon:'barChart', cat:'elo', target:1000, xp:50,  gold:25,  hidden:false },
+  { id:'elo_1200', title:'1200 ELO', desc:'Erreiche 1200 ELO',  icon:'trendingUp', cat:'elo', target:1200, xp:150, gold:75,  hidden:false },
+  { id:'elo_1400', title:'1400 ELO', desc:'Erreiche 1400 ELO',  icon:'rocket', cat:'elo', target:1400, xp:400, gold:200, hidden:false },
   // Serien
-  { id:'streak_3',  title:'3 Siege in Folge',  desc:'Gewinne 3 Spiele in Folge',  icon:'🔥', cat:'serien', target:3,  xp:100, gold:50,  hidden:false },
-  { id:'streak_5',  title:'5 Siege in Folge',  desc:'Gewinne 5 Spiele in Folge',  icon:'⚡', cat:'serien', target:5,  xp:200, gold:100, hidden:false },
-  { id:'streak_10', title:'10 Siege in Folge', desc:'Gewinne 10 Spiele in Folge', icon:'🌠', cat:'serien', target:10, xp:500, gold:250, hidden:false },
+  { id:'streak_3',  title:'3 Siege in Folge',  desc:'Gewinne 3 Spiele in Folge',  icon:'flame', cat:'serien', target:3,  xp:100, gold:50,  hidden:false },
+  { id:'streak_5',  title:'5 Siege in Folge',  desc:'Gewinne 5 Spiele in Folge',  icon:'zap', cat:'serien', target:5,  xp:200, gold:100, hidden:false },
+  { id:'streak_10', title:'10 Siege in Folge', desc:'Gewinne 10 Spiele in Folge', icon:'sparkles', cat:'serien', target:10, xp:500, gold:250, hidden:false },
 ];
 // Englische Übersetzungen der Achievements (DE bleibt im Array oben = Fallback).
 const ACH_EN = {
@@ -813,43 +839,43 @@ function makeRng(seed) {
 // waterEdge (Uferkante), waterAnim (Schimmer-Animation), mtn (Bergverlauf),
 // mtnEdge, mtnCap (Gipfel), particles (3 Ambient-Farben).
 const WORLD_THEMES = [
-  { name: "Kristalltal", bank: "#1b3a52", propType: "crystal", props: ["#7dd3fc", "#2a6f97", "#e0f2fe"], icon: "\u{1F52E}",
+  { name: "Kristalltal", bank: "#1b3a52", propType: "crystal", props: ["#7dd3fc", "#2a6f97", "#e0f2fe"],
     bg: ["#0e2336", "#0a1827", "#060e1a"], glow: "rgba(56,189,248,0.10)",
     tex1: "rgba(45,130,120,0.10)", tex2: "rgba(10,42,58,0.32)", dots: "rgba(125,180,210,0.05)",
     water: ["#155e8a", "#0a3a5e"], waterGlow: "rgba(34,211,238,0.7)", waterEdge: "rgba(103,232,249,0.5)", waterAnim: "160,210,255",
     mtn: ["#3a4a63", "#151e2f"], mtnEdge: "rgba(125,211,252,0.5)", mtnCap: "rgba(224,242,254,0.92)",
     particles: ["rgba(125,211,252,0.5)", "rgba(167,139,250,0.45)", "rgba(226,232,240,0.4)"] },
-  { name: "Frostreich", bank: "#2c4a6e", propType: "tree", props: ["#b8c9dd", "#5c7899", "#ffffff"], icon: "❄️",
+  { name: "Frostreich", bank: "#2c4a6e", propType: "tree", props: ["#b8c9dd", "#5c7899", "#ffffff"],
     bg: ["#182a44", "#111e34", "#0a1322"], glow: "rgba(191,219,254,0.13)",
     tex1: "rgba(226,232,240,0.11)", tex2: "rgba(30,58,92,0.30)", dots: "rgba(226,232,240,0.06)",
     water: ["#3b6fa0", "#1e3a5f"], waterGlow: "rgba(147,197,253,0.7)", waterEdge: "rgba(219,234,254,0.65)", waterAnim: "219,234,254",
     mtn: ["#64748b", "#1e293b"], mtnEdge: "rgba(226,232,240,0.6)", mtnCap: "rgba(255,255,255,0.95)",
     particles: ["rgba(255,255,255,0.6)", "rgba(203,213,225,0.5)", "rgba(147,197,253,0.45)"] },
-  { name: "Glutwüste", bank: "#7a5a30", propType: "cactus", props: ["#65803a", "#41541f", "#fde68a"], icon: "\u{1F3DC}️",
+  { name: "Glutwüste", bank: "#7a5a30", propType: "cactus", props: ["#65803a", "#41541f", "#fde68a"],
     bg: ["#3a2410", "#2a1a0c", "#160d05"], glow: "rgba(251,191,36,0.11)",
     tex1: "rgba(217,164,65,0.11)", tex2: "rgba(87,52,20,0.30)", dots: "rgba(251,211,141,0.05)",
     water: ["#0e7490", "#155e75"], waterGlow: "rgba(45,212,191,0.6)", waterEdge: "rgba(153,246,228,0.55)", waterAnim: "153,246,228",
     mtn: ["#92603a", "#3b2312"], mtnEdge: "rgba(253,230,138,0.45)", mtnCap: "rgba(254,243,199,0.9)",
     particles: ["rgba(253,230,138,0.5)", "rgba(251,191,36,0.4)", "rgba(254,215,170,0.45)"] },
-  { name: "Vulkanschlund", bank: "#511f14", propType: "crystal", props: ["#6b5d55", "#2e2320", "#fb923c"], icon: "\u{1F30B}",
+  { name: "Vulkanschlund", bank: "#511f14", propType: "crystal", props: ["#6b5d55", "#2e2320", "#fb923c"],
     bg: ["#2a130e", "#1c0d09", "#0d0504"], glow: "rgba(239,68,68,0.13)",
     tex1: "rgba(130,62,42,0.13)", tex2: "rgba(45,20,15,0.35)", dots: "rgba(248,113,113,0.05)",
     water: ["#ea580c", "#9a3412"], waterGlow: "rgba(251,146,60,0.9)", waterEdge: "rgba(254,215,170,0.7)", waterAnim: "254,215,170",
     mtn: ["#44403c", "#150f0d"], mtnEdge: "rgba(251,146,60,0.5)", mtnCap: "rgba(254,202,120,0.9)",
     particles: ["rgba(251,146,60,0.6)", "rgba(239,68,68,0.5)", "rgba(254,215,170,0.45)"] },
-  { name: "Nebelmoor", bank: "#2e4522", propType: "tree", props: ["#6f9440", "#3c5423", "#d9f99d"], icon: "\u{1F438}",
+  { name: "Nebelmoor", bank: "#2e4522", propType: "tree", props: ["#6f9440", "#3c5423", "#d9f99d"],
     bg: ["#1a2a1e", "#121e16", "#090f0b"], glow: "rgba(134,239,172,0.09)",
     tex1: "rgba(74,124,89,0.13)", tex2: "rgba(20,40,30,0.35)", dots: "rgba(163,230,53,0.05)",
     water: ["#4d7c0f", "#1a2e05"], waterGlow: "rgba(163,230,53,0.55)", waterEdge: "rgba(190,242,100,0.5)", waterAnim: "190,242,100",
     mtn: ["#4d5a4a", "#181f18"], mtnEdge: "rgba(163,230,53,0.35)", mtnCap: "rgba(217,249,157,0.8)",
     particles: ["rgba(190,242,100,0.6)", "rgba(253,224,71,0.5)", "rgba(134,239,172,0.45)"] },
-  { name: "Herbstwald", bank: "#4a2f18", propType: "tree", props: ["#d97b2e", "#8a4114", "#fde047"], icon: "\u{1F342}",
+  { name: "Herbstwald", bank: "#4a2f18", propType: "tree", props: ["#d97b2e", "#8a4114", "#fde047"],
     bg: ["#2c1c10", "#20140b", "#110a05"], glow: "rgba(251,146,60,0.11)",
     tex1: "rgba(180,90,40,0.12)", tex2: "rgba(60,30,15,0.32)", dots: "rgba(253,186,116,0.05)",
     water: ["#155e8a", "#0a3a5e"], waterGlow: "rgba(56,189,248,0.55)", waterEdge: "rgba(125,211,252,0.5)", waterAnim: "125,211,252",
     mtn: ["#7c5836", "#2a1c10"], mtnEdge: "rgba(253,186,116,0.45)", mtnCap: "rgba(254,235,200,0.85)",
     particles: ["rgba(251,146,60,0.55)", "rgba(239,68,68,0.45)", "rgba(253,224,71,0.5)"] },
-  { name: "Astralebene", bank: "#3b2360", propType: "crystal", props: ["#c084fc", "#6b21a8", "#f0abfc"], icon: "✨",
+  { name: "Astralebene", bank: "#3b2360", propType: "crystal", props: ["#c084fc", "#6b21a8", "#f0abfc"],
     bg: ["#231539", "#180e2a", "#0b0616"], glow: "rgba(167,139,250,0.13)",
     tex1: "rgba(124,58,237,0.11)", tex2: "rgba(30,15,55,0.35)", dots: "rgba(196,181,253,0.06)",
     water: ["#7e22ce", "#4a1272"], waterGlow: "rgba(217,70,239,0.7)", waterEdge: "rgba(240,171,252,0.55)", waterAnim: "240,171,252",
@@ -1475,7 +1501,7 @@ const LANGS = {
     tasksTitle: "Tagesaufgaben",
     tasksSub: "3 neue Aufgaben jeden Tag \xB7 Bot- und Online-Matches z\xE4hlen",
     tasksCollect: "Abholen",
-    tasksAllDone: "Alle Aufgaben erledigt — morgen gibt's neue! 🎉",
+    tasksAllDone: "Alle Aufgaben erledigt — morgen gibt's neue!",
     close: "Schlie\xDFen",
     task_walls30: "Zerst\xF6re 30 Mauern",
     task_walls80: "Zerst\xF6re 80 Mauern",
@@ -1494,9 +1520,9 @@ const LANGS = {
     confirmBuyPrice: "Preis",
     confirmBuyAfter: "Danach",
     confirmBuyYes: "Kaufen",
-    cosSectionTrail: "🎇 Kugel-Trails",
-    cosSectionFrame: "🖼️ Wappen-Rahmen",
-    cosSectionWin: "🎉 Sieges-Effekte",
+    cosSectionTrail: "Kugel-Trails",
+    cosSectionFrame: "Wappen-Rahmen",
+    cosSectionWin: "Sieges-Effekte",
     cosOwned: "Besitzt",
     cosEquipped: "Angelegt ✓",
     cos_trail_standard: "Standard",
@@ -1522,9 +1548,9 @@ const LANGS = {
     tutorialCastleOpen: "⚠ Deine Burg war offen! Nur eine RUNDUM geschlossene Burg ist gesch\xFCtzt — schlie\xDFe jede L\xFCcke.",
     coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
     coachCannon: "R\xFCstphase: F\xFCr \u2699 Schrott (gibt es f\xFCrs Zerst\xF6ren!) kaufst du hier Upgrades und Kanonen. Gekaufte Kanonen platzieren und EINMAUERN!",
-    coachDone: "🎉 Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
+    coachDone: "Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
     tutorialExit: "Tutorial beenden",
-    tutorialDoneTitle: "🎉 Tutorial abgeschlossen!",
+    tutorialDoneTitle: "Tutorial abgeschlossen!",
     tutorialDoneText: "Du kennst jetzt die Grundlagen: Kanonen setzen, Burg schlie\xDFen, zielen & feuern. Bereit f\xFCr ein echtes Spiel?",
     tutorialToOnline: "Online spielen",
     leaderboard: "Bestenliste",
@@ -1556,7 +1582,7 @@ const LANGS = {
     queueTip_4: "Schnellladen wirkt auf ALLE deine Kanonen — stark ab 2+ Kanonen.",
     queueTip_5: "Platzierung abbrechen: Finger auf das Vorschaubild ganz unten ziehen und loslassen.",
     queueTip_6: "Jede \xFCberlebte Runde bringt +6 Schrott in der R\xFCstphase.",
-    queueTip_7: "Tagesaufgaben (📋) geben bis zu ~135 Gold pro Tag f\xFCr den Gold-Shop.",
+    queueTip_7: "Tagesaufgaben geben bis zu ~135 Gold pro Tag f\xFCr den Gold-Shop.",
     cancelSearch: "Suche abbrechen",
     playerCount: "SPIELERANZAHL (zum Erstellen)",
     createGame: "Spiel erstellen ({n} Spieler)",
@@ -1606,10 +1632,10 @@ const LANGS = {
     shopInfoArmorDesc: "Alle deine Mauern halten 2 Treffer statt 1. Der erste Treffer macht nur einen Riss.",
     shopInfoRepairDesc: "Verwandelt bis zu 3 deiner Tr\xFCmmer nahe der Burg sofort zur\xFCck in Mauern. Preis steigt je Kauf (15 → 20 → 25 …), neue Karte = wieder g\xFCnstig.",
     shopInfoClose: "Verstanden",
-    armoryPlaceHint: "\u{1F3AF} Tippe aufs Feld, um die Kanone zu platzieren",
+    armoryPlaceHint: "Tippe aufs Feld, um die Kanone zu platzieren",
     armoryDone: "Fertig",
     armoryWaiting: "Bereit \u2713 \xB7 Warte auf Mitspieler",
-    repairDone: "\u{1F527} {n} Mauern repariert!",
+    repairDone: "{n} Mauern repariert!",
     warnKeinKanone: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     warnKanoneGesetzt: "Kanone ({name}) platziert — noch {left}",
     warnAusgeschieden: "{names} ausgeschieden — Burg offen!",
@@ -1649,14 +1675,14 @@ const LANGS = {
     warnNoCannonReady: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     tipCannon: "R\xFCstphase: Kaufe im Shop Upgrades oder eine neue Kanone (dann auf eine freie 3\xD73-Fl\xE4che tippen und ummauern)",
     tipSetup: "START: Platziere deine 2 Kanonen rund um die Burg — danach ummauern (Burg muss dicht sein!)",
-    tipShoot: "Schleuder: Finger von der Kanone wegziehen \xB7 \u{1F3AF} Fadenkreuz = Einschlag \xB7 \u{1F4A5} nur eingebaute Kanonen feuern",
+    tipShoot: "Schleuder: Finger von der Kanone wegziehen \xB7 Fadenkreuz = Einschlag \xB7 nur eingebaute Kanonen feuern",
     quitTitle: "Spiel beenden?",
     quitMsgOnline: "Du verl\xE4sst das Online-Spiel und kehrst zum Hauptmen\xFC zur\xFCck.",
     quitMsgLocal: "Das aktuelle Spiel endet und du kehrst zum Hauptmen\xFC zur\xFCck.",
     quitYes: "Ja, beenden",
     quitContinue: "Weiterspielen",
     resultDraw: "Unentschieden!",
-    resultWin: "Du gewinnst! \u{1F389}",
+    resultWin: "Du gewinnst!",
     resultLose: "Du verlierst.",
     shareTextWin: "Ich hab FORTRESS gewonnen! Kannst du mich schlagen?",
     shareTextLose: "Ich spiele FORTRESS — nächstes Mal gewinne ich!",
@@ -1667,7 +1693,7 @@ const LANGS = {
     resultWinner: "{name} siegt!",
     resultLeft: "Ein Spieler hat das Spiel verlassen",
     resultLastStanding: "Letzte geschlossene Burg gewinnt",
-    resultBurgDurch: "Burg durchbrochen \u{1F4A5}",
+    resultBurgDurch: "Burg durchbrochen",
     resultBurgOffen: "Burg war nicht geschlossen",
     eloChange: "ELO-\xC4NDERUNG",
     goldLabel: "GOLD-\xC4NDERUNG",
@@ -1684,7 +1710,7 @@ const LANGS = {
     profileWappenLabel: "WAPPEN",
     profileColorLabel: "FARBE",
     profileSave: "Speichern",
-    profileCreate: "Profil erstellen ⚔️",
+    profileCreate: "Profil erstellen",
     lbTitle: "Bestenliste",
     lbSubtitle: "Sortiert nach ELO (Start 1000) \xB7 weltweit",
     p1Kingdom: "♔ Blaues K\xF6nigreich",
@@ -1705,7 +1731,7 @@ const LANGS = {
     winsLabel: "S",
     lossLabel: "N",
     goldAbbr: "Gold",
-    editProfile: "✏️",
+    editProfile: "Bearbeiten",
     playerDefault: "Spieler",
     bluePlayer: "Blau",
     redPlayer: "Rot",
@@ -1730,7 +1756,7 @@ const LANGS = {
     onbSkip: "\xDCberspringen",
     onbNext: "Weiter",
     onbBack: "Zur\xFCck",
-    onbStart: "Los geht's! ⚔️",
+    onbStart: "Los geht's!",
     onbWelcomeTitle: "Willkommen bei FORTRESS!",
     onbWelcomeText: "Baue deine Burg, mauere sie dicht ein und zerst\xF6re die Festung deiner Gegner. In 4 Schritten lernst du, wie's geht.",
     onbStep1Title: "1. Kanonen platzieren",
@@ -1761,7 +1787,7 @@ const LANGS = {
     tasksTitle: "Daily tasks",
     tasksSub: "3 fresh tasks every day \xB7 bot and online matches count",
     tasksCollect: "Claim",
-    tasksAllDone: "All tasks done — new ones tomorrow! 🎉",
+    tasksAllDone: "All tasks done — new ones tomorrow!",
     close: "Close",
     task_walls30: "Destroy 30 walls",
     task_walls80: "Destroy 80 walls",
@@ -1780,9 +1806,9 @@ const LANGS = {
     confirmBuyPrice: "Price",
     confirmBuyAfter: "After",
     confirmBuyYes: "Buy",
-    cosSectionTrail: "🎇 Ball trails",
-    cosSectionFrame: "🖼️ Crest frames",
-    cosSectionWin: "🎉 Victory effects",
+    cosSectionTrail: "Ball trails",
+    cosSectionFrame: "Crest frames",
+    cosSectionWin: "Victory effects",
     cosOwned: "Owned",
     cosEquipped: "Equipped ✓",
     cos_trail_standard: "Default",
@@ -1808,9 +1834,9 @@ const LANGS = {
     tutorialCastleOpen: "⚠ Your castle was open! Only a fully enclosed castle is protected — close every gap.",
     coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
     coachCannon: "Armory phase: spend \u2699 scrap (earned by destroying!) on upgrades and cannons. Place bought cannons and WALL THEM IN!",
-    coachDone: "🎉 Done! You now know all the basics. Keep playing to practise or end the tutorial.",
+    coachDone: "Done! You now know all the basics. Keep playing to practise or end the tutorial.",
     tutorialExit: "End tutorial",
-    tutorialDoneTitle: "🎉 Tutorial complete!",
+    tutorialDoneTitle: "Tutorial complete!",
     tutorialDoneText: "You now know the basics: place cannons, close your castle, aim & fire. Ready for a real game?",
     tutorialToOnline: "Play online",
     leaderboard: "Leaderboard",
@@ -1842,7 +1868,7 @@ const LANGS = {
     queueTip_4: "Fast reload applies to ALL your cannons — strongest with 2+ cannons.",
     queueTip_5: "Cancel a placement: drag your finger onto the preview at the very bottom and release.",
     queueTip_6: "Every survived round earns +6 scrap in the armory phase.",
-    queueTip_7: "Daily tasks (📋) grant up to ~135 gold per day for the gold shop.",
+    queueTip_7: "Daily tasks grant up to ~135 gold per day for the gold shop.",
     cancelSearch: "Cancel search",
     playerCount: "PLAYER COUNT (to create)",
     createGame: "Create game ({n} players)",
@@ -1892,10 +1918,10 @@ const LANGS = {
     shopInfoArmorDesc: "All your walls take 2 hits instead of 1. The first hit only cracks them.",
     shopInfoRepairDesc: "Instantly turns up to 3 of your rubble tiles near the castle back into walls. Price rises per purchase (15 → 20 → 25 …), fresh map = cheap again.",
     shopInfoClose: "Got it",
-    armoryPlaceHint: "\u{1F3AF} Tap the field to place your cannon",
+    armoryPlaceHint: "Tap the field to place your cannon",
     armoryDone: "Ready",
     armoryWaiting: "Ready \u2713 \xB7 Waiting for others",
-    repairDone: "\u{1F527} {n} walls repaired!",
+    repairDone: "{n} walls repaired!",
     warnKeinKanone: "No ready cannon — cannons must be walled in!",
     warnKanoneGesetzt: "Cannon ({name}) placed — {left} remaining",
     warnAusgeschieden: "{names} eliminated — castle open!",
@@ -1935,14 +1961,14 @@ const LANGS = {
     warnNoCannonReady: "No ready cannon — cannons must be walled in!",
     tipCannon: "Place new cannon! Tap an empty 3\xD73 area — then wall it in during build phase",
     tipSetup: "START: Place your 2 cannons around the castle — then wall them in (castle must be closed!)",
-    tipShoot: "Slingshot: drag from your cannon \xB7 \u{1F3AF} crosshair = impact \xB7 \u{1F4A5} only walled-in cannons fire",
+    tipShoot: "Slingshot: drag from your cannon \xB7 crosshair = impact \xB7 only walled-in cannons fire",
     quitTitle: "End game?",
     quitMsgOnline: "You will leave the online game and return to the main menu.",
     quitMsgLocal: "The current game will end and you will return to the main menu.",
     quitYes: "Yes, end game",
     quitContinue: "Continue playing",
     resultDraw: "Draw!",
-    resultWin: "You win! \u{1F389}",
+    resultWin: "You win!",
     resultLose: "You lose.",
     shareTextWin: "I just won at FORTRESS! Think you can beat me?",
     shareTextLose: "I'm playing FORTRESS — next time I'll win!",
@@ -1953,7 +1979,7 @@ const LANGS = {
     resultWinner: "{name} wins!",
     resultLeft: "A player left the game",
     resultLastStanding: "Last closed castle wins",
-    resultBurgDurch: "Castle breached \u{1F4A5}",
+    resultBurgDurch: "Castle breached",
     resultBurgOffen: "Castle was not closed",
     eloChange: "ELO CHANGE",
     goldLabel: "GOLD CHANGE",
@@ -1970,7 +1996,7 @@ const LANGS = {
     profileWappenLabel: "COAT OF ARMS",
     profileColorLabel: "COLOR",
     profileSave: "Save",
-    profileCreate: "Create profile ⚔️",
+    profileCreate: "Create profile",
     lbTitle: "Leaderboard",
     lbSubtitle: "Sorted by ELO (start 1000) \xB7 worldwide",
     p1Kingdom: "♔ Blue Kingdom",
@@ -1991,7 +2017,7 @@ const LANGS = {
     winsLabel: "W",
     lossLabel: "L",
     goldAbbr: "Gold",
-    editProfile: "✏️",
+    editProfile: "Bearbeiten",
     playerDefault: "Player",
     bluePlayer: "Blue",
     redPlayer: "Red",
@@ -2016,7 +2042,7 @@ const LANGS = {
     onbSkip: "Skip",
     onbNext: "Next",
     onbBack: "Back",
-    onbStart: "Let's go! ⚔️",
+    onbStart: "Let's go!",
     onbWelcomeTitle: "Welcome to FORTRESS!",
     onbWelcomeText: "Build your castle, wall it in tightly and destroy your opponents' fortresses. Learn how in 4 quick steps.",
     onbStep1Title: "1. Place cannons",
@@ -2130,12 +2156,12 @@ window.FortressApp = function Fortress() {
     const achs = Array.isArray(prof && prof.achievements) ? prof.achievements : [];
     const unlockedCount = achs.filter(a => a.unlocked).length;
     const cats = [
-      { key: 'siege',       label: '⚔️ ' + t('achcat_siege'),       color: '#f87171' },
-      { key: 'spiele',      label: '🎮 ' + t('achcat_spiele'),       color: '#60a5fa' },
-      { key: 'zerstoerung', label: '💥 ' + t('achcat_zerstoerung'),  color: '#fb923c' },
-      { key: 'gold',        label: '💰 ' + t('achcat_gold'),         color: '#fbbf24' },
-      { key: 'elo',         label: '📊 ' + t('achcat_elo'),          color: '#a78bfa' },
-      { key: 'serien',      label: '🔥 ' + t('achcat_serien'),       color: '#34d399' },
+      { key: 'siege',       icon: 'swords',   label: t('achcat_siege'),       color: '#f87171' },
+      { key: 'spiele',      icon: 'gamepad',  label: t('achcat_spiele'),       color: '#60a5fa' },
+      { key: 'zerstoerung', icon: 'bomb',     label: t('achcat_zerstoerung'),  color: '#fb923c' },
+      { key: 'gold',        icon: 'coins',    label: t('achcat_gold'),         color: '#fbbf24' },
+      { key: 'elo',         icon: 'barChart', label: t('achcat_elo'),          color: '#a78bfa' },
+      { key: 'serien',      icon: 'flame',    label: t('achcat_serien'),       color: '#34d399' },
     ];
     return React.createElement("div", { style: {
       position: "fixed", inset: 0, zIndex: 3000,
@@ -2153,15 +2179,16 @@ window.FortressApp = function Fortress() {
           flexShrink: 0
         } },
           React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 18, fontWeight: 900, color: "#f1f5f9" } }, "🏆 Achievements"),
+            React.createElement("div", { style: { fontSize: 18, fontWeight: 900, color: "#f1f5f9", display: "flex", alignItems: "center", gap: 7 } },
+              React.createElement(Icon, { name: "trophy", size: 17, color: "#fbbf24" }), "Achievements"),
             React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } },
               t('achUnlocked', { n: unlockedCount, total: ACHIEVEMENTS.length })
             )
           ),
-          React.createElement("button", { onClick: onClose, style: {
+          React.createElement("button", { onClick: onClose, "aria-label": "Schlie\xDFen", style: {
             background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
             color: "#94a3b8", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 13
-          } }, "✕")
+          } }, React.createElement(Icon, { name: "x", size: 14 }))
         ),
         React.createElement("div", { style: { overflowY: "auto", flex: 1, padding: "12px 14px 20px" } },
           cats.map(cat => {
@@ -2170,7 +2197,8 @@ window.FortressApp = function Fortress() {
               React.createElement("div", { style: {
                 fontSize: 11, fontWeight: 800, color: cat.color, letterSpacing: "0.1em",
                 marginBottom: 8, paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.06)"
-              } }, cat.label),
+              } }, React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
+                React.createElement(Icon, { name: cat.icon, size: 12 }), cat.label)),
               catAchs.map(def => {
                 const entry = achs.find(a => a.id === def.id);
                 const unlocked = !!(entry && entry.unlocked);
@@ -2185,9 +2213,9 @@ window.FortressApp = function Fortress() {
                   opacity: unlocked ? 1 : 0.7
                 } },
                   React.createElement("div", { style: {
-                    fontSize: 26, lineHeight: 1, flexShrink: 0, width: 36, textAlign: "center",
-                    filter: unlocked ? "none" : "grayscale(0.5)"
-                  } }, isHidden ? "❓" : def.icon),
+                    lineHeight: 1, flexShrink: 0, width: 36, display: "flex", justifyContent: "center", paddingTop: 2,
+                    color: unlocked ? "#e2e8f0" : "#64748b"
+                  } }, React.createElement(Icon, { name: isHidden ? "helpCircle" : def.icon, size: 26 })),
                   React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                     React.createElement("div", { style: {
                       fontWeight: 800, fontSize: 13, color: unlocked ? "#e2e8f0" : "#94a3b8",
@@ -2249,8 +2277,10 @@ window.FortressApp = function Fortress() {
       boxShadow: "0 0 40px rgba(124,58,237,0.7),0 8px 32px rgba(0,0,0,0.6)",
       backdropFilter: "blur(20px)"
     } },
-      React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.12em", marginBottom: 4 } }, "🏆 ACHIEVEMENT"),
-      React.createElement("div", { style: { fontSize: 22, marginBottom: 4 } }, item.icon),
+      React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.12em", marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 } },
+        React.createElement(Icon, { name: "trophy", size: 11, color: "#fbbf24" }), "ACHIEVEMENT"),
+      React.createElement("div", { style: { marginBottom: 4, display: "flex", justifyContent: "center", color: "#fff" } },
+        React.createElement(Icon, { name: item.icon, size: 22 })),
       React.createElement("div", { style: { fontSize: 14, fontWeight: 900, color: "#fff", marginBottom: 6 } }, achTitle(item)),
       React.createElement("div", { style: { display: "flex", gap: 10, justifyContent: "center" } },
         item.xp > 0 && React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#a78bfa", background: "rgba(167,139,250,0.18)", padding: "2px 8px", borderRadius: 8 } }, "+" + item.xp + " XP"),
@@ -2443,14 +2473,14 @@ window.FortressApp = function Fortress() {
   // desselben Tages sehen dieselben Tasks). Fortschritt kommt am Rundenende
   // aus matchStats (Bot + Online zählen, Tutorial nicht).
   const DAILY_TASK_POOL = [
-    { id: "walls30", target: 30, gold: 30, stat: "walls", icon: "🧱" },
-    { id: "walls80", target: 80, gold: 50, stat: "walls", icon: "🧱" },
-    { id: "cannons2", target: 2, gold: 40, stat: "cannons", icon: "💣" },
+    { id: "walls30", target: 30, gold: 30, stat: "walls", icon: "zap" },
+    { id: "walls80", target: 80, gold: 50, stat: "walls", icon: "zap" },
+    { id: "cannons2", target: 2, gold: 40, stat: "cannons", icon: "bomb" },
     { id: "scrap60", target: 60, gold: 30, stat: "scrap", icon: "⚙" },
-    { id: "play2", target: 2, gold: 25, stat: "played", icon: "🎮" },
-    { id: "play4", target: 4, gold: 45, stat: "played", icon: "🎮" },
-    { id: "win1", target: 1, gold: 40, stat: "won", icon: "🏆" },
-    { id: "buy3", target: 3, gold: 30, stat: "buys", icon: "🛒" }
+    { id: "play2", target: 2, gold: 25, stat: "played", icon: "gamepad" },
+    { id: "play4", target: 4, gold: 45, stat: "played", icon: "gamepad" },
+    { id: "win1", target: 1, gold: 40, stat: "won", icon: "trophy" },
+    { id: "buy3", target: 3, gold: 30, stat: "buys", icon: "shoppingCart" }
   ];
   // ── Gold-Shop: Kosmetik (v3.23.0, SPEC 14.4) ─────────────────────────────
   // Rein kosmetisch, nur mit erspieltem Gold. IDs global eindeutig
@@ -2563,7 +2593,7 @@ window.FortressApp = function Fortress() {
         ),
         React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
         React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: mult > 1 ? 6 : 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
-        mult > 1 && React.createElement("div", { style: { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 14, background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.45)", color: "#fdba74", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", animation: "streakGlow 2s ease infinite" } }, "🔥 " + t('dailyLoyalty', { m: mult, w: week })),
+        mult > 1 && React.createElement("div", { style: { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 14, background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.45)", color: "#fdba74", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", animation: "streakGlow 2s ease infinite" } }, React.createElement(Icon, { name: "flame", size: 12 }), t('dailyLoyalty', { m: mult, w: week })),
         React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
         collected
           ? React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#4ade80", marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
@@ -6198,7 +6228,7 @@ window.FortressApp = function Fortress() {
       bc.save();
       bc.font = "700 13px 'Segoe UI', system-ui, sans-serif";
       bc.textBaseline = "bottom";
-      const wtLabel = WT.icon + " " + WT.name.toUpperCase();
+      const wtLabel = WT.name.toUpperCase();
       const wtW = bc.measureText(wtLabel).width;
       // Pill-Badge mit Theme-Kante
       bc.fillStyle = "rgba(0,0,0,0.45)";
@@ -6795,15 +6825,15 @@ window.FortressApp = function Fortress() {
       borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative",
       animation: tasksClaimable > 0 ? "streakGlow 2s ease infinite" : "none"
     } },
-      "📋",
+      React.createElement(Icon, { name: "clipboard", size: 16 }),
       tasksClaimable > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#34d399", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, tasksClaimable) : null
     ),
     // Gold-Shop (v3.23.0): Kosmetik gegen erspieltes Gold
     /* @__PURE__ */ React.createElement("button", { onClick: () => setShowGoldShop(true), title: t('goldShopTitle'), style: {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
-    } }, "🛒")
-  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1E9}\u{1F1EA} DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "\u{1F1EC}\u{1F1E7} EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, soundOn ? "\u{1F50A}" : "\u{1F507}"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, hapticsOn ? "\u{1F4F3}" : "\u{1F4F4}")), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle"), " ✨"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+    } }, React.createElement(Icon, { name: "shoppingCart", size: 16 }))
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -6855,7 +6885,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.26.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.27.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -6934,7 +6964,7 @@ window.FortressApp = function Fortress() {
     marginBottom: 12
   } },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, "✨ " + t('avatarGallery')),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, React.createElement(Icon, { name: "sparkles", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarGallery')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, background: "rgba(124,58,237,0.2)", color: "#a78bfa", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } },
         WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + "/" + WAPPEN.length
       )
@@ -6958,7 +6988,7 @@ window.FortressApp = function Fortress() {
     ),
     /* @__PURE__ */ React.createElement("div", { style: { height: 1, background: "rgba(255,255,255,0.07)", margin: "0 0 8px" } }),
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#475569", letterSpacing: "0.08em" } }, "🔒 " + t('avatarLocked')),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#475569", letterSpacing: "0.08em" } }, React.createElement(Icon, { name: "lock", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarLocked')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "#334155", fontWeight: 600 } },
         "(" + WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + ")"
       )
@@ -6980,7 +7010,7 @@ window.FortressApp = function Fortress() {
             borderRadius: "50%",
             background: "rgba(2,6,15,0.45)", gap: 2
           } },
-            /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14 } }, "🔒"),
+            /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 14 }),
             /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 800, letterSpacing: "0.05em" } }, "L" + reqLevel)
           )
         );
@@ -7041,7 +7071,7 @@ window.FortressApp = function Fortress() {
       borderRadius: 16, padding: "10px 12px", marginBottom: 12
     } },
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-        h("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, "🎒 " + t('invTitle')),
+        h("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, h(Icon, { name: "backpack", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invTitle')),
         h("span", { style: { fontSize: 10, background: "rgba(251,191,36,0.15)", color: "#fcd34d", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } }, ownedTotal + "")
       ),
       CATS.map(([cat, label]) => {
@@ -7070,7 +7100,7 @@ window.FortressApp = function Fortress() {
         width: "100%", marginTop: 2, border: "1px solid rgba(251,191,36,0.25)", cursor: "pointer",
         borderRadius: 10, padding: "8px", background: "rgba(251,191,36,0.08)",
         color: "#fcd34d", fontSize: 11.5, fontWeight: 800
-      } }, "🛒 " + t('invMoreInShop'))
+      } }, h(Icon, { name: "shoppingCart", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invMoreInShop'))
     );
   })(),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
@@ -7085,7 +7115,7 @@ window.FortressApp = function Fortress() {
     boxShadow: "0 4px 24px rgba(124,58,237,0.45),0 1px 0 rgba(255,255,255,0.15) inset",
     marginBottom: profile ? 10 : 0,
     textTransform: "uppercase"
-  } }, profile ? "💾 " + t('profileSave') : "⚔️ " + t('profileCreate')),
+  } }, React.createElement(Icon, { name: profile ? "save" : "swords", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), profile ? t('profileSave') : t('profileCreate')),
   profile && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowProfileEditor(false), style: {
     background: "transparent", color: "#475569",
     border: "none", fontSize: 13, cursor: "pointer",
@@ -7127,9 +7157,10 @@ window.FortressApp = function Fortress() {
     background: lbMode === m ? "rgba(202,138,4,0.25)" : "rgba(255,255,255,0.05)",
     color: lbMode === m ? "#fde68a" : "#94a3b8",
     border: lbMode === m ? "1px solid rgba(202,138,4,0.5)" : "1px solid rgba(255,255,255,0.1)"
-  } }, m === 2 ? t('local2p') : "\u{1F451} " + t('online3p')))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), leaderboard && leaderboard.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
+  } }, m === 2 ? t('local2p') : React.createElement("span", null, React.createElement(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), leaderboard && leaderboard.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
     const isMe = profile && e.id === profile.id;
-    const medal = i === 0 ? "\u{1F947}" : i === 1 ? "\u{1F948}" : i === 2 ? "\u{1F949}" : `${i + 1}.`;
+    const medalCol = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : null;
+    const medal = medalCol ? React.createElement(Icon, { name: "medal", size: 16, color: medalCol }) : `${i + 1}.`;
     return /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
       display: "flex",
       alignItems: "center",
@@ -7149,7 +7180,7 @@ window.FortressApp = function Fortress() {
       alignItems: "center",
       justifyContent: "center",
       fontSize: 18
-    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && t('youSuffix')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, "\u{1F3C6} ", e.wins, " " + t('winsLabel') + " \xB7 \u{1F480} ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {    marginTop: 12,
+    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && t('youSuffix')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, e.wins, " " + t('winsLabel') + " \xB7 ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {    marginTop: 12,
     background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
     border: "1px solid rgba(255,255,255,0.12)",
@@ -7185,7 +7216,7 @@ window.FortressApp = function Fortress() {
         animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
       } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
-          h("span", { style: { fontSize: 18 } }, "📋"),
+          h(Icon, { name: "clipboard", size: 17, color: "#34d399" }),
           h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("tasksTitle"))
         ),
         h("div", { style: { fontSize: 11.5, color: "#64748b", marginBottom: 14 } }, t("tasksSub")),
@@ -7295,7 +7326,7 @@ window.FortressApp = function Fortress() {
       } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-            h("span", { style: { fontSize: 18 } }, "🛒"),
+            h(Icon, { name: "shoppingCart", size: 17, color: "#fbbf24" }),
             h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("goldShopTitle"))
           ),
           h("div", { style: {
@@ -7433,7 +7464,7 @@ window.FortressApp = function Fortress() {
     marginBottom: 10,
     letterSpacing: "0.03em",
     boxShadow: "0 6px 26px rgba(124,58,237,0.3)"
-  } }, "🎓 ", t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: {
+  } }, React.createElement(Icon, { name: "gradCap", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -7455,9 +7486,9 @@ window.FortressApp = function Fortress() {
     background: "rgba(8,145,178,0.12)", border: "1px solid rgba(34,197,94,0.3)",
     borderRadius: "0 0 14px 14px", borderTop: "none"
   } }, [
-    { k: "easy", emoji: "😴", label: t('botLvlEasy') },
-    { k: "mid", emoji: "⚔️", label: t('botLvlMid') },
-    { k: "hard", emoji: "💀", label: t('botLvlHard') }
+    { k: "easy", icon: "moon", label: t('botLvlEasy') },
+    { k: "mid", icon: "swords", label: t('botLvlMid') },
+    { k: "hard", icon: "skull", label: t('botLvlHard') }
   ].map((lv) => /* @__PURE__ */ React.createElement("button", { key: lv.k, onClick: () => {
     botLevel.current = lv.k;
     try { localStorage.setItem("fortress_bot_level", lv.k); } catch (e) {}
@@ -7475,7 +7506,7 @@ window.FortressApp = function Fortress() {
     background: botLevel.current === lv.k ? "linear-gradient(135deg,#0891b2,#16a34a)" : "rgba(255,255,255,0.06)",
     color: "white", border: botLevel.current === lv.k ? "1px solid rgba(34,197,94,0.7)" : "1px solid rgba(255,255,255,0.12)",
     padding: "10px 4px", fontSize: 13, fontWeight: 800, borderRadius: 10, cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, lv.emoji), lv.label))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: lv.icon, size: 17 }), lv.label))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     botMode.current = false;
     numPlayersRef.current = 2;
@@ -7635,7 +7666,7 @@ window.FortressApp = function Fortress() {
       /* @__PURE__ */ React.createElement("span", { style: {
         flexShrink: 0, fontSize: 9, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.12em",
         background: "rgba(34,211,238,0.14)", borderRadius: 6, padding: "3px 7px", marginTop: 1
-      } }, "💡 " + t('queueTipLabel')),
+      } }, React.createElement(Icon, { name: "lightbulb", size: 12, style: { verticalAlign: "-2px", marginRight: 4 } }), t('queueTipLabel')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#94a3b8", lineHeight: 1.45 } }, t('queueTip_' + tipIdx))
     );
   })(), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: cancelMatchmaking, style: {
@@ -7681,7 +7712,7 @@ window.FortressApp = function Fortress() {
     borderRadius: 10,
     cursor: "pointer",
     marginBottom: 12
-  } }, "\u{1F4CB} " + t('pasteCode')), pasteError && /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontSize: 11, marginBottom: 10 } }, pasteError), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: {
+  } }, React.createElement(Icon, { name: "clipboard", size: 14, style: { verticalAlign: "-2px", marginRight: 6 } }), t('pasteCode')), pasteError && /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontSize: 11, marginBottom: 10 } }, pasteError), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: {
     width: "100%",
     background: "linear-gradient(135deg,#059669,#0284c7)",
     color: "white",
@@ -7851,10 +7882,10 @@ window.FortressApp = function Fortress() {
       const ms = (matchStats.current && matchStats.current[meP]) || { walls: 0, cannons: 0, scrap: 0, shots: 0, hits: 0 };
       const acc = ms.shots > 0 ? Math.round(ms.hits / ms.shots * 100) + "%" : "—";
       const tiles = [
-        { icon: "🧱", val: ms.walls, label: t("statWalls") },
-        { icon: "💣", val: ms.cannons, label: t("statCannons") },
-        { icon: "⚙", val: ms.scrap, label: t("statScrap") },
-        { icon: "🎯", val: acc, label: t("statAcc") }
+        { icon: "zap", val: ms.walls, label: t("statWalls") },
+        { icon: "bomb", val: ms.cannons, label: t("statCannons") },
+        { icon: "coins", val: ms.scrap, label: t("statScrap") },
+        { icon: "target", val: acc, label: t("statAcc") }
       ];
       return React.createElement("div", { style: { width: "100%", maxWidth: 320, marginBottom: 12 } },
         React.createElement("div", { style: { display: "flex", gap: 6 } },
@@ -7863,7 +7894,7 @@ window.FortressApp = function Fortress() {
             background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.09)",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 2
           } },
-            React.createElement("span", { style: { fontSize: 14, lineHeight: 1 } }, tl.icon),
+            React.createElement(Icon, { name: tl.icon, size: 14 }),
             React.createElement("span", { style: { fontSize: 16, fontWeight: 900, color: "#e2e8f0", lineHeight: 1.1 } }, tl.val),
             React.createElement("span", { style: { fontSize: 8.5, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
           ))
@@ -8165,7 +8196,7 @@ window.FortressApp = function Fortress() {
         } },
           h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, padding: "0 3px" } },
             h("div", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, letterSpacing: "0.09em", color: "#94a3b8", textTransform: "uppercase" } },
-              h("span", { style: { fontSize: 12 } }, "⚒️"),
+              h(Icon, { name: "hammer", size: 12 }),
               h("span", null, t("bannerCannonTitle"))
             ),
             h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
@@ -8272,7 +8303,7 @@ window.FortressApp = function Fortress() {
         animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
       } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginBottom: 12 } },
-          h("span", { style: { fontSize: 18 } }, "⚒️"),
+          h(Icon, { name: "hammer", size: 17, color: "#fbbf24" }),
           h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", letterSpacing: "0.02em" } }, t("shopInfoTitle"))
         ),
         h("div", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("shopInfoEarnTitle")),
@@ -8330,7 +8361,7 @@ window.FortressApp = function Fortress() {
       background: emoteBarOpen ? "linear-gradient(180deg,#2563eb,#7c3aed)" : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
       boxShadow: "0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
       display: "flex", alignItems: "center", justifyContent: "center"
-    } }, "😊")
+    } }, React.createElement(Icon, { name: "smile", size: 18 }))
   ),
   // ── Emote-Bubble: schwebt oben mittig, Spielerfarbe + Name ──
   emoteShow && (() => {
@@ -8358,7 +8389,7 @@ window.FortressApp = function Fortress() {
     style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s" }
   },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 3 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 15 } }, "🎓"),
+      /* @__PURE__ */ React.createElement(Icon, { name: "gradCap", size: 15 }),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.14em" } }, t('coachLabel')),
       /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)" } }, phase === "setup" ? "1/4" : phase === "build" ? "2/4" : phase === "shoot" ? "3/4" : phase === "cannon" ? "4/4" : "✓")
     ),
@@ -8373,7 +8404,7 @@ window.FortressApp = function Fortress() {
   },
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#f1f5f9", marginBottom: 8 } }, t('tutorialDoneTitle')),
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#94a3b8", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
-    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", marginBottom: 9, boxShadow: "0 4px 20px rgba(124,58,237,0.35)" } }, "\u{1F310} " + t('tutorialToOnline')),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", marginBottom: 9, boxShadow: "0 4px 20px rgba(124,58,237,0.35)" } }, React.createElement(Icon, { name: "globe", size: 15, style: { verticalAlign: "-2px", marginRight: 6 } }), t('tutorialToOnline')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { width: "100%", background: "rgba(255,255,255,0.06)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
   )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
