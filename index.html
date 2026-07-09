@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.30.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.30.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -3194,6 +3194,15 @@ window.FortressApp = function Fortress() {
     setShowQuitConfirm(false);
     running.current = false;
     if (online.current) {
+      // Ranked-Integrität (v3.30.3): Aufgeben mitten im laufenden Spiel zählt
+      // als NIEDERLAGE für den Aufgebenden. Vorher verbuchte der Quitter gar
+      // nichts — absehbare Niederlagen ließen sich per „Beenden" dodgen.
+      // Nur wenn das Spiel wirklich läuft und noch nichts verbucht wurde
+      // (vom Ergebnis-Screen aus ist bereits verbucht).
+      if (screenRef.current === "game" && !statRecorded.current) {
+        statRecorded.current = true;
+        recordResult(false, numPlayersRef.current);
+      }
       const wasHost = myRole.current === 1;
       if (wasHost) {
         await hostLeaveResolve();
@@ -4256,6 +4265,11 @@ window.FortressApp = function Fortress() {
     myRole.current = role;
     online.current = true;
     hostSessionRef.current = "";
+    // ⚠ ELO-Fix (v3.30.3): Gast-Eintrittspfad — siehe mmJoinMatchedGame.
+    statRecorded.current = false;
+    eloChangeRef.current = null;
+    goldChangeRef.current = null;
+    xpChangeRef.current = null;
     setMpCode(code);
     startPolling(code, role);
     setMpScreen("waiting");
@@ -4361,6 +4375,14 @@ window.FortressApp = function Fortress() {
     myRole.current = role;
     online.current = true;
     hostSessionRef.current = "";
+    // ⚠ ELO-Fix (v3.30.3): Gäste durchlaufen NIE startOnlineGame (das läuft nur
+    // beim Host) — ohne diesen Reset blieb statRecorded aus dem VORIGEN Spiel
+    // true und applyState verbuchte für alle Folge-Spiele der Session weder
+    // Stats noch ELO. Muss in JEDEM Gast-Eintrittspfad stehen.
+    statRecorded.current = false;
+    eloChangeRef.current = null;
+    goldChangeRef.current = null;
+    xpChangeRef.current = null;
     setMpCode(code);
     startPolling(code, role);
     setMpScreen("waiting");
@@ -7082,7 +7104,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.30.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.30.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

@@ -922,11 +922,21 @@ async function suiteOnline2P(browser, fbPort) {
 
     await pG.waitForTimeout(100);
     await jsClick(pG, ['Beitreten']);
-    // Kurz warten bis guestJoinGame() abgeschlossen + React gerendert (~50ms),
-    // aber bevor das Spiel startet (~600ms) — Wartescreen ist kurz sichtbar.
-    await pG.waitForTimeout(150);
-    const guestWait = await pG.evaluate(() => /warte|verbinde/i.test(document.body.innerText));
-    guestWait ? ok('Gast: Wartescreen nach Beitreten ✓') : fail('Gast: kein Wartescreen');
+    // Der Wartescreen ist nur KURZ sichtbar — unter Parallellast startet das
+    // Spiel oft schon vor dem ersten Check (Host startet sofort bei Beitritt).
+    // Stabil (v3.30.3): Wartescreen ODER bereits gestartetes Spiel akzeptieren.
+    let guestWait = false, guestInGame = false;
+    for (let i = 0; i < 10 && !guestWait && !guestInGame; i++) {
+      await pG.waitForTimeout(60);
+      const st = await pG.evaluate(() => ({
+        wait: /warte|verbinde/i.test(document.body.innerText),
+        game: !!document.querySelector('canvas')
+      }));
+      guestWait = st.wait; guestInGame = st.game;
+    }
+    (guestWait || guestInGame)
+      ? ok(`Gast: Beitritt ok (${guestWait ? 'Wartescreen' : 'Spiel direkt gestartet'}) ✓`)
+      : fail('Gast: weder Wartescreen noch Spielstart nach Beitreten');
     await pG.screenshot({ path: '/tmp/s5_guest_waiting.png' });
 
     // ── Spielstart: beide bekommen Canvas ─────────────────────
@@ -1069,7 +1079,9 @@ async function suiteOnline2P(browser, fbPort) {
 // Runde 2 (Geister-Listener-Regression), Queue-Hygiene, Selbst-Match-Schutz
 // ═══════════════════════════════════════════════════════════════
 function mmIdentInit(name, pid, dev) {
-  return `try {
+  // __mmDebug schon beim Laden setzen: startPolling hinterlegt dann __myRole
+  // (Gast-Rolle) — nötig für die Host/Gast-Erkennung der ELO-Regression.
+  return `window.__mmDebug = true; try {
     const p = JSON.parse(localStorage.getItem('fortress_profile'));
     p.id = '${pid}'; p.name = '${name}';
     localStorage.setItem('fortress_profile', JSON.stringify(p));
@@ -1135,27 +1147,41 @@ async function suiteMatchmaking(browser, fbPort) {
     bothNames ? ok('Match-Identitäten: beide Namen in beiden HUDs ✓')
               : fail(`Match-Identitäten falsch (A: ${/MMAnna/.test(hudA)}/${/MMBert/.test(hudA)}, B: ${/MMAnna/.test(hudB)}/${/MMBert/.test(hudB)})`);
 
-    // ── Ranked-Result: A gibt auf → B sieht Ergebnis ohne Rematch ──
-    await pA.waitForTimeout(1200);
-    await pA.evaluate(() => {
+    // ── Ranked-Result: HOST gibt auf → GAST sieht Ergebnis + verbucht ELO ──
+    // Bewusst der HOST, damit der GAST den Verbuchungs-Pfad durchläuft
+    // (applyState-resultInfo) — dort saß der v3.30.3-ELO-Bug.
+    const roleA = await pA.evaluate(() => window.__myRole || 1);
+    const hostP = roleA === 1 ? pA : pB, guestP = roleA === 1 ? pB : pA;
+    await hostP.waitForTimeout(1200);
+    await hostP.evaluate(() => {
       for (const b of document.querySelectorAll('button')) {
         if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
       }
     });
-    await pA.waitForTimeout(250);
-    await jsClick(pA, ['Ja', 'Beenden', 'verlassen']);
-    await pB.waitForTimeout(2500);
-    const bRes = await pB.evaluate(() => {
+    await hostP.waitForTimeout(250);
+    await jsClick(hostP, ['Ja', 'Beenden', 'verlassen']);
+    await guestP.waitForTimeout(2500);
+    const bRes = await guestP.evaluate(() => {
       const t = document.body.innerText;
       return { menu: /Hauptmenü/.test(t), rematch: /Nächste Runde|Neue Karte/.test(t), hint: /neue Gegner|Matchmaking im Menü/.test(t) };
     });
     bRes.menu    ? ok('Ranked-Result: Hauptmenü-Button vorhanden ✓') : fail('Ranked-Result: Hauptmenü-Button fehlt');
     !bRes.rematch ? ok('Ranked-Result: keine Rematch-Buttons ✓')     : fail('Ranked-Result: Rematch-Buttons sichtbar');
     !bRes.hint   ? ok('Ranked-Result: keine Hinweis-Box (seit v3.15.2) ✓') : fail('Ranked-Result: Hinweis-Box noch sichtbar');
+    // ── ELO: Der Gast (Sieger) muss ELO gewinnen (Start 1050) ──
+    const elo1 = await guestP.evaluate(() => { try { return JSON.parse(localStorage.getItem('fortress_profile')).elo; } catch (e) { return null; } });
+    (typeof elo1 === 'number' && elo1 > 1050)
+      ? ok(`ELO: Gast-Sieger nach Match 1 verbucht (1050→${elo1}) ✓`)
+      : fail(`ELO: Match 1 als Gast NICHT verbucht (1050→${elo1})`);
+    // ── ELO: Der Aufgebende muss die Niederlage verbuchen (v3.30.3) ──
+    const eloQ = await hostP.evaluate(() => { try { return JSON.parse(localStorage.getItem('fortress_profile')).elo; } catch (e) { return null; } });
+    (typeof eloQ === 'number' && eloQ < 1050)
+      ? ok(`ELO: Aufgeber verbucht Niederlage (1050→${eloQ}) ✓`)
+      : fail(`ELO: Aufgeber verliert nichts (1050→${eloQ}) — Quit-Dodge möglich`);
 
     // Beide zurück ins Menü
-    await jsClick(pB, ['Hauptmenü']);
-    await jsClick(pA, ['Hauptmenü']);
+    await jsClick(guestP, ['Hauptmenü']);
+    await jsClick(hostP, ['Hauptmenü']);
     await pA.waitForTimeout(500); await pB.waitForTimeout(300);
 
     // ── Match 2 (Regression: Geister-Listener / Queue-Hygiene) ──
@@ -1178,6 +1204,31 @@ async function suiteMatchmaking(browser, fbPort) {
       (scrapReset.s1 === 15 && scrapReset.s2 === 15)
         ? ok('Online-Neustart: Schrott auf 15 zurückgesetzt (2. Spiel) ✓')
         : fail(`Online-Neustart: Schrott nicht 15 (P1=${scrapReset.s1} P2=${scrapReset.s2})`);
+    }
+
+    // ── ELO-Regression (v3.30.3): auch das 2. Spiel als GAST muss verbuchen ──
+    // Der Bug: Gäste durchlaufen nie startOnlineGame → statRecorded blieb aus
+    // Spiel 1 true → Folge-Spiele buchten weder Stats noch ELO.
+    if (m2a && m2b) {
+      const roleA2 = await pA.evaluate(() => window.__myRole || 1);
+      const hostP2 = roleA2 === 1 ? pA : pB, guestP2 = roleA2 === 1 ? pB : pA;
+      await hostP2.waitForTimeout(800);
+      await hostP2.evaluate(() => {
+        for (const b of document.querySelectorAll('button')) {
+          if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
+        }
+      });
+      await hostP2.waitForTimeout(250);
+      await jsClick(hostP2, ['Ja', 'Beenden', 'verlassen']);
+      await guestP2.waitForTimeout(2500);
+      const elo2 = await guestP2.evaluate(() => { try { return JSON.parse(localStorage.getItem('fortress_profile')).elo; } catch (e) { return null; } });
+      const prevElo = guestP2 === guestP && typeof elo1 === 'number' ? elo1 : 1050;
+      (typeof elo2 === 'number' && elo2 > prevElo)
+        ? ok(`ELO: Gast-Sieger auch im 2. Match verbucht (${prevElo}→${elo2}) ✓`)
+        : fail(`ELO: 2. Match als Gast NICHT verbucht (${prevElo}→${elo2}) — statRecorded hängt?`);
+      await jsClick(guestP2, ['Hauptmenü']);
+      await jsClick(hostP2, ['Hauptmenü']);
+      await pA.waitForTimeout(400);
     }
 
     // Aufräumen + Queue-Hygiene prüfen

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2854,3 +2854,30 @@ echte Fluss unsichtbar daneben lag).
 Damit ist auch der ursprüngliche „Mauer im Wasser"-Report vollständig erklärt.
 
 Tests grün. SW-Cache `fortress-v3.30.2`.
+
+### v3.30.3 — ELO-Fix: Gäste verbuchten nur das ERSTE Online-Spiel der Session
+Nutzer-Report: „ELO wird nicht angepasst, wenn man online spielt." Review des
+kompletten Verbuchungs-Pfads (recordResult, Host-/Gast-/Forfeit-Wege):
+1. **Kern-Bug — statRecorded hing bei Gästen fest**: `startOnlineGame` (das
+   `statRecorded` zurücksetzt) läuft NUR beim Host (`startOnlineGame(1)` ist
+   der einzige Aufruf); Gäste betreten das Spiel rein über applyState. Kein
+   Gast-Eintrittspfad setzte das Flag zurück → ein Gast verbuchte das erste
+   beendete Spiel der Browser-Session, danach NIE wieder (weder Stats noch
+   ELO noch Gold/XP). Da das Matchmaking den Host deterministisch wählt
+   (kleinste Session-ID), war derselbe Spieler oft dauerhaft Gast → für ihn
+   „ändert sich nie etwas". Fix: Reset von `statRecorded` +
+   eloChange/goldChange/xpChange-Refs in BEIDEN Gast-Eintrittspfaden
+   (`mmJoinMatchedGame` + Code-Join `joinGame`). Regel im Kommentar: der
+   Reset muss in JEDEM Gast-Eintrittspfad stehen.
+2. **Quit-Dodge geschlossen**: Wer mitten im laufenden Spiel aufgibt
+   (`quitGame` bei screen==game), verbuchte selbst gar nichts — absehbare
+   Niederlagen ließen sich per „Beenden" dodgen. Jetzt zählt Aufgeben als
+   Niederlage (recordResult(false), Guard über statRecorded; vom
+   Ergebnis-Screen aus ist bereits verbucht → kein Doppel).
+Suite (Matchmaking): Match-Ende jetzt via HOST-Aufgabe → der GAST durchläuft
+den applyState-Verbuchungs-Pfad. Asserts: Gast-Sieger verbucht Match 1
+(1050→X), Aufgeber verbucht Niederlage (1050→Y<1050), und der Gast verbucht
+AUCH Match 2 (X→Z>X — exakt die festgehangene Flag-Regression).
+Host-Erkennung via gated `__myRole` (mmIdentInit setzt `__mmDebug` beim Laden).
+
+Tests grün. SW-Cache `fortress-v3.30.3`.
