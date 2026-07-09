@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2817,3 +2817,21 @@ der Kanonen-Kill-Suite: letzte Bot-Kanone töten → Status aktiv, Preis 20,
 Bergung +1 beim Verteidiger (alles in einer Schussphase, Nachlauf hält offen).
 
 Tests grün. SW-Cache `fortress-v3.30.0`.
+
+### v3.30.1 — Fixes: „Bauen im Wasser" (visuell) + Bot-Hand-Vorschau versteckt
+Zwei Nutzer-Reports:
+1. **„Ich konnte im Wasser bauen"**: Die Bau-LOGIK war dicht (alle
+   Platzierungspfade — placePiece, placeCannon, Bot — prüfen `isBuildable`,
+   Wasser `ter===3` ist gesperrt). Ursache war die Metaball-Fluss-OPTIK
+   (v3.15.0): Das Uferband zeichnete Kreise mit Radius 0.95×CELL und ragte
+   damit ~45 % in bebaubare Nachbarzellen — dort gebaute Mauern sahen aus, als
+   stünden sie im Fluss. Radien verkleinert (Ufer 0.95→0.68, Wasserkörper
+   0.72→0.60, Strömung 0.58→0.52; alle >0.5 → Kreise verschmelzen weiter zum
+   Band). Radien-Regel als Kommentar im Code verankert.
+2. **Bot-Modus zeigte die Hand des Bots**: Die P2-Hand-Vorschau in der
+   Bauleiste rendert bei `!online` — im Bot-Spiel sah man also das nächste
+   Teil des BOTS. Wie online sieht man jetzt nur das eigene Teil
+   (Bedingung: `!online && !botMode`; gilt auch im Tutorial).
+Suite: Bauphase im Bot-Spiel → genau 1 Hand-Vorschau sichtbar.
+
+Tests grün. SW-Cache `fortress-v3.30.1`.

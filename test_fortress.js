@@ -2596,6 +2596,17 @@ async function suiteBot(browser) {
       }
     }
 
+    // ── v3.30.1: In der Bauphase nur die EIGENE Hand-Vorschau (Bot-Hand versteckt) ──
+    {
+      const sawBuild = await waitForPhase(page, ['BAUEN'], 14000);
+      if (sawBuild) {
+        const hands = await page.evaluate(() =>
+          document.querySelectorAll('div[style*="grid-template-columns"]').length);
+        hands === 1 ? ok('Bot-Modus: nur eigene Hand-Vorschau sichtbar (1) ✓')
+                    : fail(`Bot-Modus: ${hands} Hand-Vorschauen statt 1 (Bot-Hand sichtbar?)`);
+      } else fail('Bot-Modus: Bauphase für Hand-Check nicht erreicht');
+    }
+
     // ── Stabil über mehrere Phasen (KI-Tick läuft in allen Phasen) ──
     const sawShoot = await waitForPhase(page, ['FEUER'], 6000);
     sawShoot ? ok('Bot-Spiel erreicht Schussphase ✓') : fail('Schussphase nicht erreicht');
