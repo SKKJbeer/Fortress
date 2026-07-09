@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.29.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.29.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2390,16 +2390,19 @@ window.FortressApp = function Fortress() {
       return React.createElement("div", { style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...bursts);
     }
     if (kind === "win_goldrain") {
+      // Gezeichnete Münzen statt Emoji (v3.29.1): Gold-Verlauf + Prägerand
       const coins = Array.from({ length: 14 }, (_, i) => {
         const left = 4 + (i * 41) % 92;
         const delay = ((i * 0.23) % 1.6).toFixed(2);
         const dur = (2 + (i * 0.13) % 1.2).toFixed(2);
+        const s = 12 + (i % 3) * 5;
         return React.createElement("span", { key: i, style: {
           position: "absolute", left: left + "%", top: "-6%",
-          fontSize: 14 + (i % 3) * 5,
-          animation: "coinFall " + dur + "s " + delay + "s linear infinite", pointerEvents: "none",
-          filter: "drop-shadow(0 0 6px rgba(251,191,36,0.7))"
-        } }, "🪙");
+          width: s, height: s, borderRadius: "50%", display: "block",
+          background: "radial-gradient(circle at 32% 28%, #fef3c7 0%, #fbbf24 45%, #b45309 100%)",
+          boxShadow: "inset 0 0 0 1.5px rgba(180,83,9,0.55), 0 0 8px rgba(251,191,36,0.7)",
+          animation: "coinFall " + dur + "s " + delay + "s linear infinite", pointerEvents: "none"
+        } });
       });
       return React.createElement("div", { style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...coins);
     }
@@ -2513,7 +2516,7 @@ window.FortressApp = function Fortress() {
     { id: "walls30", target: 30, gold: 30, stat: "walls", icon: "zap" },
     { id: "walls80", target: 80, gold: 50, stat: "walls", icon: "zap" },
     { id: "cannons2", target: 2, gold: 40, stat: "cannons", icon: "bomb" },
-    { id: "scrap60", target: 60, gold: 30, stat: "scrap", icon: "⚙" },
+    { id: "scrap60", target: 60, gold: 30, stat: "scrap", icon: "hammer" },
     { id: "play2", target: 2, gold: 25, stat: "played", icon: "gamepad" },
     { id: "play4", target: 4, gold: 45, stat: "played", icon: "gamepad" },
     { id: "win1", target: 1, gold: 40, stat: "won", icon: "trophy" },
@@ -2544,7 +2547,13 @@ window.FortressApp = function Fortress() {
     ]
   };
   const TRAIL_COLOR = { trail_ember: "#fb923c", trail_frost: "#7dd3fc", trail_venom: "#a3e635", trail_gold: "#fcd34d" };
-  const WIN_EMOJI = { win_confetti: "🎊", win_fireworks: "🎆", win_goldrain: "🪙" };
+  // Sieges-Animationen: professionelle SVG-Icons statt Emojis (v3.29.1,
+  // Design-Regel aus v3.27.0 — Emojis nur noch in Spieltexten, nie als UI-Icon).
+  const WIN_ICON = {
+    win_confetti: { name: "sparkles", c: "#a78bfa" },
+    win_fireworks: { name: "rocket", c: "#f87171" },
+    win_goldrain: { name: "coins", c: "#fbbf24" }
+  };
   const FRAME_STYLE = {
     frame_bronze: { c: "#b45309", glow: "rgba(180,83,9,0.6)" },
     frame_silver: { c: "#cbd5e1", glow: "rgba(203,213,225,0.6)" },
@@ -7007,7 +7016,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.29.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.29.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7185,7 +7194,11 @@ window.FortressApp = function Fortress() {
         border: fr ? "3px solid " + fr.c : "2px dashed rgba(255,255,255,0.25)",
         boxShadow: fr ? "0 0 8px " + fr.glow : "none", boxSizing: "border-box"
       } }); }
-      return h("span", { style: { fontSize: 18, lineHeight: 1 } }, WIN_EMOJI[it.id] || "🎊");
+      const wi = WIN_ICON[it.id] || WIN_ICON.win_confetti;
+      return h("div", { style: {
+        width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(255,255,255,0.07)", boxShadow: "0 0 8px " + wi.c + "44"
+      } }, h(Icon, { name: wi.name, size: 14, color: wi.c }));
     };
     const ownedTotal = Object.keys(COSMETICS).reduce((s, cat) => s + COSMETICS[cat].filter((it) => cosmeticOwned(cos, it)).length, 0);
     return h("div", { style: {
@@ -7354,7 +7367,12 @@ window.FortressApp = function Fortress() {
               background: tk.collected ? "rgba(74,222,128,0.06)" : ready ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.04)",
               border: "1px solid " + (tk.collected ? "rgba(74,222,128,0.2)" : ready ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.08)")
             } },
-              h("span", { style: { fontSize: 20, flexShrink: 0, filter: tk.collected ? "grayscale(1) opacity(0.5)" : "none" } }, def.icon),
+              h("div", { style: {
+                width: 34, height: 34, borderRadius: 999, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: tk.collected ? "rgba(255,255,255,0.05)" : "rgba(96,165,250,0.12)",
+                border: "1px solid " + (tk.collected ? "rgba(255,255,255,0.08)" : "rgba(96,165,250,0.3)")
+              } }, h(Icon, { name: def.icon, size: 17, color: tk.collected ? "#64748b" : "#93c5fd" })),
               h("div", { style: { flex: 1, minWidth: 0 } },
                 h("div", { style: { fontSize: 12.5, fontWeight: 700, color: tk.collected ? "#64748b" : "#e2e8f0", textDecoration: tk.collected ? "line-through" : "none" } }, t("task_" + tk.id)),
                 h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4 } },
@@ -7403,7 +7421,11 @@ window.FortressApp = function Fortress() {
         boxShadow: fr ? "0 0 10px " + fr.glow : "none",
         boxSizing: "border-box"
       } }); }
-      return h("span", { style: { fontSize: 22, lineHeight: 1 } }, WIN_EMOJI[it.id] || "🎊");
+      const wi = WIN_ICON[it.id] || WIN_ICON.win_confetti;
+      return h("div", { style: {
+        width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(255,255,255,0.07)", boxShadow: "0 0 10px " + wi.c + "55"
+      } }, h(Icon, { name: wi.name, size: 16, color: wi.c }));
     };
     const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 13 } },
       h("div", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 7, textAlign: "left" } }, label),

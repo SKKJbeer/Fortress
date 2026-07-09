@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.29.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.29.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2772,3 +2772,21 @@ Burg" + „bei der Schwierigkeitswahl ist eins immer vordefiniert".
   in 25 s), Keine-Vorauswahl-Check (identische Button-Styles).
 
 Tests grün. SW-Cache `fortress-v3.29.0`.
+
+### v3.29.1 — UI-Fix: Tagesaufgaben-Icons gerendert + Gold-Shop ohne Emojis
+Nutzer-Report mit Screenshot: Tagesaufgaben zeigten die Icon-NAMEN als Text
+(„shoppingCart", „bomb", „gamepad") — die v3.27.0-Migration hatte die
+Task-Defs auf Icon-Namen umgestellt, aber die Modal-Renderstelle gab `def.icon`
+weiter als String aus. Und die Sieges-Effekt-Previews im Gold-Shop/Inventar/
+Kaufdialog waren noch Emojis (🎊/🎆/🪙).
+- Tagesaufgaben: Icon-Medaillon (34px-Kreis) mit `Icon`-Komponente; Task
+  `scrap60` von Rohzeichen „⚙" auf Icon `hammer` umgestellt.
+- `WIN_EMOJI` → `WIN_ICON` (sparkles/rocket/coins in Themenfarben, mit
+  Glow-Medaillon) — wirkt in Gold-Shop-Karten, Kaufbestätigung UND Inventar
+  (gleiche preview-Funktionen).
+- Goldregen-Sieges-Animation: gezeichnete Gold-Münzen (Radial-Verlauf +
+  Prägerand) statt 🪙-Emoji.
+- Suite: Tagesaufgaben-Check (keine rohen Icon-Namen als Text, ≥3 SVGs) +
+  Gold-Shop-Check (keine Emoji-Codepoints im Modal).
+
+Tests grün. SW-Cache `fortress-v3.29.1`.

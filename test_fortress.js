@@ -2081,6 +2081,17 @@ async function suiteDailyTasks(browser) {
     });
     modal.title ? ok('Daily Tasks: Modal mit Titel ✓') : fail('Daily Tasks: Modal fehlt');
     modal.count >= 3 ? ok(`Daily Tasks: 3 Aufgaben mit Fortschritt (${modal.count}) ✓`) : fail(`Daily Tasks: nur ${modal.count} Fortschritts-Anzeigen`);
+    // ── v3.29.1: Task-Icons sind SVGs, keine rohen Icon-Namen als Text ──
+    const iconCheck = await page.evaluate(() => {
+      const t = document.body.innerText;
+      const raw = /shoppingCart|gamepad|trophy|hammer|bomb|zap/.exec(t);
+      const svgs = document.querySelectorAll('svg.li').length;
+      return { raw: raw ? raw[0] : null, svgs };
+    });
+    !iconCheck.raw ? ok('Daily Tasks: keine rohen Icon-Namen als Text ✓')
+                   : fail(`Daily Tasks: Icon-Name "${iconCheck.raw}" erscheint als Text`);
+    iconCheck.svgs >= 3 ? ok(`Daily Tasks: SVG-Icons gerendert (${iconCheck.svgs}) ✓`)
+                        : fail(`Daily Tasks: zu wenige SVG-Icons (${iconCheck.svgs})`);
     await jsClick(page, ['Schließen', 'Close']);
     // ── 2) Abhol-Flow: Task künstlich erfüllen → Badge + Abholen → Gold steigt ──
     const seeded = await page.evaluate(() => {
@@ -2144,6 +2155,12 @@ async function suiteGoldShop(browser) {
     view.title ? ok('Gold-Shop: Modal mit Titel ✓') : fail('Gold-Shop: Modal fehlt');
     view.sections ? ok('Gold-Shop: 3 Kategorien sichtbar ✓') : fail('Gold-Shop: Kategorien fehlen');
     view.goldChip ? ok('Gold-Shop: Gold-Kontostand angezeigt ✓') : fail('Gold-Shop: Kontostand fehlt');
+    // ── v3.29.1: Sieges-Effekt-Previews sind SVG-Icons, keine Emojis ──
+    const noEmoji = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return !/[\u{1F300}-\u{1FAFF}]/u.test(t);
+    });
+    noEmoji ? ok('Gold-Shop: keine Emojis (SVG-Previews) ✓') : fail('Gold-Shop: Emoji im Modal gefunden');
     // ── Kauf: Glut-Trail (150 G) mit Startgold 175 — zweistufig (v3.26.2) ──
     const goldBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('fortress_profile')).gold);
     await page.evaluate(() => {
