@@ -92,7 +92,7 @@ und in Tests: `/⚙ \d+/`) und `♔ ♚ ♜` (Spielerfarben, `FLAG_OF`).
 - **Verlust**: Burg am Bauende nicht vollständig von Mauern umschlossen (Flood-Fill)
 - **Kanonen**: schießen nur wenn zu Beginn der Schussrunde vollständig ummauert (`frozenReady`)
 - **Grid**: 44×68 Zellen, 14px pro Zelle (W=616, H=952)
-- **Welt-Themes (seit v3.15.0)**: `WORLD_THEMES` (7 Welten: Kristalltal, Frostreich, Glutwüste, Vulkanschlund, Nebelmoor, Herbstwald, Astralebene) — `worldThemeOf(terrainSeed)` = `seed % 7`, deterministisch → online automatisch synchron. Farben laufen komplett über den bgCanvas-Offscreen-Render; Welt-Namenszug wird INNERHALB der p1Flipped-Transformation gezeichnet (Doppel-Flip = lesbar). |
+- **Welt-Themes (seit v3.15.0)**: `WORLD_THEMES` (7 Welten: Kristalltal, Frostreich, Glutwüste, Vulkanschlund, Nebelmoor, Herbstwald, Astralebene) — `worldThemeOf(terrainSeed)` = `seed % 7`, deterministisch → online automatisch synchron. Farben laufen komplett über den bgCanvas-Offscreen-Render. WICHTIG (v3.30.2, Bug-Fix): bgCanvas wird OHNE Vor-Flip gerendert — der frühere Vor-Flip + Haupt-Flip = Doppel-Flip ließ das Terrain aufrecht erscheinen, während Objekte gespiegelt rendern; der Fluss lag dadurch visuell an der GESPIEGELTEN Position und Spieler bauten scheinbar 'im Fluss'. Nur der Welt-Namenszug hat einen eigenen Gegen-Flip (lesbar, unten links). |
 - **Spieler**: P1=Blau(♔), P2=Rot(♚), P3=Grün(♜)
 
 ---

@@ -2561,6 +2561,41 @@ async function suiteBot(browser) {
                            : fail(`Reset-Geste: Cancel-Drag platzierte trotzdem (P1 ${p1Before}→${p1After})`);
     }
 
+    // ── v3.30.2: Terrain-Flip-Regression — Fluss-Optik == Fluss-Logik ──
+    // Der frühere bgCanvas-Vor-Flip + Haupt-Flip (Doppel-Flip) zeichnete den
+    // Fluss an der GESPIEGELTEN Position → „Bauen im Fluss". Pixel-Probe:
+    // asymmetrische Wasser-Kantenzellen (Spiegelzeile ist Land) müssen an der
+    // geflippten Bildschirmposition Wasserfarbe zeigen.
+    {
+      const fp = await page.evaluate(() => {
+        const cells = window.__waterCells && window.__waterCells();
+        if (!cells || !cells.length) return null;
+        const cv = document.querySelector('canvas');
+        const img = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+        const W = cv.width, H = cv.height, CELL = 14;
+        const px = (x, y) => { const i = (Math.round(y) * W + Math.round(x)) * 4; return [img[i], img[i+1], img[i+2]]; };
+        const dist = (a, b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+        const flipY = (r) => H - (r * CELL + CELL / 2);
+        let wr = [0,0,0];
+        for (const [r,c] of cells) { const p = px(c*CELL+CELL/2, flipY(r)); wr[0]+=p[0]; wr[1]+=p[1]; wr[2]+=p[2]; }
+        wr = wr.map(v => v / cells.length);
+        const land = cells.map(([r,c]) => [r+7, c]).filter(([r]) => r < 68);
+        let lr = [0,0,0];
+        for (const [r,c] of land) { const p = px(c*CELL+CELL/2, flipY(r)); lr[0]+=p[0]; lr[1]+=p[1]; lr[2]+=p[2]; }
+        lr = lr.map(v => v / land.length);
+        const isWater = new Set(cells.map(([r,c]) => r + '_' + c));
+        const edge = cells.filter(([r,c]) => !isWater.has((67 - r) + '_' + c));
+        let good = 0;
+        for (const [r,c] of edge) { const p = px(c*CELL+CELL/2, flipY(r)); if (dist(p, wr) < dist(p, lr)) good++; }
+        return { edgeN: edge.length, good, contrast: Math.round(dist(wr, lr)) };
+      });
+      if (!fp) fail('Terrain-Flip: Wasserzellen nicht lesbar');
+      else if (fp.edgeN === 0) ok('Terrain-Flip: Karte symmetrisch (kein Kanten-Check nötig) ✓');
+      else (fp.good / fp.edgeN >= 0.9)
+        ? ok(`Terrain-Flip: Fluss-Optik == Logik (${fp.good}/${fp.edgeN} Kantenzellen, Kontrast ${fp.contrast}) ✓`)
+        : fail(`Terrain-Flip: Fluss verschoben? Nur ${fp.good}/${fp.edgeN} Kantenzellen wasserfarben`);
+    }
+
     // ── Beweis: Bot (P2) platziert Kanonen (Toast erscheint) ──
     // Der Test-„Mensch" platziert nichts → jeder Kanonen-Toast stammt vom Bot.
     let placed = false;

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.30.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.30.2</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -2989,6 +2989,14 @@ window.FortressApp = function Fortress() {
     // in die Schutzmauer von Spieler p schlagen (n zusammenhängende Mauerzellen → Trümmer).
     // Wiederaufbau-Paket (v3.30.0): Comeback-Status + wirksamer Kanonenpreis
     window.__rebuildAid = gated((p) => ({ active: rebuildAidActive(p), price: cannonPriceOf(p) }));
+    // Terrain-Diagnose (v3.30.2, Flip-Bug-Regression): logische Wasserzellen
+    window.__waterCells = gated(() => {
+      const ter = terrain.current && terrain.current.grid;
+      if (!ter) return null;
+      const out = [];
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (ter[r][c] === 3) out.push([r, c]);
+      return out;
+    });
     window.__castleClosed = gated((p) => {
       const g = grid.current, ct = castles.current[p];
       if (!g || !ct) return null;
@@ -6191,7 +6199,14 @@ window.FortressApp = function Fortress() {
       const bc = bgCanvas.current.getContext("2d");
       // Welt-Thema deterministisch aus dem Seed — identisch auf allen Clients.
       const WT = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
-      if (p1Flipped) { bc.save(); bc.translate(0, H); bc.scale(1, -1); }
+      // ⚠ KEIN Vor-Flip des Hintergrunds mehr (v3.30.2, Bug-Fix): Der frühere
+      // bc-Flip + Haupt-Canvas-Flip = Doppel-Flip → das TERRAIN erschien
+      // aufrecht, während Mauern/Kanonen gespiegelt rendern. Folge: Der Fluss
+      // wurde an der GESPIEGELTEN Position gezeichnet — Spieler konnten
+      // scheinbar „im Fluss" bauen (logisch war dort Land) und der echte Fluss
+      // lag unsichtbar woanders. Der Hintergrund durchläuft jetzt denselben
+      // Haupt-Flip wie alle Spielobjekte → Optik == Logik. Nur der
+      // Welt-Namenszug bekommt unten einen eigenen Gegen-Flip (lesbar).
       // — Tiefer atmosphärischer Untergrund (Thema) —
       const mg2 = bc.createLinearGradient(0, 0, 0, H);
       mg2.addColorStop(0, WT.bg[0]);
@@ -6404,9 +6419,11 @@ window.FortressApp = function Fortress() {
       vig.addColorStop(1, "rgba(0,0,0,0.62)");
       bc.fillStyle = vig;
       bc.fillRect(0, 0, W, H);
-      // Welt-Namenszug, dezent unten links. INNERHALB der Flip-Transformation
-      // zeichnen: der Haupt-Canvas flippt für P1 erneut → Doppel-Flip = lesbar.
+      // Welt-Namenszug, dezent unten links. Bei p1Flipped mit EIGENEM
+      // Gegen-Flip zeichnen: der Haupt-Canvas spiegelt erneut → lesbar,
+      // und er landet weiterhin unten links auf dem Bildschirm.
       bc.save();
+      if (p1Flipped) { bc.translate(0, H); bc.scale(1, -1); }
       bc.font = "700 13px 'Segoe UI', system-ui, sans-serif";
       bc.textBaseline = "bottom";
       const wtLabel = WT.name.toUpperCase();
@@ -6424,7 +6441,6 @@ window.FortressApp = function Fortress() {
       bc.globalAlpha = 0.75;
       bc.fillText(wtLabel, 16, H - 9);
       bc.restore();
-      if (p1Flipped) bc.restore();
     }
     if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
     const WTa = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
@@ -7066,7 +7082,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.30.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.30.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

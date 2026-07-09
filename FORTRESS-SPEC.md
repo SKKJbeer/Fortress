@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2835,3 +2835,22 @@ Zwei Nutzer-Reports:
 Suite: Bauphase im Bot-Spiel → genau 1 Hand-Vorschau sichtbar.
 
 Tests grün. SW-Cache `fortress-v3.30.1`.
+
+### v3.30.2 — Echter Fix: „Bauen im Fluss" war ein Terrain-Spiegel-Bug (Doppel-Flip)
+Nutzer-Report mit Screenshot: Kanone stand trotz v3.30.1 mitten im Lavafluss.
+Wahre Ursache (tiefer als die Radien): Im p1Flipped-Modus (Bot/Online-Host,
+2 Spieler) wurde der bgCanvas mit VOR-Flip gerendert und dann durch den
+geflippten Haupt-Canvas geblittet — Doppel-Flip. Ergebnis: Das TERRAIN erschien
+aufrecht (logische Zeile 0 oben), während Mauern/Kanonen/Burgen gespiegelt
+rendern (logische Zeile 0 unten). Der Fluss wurde also an der GESPIEGELTEN
+Position gezeichnet; weil die Karte grob symmetrisch ist, fiel das nie auf —
+bis jemand auf einer „Fluss-Optik"-Zelle baute, die logisch Land ist (und der
+echte Fluss unsichtbar daneben lag).
+- Vor-Flip entfernt: bgCanvas durchläuft jetzt denselben Haupt-Flip wie alle
+  Spielobjekte → Terrain-Optik == Terrain-Logik, in ALLEN Modi.
+- Nur der Welt-Namenszug bekommt einen eigenen Gegen-Flip (bleibt lesbar
+  unten links).
+- Die Radien-Verkleinerung aus v3.30.1 bleibt (Wasser ragt nicht in Bauland).
+Damit ist auch der ursprüngliche „Mauer im Wasser"-Report vollständig erklärt.
+
+Tests grün. SW-Cache `fortress-v3.30.2`.
