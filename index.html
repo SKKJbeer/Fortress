@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.32.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.32.3</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -210,6 +210,7 @@ const SFX = {
     // "suspended") — beide Zustände wieder anwerfen (v3.32.2).
     try { const c = this._ensure(); if (c && c.state !== "running") c.resume().catch(() => {}); } catch (e) {}
     this._unlockMediaChannel();
+    if (this._isIOS) this._initTags();
     this._load();
   },
   // iOS-Stummschalter-Fix (v3.32.2): Web-Audio läuft auf dem KLINGELTON-Kanal —
@@ -217,6 +218,43 @@ const SFX = {
   // Einmaliges Abspielen eines stillen <audio>-Elements (playsinline) routet
   // die App auf den MEDIEN-Kanal, der den Schalter ignoriert (Standard-Trick
   // aller Mobile-Web-Games, vgl. unmute.js).
+  // iOS-Erkennung (auch iPadOS, das sich als MacIntel meldet)
+  _isIOS: typeof navigator !== "undefined" && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)),
+  // HTML-Audio-Pool (v3.32.3): auf iOS ist das der PRIMÄRE Abspielpfad.
+  // <audio>-Elemente laufen auf dem Medien-Kanal (spielen auch bei Stumm-
+  // schalter) und haben keine AudioContext-Zustandsfallen. Jedes Element wird
+  // bei der ersten Geste einmal stumm angespielt ("gesegnet") — danach darf
+  // es programmatisch (auch außerhalb von Gesten) erneut abgespielt werden.
+  _tags: {},
+  _tagsReady: false,
+  _initTags() {
+    if (this._tagsReady) return;
+    this._tagsReady = true;
+    try {
+      for (const n of ["shoot", "impact", "destroy", "place", "buy", "win", "lose"]) {
+        const a = new Audio("sounds/" + n + ".mp3");
+        a.preload = "auto";
+        a.setAttribute("playsinline", "");
+        this._tags[n] = a;
+        a.muted = true;
+        const pr = a.play();
+        if (pr && pr.then) pr.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; });
+        else { a.pause(); a.currentTime = 0; a.muted = false; }
+      }
+    } catch (e) {}
+  },
+  _playTag(name, vol) {
+    const a = this._tags[name];
+    if (!a) return false;
+    try {
+      if (!a.paused) { a.pause(); }
+      a.currentTime = 0;
+      try { a.volume = vol != null ? vol : 1; } catch (e) {}
+      const pr = a.play();
+      if (pr && pr.catch) pr.catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  },
   _mediaUnlocked: false,
   _unlockMediaChannel() {
     if (this._mediaUnlocked) return;
@@ -250,6 +288,9 @@ const SFX = {
   // Sample abspielen; false wenn (noch) kein Buffer → Aufrufer nutzt Fallback-Töne
   _play(name, vol) {
     if (!this.enabled) return true;
+    // iOS: HTML-Audio (Medien-Kanal) zuerst — WebAudio hängt dort am
+    // Klingelton-Kanal und ist bei Stummschalter lautlos (v3.32.3).
+    if (this._isIOS && this._playTag(name, vol)) return true;
     const buf = this._bufs[name];
     if (!buf) return false;
     try {
@@ -2976,7 +3017,13 @@ window.FortressApp = function Fortress() {
     // in den Tab wieder anwerfen (v3.32.2).
     const v = () => { if (!document.hidden) SFX.resume(); };
     document.addEventListener('visibilitychange', v);
-    return () => { window.removeEventListener('pointerdown', r); document.removeEventListener('visibilitychange', v); };
+    // iOS-Lupe (v3.32.3, Härtung): CSS user-select reicht nicht immer — Safari
+    // startet die Text-Lupe trotzdem gelegentlich per Long-Press. Textauswahl
+    // und Kontextmenü hart unterbinden (Eingabefelder ausgenommen).
+    const noSel = (e) => { const tg = e.target; if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return; e.preventDefault(); };
+    document.addEventListener('selectstart', noSel);
+    document.addEventListener('contextmenu', noSel);
+    return () => { window.removeEventListener('pointerdown', r); document.removeEventListener('visibilitychange', v); document.removeEventListener('selectstart', noSel); document.removeEventListener('contextmenu', noSel); };
   }, []);
   // Gated Test-Hook (nur bei window.__mmDebug): Schrott gutschreiben, damit
   // Tests den echten Kauf-Flow im Shop deterministisch auslösen können.
@@ -7167,7 +7214,7 @@ window.FortressApp = function Fortress() {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
     } }, React.createElement(Icon, { name: "shoppingCart", size: 16 }))
-  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => setSoundOn((v) => !v), title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -7219,7 +7266,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

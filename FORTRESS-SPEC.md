@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2977,3 +2977,23 @@ Nutzer-Report „bei mir kommt kein Sound". Die Sound-Dateien und der Lade-Code
    schlug die Context-Erzeugung beim ersten Versuch fehl, wurde nie nachgeladen.
 
 Tests grün. SW-Cache `fortress-v3.32.2`.
+
+### v3.32.3 — iOS-Sound II: HTML-Audio-Pool als primärer Pfad + Lupen-Härtung
+v3.32.2 (Medien-Kanal-Unlock für WebAudio) reichte auf dem Gerät nicht — Sound
+blieb stumm, Lupe kam noch vereinzelt.
+1. **Sound**: Auf iOS (inkl. iPadOS als „MacIntel" mit Touch) spielen alle
+   Effekte jetzt PRIMÄR über einen Pool aus 7 `<audio playsinline>`-Elementen
+   (`_tags`) — HTML-Audio läuft nativ auf dem MEDIEN-Kanal (spielt auch bei
+   Stummschalter) und hat keine AudioContext-Zustandsfallen. Jedes Element
+   wird bei der ersten Geste einmal stumm angespielt („gesegnet") — danach
+   ist programmatisches Abspielen erlaubt. WebAudio bleibt der Pfad für alle
+   anderen Plattformen + Fallback (`_play` → `_playTag` zuerst auf iOS).
+   `a.volume` wird gesetzt, iOS ignoriert es (immer 1) — akzeptiert.
+2. **Sofort-Feedback**: Der Sound-Toggle im Menü spielt beim EINSCHALTEN
+   direkt einen Testton (in der Klick-Geste → segnet gleichzeitig die
+   Audio-Elemente). Damit ist am Gerät sofort verifizierbar, ob Sound geht.
+3. **Lupe (Härtung)**: zusätzlich zu CSS jetzt `selectstart`- und
+   `contextmenu`-preventDefault global (Eingabefelder ausgenommen) — Safari
+   startete die Text-Lupe vereinzelt trotz `user-select:none`.
+
+Tests grün. SW-Cache `fortress-v3.32.3`.
