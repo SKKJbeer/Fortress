@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2946,3 +2946,17 @@ Zwei Playtest-Punkte:
    sagen jetzt „von deiner Burg wegziehen".
 
 Tests grün. SW-Cache `fortress-v3.32.0`.
+
+### v3.32.1 — Fix: iOS-Text-Lupe beim Ziehen (Safari)
+Nutzer-Report: Beim Zielen/Ziehen erschien ab und zu die iOS-Vergrößerungslupe
+(Safari-Textauswahl). Ursache: `user-select:none` lag nur auf `html,body` —
+Safari wendet das nicht zuverlässig auf Kind-Elemente an; startete/wanderte der
+Finger über HUD-/Shop-Texte, begann Safari eine Textauswahl (= Lupe).
+- `-webkit-user-select:none / user-select:none / -webkit-touch-callout:none /
+  -webkit-tap-highlight-color:transparent` jetzt GLOBAL auf `*`.
+- Ausnahme `input, textarea` → Textauswahl bleibt (Profil-Editor).
+- `-webkit-touch-callout:none` zusätzlich auf `html,body`.
+Rein CSS, keine Logik-Änderung. In der späteren TWA/App irrelevant, stört aber
+beim Browser-Playtest.
+
+Tests grün. SW-Cache `fortress-v3.32.1`.
