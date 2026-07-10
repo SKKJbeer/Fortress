@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.32.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.32.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -206,16 +206,39 @@ const SFX = {
     return this.ctx;
   },
   resume() {
-    try { const c = this._ensure(); if (c && c.state === "suspended") c.resume().catch(() => {}); } catch (e) {}
+    // iOS: nach App-Wechsel/Anruf steht der Context auf "interrupted" (nicht
+    // "suspended") — beide Zustände wieder anwerfen (v3.32.2).
+    try { const c = this._ensure(); if (c && c.state !== "running") c.resume().catch(() => {}); } catch (e) {}
+    this._unlockMediaChannel();
     this._load();
+  },
+  // iOS-Stummschalter-Fix (v3.32.2): Web-Audio läuft auf dem KLINGELTON-Kanal —
+  // steht der Hardware-Schalter auf lautlos, ist das Spiel komplett stumm.
+  // Einmaliges Abspielen eines stillen <audio>-Elements (playsinline) routet
+  // die App auf den MEDIEN-Kanal, der den Schalter ignoriert (Standard-Trick
+  // aller Mobile-Web-Games, vgl. unmute.js).
+  _mediaUnlocked: false,
+  _unlockMediaChannel() {
+    if (this._mediaUnlocked) return;
+    try {
+      const tag = document.createElement("audio");
+      tag.setAttribute("playsinline", "");
+      tag.preload = "auto";
+      tag.loop = false;
+      // ~50ms Stille als WAV-Data-URI (44-Byte-Header + Nullsamples)
+      tag.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQQAAAAAAAAA";
+      const pr = tag.play();
+      if (pr && pr.then) pr.then(() => { this._mediaUnlocked = true; }).catch(() => {});
+      else this._mediaUnlocked = true;
+    } catch (e) {}
   },
   _bufs: {},
   _loading: false,
   _load() {
     if (this._loading) return;
-    this._loading = true;
     const c = this._ensure();
     if (!c) return;
+    this._loading = true;
     for (const n of ["shoot", "impact", "destroy", "place", "buy", "win", "lose"]) {
       fetch("sounds/" + n + ".mp3")
         .then((r) => r.ok ? r.arrayBuffer() : Promise.reject(0))
@@ -2949,7 +2972,11 @@ window.FortressApp = function Fortress() {
   useEffect(() => {
     const r = () => SFX.resume();
     window.addEventListener('pointerdown', r);
-    return () => window.removeEventListener('pointerdown', r);
+    // iOS: Context wird im Hintergrund suspendiert/interrupted → bei Rückkehr
+    // in den Tab wieder anwerfen (v3.32.2).
+    const v = () => { if (!document.hidden) SFX.resume(); };
+    document.addEventListener('visibilitychange', v);
+    return () => { window.removeEventListener('pointerdown', r); document.removeEventListener('visibilitychange', v); };
   }, []);
   // Gated Test-Hook (nur bei window.__mmDebug): Schrott gutschreiben, damit
   // Tests den echten Kauf-Flow im Shop deterministisch auslösen können.
@@ -7192,7 +7219,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.2")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

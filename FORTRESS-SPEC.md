@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2960,3 +2960,20 @@ Rein CSS, keine Logik-Änderung. In der späteren TWA/App irrelevant, stört abe
 beim Browser-Playtest.
 
 Tests grün. SW-Cache `fortress-v3.32.1`.
+
+### v3.32.2 — Fix: Kein Sound auf iOS (Stummschalter-Kanal + interrupted-State)
+Nutzer-Report „bei mir kommt kein Sound". Die Sound-Dateien und der Lade-Code
+(v3.28.0) waren intakt — drei iOS-spezifische Lücken:
+1. **Stummschalter**: iOS legt Web-Audio auf den KLINGELTON-Kanal — Hardware-
+   Schalter auf lautlos = Spiel komplett stumm. Fix: `_unlockMediaChannel()`
+   spielt bei der ersten Geste einmal ein stilles `<audio playsinline>`
+   (WAV-Data-URI) ab → App wechselt auf den MEDIEN-Kanal, der den Schalter
+   ignoriert (Standard-Trick, vgl. unmute.js).
+2. **`interrupted`**: Nach Anruf/App-Wechsel steht der AudioContext auf
+   "interrupted" — `resume()` griff nur bei "suspended". Jetzt: bei allem
+   ≠ "running" resümieren; zusätzlich `visibilitychange`-Listener (Rückkehr
+   in den Tab → resume).
+3. `_load()`-Robustheit: `_loading`-Flag wurde vor dem Context-Check gesetzt —
+   schlug die Context-Erzeugung beim ersten Versuch fehl, wurde nie nachgeladen.
+
+Tests grün. SW-Cache `fortress-v3.32.2`.
