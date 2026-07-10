@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.31.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2925,3 +2925,24 @@ nicht unterscheiden.
   Trümmer liegen, nur Mauer-Trümmer werden gewandelt (Zählung konsistent).
 
 Tests grün. SW-Cache `fortress-v3.31.1`.
+
+### v3.32.0 — UX: Reparatur-Highlight + fester Ziel-Anker (eigene Burg)
+Zwei Playtest-Punkte:
+1. **Reparatur unsichtbar**: Der Kauf reparierte sofort, aber das Shop-Panel
+   verdeckte das Feld — man sah nie, WO repariert wurde. Jetzt: Beim Kauf
+   blendet das Shop-Panel ~1,8s aus (`shopHideUntil`, pro Spieler; Gast
+   optimistisch beim Absenden der buy-Action) und die reparierten Zellen
+   pulsieren ~1,5s grün (Füllung + wachsender Ring). Marker in `repairFx`
+   (Ref, max 12), via State synchronisiert wie `scrapPops` (buildState/
+   applyState), Zeichnung frame-basiert im Render-Loop. Hook `__repairCheck`
+   liefert zusätzlich `fx`; Suite prüft Marker je reparierter Zelle.
+2. **Ziel-Anker sprang umher**: `slingAnchor` war der Schwerpunkt der
+   schussbereiten Kanonen — war z. B. nur die ganz rechte Kanone bereit, saß
+   der Anker am Feldrand und Zielen wurde extrem unhandlich. Jetzt: fester
+   Standard-Anker = **Zentrum der EIGENEN BURG** (immer gleiche, vorhersagbare
+   Stelle; Fallback Kanonen-Schwerpunkt nur ohne Burg). Kanonen feuern
+   unverändert von ihren Positionen; nur die Ziel-Referenz ist stabil.
+   Alle Anleitungs-Texte (Banner, Coach, Hilfe, Tipp, Onboarding, de/en)
+   sagen jetzt „von deiner Burg wegziehen".
+
+Tests grün. SW-Cache `fortress-v3.32.0`.

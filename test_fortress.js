@@ -2486,6 +2486,7 @@ async function suiteCannonKill(browser) {
     else if (rep.before.cannon < 1) { fail(`Reparatur: keine Kanonen-Trümmer im Grid (${JSON.stringify(rep.before)})`); }
     else {
       rep.after.cannon === rep.before.cannon ? ok(`Reparatur: Kanonen-Trümmer bleiben liegen (${rep.before.cannon} vorher = ${rep.after.cannon} nachher) ✓`) : fail(`Reparatur: Kanonen-Trümmer überbaut (${rep.before.cannon}→${rep.after.cannon})`);
+      (rep.fx >= rep.fixed && rep.fixed > 0) ? ok(`Reparatur: Highlight-Marker für ${rep.fixed} Zelle(n) gesetzt ✓`) : fail(`Reparatur: Highlight fehlt (fx=${rep.fx}, fixed=${rep.fixed})`);
       (rep.fixed > 0 && rep.after.wall === rep.before.wall - rep.fixed) ? ok(`Reparatur: nur Mauer-Trümmer repariert (${rep.fixed} Stück) ✓`) : fail(`Reparatur: Mauer-Zählung inkonsistent (fixed=${rep.fixed}, ${rep.before.wall}→${rep.after.wall})`);
     }
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Kanonen-Kill: Keine JS-Fehler ✓');

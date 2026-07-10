@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.31.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.32.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -685,7 +685,7 @@ const EMOTES = ["👍", "😄", "😮", "😡", "🏰", "💥"];
 const PHASE_BANNERS = {
   setup:  { title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
   build:  { title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
-  shoot:  { title: "FEUER FREI!", sub: "Zieh von deiner Kanone weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
+  shoot:  { title: "FEUER FREI!", sub: "Zieh von deiner Burg weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
   cannon: { title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
 };
 // ── Game Event Bus ─────────────────────────────────────────────
@@ -1596,7 +1596,7 @@ const LANGS = {
     coachShootOpen: "⚠ Der Bot hat ein Loch in deine Burg geschossen! Sie ist jetzt OFFEN — schlie\xDFe sie in der n\xE4chsten Bauphase.",
     tutorialSealed: "✓ Stark! Burg wieder geschlossen.",
     tutorialCastleOpen: "⚠ Deine Burg war offen! Nur eine RUNDUM geschlossene Burg ist gesch\xFCtzt — schlie\xDFe jede L\xFCcke.",
-    coachShoot: "Zieh den Finger von deiner Kanone weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
+    coachShoot: "Zieh den Finger von deiner Burg weg (wie eine Schleuder) und ziele auf die gegnerische Mauer. Loslassen = Feuer!",
     coachCannon: "R\xFCstphase: F\xFCr \u2699 Schrott (gibt es f\xFCrs Zerst\xF6ren!) kaufst du hier Upgrades und Kanonen. Gekaufte Kanonen platzieren und EINMAUERN!",
     coachDone: "Geschafft! Du kennst jetzt alle Grundlagen. Spiel weiter zum \xDCben oder beende das Tutorial.",
     tutorialExit: "Tutorial beenden",
@@ -1609,7 +1609,7 @@ const LANGS = {
     helpBuildTitle: "Bauen (25s)",
     helpBuildDesc: "Tippe = zuf\xE4lliges Teil platzieren (auch 1\xD71). Burg & Kanonen l\xFCckenlos einmauern — nicht auf den Fluss!",
     helpShootTitle: "Schie\xDFen (30s)",
-    helpShootDesc: "Schleuder: Finger von der Kanone wegziehen, Zielkreuz zeigt den Einschlag. Nur eingebaute Kanonen feuern!",
+    helpShootDesc: "Schleuder: Finger von der eigenen Burg wegziehen, Zielkreuz zeigt den Einschlag. Nur eingebaute Kanonen feuern!",
     helpLoseTitle: "Verlieren",
     helpLoseDesc: "Deine BURG muss geschlossen bleiben — ist sie am Ende der Bauphase offen, verlierst du. Offene Kanonen schie\xDFen nur nicht.",
     local2p: "2 Spieler",
@@ -1657,7 +1657,7 @@ const LANGS = {
     bannerBuildTitle: "BAUPHASE",
     bannerBuildSub: "Mauere deine Burg l\xFCckenlos ein!",
     bannerShootTitle: "FEUER FREI!",
-    bannerShootSub: "Zieh von deiner Kanone weg zum Zielen",
+    bannerShootSub: "Zieh von deiner Burg weg zum Zielen",
     bannerCannonTitle: "R\xDCSTPHASE",
     bannerCannonSub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",
     warnBurgOffen: "BURG von {name} offen — bis Bauende schlie\xDFen!",
@@ -1726,7 +1726,7 @@ const LANGS = {
     warnNoCannonReady: "Keine schussbereite Kanone — Kanonen m\xFCssen ummauert sein!",
     tipCannon: "R\xFCstphase: Kaufe im Shop Upgrades oder eine neue Kanone (dann auf eine freie 3\xD73-Fl\xE4che tippen und ummauern)",
     tipSetup: "START: Platziere deine 2 Kanonen rund um die Burg — danach ummauern (Burg muss dicht sein!)",
-    tipShoot: "Schleuder: Finger von der Kanone wegziehen \xB7 Fadenkreuz = Einschlag \xB7 nur eingebaute Kanonen feuern",
+    tipShoot: "Schleuder: Finger von der eigenen Burg wegziehen \xB7 Fadenkreuz = Einschlag \xB7 nur eingebaute Kanonen feuern",
     quitTitle: "Spiel beenden?",
     quitMsgOnline: "Du verl\xE4sst das Online-Spiel und kehrst zum Hauptmen\xFC zur\xFCck.",
     quitMsgLocal: "Das aktuelle Spiel endet und du kehrst zum Hauptmen\xFC zur\xFCck.",
@@ -1815,7 +1815,7 @@ const LANGS = {
     onbStep2Title: "2. Mauern bauen",
     onbStep2Text: "Tippe, um Bausteine zu setzen. Mauere Burg UND Kanonen l\xFCckenlos ein — aber baue nicht auf den Fluss!",
     onbStep3Title: "3. Feuer frei!",
-    onbStep3Text: "Zieh den Finger von einer Kanone weg — wie bei einer Schleuder. Das Fadenkreuz zeigt den Einschlag. Nur eingemauerte Kanonen feuern!",
+    onbStep3Text: "Zieh den Finger von deiner Burg weg — wie bei einer Schleuder. Das Fadenkreuz zeigt den Einschlag. Nur eingemauerte Kanonen feuern!",
     onbStep4Title: "Ziel des Spiels",
     onbStep4Text: "Halte deine Burg geschlossen. Ist sie am Ende der Bauphase offen, verlierst du. Die letzte geschlossene Burg gewinnt!",
   },
@@ -1883,7 +1883,7 @@ const LANGS = {
     coachShootOpen: "⚠ The bot blasted a hole in your castle! It's OPEN now — close it in the next build phase.",
     tutorialSealed: "✓ Nice! Castle sealed again.",
     tutorialCastleOpen: "⚠ Your castle was open! Only a fully enclosed castle is protected — close every gap.",
-    coachShoot: "Drag your finger away from your cannon (like a slingshot) and aim at the enemy wall. Release to fire!",
+    coachShoot: "Drag your finger away from your castle (like a slingshot) and aim at the enemy wall. Release to fire!",
     coachCannon: "Armory phase: spend \u2699 scrap (earned by destroying!) on upgrades and cannons. Place bought cannons and WALL THEM IN!",
     coachDone: "Done! You now know all the basics. Keep playing to practise or end the tutorial.",
     tutorialExit: "End tutorial",
@@ -1944,7 +1944,7 @@ const LANGS = {
     bannerBuildTitle: "BUILD PHASE",
     bannerBuildSub: "Wall in your castle completely!",
     bannerShootTitle: "OPEN FIRE!",
-    bannerShootSub: "Drag from your cannon to aim",
+    bannerShootSub: "Drag from your castle to aim",
     bannerCannonTitle: "ARMORY",
     bannerCannonSub: "Buy upgrades in the shop — earn scrap by destroying",
     warnBurgOffen: "CASTLE of {name} open — close before build ends!",
@@ -2013,7 +2013,7 @@ const LANGS = {
     warnNoCannonReady: "No ready cannon — cannons must be walled in!",
     tipCannon: "Place new cannon! Tap an empty 3\xD73 area — then wall it in during build phase",
     tipSetup: "START: Place your 2 cannons around the castle — then wall them in (castle must be closed!)",
-    tipShoot: "Slingshot: drag from your cannon \xB7 crosshair = impact \xB7 only walled-in cannons fire",
+    tipShoot: "Slingshot: drag from your castle \xB7 crosshair = impact \xB7 only walled-in cannons fire",
     quitTitle: "End game?",
     quitMsgOnline: "You will leave the online game and return to the main menu.",
     quitMsgLocal: "The current game will end and you will return to the main menu.",
@@ -2102,7 +2102,7 @@ const LANGS = {
     onbStep2Title: "2. Build walls",
     onbStep2Text: "Tap to place building blocks. Wall in your castle AND cannons completely — but don't build on the river!",
     onbStep3Title: "3. Open fire!",
-    onbStep3Text: "Drag your finger away from a cannon — like a slingshot. The crosshair shows the impact. Only walled-in cannons can fire!",
+    onbStep3Text: "Drag your finger away from your castle — like a slingshot. The crosshair shows the impact. Only walled-in cannons can fire!",
     onbStep4Title: "Goal of the game",
     onbStep4Text: "Keep your castle closed. If it's open when the build phase ends, you lose. The last closed castle wins!",
   }
@@ -3006,9 +3006,24 @@ window.FortressApp = function Fortress() {
         }
         return { wall, cannon };
       };
+      // Determinismus: liegt kein Mauer-Trümmer im Radius (Bot hat evtl. schon
+      // repariert), eines auf einer freien Zelle nahe der Burg anlegen.
+      const ct = castles.current[p];
+      const g0 = grid.current;
+      let has = false;
+      for (let r = Math.max(0, ct.r - 10); r <= Math.min(ROWS - 1, ct.r + 10) && !has; r++)
+        for (let c = Math.max(0, ct.c - 10); c <= Math.min(COLS - 1, ct.c + 10); c++)
+          if (g0[r][c] === RUBBLE) { has = true; break; }
+      if (!has) {
+        outer: for (let d = 2; d <= 10; d++)
+          for (let c = Math.max(1, ct.c - d); c <= Math.min(COLS - 2, ct.c + d); c++) {
+            const r = ct.r + d;
+            if (r < ROWS - 1 && g0[r][c] === EMPTY) { const ng = g0.map((row) => [...row]); ng[r][c] = RUBBLE; setGrid(ng); break outer; }
+          }
+      }
       const before = count();
       const fixed = repairRubble(p, 3);
-      return { before, fixed, after: count() };
+      return { before, fixed, after: count(), fx: repairFx.current.length };
     });
     // Testhilfen Bot-KI (v3.29.0): Burg-Status lesen + gezielt eine Bresche
     // in die Schutzmauer von Spieler p schlagen (n zusammenhängende Mauerzellen → Trümmer).
@@ -3659,6 +3674,10 @@ window.FortressApp = function Fortress() {
   // „+N ⚙"-Popups (v3.16.3): am TREFFERORT in Spielerfarbe, wie explosions
   // über den State synchronisiert (Gäste sehen sie dadurch identisch).
   const scrapPops = useRef([]);
+  // Reparatur-Highlight (v3.32.0): reparierte Zellen kurz grün markieren —
+  // via State synchronisiert (wie scrapPops). Shop blendet währenddessen aus.
+  const repairFx = useRef([]);
+  const shopHideUntil = useRef({});
   function addScrapPop(x, y, amt, player) {
     scrapPops.current.push({ x, y, amt, player, frame: 0 });
     if (scrapPops.current.length > 24) scrapPops.current.shift();
@@ -3750,6 +3769,7 @@ window.FortressApp = function Fortress() {
       })),
       explosions: explosions.current.map((e) => ({ x: e.x, y: e.y, frame: e.frame, big: e.big })),
       scrapPops: scrapPops.current.map((f) => ({ x: f.x, y: f.y, amt: f.amt, player: f.player, frame: f.frame })),
+      repairFx: repairFx.current.map((f) => ({ r: f.r, c: f.c, frame: f.frame })),
       phase: phase_r.current,
       timer: timerVal.current,
       round: roundRefVal.current,
@@ -3917,6 +3937,7 @@ window.FortressApp = function Fortress() {
           if (myRole.current !== 1) displayEmote(s.emo.p, s.emo.e);
         }
         if (s.scrapPops) scrapPops.current = s.scrapPops;
+        if (s.repairFx) repairFx.current = s.repairFx;
         if (s.eliminated) eliminated.current = s.eliminated;
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
         if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
@@ -5417,11 +5438,21 @@ window.FortressApp = function Fortress() {
   // UI-Einstieg: Gast sendet Action, Host/lokal kauft direkt (v3.16.0)
   function doBuy(player, item) {
     SFX.buy && SFX.buy();
+    // Reparatur: Shop-Panel ~1,8s ausblenden, damit das grüne Highlight der
+    // reparierten Zellen sichtbar ist (v3.32.0). Gast: optimistisch (Kauf
+    // läuft asynchron über den Host).
+    const hideForRepair = () => {
+      shopHideUntil.current[player] = performance.now() + 1800;
+      setUiTick((t) => t + 1);
+      setTimeout(() => setUiTick((t) => t + 1), 1900);
+    };
     if (online.current && myRole.current !== 1) {
+      if (item === "repair") hideForRepair();
       sendAction({ type: "buy", item });
       return;
     }
-    buyUpgrade(player, item);
+    const bought = buyUpgrade(player, item);
+    if (bought && item === "repair") hideForRepair();
   }
   // Reparatur-Trupp (v3.16.4): bis zu maxN Trümmer im Umkreis der eigenen
   // Burg (Chebyshev ≤ 10) sofort in eigene Mauern verwandeln. Gibt Anzahl zurück.
@@ -5440,7 +5471,11 @@ window.FortressApp = function Fortress() {
     cand.sort((a, b) => a[2] - b[2]);
     const newG = g.map((row) => [...row]);
     const n = Math.min(maxN, cand.length);
-    for (let i = 0; i < n; i++) newG[cand[i][0]][cand[i][1]] = WALL_OF[player];
+    for (let i = 0; i < n; i++) {
+      newG[cand[i][0]][cand[i][1]] = WALL_OF[player];
+      repairFx.current.push({ r: cand[i][0], c: cand[i][1], frame: 0 });
+    }
+    if (repairFx.current.length > 12) repairFx.current.splice(0, repairFx.current.length - 12);
     setGrid(newG);
     return n;
   }
@@ -6022,9 +6057,13 @@ window.FortressApp = function Fortress() {
     }
   }, [toCanvas]);
   function slingAnchor(player) {
-    const g = grid.current;
-    let list = g ? closedCannons(g, player, cannons.current[player]) : [];
-    if (list.length === 0) list = cannons.current[player];
+    // v3.32.0: fester Standard-Anker = EIGENE BURG. Vorher: Schwerpunkt der
+    // schussbereiten Kanonen — der sprang je nach Kanonenlage (z. B. nur die
+    // ganz rechte bereit → Anker außen am Rand, Zielen extrem unhandlich).
+    const ct = castles.current[player];
+    if (ct) return { x: ct.c * CELL + CELL / 2, y: ct.r * CELL + CELL / 2 };
+    const list = cannons.current[player] || [];
+    if (!list.length) return { x: W / 2, y: H / 2 };
     let sx = 0, sy = 0;
     for (const cn of list) {
       sx += cn.c * CELL + CELL / 2;
@@ -6812,6 +6851,25 @@ window.FortressApp = function Fortress() {
       ctx.textAlign = "left";
       scrapPops.current = scrapPops.current.filter((f) => f.frame < 80);
     }
+    // Reparatur-Highlight (v3.32.0): reparierte Zellen pulsieren ~1,5s grün
+    if (repairFx.current.length) {
+      for (const f of repairFx.current) {
+        const px = f.c * CELL, py = f.r * CELL;
+        const tt = f.frame / 90;
+        const pulse = 0.5 + 0.5 * Math.sin(f.frame / 4.5);
+        ctx.globalAlpha = (1 - tt) * (0.35 + 0.35 * pulse);
+        ctx.fillStyle = "#4ade80";
+        ctx.fillRect(px, py, CELL, CELL);
+        const grow = 2 + tt * 7;
+        ctx.globalAlpha = 1 - tt;
+        ctx.strokeStyle = "#bbf7d0";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px - grow, py - grow, CELL + grow * 2, CELL + grow * 2);
+        f.frame++;
+      }
+      ctx.globalAlpha = 1;
+      repairFx.current = repairFx.current.filter((f) => f.frame < 90);
+    }
     explosions.current = explosions.current.filter((e2) => e2.frame < 22);
     // Sound bei neuen Explosionen (funktioniert geräteübergreifend, da explosions synchronisiert sind)
     const explNow = explosions.current.length;
@@ -7129,7 +7187,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.31.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -8399,6 +8457,8 @@ window.FortressApp = function Fortress() {
       // Burg unten, man konnte dort nicht platzieren). Stattdessen ein schmaler,
       // nicht-blockierender Hinweis oben. Kommt zurück, sobald die Kanone
       // gesetzt ist (Budget wieder 0).
+      // Reparatur-Highlight (v3.32.0): Shop kurz weg, Blick aufs Feld frei
+      if ((shopHideUntil.current[sp] || 0) > performance.now()) return null;
       if ((cannonBudget.current[sp] || 0) > 0) {
         return h("div", { key: "placehint" + sp, style: { position: "fixed", left: 0, right: 0, top: "calc(env(safe-area-inset-top, 0px) + 52px)", zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" } },
           h("div", { style: {
