@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.30.3</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.31.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -642,10 +642,14 @@ const SHOOT_TIME = 20;
 const CANNON_TIME = 15;
 const SETUP_TIME = 20;
 // ── Schrott-Ökonomie (v3.16.0) ─────────────────────────────────────────
-// In-Match-Währung: verdient durch Zerstören (Mauer +1, Kanone +12) und
-// Überleben (+4 je Rüstphase). KEIN Gratis-Kanonen-Nachschub mehr — alles
+// In-Match-Währung: verdient durch Zerstören (Mauer, Kanonen-Kill) und
+// Überleben (je Rüstphase). KEIN Gratis-Kanonen-Nachschub mehr — alles
 // nach den 2 Setup-Kanonen wird im Shop der Rüstphase gekauft.
-const SCRAP_WALL = 1, SCRAP_CANNON = 12, SCRAP_SURVIVE = 6;
+// v3.31.0 Balancing III (Playtest, 2 echte Spieler): Mauer 1→2 (Einkommen war
+// zu dünn — verdoppelt auch die Trümmer-Bergung des Comeback-Pakets, Parität
+// bleibt), Kanonen-Kill 12→18 (mit HP 12 teurer erkämpft). Überlebens-Sold 6
+// bleibt (Messpass v3.24.0: gesunde Ausgabenquote, keine Hortung).
+const SCRAP_WALL = 2, SCRAP_CANNON = 18, SCRAP_SURVIVE = 6;
 // Wiederaufbau-Paket (v3.30.0): Überlebens-Sold, wenn ein Spieler KEINE
 // einsatzfähige Kanone mehr hat — verhindert die Todesspirale (ohne Kanonen
 // kein Schieß-Einkommen → nie wieder Kanone leistbar).
@@ -808,9 +812,10 @@ function processAchievementEvents(profile, events) {
   }
   return { achievements: achs, newlyUnlocked, xpGained, goldGained };
 }
-const CANNON_HP = 8;  // v3.19.0: 15→8 — ein Kanonen-Kill ist ~1 Runde fokussiertes
-                       // Feuer (statt ~2), damit die +12-Schrott-Belohnung + Explosion
-                       // die Zerstör→Verdien→Kauf-Schleife trägt (war praktisch tot).
+const CANNON_HP = 12;  // v3.31.0: 8→12 — Playtest (2 Spieler): mit 8 starb eine
+                       // Kanone in <1 Runde Fokus-Feuer (2 Kanonen × 4 Salven à 2,5s).
+                       // Mit 12 kostet ein Kill ~1,5 Runden Commitment — erreichbar
+                       // (15 war laut Selfplay tot), aber eine echte Investition.
 const RELOAD_MS = 2500;
 const GRAV = 0.07;
 const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12;
@@ -1668,7 +1673,7 @@ const LANGS = {
     shopInfoEarnCannon: "Gegner-Kanone zerst\xF6ren",
     shopInfoEarnSurvive: "Runde \xFCberleben",
     shopInfoEarnStart: "Startkapital (pro Spiel)",
-    shopInfoEarnRebuild: "Ohne Kanonen: Sold verdoppelt, Kanone zum Basispreis, +1 je eigener zerst\xF6rter Mauer",
+    shopInfoEarnRebuild: "Ohne Kanonen: Sold verdoppelt, Kanone zum Basispreis, +2 je eigener zerst\xF6rter Mauer",
     shopInfoCannonDesc: "Eine zus\xE4tzliche Kanone f\xFCr die n\xE4chste Bauphase. Der Preis steigt mit jedem Kauf (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Deine Kanonen laden schneller nach – mehr Sch\xFCsse pro Runde. 2 Stufen: 2,5s → 2,0s → 1,6s.",
     shopInfoArmorDesc: "Alle deine Mauern halten 2 Treffer statt 1. Der erste Treffer macht nur einen Riss.",
@@ -1955,7 +1960,7 @@ const LANGS = {
     shopInfoEarnCannon: "Destroy an enemy cannon",
     shopInfoEarnSurvive: "Survive a round",
     shopInfoEarnStart: "Starting capital (per game)",
-    shopInfoEarnRebuild: "No cannons left: double pay, cannon at base price, +1 per own destroyed wall",
+    shopInfoEarnRebuild: "No cannons left: double pay, cannon at base price, +2 per own destroyed wall",
     shopInfoCannonDesc: "One extra cannon for the next build phase. The price rises with each purchase (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Your cannons reload faster – more shots per round. 2 tiers: 2.5s → 2.0s → 1.6s.",
     shopInfoArmorDesc: "All your walls take 2 hits instead of 1. The first hit only cracks them.",
@@ -7104,7 +7109,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.30.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.31.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -8512,9 +8517,9 @@ window.FortressApp = function Fortress() {
   })(), showShopInfo && phase === "cannon" && (() => {
     const h = React.createElement;
     const earn = [
-      { l: t("shopInfoEarnWall"), v: "+1" },
-      { l: t("shopInfoEarnCannon"), v: "+12" },
-      { l: t("shopInfoEarnSurvive"), v: "+6" },
+      { l: t("shopInfoEarnWall"), v: "+" + SCRAP_WALL },
+      { l: t("shopInfoEarnCannon"), v: "+" + SCRAP_CANNON },
+      { l: t("shopInfoEarnSurvive"), v: "+" + SCRAP_SURVIVE },
       { l: t("shopInfoEarnStart"), v: "15" }
     ];
     const rows = [

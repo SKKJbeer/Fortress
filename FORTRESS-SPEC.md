@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.30.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.31.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2881,3 +2881,27 @@ AUCH Match 2 (X→Z>X — exakt die festgehangene Flag-Regression).
 Host-Erkennung via gated `__myRole` (mmIdentInit setzt `__mmDebug` beim Laden).
 
 Tests grün. SW-Cache `fortress-v3.30.3`.
+
+### v3.31.0 — Balancing III (Playtest, 2 echte Spieler): Kanonen robuster + Einkommen verdoppelt
+Playtest-Feedback: (a) Kanonen gehen zu leicht kaputt, (b) man verdient kaum
+Schrott und kann sich wenig leisten. Analyse aus dem Code: HP 8 ÷ 2 fokussierte
+Kanonen × Salve alle 2,5s = Kill in ~10s — deutlich unter einer Schussrunde.
+Einkommen 1 Treffer = 1 Mauer = ⚙1 → realistisch ~12–18 ⚙/Runde bei Preisen
+15–50. Echtes 2-Spieler-Feedback gewichtet höher als Bot-Selfplay (v3.24.0
+behielt HP 8/Sold 6 auf Selfplay-Basis — Bots fokussieren Kanonen kaum).
+
+| Konstante | alt | neu | Begründung |
+|---|---|---|---|
+| `CANNON_HP` | 8 | **12** | Kill = ~1,5 Runden Commitment beider Kanonen; erreichbar (15 war tot), aber Investition |
+| `SCRAP_WALL` | 1 | **2** | Haupt-Einkommensstrom verdoppelt (~16–24 ⚙/Runde); Trümmer-Bergung (v3.30.0) läuft über dieselbe Konstante → verdoppelt mit, Parität bleibt |
+| `SCRAP_CANNON` | 12 | **18** | Kill ist mit HP 12 ~50 % teurer erkämpft; 18 ≈ fast eine neue Kanone (⚙20) |
+
+Bewusst NICHT geändert: `SCRAP_SURVIVE` 6 und `SCRAP_REBUILD` 12 (Messpass
+v3.24.0: gesunde Ausgabenquote; das Einkommens-Problem ist das aktive
+Verdienen, nicht der Sold — und die verdoppelte Bergung stärkt das
+Comeback-Paket bereits). Preise unverändert (Kanonen-Staffel limitiert die
+Flut weiterhin). Shop-Info-Overlay zeigt die Werte jetzt dynamisch aus den
+Konstanten; Comeback-Zeile nennt +2. Suite: Kill-Bonus ≥ +18, HP dynamisch
+aus dem Hook, Info-Fakten +2/+18/+6, Bergung-Label +2.
+
+Tests grün. SW-Cache `fortress-v3.31.0`.

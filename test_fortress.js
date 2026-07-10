@@ -2434,8 +2434,8 @@ async function suiteCannonKill(browser) {
     if (typeof start !== 'object') { fail(`Kanonen-Kill: Setup nicht erreicht (${start})`); return { res, errs }; }
     await page.waitForTimeout(1000);
     const rr = await page.evaluate((cb) => ({ scrap: window.__readScrap(1), cannons: window.__enemyCannonCount(1), before: cb }), start.before.before);
-    rr.cannons < start.cannonsBefore ? ok(`Kanonen-Kill: 8 HP → Feindkanone zerstört (${start.cannonsBefore}→${rr.cannons}) ✓`) : fail(`Kanonen-Kill: Kanone überlebt 8 Treffer (${start.cannonsBefore}→${rr.cannons})`);
-    rr.scrap >= rr.before + 12 ? ok(`Kanonen-Kill: +12 Schrott gutgeschrieben (${rr.before}→${rr.scrap}) ✓`) : fail(`Kanonen-Kill: Kill-Bonus fehlt (${rr.before}→${rr.scrap})`);
+    rr.cannons < start.cannonsBefore ? ok(`Kanonen-Kill: ${start.before.hp} HP → Feindkanone zerstört (${start.cannonsBefore}→${rr.cannons}) ✓`) : fail(`Kanonen-Kill: Kanone überlebt ${start.before.hp} Treffer (${start.cannonsBefore}→${rr.cannons})`);
+    rr.scrap >= rr.before + 18 ? ok(`Kanonen-Kill: +18 Schrott gutgeschrieben (${rr.before}→${rr.scrap}) ✓`) : fail(`Kanonen-Kill: Kill-Bonus fehlt (${rr.before}→${rr.scrap})`);
     // Match-Statistik (v3.21.0): Kill + Wirkungstreffer + Schrott-Zähler
     const ms = await page.evaluate(() => window.__matchStats && window.__matchStats(1));
     (ms && ms.cannons >= 1) ? ok(`Match-Statistik: Kanonen-Kill gezählt (cannons=${ms.cannons}) ✓`) : fail(`Match-Statistik: Kill fehlt (${JSON.stringify(ms)})`);
@@ -2476,7 +2476,7 @@ async function suiteCannonKill(browser) {
     else {
       (aid.info && aid.info.active) ? ok('Wiederaufbau: Status aktiv bei 0 Kanonen ✓') : fail(`Wiederaufbau: Status inaktiv (${JSON.stringify(aid.info)})`);
       (aid.info && aid.info.price === 20) ? ok('Wiederaufbau: Kanone zum Basispreis 20 ✓') : fail(`Wiederaufbau: Preis ${aid.info && aid.info.price} statt 20`);
-      aid.after > aid.before ? ok(`Wiederaufbau: Trümmer-Bergung +1 beim Verteidiger (${aid.before}→${aid.after}) ✓`) : fail(`Wiederaufbau: keine Bergung (${aid.before}→${aid.after})`);
+      aid.after > aid.before ? ok(`Wiederaufbau: Trümmer-Bergung +2 beim Verteidiger (${aid.before}→${aid.after}) ✓`) : fail(`Wiederaufbau: keine Bergung (${aid.before}→${aid.after})`);
     }
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Kanonen-Kill: Keine JS-Fehler ✓');
   } catch (e) {
@@ -2743,12 +2743,12 @@ async function suiteBot(browser) {
           const t = document.body.innerText;
           return {
             title: /So funktioniert|How it works/.test(t),
-            earn: /\+12/.test(t) && /\+6/.test(t) && /\+1/.test(t),   // Verdienst-Fakten
+            earn: /\+18/.test(t) && /\+6/.test(t) && /\+2/.test(t),   // Verdienst-Fakten (v3.31.0)
             close: [...document.querySelectorAll('button')].some(b => /Verstanden|Got it/.test(b.textContent))
           };
         });
         info.title ? ok('Shop-Info: Titel sichtbar ✓') : fail('Shop-Info: Titel fehlt');
-        info.earn ? ok('Shop-Info: Verdienst-Fakten (+1/+12/+6) ✓') : fail('Shop-Info: Verdienst-Fakten fehlen');
+        info.earn ? ok('Shop-Info: Verdienst-Fakten (+2/+18/+6) ✓') : fail('Shop-Info: Verdienst-Fakten fehlen');
         info.close ? ok('Shop-Info: Schließen-Button ✓') : fail('Shop-Info: Schließen-Button fehlt');
         // Overlay wieder schließen, damit der Kauf-Test die Karten erreicht
         await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Verstanden|Got it/.test(x.textContent)); b && b.click(); });
