@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.31.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.31.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2905,3 +2905,23 @@ Konstanten; Comeback-Zeile nennt +2. Suite: Kill-Bonus ≥ +18, HP dynamisch
 aus dem Hook, Info-Fakten +2/+18/+6, Bergung-Label +2.
 
 Tests grün. SW-Cache `fortress-v3.31.0`.
+
+### v3.31.1 — Bugfix: Reparatur baute Mauern in zerstörte Kanonen
+Nutzer-Report: Die Reparatur-Funktion verwandelte auch die Trümmer ZERSTÖRTER
+KANONEN in Mauern. Ursache: Beim Kanonen-Kill wurden Kanonen-Zellen und
+umliegende Mauer-Zellen zum SELBEN Typ `RUBBLE` — `repairRubble` konnte sie
+nicht unterscheiden.
+- Neuer Zell-Typ **`RUBBLE_C = 13`** für Kanonen-Trümmer (Kill-Loop schreibt
+  ihn statt `RUBBLE` für `enemyCannon`-Zellen). Reparatur wandelt weiterhin
+  nur `RUBBLE` → zerstörte Kanonen bleiben Trümmer.
+- Rendering identisch (`rubbleSprite`), Flood-Fill unverändert (beide Sorten
+  sind kein Blocker), State-Sync unkritisch (Grid = rohes Array, Werte >9
+  existieren seit den 3-Spieler-Typen).
+- Shop-Karten-Check (`noNeed`) und Bot-Reparaturkauf zählen nur `RUBBLE` —
+  korrekt: Reparatur lohnt nur für Mauer-Trümmer. Shop-Info-Text präzisiert
+  („zerstörte Kanonen sind nicht reparierbar", de/en).
+- Gated Hook `__repairCheck(p)` (zählt beide Sorten, repariert, zählt erneut);
+  Suite-Beweis in der Kanonen-Kill-Suite: nach dem Kill bleiben Kanonen-
+  Trümmer liegen, nur Mauer-Trümmer werden gewandelt (Zählung konsistent).
+
+Tests grün. SW-Cache `fortress-v3.31.1`.

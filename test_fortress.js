@@ -2478,6 +2478,16 @@ async function suiteCannonKill(browser) {
       (aid.info && aid.info.price === 20) ? ok('Wiederaufbau: Kanone zum Basispreis 20 ✓') : fail(`Wiederaufbau: Preis ${aid.info && aid.info.price} statt 20`);
       aid.after > aid.before ? ok(`Wiederaufbau: Trümmer-Bergung +2 beim Verteidiger (${aid.before}→${aid.after}) ✓`) : fail(`Wiederaufbau: keine Bergung (${aid.before}→${aid.after})`);
     }
+    // ── Reparatur-Bug (v3.31.1): nach dem Kill liegen Kanonen-Trümmer (RUBBLE_C)
+    // + Mauer-Trümmer (RUBBLE) beim Verteidiger. Reparatur darf NUR Mauer-Trümmer
+    // wandeln — Kanonen-Trümmer müssen liegen bleiben.
+    const rep = await page.evaluate(() => window.__repairCheck && window.__repairCheck(2));
+    if (!rep) { fail('Reparatur: __repairCheck-Hook fehlt'); }
+    else if (rep.before.cannon < 1) { fail(`Reparatur: keine Kanonen-Trümmer im Grid (${JSON.stringify(rep.before)})`); }
+    else {
+      rep.after.cannon === rep.before.cannon ? ok(`Reparatur: Kanonen-Trümmer bleiben liegen (${rep.before.cannon} vorher = ${rep.after.cannon} nachher) ✓`) : fail(`Reparatur: Kanonen-Trümmer überbaut (${rep.before.cannon}→${rep.after.cannon})`);
+      (rep.fixed > 0 && rep.after.wall === rep.before.wall - rep.fixed) ? ok(`Reparatur: nur Mauer-Trümmer repariert (${rep.fixed} Stück) ✓`) : fail(`Reparatur: Mauer-Zählung inkonsistent (fixed=${rep.fixed}, ${rep.before.wall}→${rep.after.wall})`);
+    }
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Kanonen-Kill: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Kanonen-Kill-Suite Ausnahme: ' + e.message);

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.31.0</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
+  <title>FORTRESS v3.31.1</title>  <style>    *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg-0:#02060f; --bg-1:#050b18; --bg-2:#0a1426;
       --glass:rgba(255,255,255,0.045); --glass-2:rgba(255,255,255,0.07);
@@ -818,7 +818,11 @@ const CANNON_HP = 12;  // v3.31.0: 8→12 — Playtest (2 Spieler): mit 8 starb 
                        // (15 war laut Selfplay tot), aber eine echte Investition.
 const RELOAD_MS = 2500;
 const GRAV = 0.07;
-const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12;
+const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12
+// v3.31.1: Kanonen-Trümmer als EIGENER Typ — Reparatur (repairRubble) darf nur
+// Mauer-Trümmer (RUBBLE) zurückverwandeln, keine zerstörten Kanonen. Rendering
+// identisch (rubbleSprite); Flood-Fill behandelt beide gleich (kein Blocker).
+const RUBBLE_C = 13;
 const WALL_OF = { 1: WALL1, 2: WALL2, 3: WALL3 };
 const CANNON_OF = { 1: CANNON1, 2: CANNON2, 3: CANNON3 };
 const CASTLE_OF = { 1: CASTLE1, 2: CASTLE2, 3: CASTLE3 };
@@ -1677,7 +1681,7 @@ const LANGS = {
     shopInfoCannonDesc: "Eine zus\xE4tzliche Kanone f\xFCr die n\xE4chste Bauphase. Der Preis steigt mit jedem Kauf (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Deine Kanonen laden schneller nach – mehr Sch\xFCsse pro Runde. 2 Stufen: 2,5s → 2,0s → 1,6s.",
     shopInfoArmorDesc: "Alle deine Mauern halten 2 Treffer statt 1. Der erste Treffer macht nur einen Riss.",
-    shopInfoRepairDesc: "Verwandelt bis zu 3 deiner Tr\xFCmmer nahe der Burg sofort zur\xFCck in Mauern. Preis steigt je Kauf (15 → 20 → 25 …), neue Karte = wieder g\xFCnstig.",
+    shopInfoRepairDesc: "Verwandelt bis zu 3 deiner Mauer-Tr\xFCmmer nahe der Burg sofort zur\xFCck in Mauern (zerst\xF6rte Kanonen sind nicht reparierbar). Preis steigt je Kauf (15 → 20 → 25 …), neue Karte = wieder g\xFCnstig.",
     shopInfoClose: "Verstanden",
     armoryPlaceHint: "Tippe aufs Feld, um die Kanone zu platzieren",
     armoryDone: "Fertig",
@@ -1964,7 +1968,7 @@ const LANGS = {
     shopInfoCannonDesc: "One extra cannon for the next build phase. The price rises with each purchase (20 → 28 → 36 …).",
     shopInfoReloadDesc: "Your cannons reload faster – more shots per round. 2 tiers: 2.5s → 2.0s → 1.6s.",
     shopInfoArmorDesc: "All your walls take 2 hits instead of 1. The first hit only cracks them.",
-    shopInfoRepairDesc: "Instantly turns up to 3 of your rubble tiles near the castle back into walls. Price rises per purchase (15 → 20 → 25 …), fresh map = cheap again.",
+    shopInfoRepairDesc: "Instantly turns up to 3 of your wall rubble tiles near the castle back into walls (destroyed cannons cannot be repaired). Price rises per purchase (15 → 20 → 25 …), fresh map = cheap again.",
     shopInfoClose: "Got it",
     armoryPlaceHint: "Tap the field to place your cannon",
     armoryDone: "Ready",
@@ -2990,6 +2994,22 @@ window.FortressApp = function Fortress() {
       return { before, beforeCannons: list.length, hp: CANNON_HP };
     });
     window.__enemyCannonCount = gated((shooter) => (cannons.current[shooter === 1 ? 2 : 1] || []).length);
+    // Testhilfe (v3.31.1): Reparatur darf NUR Mauer-Trümmer (RUBBLE) wandeln,
+    // Kanonen-Trümmer (RUBBLE_C) bleiben liegen. Zählt beide Sorten im ganzen
+    // Grid, führt eine Reparatur aus und zählt erneut.
+    window.__repairCheck = gated((p) => {
+      const count = () => {
+        const g = grid.current; let wall = 0, cannon = 0;
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+          if (g[r][c] === RUBBLE) wall++;
+          else if (g[r][c] === RUBBLE_C) cannon++;
+        }
+        return { wall, cannon };
+      };
+      const before = count();
+      const fixed = repairRubble(p, 3);
+      return { before, fixed, after: count() };
+    });
     // Testhilfen Bot-KI (v3.29.0): Burg-Status lesen + gezielt eine Bresche
     // in die Schutzmauer von Spieler p schlagen (n zusammenhängende Mauerzellen → Trümmer).
     // Wiederaufbau-Paket (v3.30.0): Comeback-Status + wirksamer Kanonenpreis
@@ -5277,7 +5297,7 @@ window.FortressApp = function Fortress() {
             for (let dc = -1; dc <= 1; dc++) {
               const r = cn.r + dr, c = cn.c + dc;
               if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-              if (newG2[r][c] === enemyCannon) newG2[r][c] = RUBBLE;
+              if (newG2[r][c] === enemyCannon) newG2[r][c] = RUBBLE_C;
               else if (newG2[r][c] === enemyWallT) {
                 newG2[r][c] = RUBBLE;
                 delete wallHp.current[r + "_" + c];
@@ -6537,7 +6557,7 @@ window.FortressApp = function Fortress() {
           // Panzermauer angeknackst (v3.16.0): Riss-Overlay
           if (anyCrack && wallHp.current[r + "_" + c]) ctx.drawImage(crackSprite(), px, py);
         }
-        else if (v === RUBBLE) ctx.drawImage(rubbleSprite(), px, py);
+        else if (v === RUBBLE || v === RUBBLE_C) ctx.drawImage(rubbleSprite(), px, py);
       }
     }
     for (const player of players) {
@@ -7109,7 +7129,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.31.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.31.1")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
