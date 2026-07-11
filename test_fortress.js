@@ -1262,6 +1262,34 @@ async function suiteMatchmaking(browser, fbPort) {
       await ctxD.close();
     }
 
+    // ── Bot-Backfill (v3.32.4): 60s allein in der Queue → Bot-Match ──
+    const { ctx: ctxE, page: pE } = await makeOnlineCtx(browser, fbPort, mmIdentInit('MMEmil', 'p_mm_e', 'd_mm_e') + ";window.__mmDebug=true;");
+    pE.on('pageerror', e => { if (!/firebase/i.test(e.message)) errsA.push('E: ' + e.message); });
+    try {
+      await loadMenu(pE);
+      await startMM(pE);
+      await pE.waitForTimeout(600);
+      // Wartezeit künstlich auf 61s vorspulen → Display-Ticker löst Backfill aus
+      const forced = await pE.evaluate(() => window.__mmForceWait ? window.__mmForceWait(61) : null);
+      if (!forced) { fail('Bot-Backfill: __mmForceWait-Hook fehlt'); }
+      else {
+        const backfilled = await inGame(pE, 6000);
+        backfilled ? ok('Bot-Backfill: nach 60s allein → im Spiel ✓') : fail('Bot-Backfill: kein Spiel gestartet');
+        if (backfilled) {
+          const isBot = await pE.evaluate(() => window.__botMode ? window.__botMode() : null);
+          isBot === true ? ok('Bot-Backfill: Bot-Modus aktiv (kein ELO) ✓') : fail(`Bot-Backfill: botMode=${isBot}`);
+          // Ticket muss aus der Queue gelöscht sein (keine Geister-Suche)
+          const q = await pE.evaluate(async (port) => {
+            try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=queue2')).json(); } catch (e) { return 'ERR'; }
+          }, fbPort);
+          const qN = q && q !== 'ERR' ? Object.keys(q).length : 0;
+          qN === 0 ? ok('Bot-Backfill: Queue-Ticket gelöscht ✓') : fail(`Bot-Backfill: ${qN} Ticket(s) übrig`);
+        }
+      }
+    } finally {
+      await ctxE.close();
+    }
+
     // ── JS-Fehler ─────────────────────────────────────────────
     errsA.length === 0 ? ok('MM Client A: Keine JS-Fehler ✓') : errsA.forEach(e => fail(`MM A JS: ${e.slice(0,80)}`));
     errsB.length === 0 ? ok('MM Client B: Keine JS-Fehler ✓') : errsB.forEach(e => fail(`MM B JS: ${e.slice(0,80)}`));

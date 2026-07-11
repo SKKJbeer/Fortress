@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.32.3</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.32.4</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -668,6 +668,11 @@ const MM_TICK_MS = 2000;
 const MM_HEARTBEAT_STALE_MS = 35e3;
 const MM_CLAIM_HEAL_MS = 6e3;
 const MM_GUEST_JOIN_TIMEOUT_MS = 15e3;
+// Bot-Backfill (v3.32.4): nach dieser Wartezeit ohne Gegner wird die Suche
+// beendet und nahtlos ein Übungsmatch gegen den Bot gestartet (nur 2P-Queue;
+// zählt wie jedes Bot-Spiel NICHT für ELO/Stats). Verhindert den Launch-Killer
+// „leere Queue → Spieler wartet ewig → deinstalliert".
+const MM_BOT_BACKFILL_S = 60;
 function sanitizeState(s) {
   if (!s || typeof s !== "object") return null;
   if (!Array.isArray(s.grid) || !s.phase || typeof s.timer !== "number") return null;
@@ -1693,6 +1698,8 @@ const LANGS = {
     searchingOpponent: "Suche Gegner…",
     searchingSince: "Seit {s}s in der Warteschlange",
     searchingRadius: "Such-ELO-Radius: \xB1{r}",
+    searchingBotHint: "Kein Gegner? In {s}s startet ein \xDCbungsmatch gegen einen Bot",
+    mmBotFallback: "Kein Gegner online — \xDCbungsmatch gegen {name}! (z\xE4hlt nicht f\xFCr ELO)",
     queueTipLabel: "TIPP",
     queueTip_0: "Kanonen feuern nur, wenn sie zu Beginn der Schussrunde komplett ummauert sind.",
     queueTip_1: "Eine zerst\xF6rte Gegner-Kanone bringt +12 Schrott — das lohnt sich mehr als Mauern.",
@@ -1980,6 +1987,8 @@ const LANGS = {
     searchingOpponent: "Searching for opponent…",
     searchingSince: "Waiting {s}s in queue",
     searchingRadius: "Search ELO radius: \xB1{r}",
+    searchingBotHint: "No opponent? A practice match vs a bot starts in {s}s",
+    mmBotFallback: "No opponent online — practice match vs {name}! (doesn't count for ELO)",
     queueTipLabel: "TIP",
     queueTip_0: "Cannons only fire if they are fully walled in when the shooting round starts.",
     queueTip_1: "Destroying an enemy cannon earns +12 scrap — worth more than farming walls.",
@@ -3037,6 +3046,9 @@ window.FortressApp = function Fortress() {
     window.__readScrap = gated((p) => scrap.current[p] || 0);
     window.__matchStats = gated((p) => JSON.parse(JSON.stringify(matchStats.current[p] || {})));
     window.__phase = gated(() => phase_r.current);
+    // Testhilfen (v3.32.4): Bot-Backfill — Wartezeit vorspulen + Bot-Modus lesen
+    window.__mmForceWait = gated((s) => { mmStartedAt.current = Date.now() - s * 1e3; return true; });
+    window.__botMode = gated(() => botMode.current);
     // Testhilfe: eine fast gelandete Kugel von `shooter` auf eine Feindmauer
     window.__spawnBallAtEnemy = gated((shooter) => {
       const g = grid.current; if (!g) return null;
@@ -4788,6 +4800,29 @@ window.FortressApp = function Fortress() {
     setMpScreen("online");
     setMmElapsed(0);
   }
+  // Bot-Backfill (v3.32.4): Queue nach MM_BOT_BACKFILL_S leer → Suche sauber
+  // beenden und nahtlos ein Bot-Match starten (gleicher Flow wie „Übung gegen
+  // Bot", Stufe Mittel). Nur 2P — der Bot unterstützt keine 3-Spieler-Partien.
+  // Niemals mitten in einem Claim/Match feuern (mmBusy / Ticket-Status-Guards).
+  function mmBotBackfill() {
+    if (!mmActive.current || mmBusy.current) return;
+    const my = mmQueueSnapshot.current[SESSION_ID];
+    if (my && my.status && my.status !== "waiting") return;
+    mmActive.current = false;
+    mmPendingCandidates.current = {};
+    stopMatchmakingListeners(true);
+    setMmElapsed(0);
+    botLevel.current = "mid";
+    online.current = false;
+    botMode.current = true;
+    tutorialMode.current = false;
+    initBotMatchIdentity();
+    numPlayersRef.current = 2;
+    setNumPlayers(2);
+    setMpScreen(null);
+    fullReset();
+    showWarn(t('mmBotFallback', { name: playerInfo.current[2].name }));
+  }
   async function startMatchmaking(np) {
     np = np === 3 ? 3 : 2;
     setMpError("");
@@ -4870,7 +4905,10 @@ window.FortressApp = function Fortress() {
     if (mmDisplayTimer.current) clearInterval(mmDisplayTimer.current);
     mmDisplayTimer.current = setInterval(() => {
       if (!mmActive.current) return;
-      setMmElapsed(Math.round((Date.now() - mmStartedAt.current) / 1e3));
+      const el = Math.round((Date.now() - mmStartedAt.current) / 1e3);
+      setMmElapsed(el);
+      // Bot-Backfill nach 60s ohne Gegner (nur 2P-Queue)
+      if (el >= MM_BOT_BACKFILL_S && mmNp.current === 2) mmBotBackfill();
     }, 1e3);
   }
   function startOnlineGame(role) {
@@ -7266,7 +7304,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.3")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -8048,7 +8086,7 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     animation: "radarSpin 3s linear infinite",
     filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))"
-  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 14 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), (() => {
+  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("p", { style: { color: "#475569", fontSize: 11, marginBottom: 14 } }, t('searchingBotHint', { s: Math.max(0, MM_BOT_BACKFILL_S - mmElapsed) })), (() => {
     // Tipps-Karussell (v3.26.0): nutzt den laufenden mmElapsed-Ticker —
     // alle 5s der nächste Tipp, kein zusätzlicher Timer.
     const tipIdx = Math.floor(mmElapsed / 5) % 8;

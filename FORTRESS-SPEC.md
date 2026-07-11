@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -2997,3 +2997,24 @@ blieb stumm, Lupe kam noch vereinzelt.
    startete die Text-Lupe vereinzelt trotz `user-select:none`.
 
 Tests grün. SW-Cache `fortress-v3.32.3`.
+
+### v3.32.4 — Bot-Backfill im Matchmaking (leere Queue → Übungsmatch nach 60s)
+Launch-kritische Maßnahme aus dem AAA-Review: Bei frischer User-Base ist die
+Queue meist leer → neuer Spieler wartet ewig → deinstalliert. Jetzt:
+- **`MM_BOT_BACKFILL_S = 60`**: Wer 60s allein in der **2P-Queue** wartet, bekommt
+  nahtlos ein Bot-Match (`mmBotBackfill()`): Suche wird sauber beendet
+  (Ticket gelöscht, Listener gestoppt — gleicher Pfad wie `cancelMatchmaking`),
+  dann exakt der „Übung gegen Bot"-Flow (`botLevel="mid"`, `initBotMatchIdentity`
+  + `fullReset`). Bot bekommt wie immer einen zufälligen Fantasy-Namen; Spiel
+  zählt NICHT für ELO/Stats (Bot-Regel unverändert).
+- **Transparenz**: Suchbildschirm zeigt Countdown („Kein Gegner? In {s}s startet
+  ein Übungsmatch gegen einen Bot") + Warn-Toast beim Start („zählt nicht für
+  ELO"). Kein Fake-Match — ehrlich, aber nahtlos.
+- **Guards**: feuert nie während Claim/Match (`mmBusy`, Ticket-Status ≠ waiting)
+  und nur bei `mmNp === 2` — der Bot kann keine 3P-Partien; die 3P-Queue sucht
+  unverändert weiter. Trigger im 1s-Display-Ticker (echtzeitbasiert).
+- **Testhilfen (gated)**: `__mmForceWait(s)` spult die Wartezeit vor,
+  `__botMode()` liest den Bot-Modus. Suite: Client allein in Queue → 61s
+  vorspulen → im Spiel + botMode aktiv + Queue-Ticket gelöscht.
+
+Tests grün. SW-Cache `fortress-v3.32.4`.
