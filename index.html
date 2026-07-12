@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.32.4</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.32.5</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4033,7 +4033,11 @@ window.FortressApp = function Fortress() {
         if (s.piece1 && pieces.current[1]) pieces.current[1].cells = s.piece1;
         if (s.piece2 && pieces.current[2]) pieces.current[2].cells = s.piece2;
         if (s.piece3 && pieces.current[3]) pieces.current[3].cells = s.piece3;
-        balls.current = s.balls || [];
+        // trail-Array beim Empfang initialisieren (v3.32.5): serialisierte
+        // Kugeln haben KEIN trail-Feld → `if (ball.trail)` im Render-Loop war
+        // auf Gästen immer false → Gäste sahen GAR keine Kugel-Schweife, auch
+        // keine gekauften Kosmetik-Trails aus dem Gold-Shop (v3.23.0).
+        balls.current = (s.balls || []).map((b) => (b && !b.trail ? __spreadProps(__spreadValues({}, b), { trail: [] }) : b));
         explosions.current = s.explosions || [];
         lastShot.current = s.lastShot || { 1: -99999, 2: -99999, 3: -99999 };
         reloadProgRef.current = {
@@ -7304,7 +7308,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.4")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

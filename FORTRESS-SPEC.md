@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3018,3 +3018,16 @@ Queue meist leer → neuer Spieler wartet ewig → deinstalliert. Jetzt:
   vorspulen → im Spiel + botMode aktiv + Queue-Ticket gelöscht.
 
 Tests grün. SW-Cache `fortress-v3.32.4`.
+
+### v3.32.5 — Fix: Gäste sahen keine Kugel-Schweife (auch keine Gold-Shop-Trails)
+Serialisierte Kugeln (`serializeState` → `balls`) tragen kein `trail`-Feld;
+`applyState` übernahm sie unverändert → der Render-Loop-Guard `if (ball.trail)`
+war auf Gast-Clients immer false → Gäste sahen GAR keine Schweife. Damit war
+die Online-Sichtbarkeit der Gold-Shop-Kosmetik-Trails (v3.23.0) nur auf dem
+Host-Bildschirm gegeben — Gäste sahen weder eigene noch fremde Trails.
+- `applyState` initialisiert empfangene Kugeln jetzt mit `trail: []` →
+  Schweif baut sich zwischen den State-Pushes auf (~7 Punkte bei 60fps/8Hz).
+- Kein neues Sync-Feld nötig: die Trail-FARBE kommt bereits über
+  `playerInfo[player].trail` (join-Payload) auf alle Clients.
+
+Tests grün. SW-Cache `fortress-v3.32.5`.
