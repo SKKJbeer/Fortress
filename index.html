@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.37.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.37.3</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -137,7 +137,7 @@
 import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
-import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, leakGapCells } from './src/engine/flood.js';
+import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
@@ -5319,7 +5319,8 @@ window.FortressApp = function Fortress() {
         const cache = leakPathRef.current;
         if (!cache[p] || cache[p].v !== gridVersion.current) {
           const lp = findLeakPath(g, p, castles.current[p]);
-          cache[p] = { v: gridVersion.current, path: lp, gaps: leakGapCells(g, p, lp) };
+          // Min-Cut (v3.37.3): exakt die Zellen, die das Loch schließen
+          cache[p] = { v: gridVersion.current, path: lp, gaps: lp ? findSealCells(g, p, castles.current[p]) : [] };
         }
         const path = cache[p].path;
         if (!path) continue;
@@ -6003,7 +6004,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.2")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.3")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

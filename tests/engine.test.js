@@ -212,22 +212,40 @@ test('findLeakPath: GEGNER-Mauern blockieren den Pfad nicht (konsistent zu Regel
   assert.ok(findLeakPath(g, 1, CASTLE_P1), 'Gegner-Ring darf nicht dichten');
 });
 
-// ── Lücken-Zellen (v3.37.1) ──────────────────────────────────────────
-import { leakGapCells } from '../src/engine/flood.js';
-test('leakGapCells: Ein-Loch-Ring → markiert exakt die Loch-Zelle', () => {
+// ── Loch-Zellen per Probe-Zumauern (v3.37.3) ─────────────────────────
+import { findSealCells } from '../src/engine/flood.js';
+const cellSet = (cells) => new Set(cells.map(([r, c]) => r + '_' + c));
+test('findSealCells: 1er-Loch → markiert EXAKT diese eine Zelle', () => {
   const g = emptyGrid();
   g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
   ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[1]);
   const hole = [CASTLE_P1.r - 2, CASTLE_P1.c];
   g[hole[0]][hole[1]] = EMPTY;
-  const path = findLeakPath(g, 1, CASTLE_P1);
-  const gaps = leakGapCells(g, 1, path);
-  assert.ok(gaps.length >= 1, 'keine Lücken-Zelle gefunden');
-  assert.ok(gaps.some(([r, c]) => r === hole[0] && c === hole[1]), 'Loch-Zelle nicht markiert: ' + JSON.stringify(gaps));
+  const seal = findSealCells(g, 1, CASTLE_P1);
+  assert.deepEqual([...cellSet(seal)], [hole[0] + '_' + hole[1]], JSON.stringify(seal));
 });
-test('leakGapCells: ohne Mauern keine Markierung (nur Spur)', () => {
+test('findSealCells: 3er-Loch (Beschuss-Beispiel) → GENAU die 3 Loch-Zellen', () => {
   const g = emptyGrid();
   g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
-  const path = findLeakPath(g, 1, CASTLE_P1);
-  assert.deepEqual(leakGapCells(g, 1, path), []);
+  ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[1]);
+  const holes = [[CASTLE_P1.r - 2, CASTLE_P1.c - 1], [CASTLE_P1.r - 2, CASTLE_P1.c], [CASTLE_P1.r - 2, CASTLE_P1.c + 1]];
+  for (const [r, c] of holes) g[r][c] = EMPTY;
+  const seal = findSealCells(g, 1, CASTLE_P1);
+  assert.equal(seal.length, 3, 'erwartet exakt 3 Zellen, bekam ' + JSON.stringify(seal));
+  assert.deepEqual(cellSet(seal), cellSet(holes), JSON.stringify(seal));
+});
+test('findSealCells: nach Zumauern der markierten Zellen ist die Burg dicht', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[1]);
+  for (const c of [CASTLE_P1.c - 1, CASTLE_P1.c, CASTLE_P1.c + 1]) g[CASTLE_P1.r - 2][c] = EMPTY;
+  g[CASTLE_P1.r + 2][CASTLE_P1.c] = EMPTY; // zweites Loch unten
+  const seal = findSealCells(g, 1, CASTLE_P1);
+  for (const [r, c] of seal) g[r][c] = WALL_OF[1];
+  assert.equal(findLeakPath(g, 1, CASTLE_P1), null, 'nach Versiegeln noch offen');
+});
+test('findSealCells: ohne Mauerring keine Markierung (nur Spur)', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  assert.deepEqual(findSealCells(g, 1, CASTLE_P1), []);
 });

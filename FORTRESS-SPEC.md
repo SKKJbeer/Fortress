@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3206,3 +3206,23 @@ Neues Popup-Verhalten statt passiver Sprechblase in der Feldmitte:
   `coachPausedTag`).
 
 Tests grün (52 Unit + Playwright). SW-Cache `fortress-v3.37.2`.
+
+### v3.37.3 — Loch-Markierung exakt: Min-Vertex-Cut statt Nachbarschafts-Heuristik
+Nutzer-Feedback: Markiert werden sollen NUR die Kästchen, die das Loch wirklich
+ausmachen („beim Beschuss-Beispiel genau 3"), und nur nach außen.
+- `findSealCells` (flood.js) ersetzt `leakGapCells`: **minimaler Schnitt**
+  (Min-Vertex-Cut via Dinic-Max-Flow) zwischen Burg und Feldrand im
+  Passierbarkeits-Graphen. Bebaubare Zellen (leer/Trümmer) = Kapazität 1;
+  Burg/Kanonen/Gegner-Mauern passierbar aber unschneidbar (∞). Der Schnitt
+  wird SENKEN-seitig extrahiert — Min-Cuts sind nicht eindeutig, quellseitig
+  käme die innerste Linie an der Burg heraus, senkenseitig das Loch in der
+  Mauerlinie selbst („nach außen").
+- Eigenschaften (unit-getestet): 1er-Loch → exakt 1 Zelle; 3er-Beschussloch →
+  exakt die 3 Loch-Zellen; markierte Zellen zumauern ⇒ Burg dicht (auch bei
+  mehreren Löchern); ohne eigenen Ring in Burg-Nähe → keine Markierung
+  (nur die Leck-Spur); Schnitt > 12 Zellen → keine Markierung.
+- Läuft nur bei Grid-Änderung (Cache je gridVersion); Fluss ≤ 12 → Dinic
+  bleibt im Mikrosekunden-Bereich auf dem 44×68-Grid.
+
+Tests grün (33 Engine-Unit gesamt 54, Playwright unverändert).
+SW-Cache `fortress-v3.37.3`.
