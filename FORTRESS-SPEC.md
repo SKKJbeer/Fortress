@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3188,3 +3188,21 @@ Tests grün (50 Unit + Playwright). SW-Cache `fortress-v3.37.0`.
   keine Markierung); Intro-E2E prüft die Diagonal-Erklärung.
 
 Tests grün (52 Unit + Playwright). SW-Cache `fortress-v3.37.1`.
+
+### v3.37.2 — Tutorial: pausierende Coach-Popups oben (Nutzer-Feedback)
+Neues Popup-Verhalten statt passiver Sprechblase in der Feldmitte:
+- **Popups wieder OBEN** (verdecken nichts Kritisches mehr, weil …)
+- **… das Spiel pausiert, solange ein Popup offen ist**: Timer, Bot und
+  Kugelflug stehen still (`tutPausedRef` in startTimer-Tick, botTick und dem
+  Ball-Advance des Render-Loops); ein Vollbild-Dim blockiert Eingaben.
+  Lesen ohne Zeitdruck — „OK — weiter!" setzt fort.
+- **Popup-Logik** (`coachMsg` + `coachShownRef`): bei jedem Phasenwechsel ein
+  Basis-Popup (Schuss-Basis wählt automatisch die „Kanone nicht schussbereit"-
+  Erklärung, wenn nichts feuern darf); Zustands-Popups (Burg aufgeschossen)
+  je Phase einmal, erst nach Bestätigung des vorherigen. Badge „SPIEL
+  PAUSIERT" im Popup-Kopf; Tutorial-beenden bleibt im Popup.
+- E2E beweist die Pause: Timer eingefroren solange offen, läuft nach OK
+  weiter; Phasen-Fortschritt via OK-Klicks. i18n de/en (`coachOk`,
+  `coachPausedTag`).
+
+Tests grün (52 Unit + Playwright). SW-Cache `fortress-v3.37.2`.

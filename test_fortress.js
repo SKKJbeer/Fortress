@@ -2984,23 +2984,46 @@ async function suiteTutorial(browser) {
     canvas ? ok('Tutorial-Spiel gestartet (Canvas) ✓') : fail('Tutorial startet nicht');
     if (!canvas) return { res, errs };
 
-    // ── Coach-Sprechblase sichtbar (COACH-Label + Anweisung) ──
-    await page.waitForTimeout(400);
+    // ── Pausierendes Coach-Popup (v3.37.2): COACH + PAUSIERT + OK ──
+    await page.waitForTimeout(500);
+    await page.evaluate(() => { window.__mmDebug = true; });
     const coach = await page.evaluate(() => {
       const t = document.body.innerText;
       return {
         label: /COACH/.test(t),
-        instruction: /(Kanone|Mauer|Schleuder|cannon|wall|slingshot)/i.test(t),
-        exit: Array.from(document.querySelectorAll('button')).some(b => /Tutorial beenden|End tutorial/.test(b.textContent || ''))
+        paused: /SPIEL PAUSIERT|GAME PAUSED/.test(t),
+        instruction: /(Kanone|Mauer|Burg|cannon|wall|castle)/i.test(t),
+        okBtn: [...document.querySelectorAll('button')].some(b => /OK — weiter|OK — continue/.test(b.textContent || '')),
+        exit: [...document.querySelectorAll('button')].some(b => /Tutorial beenden|End tutorial/.test(b.textContent || ''))
       };
     });
-    coach.label ? ok('Coach-Sprechblase (COACH) sichtbar ✓') : fail('Coach-Sprechblase fehlt');
+    coach.label ? ok('Coach-Popup (COACH) sichtbar ✓') : fail('Coach-Popup fehlt');
+    coach.paused ? ok('Coach-Popup: PAUSIERT-Kennzeichnung ✓') : fail('Coach-Popup: Pause-Tag fehlt');
     coach.instruction ? ok('Coach gibt eine Phasen-Anweisung ✓') : fail('Coach-Anweisung fehlt');
+    coach.okBtn ? ok('Coach-Popup: OK-Button vorhanden ✓') : fail('Coach-Popup: OK fehlt');
     coach.exit ? ok('"Tutorial beenden"-Button vorhanden ✓') : fail('Tutorial-Exit-Button fehlt');
 
-    // ── Läuft stabil über eine Phase (passiver Bot, kein Crash) ──
-    await waitForPhase(page, ['FEUER', 'BAUEN', 'KANONE'], 6000);
-    ok('Tutorial läuft (Phasenwechsel) ✓');
+    // ── Pause wirkt: Timer steht, solange das Popup offen ist ──
+    const t1 = await page.evaluate(() => window.__readTimer && window.__readTimer());
+    await page.waitForTimeout(900); // unter TIMER_SPEEDUP wären das viele Ticks
+    const t2 = await page.evaluate(() => window.__readTimer && window.__readTimer());
+    t1 != null && t1 === t2 ? ok(`Pause: Timer eingefroren (${t1}) ✓`) : fail(`Pause: Timer lief weiter (${t1}→${t2})`);
+    // OK → Spiel läuft weiter
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /OK — weiter|OK — continue/.test(x.textContent || '')); b && b.click(); });
+    await page.waitForTimeout(900);
+    const t3 = await page.evaluate(() => window.__readTimer && window.__readTimer());
+    t3 != null && t3 < t2 ? ok(`Pause: OK setzt fort (${t2}→${t3}) ✓`) : fail(`Pause: Timer nach OK eingefroren (${t2}→${t3})`);
+
+    // ── Läuft über Phasen — jedes neue Popup mit OK bestätigen ──
+    let reached = null;
+    const dlPhase = Date.now() + 15000;
+    while (Date.now() < dlPhase && !reached) {
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /OK — weiter|OK — continue/.test(x.textContent || '')); b && b.click(); });
+      const ph = await getHudPhase(page);
+      if (ph && ['FEUER', 'KANONE'].some(k => ph.includes(k))) reached = ph;
+      else await page.waitForTimeout(150);
+    }
+    reached ? ok(`Tutorial läuft (Phasenwechsel bis ${reached}) ✓`) : fail('Tutorial: kein Phasenwechsel trotz OK-Klicks');
 
     errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Tutorial: Keine JS-Fehler ✓');
   } catch (e) {
