@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.35.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.36.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3125,3 +3125,17 @@ Fortsetzung des Architektur-Konzepts (kein Verhaltens-Change im Spiel):
   Livelock-Regression v3.14.13, Eingabe-Immutabilität.
 
 Tests grün (44 Unit + Playwright-Suite). SW-Cache `fortress-v3.35.0`.
+
+### v3.36.0 — Architektur Phase 3: Render- und Icon-Schicht (kein Verhaltens-Change)
+- **`src/render/sprites.js`** (~400 Zeilen aus index.html): kompletter
+  Sprite-Cache + alle Canvas-Zeichenfunktionen (drawWall/drawCastle/
+  drawCannonFull, wall/crack/rubble/ball/dome/barrel-Sprites, Farb-Maps
+  ROOF/FLAG/ACCENT/GHOST/BALL, roundRectPath). Die Perf-Regeln (Gradients/
+  shadowBlur nur beim Backen) stehen jetzt als Kopf-Kommentar im Modul.
+- **`src/ui/icons.js`**: ICON_PATHS (Lucide-Pfade) + Icon-Komponente.
+- index.html: 8249 → 7792 Zeilen. Gesamt seit Phase 1: 9433 → 7792 (−17%),
+  elf Module in src/ (engine 6, net 2, ui 1, render 1, i18n 1).
+- **2 neue Unit-Tests** (46 gesamt): ICON_PATHS-Datenintegrität (jeder Pfad
+  beginnt mit M/m) + Katalog-Querverweis (WIN_ICON-Namen existieren).
+
+Tests grün (46 Unit + 290 Playwright). SW-Cache `fortress-v3.36.0`.

@@ -42,8 +42,11 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 - `src/net/` (seit v3.35.0, Phase 2): `protocol.js` (PROTO_VERSION, sanitize,
   State-Schema-Doku — bei inkompatiblen Protokoll-Änderungen Version erhöhen!)
   und `matchmaking.js` (mmRadius, MM_*-Konstanten, `computeMatchGroup`-Pairing).
-- Geplant — Phase 3: UI-Modals als Komponenten-Dateien. Phase 4 (optional):
-  esbuild-Bundling in der Deploy-Action für Store-Builds.
+- `src/render/sprites.js` + `src/ui/icons.js` (seit v3.36.0, Phase 3):
+  Sprite-Cache/Zeichenfunktionen bzw. ICON_PATHS+Icon. Neue Zeichenfunktionen
+  gehören nach render/, neue Icons in ui/icons.js.
+- Phase 4 (optional, wenn Store-Build ansteht): esbuild-Bundling in der
+  Deploy-Action — Entwicklung modular, Auslieferung eine Datei.
 
 ### ⚠️ Kostenpolitik: ZERO laufende Kosten (aktuelle Phase)
 Solange das Spiel noch kein Einkommen generiert, bleiben alle Kosten bei null.
