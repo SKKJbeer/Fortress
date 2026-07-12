@@ -176,3 +176,38 @@ test('COSMETICS: pro Kategorie genau ein Gratis-Artikel (Standard)', () => {
     assert.equal(COSMETICS[cat].filter((it) => it.price === 0).length, 1, cat);
   }
 });
+
+// ── Leck-Pfad (v3.37.0) ──────────────────────────────────────────────
+import { findLeakPath } from '../src/engine/flood.js';
+test('findLeakPath: dichte Burg → null', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[1]);
+  assert.equal(findLeakPath(g, 1, CASTLE_P1), null);
+});
+test('findLeakPath: EIN Loch → Pfad führt exakt durch die Loch-Zelle', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[1]);
+  const hole = [CASTLE_P1.r - 2, CASTLE_P1.c];
+  g[hole[0]][hole[1]] = EMPTY;
+  const path = findLeakPath(g, 1, CASTLE_P1);
+  assert.ok(path && path.length > 2, 'kein Pfad trotz Loch');
+  assert.ok(path.some(([r, c]) => r === hole[0] && c === hole[1]), 'Pfad geht nicht durchs Loch');
+  // beginnt an der Burg, endet am Feldrand
+  assert.deepEqual(path[0], [CASTLE_P1.r, CASTLE_P1.c]);
+  const [er, ec] = path[path.length - 1];
+  assert.ok(er === 0 || er === ROWS - 1 || ec === 0 || ec === COLS - 1, 'Ende nicht am Rand');
+});
+test('findLeakPath: offene Burg ohne Mauern → Pfad existiert', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  const path = findLeakPath(g, 1, CASTLE_P1);
+  assert.ok(path && path.length > 0);
+});
+test('findLeakPath: GEGNER-Mauern blockieren den Pfad nicht (konsistent zu Regel v1.0.6)', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[2]);
+  assert.ok(findLeakPath(g, 1, CASTLE_P1), 'Gegner-Ring darf nicht dichten');
+});

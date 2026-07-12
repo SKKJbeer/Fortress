@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.36.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3139,3 +3139,34 @@ Tests grün (44 Unit + Playwright-Suite). SW-Cache `fortress-v3.35.0`.
   beginnt mit M/m) + Katalog-Querverweis (WIN_ICON-Namen existieren).
 
 Tests grün (46 Unit + 290 Playwright). SW-Cache `fortress-v3.36.0`.
+
+### v3.37.0 — Tutorial-Redesign: Die Umschlossen-Regel sichtbar machen
+Spieler-Feedback: Das Umschließen von Burg und Kanonen wird nicht verstanden
+(Ziel? Woran verliert man?). Design-Prinzip der Überarbeitung: ZEIGEN statt
+erklären.
+- **Leck-Spur** (Kern-Feature): `findLeakPath(g, player, castle)` in
+  `src/engine/flood.js` — BFS von der Burg durch die Lücke bis zum Feldrand
+  (8-Richtungen, nur eigene Mauern blockieren; konsistent zum Flood-Fill).
+  Der Render-Loop zeichnet den Pfad als pulsierende, „fließende" rote Punkt-
+  Spur: Man SIEHT, wo die Burg leckt und wohin man bauen muss.
+  Sichtbarkeit: im Tutorial die gesamte Bauphase (solange offen); in normalen
+  Spielen die letzten 8s der Bauphase zusammen mit der ZUMAUERN-Warnung
+  (nur die eigene Burg; Bot-Spiele nur P1). Cache je gridVersion — eine BFS
+  pro Grid-Änderung, im Frame nur Arcs.
+- **Ziel-Intro vor dem Tutorial** (`showTutorialIntro`): Vollbild-Karte
+  „Das Ziel" mit zwei SVG-Mini-Diagrammen (geschlossener Ring = gewinnen ·
+  Ring mit Lücke + roter Pfeil = verlieren), der Kanonen-Regel („offene
+  Kanone = stumme Kanone") und der Ankündigung der roten Spur.
+  `startGuidedTutorial` zeigt erst das Intro; `beginTutorialRun` startet das
+  Spiel. „Später" bricht ab (Tutorial-Merker wird trotzdem gesetzt — kein
+  Auto-Start-Loop für Erstspieler).
+- **Coach-Texte präzisiert** (de/en): Setup erklärt die Burg als Verlust-
+  Bedingung; Build nennt Diagonalen + „EINE Lücke = verloren" + rote Spur;
+  NEU `coachShootNoCannon`: erklärt in der Schussphase, WARUM die Kanone
+  nicht schießen darf (war beim Rundenstart nicht ummauert).
+- **Tests**: 4 neue Unit-Tests für findLeakPath (dicht→null, Pfad durchs
+  Loch, Rand-Ende, Gegner-Mauern dichten nicht — konsistent zu v1.0.6);
+  Tutorial-E2E prüft das Intro (Titel, Panels, Kanonen-Regel, Leck-Hinweis,
+  Start-Button) vor dem Spielstart.
+
+Tests grün (50 Unit + Playwright). SW-Cache `fortress-v3.37.0`.

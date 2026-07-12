@@ -84,3 +84,40 @@ export function closedCannons(g, player, cannonList) {
   return cannonList.filter((cn) => isObjectClosed(outside, cn));
 }
 export const isCannonClosed = isObjectClosed;
+
+// ── Leck-Pfad (v3.37.0, Tutorial-/Warnvisualisierung) ──────────────────
+// Macht die Umschließungs-Regel SICHTBAR: kürzester Weg vom Burginneren
+// durch die Lücke bis zum Feldrand (8-Richtungen, konsistent zum Flood-Fill;
+// nur EIGENE Mauern blockieren). Liefert [[r,c], …] Burg→Rand oder null,
+// wenn die Burg dicht ist. Kosten: eine BFS — nur bei Grid-Änderung rufen.
+export function findLeakPath(g, player, castle) {
+  if (!g || !castle) return null;
+  const ownWall = WALL_OF[player];
+  const start = castle.r * COLS + castle.c;
+  const prev = new Int32Array(ROWS * COLS).fill(-2); // -2 = unbesucht, -1 = Start
+  prev[start] = -1;
+  const q = [start];
+  let exit = -1;
+  for (let qi = 0; qi < q.length; qi++) {
+    const idx = q[qi];
+    const r = (idx / COLS) | 0, c = idx - r * COLS;
+    if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) { exit = idx; break; }
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+        const nidx = nr * COLS + nc;
+        if (prev[nidx] !== -2) continue;
+        if (g[nr][nc] === ownWall) continue;
+        prev[nidx] = idx;
+        q.push(nidx);
+      }
+    }
+  }
+  if (exit < 0) return null; // dicht — kein Leck
+  const path = [];
+  for (let cur = exit; cur !== -1; cur = prev[cur]) path.push([(cur / COLS) | 0, cur - ((cur / COLS) | 0) * COLS]);
+  path.reverse();
+  return path;
+}

@@ -2958,8 +2958,26 @@ async function suiteTutorial(browser) {
       Array.from(document.querySelectorAll('button')).some(b => /Interaktives Tutorial|Interactive Tutorial/.test(b.textContent || '')));
     tutBtn ? ok('Tutorial-Button im Lokal-Menü sichtbar ✓') : fail('Tutorial-Button fehlt');
 
-    // ── Tutorial starten ──────────────────────────────────────
+    // ── Tutorial starten: erst kommt das Ziel-Intro (v3.37.0) ──
     await jsClick(page, ['Interaktives Tutorial', 'Interactive Tutorial']);
+    await page.waitForTimeout(350);
+    const intro = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        title: /Das Ziel|The goal/.test(t),
+        win: /SO GEWINNST DU|HOW YOU WIN/.test(t),
+        lose: /SO VERLIERST DU|HOW YOU LOSE/.test(t),
+        cannonRule: /stumme Kanone|silent cannon/.test(t),
+        leakHint: /ROTE SPUR|RED TRAIL/.test(t),
+        go: [...document.querySelectorAll('button')].some(b => /Los geht|Let.s go/.test(b.textContent || ''))
+      };
+    });
+    intro.title ? ok('Tutorial-Intro: Titel "Das Ziel" ✓') : fail('Tutorial-Intro fehlt');
+    intro.win && intro.lose ? ok('Tutorial-Intro: Gewinnen/Verlieren-Panels ✓') : fail('Tutorial-Intro: Panels fehlen');
+    intro.cannonRule ? ok('Tutorial-Intro: Kanonen-Regel erklärt ✓') : fail('Tutorial-Intro: Kanonen-Regel fehlt');
+    intro.leakHint ? ok('Tutorial-Intro: Leck-Spur angekündigt ✓') : fail('Tutorial-Intro: Leck-Hinweis fehlt');
+    if (!intro.go) { fail('Tutorial-Intro: Start-Button fehlt'); return { res, errs }; }
+    await jsClick(page, ['Los geht', "Let's go"]);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     canvas ? ok('Tutorial-Spiel gestartet (Canvas) ✓') : fail('Tutorial startet nicht');
     if (!canvas) return { res, errs };

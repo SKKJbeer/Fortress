@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.36.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.37.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -136,7 +136,7 @@
 import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
-import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed } from './src/engine/flood.js';
+import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
@@ -1544,6 +1544,8 @@ window.FortressApp = function Fortress() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [showTutorialDone, setShowTutorialDone] = useState(false);
+  const [showTutorialIntro, setShowTutorialIntro] = useState(false); // Ziel-Erklärung vor dem Tutorial (v3.37.0)
+  const leakPathRef = useRef({}); // Leck-Spur-Cache je Spieler (Key: gridVersion, v3.37.0)
   const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem('fortress_sound') !== '0'; } catch (e) { return true; } });
   const [hapticsOn, setHapticsOn] = useState(() => { try { return localStorage.getItem('fortress_haptics') !== '0'; } catch (e) { return true; } });
   useEffect(() => { SFX.enabled = soundOn; try { localStorage.setItem('fortress_sound', soundOn ? '1' : '0'); } catch (e) {} }, [soundOn]);
@@ -4306,7 +4308,16 @@ window.FortressApp = function Fortress() {
     // unsichtbar hinter dem Tutorial weiter und matcht mitten hinein.
     if (online.current) return;
     if (mmActive.current) cancelMatchmaking();
+    // Auch bei Abbruch des Intros kein erneuter Auto-Start (Erstspieler-Flow).
     try { localStorage.setItem('fortress_tutorial_done', '1'); } catch (e) {}
+    setShowOnboarding(false);
+    setMpScreen(null);
+    // Ziel-Erklärung ZUERST (v3.37.0): Gewinnen/Verlieren/Kanonen-Regel —
+    // die Umschlossen-Regel ist die häufigste Verständnishürde.
+    setShowTutorialIntro(true);
+  }
+  function beginTutorialRun() {
+    setShowTutorialIntro(false);
     online.current = false;
     botMode.current = true;
     tutorialMode.current = true;
@@ -4316,8 +4327,6 @@ window.FortressApp = function Fortress() {
     setShowTutorialDone(false);
     numPlayersRef.current = 2;
     setNumPlayers(2);
-    setShowOnboarding(false);
-    setMpScreen(null);
     fullReset();
   }
   function botPlaceOneCannon(g, B) {
@@ -5284,6 +5293,37 @@ window.FortressApp = function Fortress() {
       }
     }
     ctx.drawImage(zoneCanvas.current, 0, 0);
+    // ── Leck-Spur (v3.37.0): macht die Umschlossen-Regel SICHTBAR ──────────
+    // Pulsierende rote Spur von der Burg durch die Lücke bis zum Feldrand.
+    // Tutorial: die ganze Bauphase, solange offen. Normale Spiele: in den
+    // letzten 8s zusammen mit der ZUMAUERN-Warnung (nur eigene Burg).
+    // BFS nur bei Grid-Änderung (Cache je gridVersion) — Frame-Kosten: Arcs.
+    if (phase_r.current === "build") {
+      const showFor = [];
+      if (tutorialMode.current) {
+        if (!fc.castleClosed[1]) showFor.push(1);
+      } else if (timerVal.current <= 8 && timerVal.current > 0) {
+        const cand = online.current ? (myRole.current >= 1 ? [myRole.current] : []) : botMode.current ? [1] : players;
+        for (const p of cand) if (!eliminated.current[p] && !fc.castleClosed[p]) showFor.push(p);
+      }
+      for (const p of showFor) {
+        const cache = leakPathRef.current;
+        if (!cache[p] || cache[p].v !== gridVersion.current) {
+          cache[p] = { v: gridVersion.current, path: findLeakPath(g, p, castles.current[p]) };
+        }
+        const path = cache[p].path;
+        if (!path) continue;
+        for (let i = 1; i < path.length - 1; i += 2) {
+          const a = 0.45 + 0.4 * Math.sin(now / 150 - i * 0.7);
+          if (a <= 0.05) continue;
+          const [pr, pc] = path[i];
+          ctx.fillStyle = "rgba(239,68,68," + a.toFixed(2) + ")";
+          ctx.beginPath();
+          ctx.arc(pc * CELL + CELL / 2, pr * CELL + CELL / 2, 2.4 + 1.2 * a, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
     // Mauern/Trümmer als vorgerenderte Sprites blitten (v3.15.5) — pro Zelle
     // nur noch EIN drawImage statt Gradient + 6 Pfad-Operationen.
     // wallHp ist meist leer (keine Panzermauern gekauft) → String-Concat pro
@@ -5906,7 +5946,82 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.36.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.0")), showTutorialIntro && (() => {
+    const h = React.createElement;
+    // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
+    // Lücke und zeichnet die rote Leck-Spur hindurch.
+    const ringSvg = (gap) => {
+      const cells = [];
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        if (gap && dr === -1 && dc === 0) continue; // Lücke oben
+        cells.push(h("rect", { key: dr + "_" + dc, x: 20 + dc * 13, y: 20 + dr * 13, width: 11, height: 11, rx: 2, fill: gap ? "#64748b" : "#3b82f6" }));
+      }
+      return h("svg", { viewBox: "0 0 51 51", width: 64, height: 64, style: { display: "block", margin: "0 auto 6px" } },
+        cells,
+        h("rect", { x: 20, y: 20, width: 11, height: 11, rx: 2, fill: gap ? "#ef4444" : "#fbbf24" }),
+        gap ? h("path", { d: "M25.5 23 L25.5 4", stroke: "#ef4444", strokeWidth: 2.4, strokeDasharray: "3 3", fill: "none" }) : null,
+        gap ? h("path", { d: "M21.5 9 L25.5 3 L29.5 9", stroke: "#ef4444", strokeWidth: 2.4, fill: "none" }) : null
+      );
+    };
+    const panel = (borderC, bgC, icon, iconC, title, text, svg) => h("div", { style: {
+      flex: 1, minWidth: 0, borderRadius: 14, padding: "12px 10px", textAlign: "center",
+      background: bgC, border: "1px solid " + borderC
+    } },
+      svg,
+      h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 5 } },
+        h(Icon, { name: icon, size: 14, color: iconC }),
+        h("div", { style: { fontSize: 11, fontWeight: 900, color: iconC, letterSpacing: "0.06em" } }, title)
+      ),
+      h("div", { style: { fontSize: 11.5, color: "#cbd5e1", lineHeight: 1.45 } }, text)
+    );
+    return h("div", { key: "tutintro", style: {
+      position: "fixed", inset: 0, zIndex: 1300, background: "rgba(2,6,15,0.93)",
+      backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 16
+    } },
+      h("div", { style: {
+        maxWidth: 440, width: "100%", maxHeight: "92vh", overflowY: "auto",
+        background: "linear-gradient(160deg,#15082a,#0f1f2e)", border: "1px solid rgba(124,58,237,0.4)",
+        borderRadius: 20, padding: "20px 16px 16px", boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+        animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both", textAlign: "center"
+      } },
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 } },
+          h(Icon, { name: "target", size: 20, color: "#a78bfa" }),
+          h("div", { style: { fontSize: 19, fontWeight: 900, color: "#f1f5f9" } }, t("tutIntroTitle"))
+        ),
+        h("div", { style: { fontSize: 12.5, color: "#94a3b8", marginBottom: 14, lineHeight: 1.45 } }, t("tutIntroSub")),
+        h("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
+          panel("rgba(74,222,128,0.35)", "rgba(74,222,128,0.06)", "trophy", "#4ade80", t("tutIntroWinTitle"), t("tutIntroWinText"), ringSvg(false)),
+          panel("rgba(239,68,68,0.35)", "rgba(239,68,68,0.06)", "skull", "#f87171", t("tutIntroLoseTitle"), t("tutIntroLoseText"), ringSvg(true))
+        ),
+        h("div", { style: {
+          display: "flex", alignItems: "flex-start", gap: 8, textAlign: "left", borderRadius: 12,
+          padding: "10px 12px", background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.25)", marginBottom: 8
+        } },
+          h(Icon, { name: "flame", size: 15, color: "#fbbf24", style: { marginTop: 1 } }),
+          h("div", { style: { fontSize: 11.5, color: "#e2e8f0", lineHeight: 1.45 } }, t("tutIntroCannonRule"))
+        ),
+        h("div", { style: {
+          display: "flex", alignItems: "flex-start", gap: 8, textAlign: "left", borderRadius: 12,
+          padding: "10px 12px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", marginBottom: 16
+        } },
+          h(Icon, { name: "zap", size: 15, color: "#f87171", style: { marginTop: 1 } }),
+          h("div", { style: { fontSize: 11.5, color: "#e2e8f0", lineHeight: 1.45 } }, t("tutIntroLeakHint"))
+        ),
+        h("button", { onClick: beginTutorialRun, style: {
+          width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff",
+          border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12,
+          cursor: "pointer", marginBottom: 8, boxShadow: "0 4px 20px rgba(124,58,237,0.35)"
+        } }, t("tutIntroGo")),
+        h("button", { onClick: () => setShowTutorialIntro(false), style: {
+          width: "100%", background: "rgba(255,255,255,0.06)", color: "#94a3b8",
+          border: "1px solid rgba(255,255,255,0.12)", padding: "11px", fontSize: 13,
+          fontWeight: 700, borderRadius: 12, cursor: "pointer"
+        } }, t("tutIntroLater"))
+      )
+    );
+  })(), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7616,7 +7731,7 @@ window.FortressApp = function Fortress() {
       /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)" } }, phase === "setup" ? "1/4" : phase === "build" ? "2/4" : phase === "shoot" ? "3/4" : phase === "cannon" ? "4/4" : "✓")
     ),
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13.5, fontWeight: 700, color: "#fff", lineHeight: 1.42 } },
-      phase === "setup" ? t('coachSetup') : phase === "build" ? (coachP1Open ? t('coachBuildOpen') : t('coachBuild')) : phase === "shoot" ? (coachP1Open ? t('coachShootOpen') : t('coachShoot')) : phase === "cannon" ? t('coachCannon') : t('coachDone')
+      phase === "setup" ? t('coachSetup') : phase === "build" ? (coachP1Open ? t('coachBuildOpen') : t('coachBuild')) : phase === "shoot" ? (((frozenReady.current[1] || []).length === 0) ? t('coachShootNoCannon') : coachP1Open ? t('coachShootOpen') : t('coachShoot')) : phase === "cannon" ? t('coachCannon') : t('coachDone')
     ),
     /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { pointerEvents: "auto", marginTop: 7, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.32)", color: "#fff", borderRadius: 8, padding: "5px 11px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, t('tutorialExit'))
   )), showTutorialDone && /* @__PURE__ */ React.createElement("div", {
