@@ -2772,6 +2772,11 @@ async function suiteBot(browser) {
     await jsClick(page, ['Mittel', 'Medium']);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
     canvas ? ok('Bot-Spiel gestartet (Canvas sichtbar) ✓') : fail('Bot-Spiel startet nicht');
+    // Welt-Musik (v3.39.0): im Spiel muss ein w_*-Track gewählt sein
+    const wtrack = await page.evaluate(() => window.MUSIC && window.MUSIC.cur);
+    /^w_(crystal|ice|desert|volcano|swamp|autumn|astral)$/.test(wtrack || '')
+      ? ok('Musik: Welt-Track im Match (' + wtrack + ') ✓')
+      : fail('Musik: kein Welt-Track (' + wtrack + ')');
     if (!canvas) return { res, errs };
 
     // ── Reset-Geste (v3.16.6): Drag unter das Spielfeld bricht ab ──

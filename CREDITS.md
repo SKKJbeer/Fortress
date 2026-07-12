@@ -19,4 +19,10 @@ Nachbearbeitung (Schnitt, Fades, Normalisierung, MP3-Encode) im Projekt.
 | Datei | Quelle | Autor |
 |---|---|---|
 | menu.mp3 | "Medieval: King's Feast" | snabisch |
-| game.mp3 | "Isle of Avalon" (Ausschnitt 8s–168s) | the-oracle |
+| w_crystal.mp3 (Kristalltal) | "Isle of Avalon" (Ausschnitt) | the-oracle |
+| w_ice.mp3 (Frostreich) | "Beyond the Frozen Veil" (Loop) | Synth-thetic |
+| w_desert.mp3 (Glutwüste) | "DesertMystic" (Desert Mystic 2) | PolygonDan |
+| w_volcano.mp3 (Vulkanschlund) | "Medieval: Battle" | supergamersgames |
+| w_swamp.mp3 (Nebelmoor) | "Mirror Lake" | joth |
+| w_autumn.mp3 (Herbstwald) | "Grasslands Theme" | facadegaikan (DST) |
+| w_astral.mp3 (Astralebene) | "Another Space Background Track" (ObservingTheStar) | yd |

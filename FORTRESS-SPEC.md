@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.38.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.39.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3270,3 +3270,22 @@ Tests grün. SW-Cache `fortress-v3.38.0`.
   0.75), wirkt live ohne Neustart des Tracks.
 
 Tests grün. SW-Cache `fortress-v3.38.1`.
+
+### v3.39.0 — Welt-Musik + iOS-Lautstärke-Fix
+- **Lautstärke-Regler wirkt jetzt auch auf iOS**: `el.volume` ist auf iOS
+  read-only (Apple-Policy) — der Regler tat dort nichts. Das Audio-Element
+  wird jetzt einmalig durch einen WebAudio-GainNode geroutet
+  (`MUSIC._wire/_applyVol`, nutzt den SFX-AudioContext); Gain wirkt überall.
+  Fallback ohne WebAudio bleibt `el.volume`.
+- **Match-Musik je Welt** (7 CC0-Tracks, Quellen in CREDITS.md, RMS-angeglichen
+  ~0.11, 112kbps stereo, Loop-Kanten behandelt): Kristalltal = Isle of Avalon
+  (mystisch) · Frostreich = Beyond the Frozen Veil (eisig-sphärisch) ·
+  Glutwüste = DesertMystic (orientalisch) · Vulkanschlund = Medieval Battle
+  (dramatisch) · Nebelmoor = Mirror Lake (dunkel-ruhig) · Herbstwald =
+  Grasslands (warm-folkig) · Astralebene = ObservingTheStar (Weltraum-Ambient).
+  `WORLD_THEMES[..].music` (terrain.js) → Screen/Phase-Effect wählt den Track
+  über `worldThemeOf(terrainSeed)` — deterministisch, online automatisch
+  synchron; neue Karte/Runde zieht den Track nach. `music/game.mp3` entfernt.
+- Musikdateien weiterhin NICHT precached (~11 MB gesamt) — Runtime-Cache.
+
+Tests grün. SW-Cache `fortress-v3.39.0`.

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.38.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.39.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -331,10 +331,31 @@ const MUSIC = {
   cur: null,
   enabled: true,
   userVol: 0.45, // Master (Regler im Menü, fortress_music_vol)
-  _rel: { menu: 1.0, game: 0.75 }, // relative Mischung je Track
+  _rel: { menu: 1.0 }, // Menü voll; Welt-Tracks laufen über den 0.75-Default
   _mk() {
     if (this.el) return;
     try { this.el = new Audio(); this.el.loop = true; this.el.preload = "none"; } catch (e) {}
+  },
+  // iOS-Fix (v3.39.0): el.volume ist auf iOS READ-ONLY (Apple erlaubt keine
+  // Programm-Lautstärke am Media-Element). Deshalb wird das Element einmalig
+  // durch einen WebAudio-GainNode geroutet — Gain wirkt auch auf iOS. Gelingt
+  // das nicht (alter Browser), bleibt el.volume der Fallback.
+  _gain: null,
+  _wire() {
+    if (this._gain || !this.el) return;
+    try {
+      const c = SFX._ensure();
+      if (!c) return;
+      const srcNode = c.createMediaElementSource(this.el);
+      this._gain = c.createGain();
+      srcNode.connect(this._gain);
+      this._gain.connect(c.destination);
+    } catch (e) {}
+  },
+  _applyVol(track) {
+    const v = Math.max(0, Math.min(1, (this._rel[track] != null ? this._rel[track] : 0.75) * this.userVol));
+    if (this._gain) { this._gain.gain.value = v; try { this.el.volume = 1; } catch (e) {} }
+    else { try { this.el.volume = v; } catch (e) {} }
   },
   play(track) {
     this.cur = track;
@@ -343,7 +364,8 @@ const MUSIC = {
     if (!this.el) return;
     const srcName = "music/" + track + ".mp3";
     if (!this.el.src.endsWith(srcName)) this.el.src = srcName;
-    this.el.volume = Math.max(0, Math.min(1, (this._rel[track] != null ? this._rel[track] : 1) * this.userVol));
+    this._wire();
+    this._applyVol(track);
     const pr = this.el.play();
     if (pr && pr.catch) pr.catch(() => {}); // vor erster Geste blockiert — retry() holt nach
   },
@@ -355,7 +377,7 @@ const MUSIC = {
   },
   setVolume(v) {
     this.userVol = Math.max(0, Math.min(1, v));
-    if (this.el && this.cur) this.el.volume = Math.max(0, Math.min(1, (this._rel[this.cur] != null ? this._rel[this.cur] : 1) * this.userVol));
+    if (this.el && this.cur) this._applyVol(this.cur);
   }
 };
 window.MUSIC = MUSIC;
@@ -1596,8 +1618,17 @@ window.FortressApp = function Fortress() {
   const [musicVol, setMusicVol] = useState(() => { try { const v = parseFloat(localStorage.getItem('fortress_music_vol')); return isNaN(v) ? 0.45 : Math.max(0, Math.min(1, v)); } catch (e) { return 0.45; } });
   useEffect(() => { MUSIC.setVolume(musicVol); try { localStorage.setItem('fortress_music_vol', String(musicVol)); } catch (e) {} }, [musicVol]);
   useEffect(() => { MUSIC.setEnabled(musicOn); try { localStorage.setItem('fortress_music', musicOn ? '1' : '0'); } catch (e) {} }, [musicOn]);
-  // Track je Screen: Menü/Result ruhig, im Spiel die Battle-Schleife (v3.38.0)
-  useEffect(() => { MUSIC.play(screen === "game" ? "game" : "menu"); }, [screen]);
+  // Track je Screen (v3.39.0): im Spiel die MUSIK DER AKTUELLEN WELT
+  // (WORLD_THEMES[..].music via terrainSeed — deterministisch, online synchron);
+  // phase als Dependency, damit neue Karten/Runden den Track nachziehen.
+  useEffect(() => {
+    if (screen === "game") {
+      const wt = worldThemeOf(terrainSeed.current || 0);
+      MUSIC.play((wt && wt.music) || "w_crystal");
+    } else {
+      MUSIC.play("menu");
+    }
+  }, [screen, phase]);
   const [hapticsOn, setHapticsOn] = useState(() => { try { return localStorage.getItem('fortress_haptics') !== '0'; } catch (e) { return true; } });
   useEffect(() => { SFX.enabled = soundOn; try { localStorage.setItem('fortress_sound', soundOn ? '1' : '0'); } catch (e) {} }, [soundOn]);
   useEffect(() => { SFX.haptics = hapticsOn; try { localStorage.setItem('fortress_haptics', hapticsOn ? '1' : '0'); } catch (e) {} }, [hapticsOn]);
@@ -6058,7 +6089,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.38.1")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.39.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
