@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.38.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.38.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -330,7 +330,8 @@ const MUSIC = {
   el: null,
   cur: null,
   enabled: true,
-  _vol: { menu: 0.45, game: 0.32 },
+  userVol: 0.45, // Master (Regler im Menü, fortress_music_vol)
+  _rel: { menu: 1.0, game: 0.75 }, // relative Mischung je Track
   _mk() {
     if (this.el) return;
     try { this.el = new Audio(); this.el.loop = true; this.el.preload = "none"; } catch (e) {}
@@ -342,7 +343,7 @@ const MUSIC = {
     if (!this.el) return;
     const srcName = "music/" + track + ".mp3";
     if (!this.el.src.endsWith(srcName)) this.el.src = srcName;
-    this.el.volume = this._vol[track] != null ? this._vol[track] : 0.4;
+    this.el.volume = Math.max(0, Math.min(1, (this._rel[track] != null ? this._rel[track] : 1) * this.userVol));
     const pr = this.el.play();
     if (pr && pr.catch) pr.catch(() => {}); // vor erster Geste blockiert — retry() holt nach
   },
@@ -351,6 +352,10 @@ const MUSIC = {
   setEnabled(on) {
     this.enabled = on;
     if (on) this.play(this.cur); else this.stop();
+  },
+  setVolume(v) {
+    this.userVol = Math.max(0, Math.min(1, v));
+    if (this.el && this.cur) this.el.volume = Math.max(0, Math.min(1, (this._rel[this.cur] != null ? this._rel[this.cur] : 1) * this.userVol));
   }
 };
 window.MUSIC = MUSIC;
@@ -1588,6 +1593,8 @@ window.FortressApp = function Fortress() {
   const leakPathRef = useRef({}); // Leck-Spur-Cache je Spieler (Key: gridVersion, v3.37.0)
   const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem('fortress_sound') !== '0'; } catch (e) { return true; } });
   const [musicOn, setMusicOn] = useState(() => { try { return localStorage.getItem('fortress_music') !== '0'; } catch (e) { return true; } });
+  const [musicVol, setMusicVol] = useState(() => { try { const v = parseFloat(localStorage.getItem('fortress_music_vol')); return isNaN(v) ? 0.45 : Math.max(0, Math.min(1, v)); } catch (e) { return 0.45; } });
+  useEffect(() => { MUSIC.setVolume(musicVol); try { localStorage.setItem('fortress_music_vol', String(musicVol)); } catch (e) {} }, [musicVol]);
   useEffect(() => { MUSIC.setEnabled(musicOn); try { localStorage.setItem('fortress_music', musicOn ? '1' : '0'); } catch (e) {} }, [musicOn]);
   // Track je Screen: Menü/Result ruhig, im Spiel die Battle-Schleife (v3.38.0)
   useEffect(() => { MUSIC.play(screen === "game" ? "game" : "menu"); }, [screen]);
@@ -5993,7 +6000,13 @@ window.FortressApp = function Fortress() {
       background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.35)",
       color: "#fdba74", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
     } }, React.createElement(Icon, { name: "hammer", size: 16 }))
-  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: { background: musicOn ? "rgba(52,211,153,0.16)" : "rgba(255,255,255,0.06)", border: musicOn ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(255,255,255,0.12)", color: musicOn ? "#6ee7b7" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: { background: musicOn ? "rgba(52,211,153,0.16)" : "rgba(255,255,255,0.06)", border: musicOn ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(255,255,255,0.12)", color: musicOn ? "#6ee7b7" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), musicOn && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, justifyContent: "center", marginBottom: 12, padding: "0 26px" } },
+    /* @__PURE__ */ React.createElement(Icon, { name: "music", size: 13, color: "#6ee7b7" }),
+    /* @__PURE__ */ React.createElement("input", { type: "range", min: 0, max: 100, value: Math.round(musicVol * 100), "aria-label": "Musik-Lautst\u00e4rke",
+      onChange: (e) => setMusicVol(parseInt(e.target.value, 10) / 100),
+      style: { flex: 1, maxWidth: 220, accentColor: "#34d399", height: 18, cursor: "pointer" } }),
+    /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "#64748b", width: 30, textAlign: "left" } }, Math.round(musicVol * 100) + "%")
+  ), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -6045,7 +6058,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.38.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.38.1")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

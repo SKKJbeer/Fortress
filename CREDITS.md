@@ -12,11 +12,11 @@ Nachbearbeitung (Schnitt, Fades, Normalisierung, MP3-Encode) im Projekt.
 | destroy.mp3 | "Various sound effects" (break_stone) | spring-spring |
 | place.mp3 | "80 CC0 RPG SFX" (item_stone_02) | rubberduck |
 | buy.mp3 | "80 CC0 RPG SFX" (item_coins_03) | rubberduck |
-| win.mp3 | "Hyper ultra fanfare" | Zane Little Music |
+| win.mp3 | "Medieval: Victory Theme" | randommind |
 | lose.mp3 | "Medieval: Defeat Theme" | snabisch |
 
 ## Musik (music/)
 | Datei | Quelle | Autor |
 |---|---|---|
 | menu.mp3 | "Medieval: King's Feast" | snabisch |
-| game.mp3 | "Medieval: Battle" | supergamersgames |
+| game.mp3 | "Isle of Avalon" (Ausschnitt 8s–168s) | the-oracle |

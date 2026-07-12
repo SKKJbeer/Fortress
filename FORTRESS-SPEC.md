@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.38.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.38.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3256,3 +3256,17 @@ Nutzer-Feedback: Sounds wirkten „wie von einem billigen Spiel".
 - E2E: MUSIC-Manager + Toggle + Persistenz + Track-Wahl.
 
 Tests grün. SW-Cache `fortress-v3.38.0`.
+
+### v3.38.1 — Audio-Feinschliff (Nutzer-Feedback)
+- **Sieges-Sound ersetzt**: „Medieval: Victory Theme" (randommind, CC0,
+  7s-Sting mit Fade) statt der generischen Fanfare — passt stilistisch zum
+  Defeat-Sting (beide mittelalterlich).
+- **Match-Musik jetzt mystisch**: „Isle of Avalon" (the-oracle, CC0) —
+  sphärisch-mystische Fantasy statt Battle-Getrommel; 160s-Loop-Schnitt
+  (8s–168s, 2s Loop-Kanten-Fades), 128kbps stereo.
+- **Musik-Lautstärke-Regler** im Menü (erscheint unter der Toggle-Reihe,
+  wenn Musik an): 0–100%, `fortress_music_vol` (Default 45%),
+  `MUSIC.setVolume` = Master × relative Track-Mischung (Menü 1.0 / Spiel
+  0.75), wirkt live ohne Neustart des Tracks.
+
+Tests grün. SW-Cache `fortress-v3.38.1`.

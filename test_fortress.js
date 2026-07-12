@@ -157,10 +157,10 @@ async function loadMenu(page) {
   await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 8000 });
   await page.waitForTimeout(200);
   // Prüft auf beliebiges Input-Feld (Profil-Editor hat input ohne maxlength-Attribut)
-  const hasInput = await page.evaluate(() => !!document.querySelector('input'));
+  const hasInput = await page.evaluate(() => !!document.querySelector('input:not([type=range])'));
   if (hasInput) {
     await page.evaluate(() => {
-      const i = document.querySelector('input');
+      const i = document.querySelector('input:not([type=range])');
       if (i) { i.value = 'TestBot'; i.dispatchEvent(new Event('input', { bubbles: true })); }
     });
     await page.waitForTimeout(80);
@@ -168,7 +168,7 @@ async function loadMenu(page) {
     await jsClick(page, ['Speichern', 'Profil erstellen', 'Save', 'Create profile']);
     await page.waitForTimeout(150);
     await page.waitForFunction(
-      () => !document.querySelector('input'), { timeout: 3000 }
+      () => !document.querySelector('input:not([type=range])'), { timeout: 3000 }
     ).catch(() => {});
   }
 }
@@ -818,8 +818,8 @@ async function suiteOnlineUI(browser, fbPort) {
 
     // "Spiel beitreten" → Code-Eingabe
     await jsClick(page, ['Spiel beitreten', 'beitreten']);
-    await page.waitForFunction(() => !!document.querySelector('input'), { timeout: 3000 }).catch(() => {});
-    const inputOk = await page.evaluate(() => !!document.querySelector('input'));
+    await page.waitForFunction(() => !!document.querySelector('input:not([type=range])'), { timeout: 3000 }).catch(() => {});
+    const inputOk = await page.evaluate(() => !!document.querySelector('input:not([type=range])'));
     inputOk ? ok('"Spiel beitreten": Code-Eingabefeld ✓') : fail('"Spiel beitreten": Eingabefeld fehlt');
 
     // "Zurück" aus Code-Eingabe
@@ -915,9 +915,9 @@ async function suiteOnline2P(browser, fbPort) {
     await pG.waitForTimeout(200);
 
     // Warte auf Input-Feld, dann mit Playwright fill() schreiben (korrekte React-Integration)
-    await pG.waitForSelector('input', { timeout: 3000 }).catch(() => {});
-    const typed = await pG.evaluate(() => !!document.querySelector('input'));
-    if (typed) await pG.fill('input', code);
+    await pG.waitForSelector('input:not([type=range])', { timeout: 3000 }).catch(() => {});
+    const typed = await pG.evaluate(() => !!document.querySelector('input:not([type=range])'));
+    if (typed) await pG.fill('input:not([type=range])', code);
     typed ? ok('Gast: Code eingetippt ✓') : fail('Gast: Eingabefeld nicht gefunden');
 
     await pG.waitForTimeout(100);
@@ -1356,7 +1356,7 @@ async function suiteOnline3P(browser, fbPort) {
     for (const G of [G2, G3]) {
       await jsClick(G.page, ['ONLINE']); await G.page.waitForTimeout(200);
       await jsClick(G.page, ['beitreten', 'Beitreten']); await G.page.waitForTimeout(200);
-      if (await G.page.evaluate(() => !!document.querySelector('input'))) await G.page.fill('input', code);
+      if (await G.page.evaluate(() => !!document.querySelector('input:not([type=range])'))) await G.page.fill('input:not([type=range])', code);
       await G.page.waitForTimeout(100);
       await jsClick(G.page, ['Beitreten']);
       await G.page.waitForTimeout(400);
@@ -2091,6 +2091,22 @@ async function suiteSound(browser) {
     musicOff === '0' ? ok('Musik: Toggle persistiert (aus) ✓') : fail('Musik: Persistenz fehlt (' + musicOff + ')');
     const menuTrack = await page.evaluate(() => window.MUSIC.cur);
     menuTrack === 'menu' ? ok('Musik: Menü-Track gewählt ✓') : fail('Musik: falscher Track (' + menuTrack + ')');
+    // Regler (v3.38.1): wieder einschalten → Slider sichtbar, setzt Volumen + persistiert
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => (x.getAttribute('title') || '') === 'Musik'); b && b.click(); });
+    await page.waitForTimeout(200);
+    const slider = await page.evaluate(() => {
+      const s = document.querySelector('input[type="range"][aria-label*="Lautst"], input[type="range"][aria-label*="volume"]');
+      if (!s) return null;
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(s, '20');
+      s.dispatchEvent(new Event('input', { bubbles: true }));
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    });
+    slider ? ok('Musik: Lautstärke-Regler sichtbar ✓') : fail('Musik: Regler fehlt');
+    await page.waitForTimeout(250);
+    const vol = await page.evaluate(() => ({ ls: localStorage.getItem('fortress_music_vol'), mgr: window.MUSIC.userVol }));
+    vol.ls === '0.2' && Math.abs(vol.mgr - 0.2) < 0.001 ? ok('Musik: Regler persistiert + wirkt (20%) ✓') : fail('Musik: Regler-Wert falsch (' + JSON.stringify(vol) + ')');
 
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Sound: Keine JS-Fehler ✓');
   } catch (e) {
