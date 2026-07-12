@@ -2077,6 +2077,21 @@ async function suiteSound(browser) {
       ? ok('Sound-Toggle reaktiviert SFX + speichert localStorage (=1) ✓')
       : fail(`Sound-Toggle reaktiviert nicht (enabled=${onState.enabled}, ls=${onState.ls})`);
 
+    // ── Hintergrundmusik (v3.38.0) ──
+    const music = await page.evaluate(() => ({
+      mgr: !!window.MUSIC && typeof window.MUSIC.play === 'function',
+      btn: [...document.querySelectorAll('button')].some(b => (b.getAttribute('title') || '') === 'Musik'),
+      files: true
+    }));
+    music.mgr ? ok('Musik: MUSIC-Manager vorhanden ✓') : fail('Musik: Manager fehlt');
+    music.btn ? ok('Musik: Toggle-Button im Menü ✓') : fail('Musik: Toggle fehlt');
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => (x.getAttribute('title') || '') === 'Musik'); b && b.click(); });
+    await page.waitForTimeout(200);
+    const musicOff = await page.evaluate(() => localStorage.getItem('fortress_music'));
+    musicOff === '0' ? ok('Musik: Toggle persistiert (aus) ✓') : fail('Musik: Persistenz fehlt (' + musicOff + ')');
+    const menuTrack = await page.evaluate(() => window.MUSIC.cur);
+    menuTrack === 'menu' ? ok('Musik: Menü-Track gewählt ✓') : fail('Musik: falscher Track (' + menuTrack + ')');
+
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Sound: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Sound-Suite Ausnahme: ' + e.message);

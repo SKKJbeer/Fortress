@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.38.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3235,3 +3235,24 @@ ersten Bot-Tick der Rüstphase. Bestätigt der Spieler ebenfalls, springt der
 Timer wie gewohnt auf 3s — kein Leerlauf mehr im Tutorial.
 
 Tests grün. SW-Cache `fortress-v3.37.4`.
+
+### v3.38.0 — Audio-Qualität: neue CC0-Sounds + Hintergrundmusik
+Nutzer-Feedback: Sounds wirkten „wie von einem billigen Spiel".
+- **7 SFX ersetzt** (alle CC0 von opengameart.org, Quellen in CREDITS.md;
+  Nachbearbeitung: Onset-Trim, Fades, Peak-Normalisierung, 128kbps mono):
+  shoot = echter Kanonenschuss (thimras) · impact = Kanonentreffer auf Mauer
+  (thimras) · destroy = berstender Stein (spring-spring) · place = Stein-
+  Thunk · buy = Münz-Klimpern (rubberduck RPG-SFX) · win = Orchester-Fanfare
+  (Zane Little) · lose = Medieval-Defeat-Sting (snabisch). ~240 KB gesamt.
+- **Hintergrundmusik NEU**: `music/menu.mp3` („King's Feast", snabisch,
+  130s-Loop) + `music/game.mp3` („Medieval Battle", supergamersgames,
+  79s-Loop), beide CC0, 128kbps stereo (~3,2 MB). `MUSIC`-Manager
+  (HTML-Audio, Loop, dezente Lautstärke 0.45/0.32, Track wechselt mit dem
+  Screen Menü↔Spiel). BEWUSST nicht im SW-Precache — der Fetch-Handler
+  cached beim ersten Abspielen (danach offline verfügbar).
+- **Musik-Toggle** im Menü (music-Icon, `fortress_music`, Default an) neben
+  Sound/Vibration. Autoplay-Policy: erster pointerdown holt den Start nach
+  (`MUSIC.retry()` im bestehenden Gesten-Handler).
+- E2E: MUSIC-Manager + Toggle + Persistenz + Track-Wahl.
+
+Tests grün. SW-Cache `fortress-v3.38.0`.
