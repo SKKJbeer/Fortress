@@ -211,3 +211,23 @@ test('findLeakPath: GEGNER-Mauern blockieren den Pfad nicht (konsistent zu Regel
   ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[2]);
   assert.ok(findLeakPath(g, 1, CASTLE_P1), 'Gegner-Ring darf nicht dichten');
 });
+
+// ── Lücken-Zellen (v3.37.1) ──────────────────────────────────────────
+import { leakGapCells } from '../src/engine/flood.js';
+test('leakGapCells: Ein-Loch-Ring → markiert exakt die Loch-Zelle', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  ringAround(g, CASTLE_P1.r, CASTLE_P1.c, 2, WALL_OF[1]);
+  const hole = [CASTLE_P1.r - 2, CASTLE_P1.c];
+  g[hole[0]][hole[1]] = EMPTY;
+  const path = findLeakPath(g, 1, CASTLE_P1);
+  const gaps = leakGapCells(g, 1, path);
+  assert.ok(gaps.length >= 1, 'keine Lücken-Zelle gefunden');
+  assert.ok(gaps.some(([r, c]) => r === hole[0] && c === hole[1]), 'Loch-Zelle nicht markiert: ' + JSON.stringify(gaps));
+});
+test('leakGapCells: ohne Mauern keine Markierung (nur Spur)', () => {
+  const g = emptyGrid();
+  g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
+  const path = findLeakPath(g, 1, CASTLE_P1);
+  assert.deepEqual(leakGapCells(g, 1, path), []);
+});

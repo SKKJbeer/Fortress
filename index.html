@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.37.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.37.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -51,6 +51,7 @@
     @keyframes urgencyPulse{0%,100%{opacity:0.72}50%{opacity:1}}
     @keyframes closePulse{0%,100%{transform:scale(1);opacity:0.85;text-shadow:0 0 6px rgba(239,68,68,0.6)}50%{transform:scale(1.22);opacity:1;text-shadow:0 0 16px rgba(239,68,68,0.95)}}
     @keyframes coachPop{0%{transform:translateY(10px) scale(0.94);opacity:0}55%{transform:translateY(-3px) scale(1.04)}100%{transform:translateY(0) scale(1);opacity:1}}
+    @keyframes coachDim{to{opacity:0.42}}
     @keyframes coachFlash{0%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}30%{box-shadow:0 0 0 3px rgba(255,255,255,0.9),0 8px 30px rgba(0,0,0,0.55)}100%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}}
     @keyframes dangerGlow{0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,0.25),0 8px 40px rgba(0,0,0,0.7)}50%{box-shadow:0 0 0 3px rgba(239,68,68,0.85),0 0 50px rgba(239,68,68,0.45),0 8px 40px rgba(0,0,0,0.7)}}
     /* ── Premium-Shop (v3.17.0) ── */
@@ -136,7 +137,7 @@
 import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
-import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath } from './src/engine/flood.js';
+import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, leakGapCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
@@ -5309,7 +5310,8 @@ window.FortressApp = function Fortress() {
       for (const p of showFor) {
         const cache = leakPathRef.current;
         if (!cache[p] || cache[p].v !== gridVersion.current) {
-          cache[p] = { v: gridVersion.current, path: findLeakPath(g, p, castles.current[p]) };
+          const lp = findLeakPath(g, p, castles.current[p]);
+          cache[p] = { v: gridVersion.current, path: lp, gaps: leakGapCells(g, p, lp) };
         }
         const path = cache[p].path;
         if (!path) continue;
@@ -5321,6 +5323,26 @@ window.FortressApp = function Fortress() {
           ctx.beginPath();
           ctx.arc(pc * CELL + CELL / 2, pr * CELL + CELL / 2, 2.4 + 1.2 * a, 0, Math.PI * 2);
           ctx.fill();
+        }
+        // Lücken-Zellen (v3.37.1): GENAU hier ist der Ring offen — pulsierender
+        // roter Rahmen + Füllung auf den Loch-Zellen an der Mauer-Mündung.
+        const gaps = cache[p].gaps || [];
+        if (gaps.length) {
+          const ga = 0.55 + 0.35 * Math.sin(now / 180);
+          ctx.fillStyle = "rgba(239,68,68," + (ga * 0.35).toFixed(2) + ")";
+          ctx.strokeStyle = "rgba(255,255,255," + ga.toFixed(2) + ")";
+          ctx.lineWidth = 2;
+          for (const [gr, gc] of gaps) {
+            roundRectPath(ctx, gc * CELL + 1, gr * CELL + 1, CELL - 2, CELL - 2, 3.5);
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(239,68,68," + ga.toFixed(2) + ")";
+            ctx.lineWidth = 2.5;
+            roundRectPath(ctx, gc * CELL - 1.5, gr * CELL - 1.5, CELL + 3, CELL + 3, 4.5);
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255," + ga.toFixed(2) + ")";
+            ctx.lineWidth = 2;
+          }
         }
       }
     }
@@ -5946,7 +5968,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.1")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -6001,6 +6023,18 @@ window.FortressApp = function Fortress() {
         } },
           h(Icon, { name: "flame", size: 15, color: "#fbbf24", style: { marginTop: 1 } }),
           h("div", { style: { fontSize: 11.5, color: "#e2e8f0", lineHeight: 1.45 } }, t("tutIntroCannonRule"))
+        ),
+        h("div", { style: {
+          display: "flex", alignItems: "center", gap: 10, textAlign: "left", borderRadius: 12,
+          padding: "10px 12px", background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.28)", marginBottom: 8
+        } },
+          h("svg", { viewBox: "0 0 40 40", width: 40, height: 40, style: { flexShrink: 0 } },
+            h("rect", { x: 4, y: 4, width: 14, height: 14, rx: 2, fill: "#3b82f6" }),
+            h("rect", { x: 22, y: 22, width: 14, height: 14, rx: 2, fill: "#3b82f6" }),
+            h("path", { d: "M30 6 L10 32", stroke: "#ef4444", strokeWidth: 2.4, strokeDasharray: "3 3", fill: "none" }),
+            h("path", { d: "M10.5 25 L9.5 33 L17 31", stroke: "#ef4444", strokeWidth: 2.2, fill: "none" })
+          ),
+          h("div", { style: { fontSize: 11.5, color: "#e2e8f0", lineHeight: 1.45 } }, t("tutIntroDiagRule"))
         ),
         h("div", { style: {
           display: "flex", alignItems: "flex-start", gap: 8, textAlign: "left", borderRadius: 12,
@@ -7720,10 +7754,12 @@ window.FortressApp = function Fortress() {
       )
     );
   })(), tutorialMode.current && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", left: 8, right: 8, top: "calc(env(safe-area-inset-top, 0px) + 54px)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
+    // v3.37.1: Coach in der Feldmitte (Fluss-Band) statt oben — oben verdeckte
+    // er die Bot-Burg, unten wuerde er die eigene Baustelle verdecken.
+    style: { position: "fixed", left: 8, right: 8, top: "45%", transform: "translateY(-50%)", zIndex: 1250, display: "flex", justifyContent: "center", pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
     key: "coach_" + phase + (coachP1Open ? "_o" : ""),
-    style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s" }
+    style: { pointerEvents: "none", maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.96),rgba(8,145,178,0.96))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s, coachDim 0.6s ease 7s forwards" }
   },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 3 } },
       /* @__PURE__ */ React.createElement(Icon, { name: "gradCap", size: 15 }),

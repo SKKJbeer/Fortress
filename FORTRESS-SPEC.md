@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3170,3 +3170,21 @@ erklären.
   Start-Button) vor dem Spielstart.
 
 Tests grün (50 Unit + Playwright). SW-Cache `fortress-v3.37.0`.
+
+### v3.37.1 — Tutorial-Feinschliff (Nutzer-Feedback)
+- **Lücken-Zellen exakt markiert**: `leakGapCells(g, player, path)` in flood.js
+  — die Leck-Pfad-Zellen, die an einer eigenen Mauer anliegen (= die Mündung
+  des Lochs). Diese Zellen bekommen einen pulsierenden roten Rahmen + Füllung;
+  die Spur zeigt weiter den Weg. Man sieht jetzt ZELLGENAU, wo zu bauen ist.
+- **Diagonal-Regel explizit**: neuer Intro-Kasten mit Mini-Diagramm (zwei
+  Mauern berühren sich nur an der Ecke → rote Spur schlüpft diagonal durch):
+  „Dicht heißt: gerade UND diagonal geschlossen." Coach-Text bei offener Burg
+  nennt die rot umrandete Zelle + „gerade und diagonal zählt".
+- **Coach verdeckt nicht mehr den Gegner**: Sprechblase von oben (lag über
+  der Bot-Burg) in die neutrale Feldmitte (Fluss-Band, 45%) verlegt; dimmt
+  nach 7s auf 42% Opazität (`coachDim`-Keyframe, remountet pro Phase) — Infos
+  bleiben lesbar, ohne das Spielfeld zu blockieren.
+- 2 neue Unit-Tests (leakGapCells trifft exakt die Loch-Zelle; ohne Mauern
+  keine Markierung); Intro-E2E prüft die Diagonal-Erklärung.
+
+Tests grün (52 Unit + Playwright). SW-Cache `fortress-v3.37.1`.

@@ -121,3 +121,25 @@ export function findLeakPath(g, player, castle) {
   path.reverse();
   return path;
 }
+
+// Lücken-Zellen (v3.37.1): die Zellen des Leck-Pfads, die an einer EIGENEN
+// Mauer anliegen — das ist die "Mündung" des Lochs im Ring. Genau dort wird
+// im Tutorial rot markiert, wo gebaut werden muss.
+export function leakGapCells(g, player, path) {
+  if (!g || !path) return [];
+  const ownWall = WALL_OF[player];
+  const out = [];
+  for (const [r, c] of path) {
+    let nearWall = false;
+    for (let dr = -1; dr <= 1 && !nearWall; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+        if (g[nr][nc] === ownWall) { nearWall = true; break; }
+      }
+    }
+    if (nearWall) out.push([r, c]);
+  }
+  return out;
+}

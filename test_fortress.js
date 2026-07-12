@@ -2976,6 +2976,8 @@ async function suiteTutorial(browser) {
     intro.win && intro.lose ? ok('Tutorial-Intro: Gewinnen/Verlieren-Panels ✓') : fail('Tutorial-Intro: Panels fehlen');
     intro.cannonRule ? ok('Tutorial-Intro: Kanonen-Regel erklärt ✓') : fail('Tutorial-Intro: Kanonen-Regel fehlt');
     intro.leakHint ? ok('Tutorial-Intro: Leck-Spur angekündigt ✓') : fail('Tutorial-Intro: Leck-Hinweis fehlt');
+    const diag = await page.evaluate(() => /diagonal/i.test(document.body.innerText));
+    diag ? ok('Tutorial-Intro: Diagonal-Regel erklärt ✓') : fail('Tutorial-Intro: Diagonal-Regel fehlt');
     if (!intro.go) { fail('Tutorial-Intro: Start-Button fehlt'); return { res, errs }; }
     await jsClick(page, ['Los geht', "Let's go"]);
     const canvas = await page.waitForSelector('canvas', { timeout: 6000 }).then(() => true).catch(() => false);
