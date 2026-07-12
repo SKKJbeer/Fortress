@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.32.5</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.33.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -703,6 +703,10 @@ function sanitizeAction(raw) {
   if (a.name !== void 0) a.name = String(a.name).slice(0, 30);
   if (a.wappen !== void 0) a.wappen = String(a.wappen).slice(0, 10);
   if (a.color !== void 0 && !/^#[0-9a-f]{6}$/i.test(String(a.color))) delete a.color;
+  // Kosmetik-IDs (v3.33.0): nur kurze Strings durchlassen; inhaltliche
+  // Validierung (gegen CANNON_SKIN/IMPACT_FX) macht der Host beim join.
+  if (a.cannon !== void 0 && (typeof a.cannon !== "string" || a.cannon.length > 24)) delete a.cannon;
+  if (a.impact !== void 0 && (typeof a.impact !== "string" || a.impact.length > 24)) delete a.impact;
   return a;
 }
 const CELL = 14;
@@ -1492,19 +1496,23 @@ const CANNON_NEON = {
   2: { ac: "#ef4444", lt: "#fca5a5", glow: "rgba(239,68,68," },
   3: { ac: "#10b981", lt: "#6ee7b7", glow: "rgba(16,185,129," }
 };
-// Kuppel (statisch pro Spieler): Radial-Gradient, Ring, Bolzen, Glanz, Kern
-function cannonDomeSprite(player) {
-  if (!SPR.dome[player]) {
+// Kuppel (statisch pro Spieler + optionalem Schmiede-Skin): Radial-Gradient,
+// Ring, Bolzen, Glanz, Kern. skinDef = CANNON_SKIN-Eintrag oder null (Standard).
+// WICHTIG: Der Neonring behält IMMER die Spielerfarbe (Team-Erkennung).
+function cannonDomeSprite(player, skinId, skinDef) {
+  const key = player + (skinId ? "|" + skinId : "");
+  if (!SPR.dome[key]) {
     const R = CELL * 1.6;
     const D = Math.ceil(R * 1.6 + 6);
     const c = mkSpriteCanvas(D, D);
     const x = c.getContext("2d");
     const n = CANNON_NEON[player] || CANNON_NEON[1];
     const cx = D / 2, cy = D / 2;
+    const domeCols = skinDef ? skinDef.dome : ["#5a6477", "#2c333f", "#10141d"];
     const grad = x.createRadialGradient(cx - R * 0.35, cy - R * 0.4, 1, cx, cy, R * 0.85);
-    grad.addColorStop(0, "#5a6477");
-    grad.addColorStop(0.5, "#2c333f");
-    grad.addColorStop(1, "#10141d");
+    grad.addColorStop(0, domeCols[0]);
+    grad.addColorStop(0.5, domeCols[1]);
+    grad.addColorStop(1, domeCols[2]);
     x.fillStyle = grad;
     x.beginPath();
     x.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
@@ -1521,23 +1529,34 @@ function cannonDomeSprite(player) {
       x.arc(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58, 1.5, 0, Math.PI * 2);
       x.fill();
     }
+    // Sternen-Skin: kleine helle Punkte auf der Kuppel (einmal beim Backen)
+    if (skinDef && skinDef.stars) {
+      x.fillStyle = "rgba(255,255,255,0.85)";
+      const starPos = [[-0.42, 0.1], [0.3, -0.38], [0.12, 0.42], [-0.15, -0.2], [0.45, 0.22]];
+      for (const [sx, sy] of starPos) {
+        x.beginPath();
+        x.arc(cx + sx * R, cy + sy * R, 1.2, 0, Math.PI * 2);
+        x.fill();
+      }
+    }
     x.fillStyle = "rgba(255,255,255,0.28)";
     x.beginPath();
     x.arc(cx - R * 0.28, cy - R * 0.3, R * 0.22, 0, Math.PI * 2);
     x.fill();
-    x.fillStyle = n.lt;
+    x.fillStyle = skinDef ? skinDef.core : n.lt;
     x.beginPath();
     x.arc(cx, cy, R * 0.16, 0, Math.PI * 2);
     x.fill();
-    SPR.dome[player] = c;
+    SPR.dome[key] = c;
   }
-  return SPR.dome[player];
+  return SPR.dome[key];
 }
 // Rohr (statisch pro Spieler), M\u00fcndungsgl\u00fchen EINMAL beim Backen (shadowBlur
 // nur hier, nie im Frame-Loop). Gezeichnet horizontal, ab x=PAD.
 const BARREL_PAD = 10;
-function cannonBarrelSprite(player) {
-  if (!SPR.barrel[player]) {
+function cannonBarrelSprite(player, skinId, skinDef) {
+  const key = player + (skinId ? "|" + skinId : "");
+  if (!SPR.barrel[key]) {
     const barrelLen = CELL * 2.7, barrelW = 9;
     const W2 = Math.ceil(CELL * 0.2 + barrelLen + BARREL_PAD * 2);
     const H2 = Math.ceil(barrelW + 3 + BARREL_PAD * 2);
@@ -1546,9 +1565,15 @@ function cannonBarrelSprite(player) {
     const n = CANNON_NEON[player] || CANNON_NEON[1];
     const ox = BARREL_PAD + CELL * 0.2, oy = H2 / 2;
     const bG = x.createLinearGradient(0, oy - barrelW / 2, 0, oy + barrelW / 2);
-    bG.addColorStop(0, "#8b95a7");
-    bG.addColorStop(0.45, "#3a4252");
-    bG.addColorStop(1, "#141925");
+    if (skinDef) {
+      bG.addColorStop(0, skinDef.dome[0]);
+      bG.addColorStop(0.45, skinDef.dome[1]);
+      bG.addColorStop(1, skinDef.dome[2]);
+    } else {
+      bG.addColorStop(0, "#8b95a7");
+      bG.addColorStop(0.45, "#3a4252");
+      bG.addColorStop(1, "#141925");
+    }
     x.fillStyle = bG;
     roundRectPath(x, ox - CELL * 0.2, oy - barrelW / 2, barrelLen, barrelW, 4);
     x.fill();
@@ -1556,15 +1581,15 @@ function cannonBarrelSprite(player) {
     x.fillRect(ox + CELL * 0.2, oy - 1, barrelLen - CELL * 0.55, 1.3);
     x.shadowColor = n.ac;
     x.shadowBlur = 9;
-    x.fillStyle = n.lt;
+    x.fillStyle = skinDef ? skinDef.core : n.lt;
     roundRectPath(x, ox + barrelLen - CELL * 0.4, oy - barrelW / 2 - 1.5, 4.5, barrelW + 3, 2);
     x.fill();
     x.shadowBlur = 0;
-    SPR.barrel[player] = c;
+    SPR.barrel[key] = c;
   }
-  return SPR.barrel[player];
+  return SPR.barrel[key];
 }
-function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT) {
+function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, skinId, skinDef) {
   const R = CELL * 1.6;
   const n = CANNON_NEON[player] || CANNON_NEON[1];
   const now = nowT != null ? nowT : Date.now();
@@ -1574,14 +1599,14 @@ function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT) {
   ctx.ellipse(cx + 2, cy + 5, R * 0.95, R * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
   // Rohr: vorgerendertes Sprite, nur rotiert geblittet
-  const bar = cannonBarrelSprite(player);
+  const bar = cannonBarrelSprite(player, skinId, skinDef);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
   ctx.drawImage(bar, -BARREL_PAD - CELL * 0.2, -bar.height / 2);
   ctx.restore();
   // Kuppel: vorgerendertes Sprite
-  const dome = cannonDomeSprite(player);
+  const dome = cannonDomeSprite(player, skinId, skinDef);
   ctx.drawImage(dome, cx - dome.width / 2, cy - dome.height / 2);
   // \u2014 Reload-/Ready-Ring (dynamisch, aber OHNE shadowBlur) \u2014
   if (reloadFrac < 1) {
@@ -1662,6 +1687,38 @@ const LANGS = {
     cos_win_confetti: "Konfetti",
     cos_win_fireworks: "Feuerwerk",
     cos_win_goldrain: "Goldregen",
+    forgeTitle: "Schmiede",
+    forgeSub: "Sammle Materialien in Online-Matches und Tagesaufgaben — und schmiede Einzelst\u00fccke, die es im Shop nicht gibt.",
+    forgeMats: "Deine Materialien",
+    mat_iron: "Eisensplitter",
+    mat_silver: "Silbererz",
+    mat_dragon: "Drachenstahl",
+    mat_star: "Sternenstaub",
+    forgeCatCannon: "Kanonen-Skins",
+    forgeCatImpact: "Einschlag-Effekte",
+    forgeCatTrail: "Veredeln (Meister-Trails)",
+    forgeCraft: "Schmieden",
+    forgeEquip: "Anlegen",
+    forgeEquipped: "Angelegt ✓",
+    forgeStandard: "Standard",
+    forgeNeedsBase: "Basis-Trail zuerst im Shop kaufen",
+    forgeHowTo: "Sieg +5 Eisen +1 Silber \u00b7 Niederlage +2 Eisen \u00b7 3er-Serie +1 Drachenstahl \u00b7 Tagesaufgabe +3 Eisen +1 Silber \u00b7 Tag-7-Kiste +1 Drachenstahl \u00b7 Achievement +1 Sternenstaub",
+    confirmCraftTitle: "Schmieden?",
+    confirmCraftYes: "Schmieden",
+    cos_cannon_standard: "Standard",
+    cos_cannon_crystal: "Kristallkanone",
+    cos_cannon_obsidian: "Obsidiankanone",
+    cos_cannon_dragon: "Drachenkanone",
+    cos_cannon_star: "Sternenwerfer",
+    cos_impact_standard: "Standard",
+    cos_impact_lava: "Lava-Einschlag",
+    cos_impact_ice: "Eis-Einschlag",
+    cos_impact_blitz: "Blitz-Einschlag",
+    cos_impact_void: "Void-Einschlag",
+    cos_trail_ember_m: "Infernospur",
+    cos_trail_frost_m: "Polarsturm",
+    cos_trail_venom_m: "Seuchenspur",
+    cos_trail_gold_m: "Mida-Spur",
     guidedTutorial: "Interaktives Tutorial",
     coachLabel: "COACH",
     coachSetup: "Setze 2 Kanonen INNERHALB deiner Burgmauern (auf freie Fl\xE4chen tippen). Wichtig: Nur von Mauern UMSCHLOSSENE Kanonen k\xF6nnen feuern!",
@@ -1951,6 +2008,38 @@ const LANGS = {
     cos_win_confetti: "Confetti",
     cos_win_fireworks: "Fireworks",
     cos_win_goldrain: "Gold rain",
+    forgeTitle: "Forge",
+    forgeSub: "Collect materials in online matches and daily tasks — and forge unique items you can't buy in the shop.",
+    forgeMats: "Your materials",
+    mat_iron: "Iron shards",
+    mat_silver: "Silver ore",
+    mat_dragon: "Dragon steel",
+    mat_star: "Stardust",
+    forgeCatCannon: "Cannon skins",
+    forgeCatImpact: "Impact effects",
+    forgeCatTrail: "Refine (master trails)",
+    forgeCraft: "Forge",
+    forgeEquip: "Equip",
+    forgeEquipped: "Equipped ✓",
+    forgeStandard: "Standard",
+    forgeNeedsBase: "Buy the base trail in the shop first",
+    forgeHowTo: "Win +5 iron +1 silver \u00b7 loss +2 iron \u00b7 3-win streak +1 dragon steel \u00b7 daily task +3 iron +1 silver \u00b7 day-7 chest +1 dragon steel \u00b7 achievement +1 stardust",
+    confirmCraftTitle: "Forge it?",
+    confirmCraftYes: "Forge",
+    cos_cannon_standard: "Standard",
+    cos_cannon_crystal: "Crystal cannon",
+    cos_cannon_obsidian: "Obsidian cannon",
+    cos_cannon_dragon: "Dragon cannon",
+    cos_cannon_star: "Star launcher",
+    cos_impact_standard: "Standard",
+    cos_impact_lava: "Lava impact",
+    cos_impact_ice: "Ice impact",
+    cos_impact_blitz: "Lightning impact",
+    cos_impact_void: "Void impact",
+    cos_trail_ember_m: "Inferno trail",
+    cos_trail_frost_m: "Polar storm",
+    cos_trail_venom_m: "Plague trail",
+    cos_trail_gold_m: "Midas trail",
     guidedTutorial: "Interactive Tutorial",
     coachLabel: "COACH",
     coachSetup: "Place 2 cannons INSIDE your castle walls (tap free spots). Important: only cannons ENCLOSED by walls can fire!",
@@ -2657,9 +2746,61 @@ window.FortressApp = function Fortress() {
     const c = (p && p.cosmetics) || {};
     return {
       owned: Array.isArray(c.owned) ? c.owned : [],
-      equipped: __spreadValues({ trail: "trail_standard", frame: "frame_none", win: "win_confetti" }, c.equipped || {})
+      equipped: __spreadValues({ trail: "trail_standard", frame: "frame_none", win: "win_confetti", cannon: "cannon_standard", impact: "impact_standard" }, c.equipped || {})
     };
   }
+  // ── Schmiede (v3.33.0): Crafting-System ─────────────────────────────
+  // Materialien werden ERSPIELT (Online-Matches + Tagesaufgaben + Achievements),
+  // Rezepte sind fest (kein Glücksspiel/Lootbox — bewusste Design- und
+  // Store-Entscheidung). Ergebnisse sind rein kosmetisch (kein Pay2Win) und
+  // landen wie Shop-Käufe in profile.cosmetics.owned/equipped.
+  const MAT_ORDER = ["iron", "silver", "dragon", "star"];
+  const MAT_META = {
+    iron:   { c: "#94a3b8" },  // Eisensplitter — jedes Online-Match
+    silver: { c: "#e2e8f0" },  // Silbererz — Online-Siege + Tagesaufgaben
+    dragon: { c: "#fb7185" },  // Drachenstahl — Siegesserien (3er-Schritte) + Tag-7-Kiste
+    star:   { c: "#c4b5fd" }   // Sternenstaub — Achievement-Freischaltungen
+  };
+  function matOf(p) {
+    const m = (p && p.materials) || {};
+    return { iron: m.iron || 0, silver: m.silver || 0, dragon: m.dragon || 0, star: m.star || 0 };
+  }
+  // Kanonen-Skins: Kuppel-/Kern-Farben; Spieler-Neonring bleibt (Team-Erkennung!)
+  const CANNON_SKIN = {
+    cannon_crystal:  { dome: ["#cffafe", "#0e7490", "#083344"], core: "#a5f3fc" },
+    cannon_obsidian: { dome: ["#6d28d9", "#27216b", "#0c0a1d"], core: "#c4b5fd" },
+    cannon_dragon:   { dome: ["#dc2626", "#7f1d1d", "#1c0a0a"], core: "#fca5a5" },
+    cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", stars: true }
+  };
+  // Einschlag-Effekte: p = Partikel-Palette, ring = Explosions-Gradient (r,g,b)
+  const IMPACT_FX = {
+    impact_lava:  { p: ["#fff7ed", "#fdba74", "#f97316", "#dc2626"], ring: ["255,237,213", "249,115,22", "220,38,38"] },
+    impact_ice:   { p: ["#f0f9ff", "#bae6fd", "#38bdf8", "#0284c7"], ring: ["224,242,254", "56,189,248", "2,132,199"] },
+    impact_blitz: { p: ["#fefce8", "#fde047", "#facc15", "#a16207"], ring: ["254,249,195", "250,204,21", "161,98,7"] },
+    impact_void:  { p: ["#f5f3ff", "#c4b5fd", "#7c3aed", "#312e81"], ring: ["237,233,254", "124,58,237", "49,46,129"] }
+  };
+  // Meister-Trails (veredelte Shop-Trails): mehrfarbiger, längerer Schweif
+  const MASTER_TRAIL = {
+    trail_ember_m: ["#fde68a", "#fb923c", "#ef4444"],
+    trail_frost_m: ["#e0f2fe", "#7dd3fc", "#2563eb"],
+    trail_venom_m: ["#d9f99d", "#a3e635", "#16a34a"],
+    trail_gold_m:  ["#fef9c3", "#fcd34d", "#d97706"]
+  };
+  const RECIPES = [
+    { id: "cannon_crystal",  cat: "cannon", cost: { iron: 20, silver: 5,  gold: 200 } },
+    { id: "cannon_obsidian", cat: "cannon", cost: { iron: 25, silver: 8,  gold: 300 } },
+    { id: "cannon_dragon",   cat: "cannon", cost: { silver: 10, dragon: 3, gold: 500 } },
+    { id: "cannon_star",     cat: "cannon", cost: { dragon: 4, star: 2,   gold: 800 } },
+    { id: "impact_lava",  cat: "impact", cost: { iron: 15, silver: 4, gold: 150 } },
+    { id: "impact_ice",   cat: "impact", cost: { iron: 15, silver: 4, gold: 150 } },
+    { id: "impact_blitz", cat: "impact", cost: { iron: 10, dragon: 2, gold: 250 } },
+    { id: "impact_void",  cat: "impact", cost: { dragon: 3, star: 1,  gold: 400 } },
+    // Veredeln: setzt Besitz des Basis-Trails aus dem Gold-Shop voraus
+    { id: "trail_ember_m", cat: "trail", base: "trail_ember", cost: { dragon: 5, star: 1, gold: 300 } },
+    { id: "trail_frost_m", cat: "trail", base: "trail_frost", cost: { dragon: 5, star: 1, gold: 300 } },
+    { id: "trail_venom_m", cat: "trail", base: "trail_venom", cost: { dragon: 5, star: 1, gold: 300 } },
+    { id: "trail_gold_m",  cat: "trail", base: "trail_gold",  cost: { dragon: 5, star: 2, gold: 400 } }
+  ];
   function todayStr() { return new Date().toISOString().slice(0, 10); }
   function rollDailyTasks(dayStr) {
     const seed = (parseInt(dayStr.replace(/-/g, ""), 10) ^ 1597334677) >>> 0;
@@ -2844,7 +2985,10 @@ window.FortressApp = function Fortress() {
           cosmetics: {
             owned: Array.isArray(p.cosmetics && p.cosmetics.owned) ? p.cosmetics.owned : [],
             equipped: (p.cosmetics && typeof p.cosmetics.equipped === "object" && p.cosmetics.equipped) || {}
-          }
+          },
+          // Schmiede-Materialien (v3.33.0): Whitelist-Durchreichung wie cosmetics —
+          // fehlt das Feld hier, würde der Vorrat beim nächsten Speichern gelöscht.
+          materials: matOf(p)
         };
         if (!p.historicalXpApplied && prof.level === 1 && prof.xp === 0 && (prof.stats.games > 0 || prof.stats3.games > 0)) {
           const histXp = (prof.stats.wins || 0) * 30 + (prof.stats.losses || 0) * 10 + (prof.stats3.wins || 0) * 30 + (prof.stats3.losses || 0) * 10;
@@ -2973,7 +3117,18 @@ window.FortressApp = function Fortress() {
     const meP = online.current ? (myRole.current || 1) : 1;
     const prevBlocks = typeof profile.blocksDestroyed === 'number' ? profile.blocksDestroyed : 0;
     const newBlocks = prevBlocks + ((matchStats.current[meP] || {}).walls || 0);
-    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, [peakEloKey]: newPeakElo, gold: newGold, level: newLevel, xp: newXp, winStreak: newWinStreak, lifetimeGold: newLifetimeGold, blocksDestroyed: newBlocks });
+    // Schmiede-Materialien (v3.33.0): jedes Online-Match zahlt ein — Sieg mehr
+    // als Niederlage (Retention), jede volle 3er-Siegesserie 1 Drachenstahl.
+    const prevMats = matOf(profile);
+    const matGain = {
+      iron: won === true ? 5 : 2,
+      silver: won === true ? 1 : 0,
+      dragon: won === true && newWinStreak >= 3 && newWinStreak % 3 === 0 ? 1 : 0,
+      star: 0
+    };
+    const newMats = { iron: prevMats.iron + matGain.iron, silver: prevMats.silver + matGain.silver, dragon: prevMats.dragon + matGain.dragon, star: prevMats.star };
+    matChangeRef.current = matGain;
+    const updated = __spreadProps(__spreadValues({}, profile), { [key]: bucket, [eloKey]: newElo, [peakEloKey]: newPeakElo, gold: newGold, level: newLevel, xp: newXp, winStreak: newWinStreak, lifetimeGold: newLifetimeGold, blocksDestroyed: newBlocks, materials: newMats });
     // Process achievements
     const achEvents = [
       { type: GAME_EVENTS.GAME_PLAYED },
@@ -2990,6 +3145,10 @@ window.FortressApp = function Fortress() {
     }
     if (achResult.newlyUnlocked.length > 0) {
       setAchievementQueue(function(prev) { return prev.concat(achResult.newlyUnlocked); });
+      // Sternenstaub (v3.33.0): 1 pro frisch freigeschaltetem Achievement
+      const fm = matOf(finalProfile);
+      finalProfile = __spreadProps(__spreadValues({}, finalProfile), { materials: __spreadProps(__spreadValues({}, fm), { star: fm.star + achResult.newlyUnlocked.length }) });
+      matChangeRef.current = __spreadProps(__spreadValues({}, matChangeRef.current || {}), { star: achResult.newlyUnlocked.length });
     }
     // Emit to event bus for future QuestManager
     GameEventBus.emit(GAME_EVENTS.GAME_PLAYED, { won: won, mode: mode });
@@ -3238,6 +3397,11 @@ window.FortressApp = function Fortress() {
       const { level: newLevel, xp: newXp } = applyXpGain(updatedProfile, reward.xp);
       updatedProfile = __spreadProps(__spreadValues({}, updatedProfile), { level: newLevel, xp: newXp });
     }
+    // Tag-7-Kiste (v3.33.0): +1 Drachenstahl für die Schmiede
+    if (reward.special === "chest") {
+      const dm = matOf(updatedProfile);
+      updatedProfile = __spreadProps(__spreadValues({}, updatedProfile), { materials: __spreadProps(__spreadValues({}, dm), { dragon: dm.dragon + 1 }) });
+    }
     saveProfile(updatedProfile);
     setDailyCollected(true);
     setTimeout(() => { setShowDailyModal(false); setDailyCollected(false); }, 1400);
@@ -3286,9 +3450,12 @@ window.FortressApp = function Fortress() {
     saveTasksState(st);
     setTasksState(st);
     const oldGold = typeof profile.gold === "number" ? profile.gold : 100;
+    // Schmiede-Material als Task-Bonus (v3.33.0): +3 Eisensplitter, +1 Silbererz
+    const tm = matOf(profile);
     const updated = __spreadProps(__spreadValues({}, profile), {
       gold: oldGold + def.gold,
-      lifetimeGold: (typeof profile.lifetimeGold === "number" ? profile.lifetimeGold : 0) + def.gold
+      lifetimeGold: (typeof profile.lifetimeGold === "number" ? profile.lifetimeGold : 0) + def.gold,
+      materials: __spreadProps(__spreadValues({}, tm), { iron: tm.iron + 3, silver: tm.silver + 1 })
     });
     saveProfile(updated);
     SFX.win && SFX.win();
@@ -3316,6 +3483,46 @@ window.FortressApp = function Fortress() {
       SFX.buy && SFX.buy();
     }
     saveProfile(updated);
+  }
+  // ── Schmiede: Craften oder (bereits geschmiedet) an-/umlegen (v3.33.0) ──
+  const [showForge, setShowForge] = useState(false);
+  const [confirmCraft, setConfirmCraft] = useState(null); // Rezept, das zur Bestätigung ansteht
+  function canCraft(rec) {
+    if (!profile) return false;
+    const mats = matOf(profile);
+    const g = typeof profile.gold === "number" ? profile.gold : 100;
+    for (const k of MAT_ORDER) if ((rec.cost[k] || 0) > mats[k]) return false;
+    if ((rec.cost.gold || 0) > g) return false;
+    if (rec.base && !cosOf(profile).owned.includes(rec.base)) return false;
+    return true;
+  }
+  function craftOrEquip(rec) {
+    if (!profile) return;
+    const cos = cosOf(profile);
+    if (cos.owned.includes(rec.id)) {
+      if (cos.equipped[rec.cat] === rec.id) return;
+      saveProfile(__spreadProps(__spreadValues({}, profile), { cosmetics: { owned: cos.owned, equipped: __spreadProps(__spreadValues({}, cos.equipped), { [rec.cat]: rec.id }) } }));
+      return;
+    }
+    if (!canCraft(rec)) return;
+    const mats = matOf(profile);
+    const newMats = {};
+    for (const k of MAT_ORDER) newMats[k] = mats[k] - (rec.cost[k] || 0);
+    const g = typeof profile.gold === "number" ? profile.gold : 100;
+    saveProfile(__spreadProps(__spreadValues({}, profile), {
+      gold: g - (rec.cost.gold || 0),
+      materials: newMats,
+      cosmetics: { owned: [...cos.owned, rec.id], equipped: __spreadProps(__spreadValues({}, cos.equipped), { [rec.cat]: rec.id }) }
+    }));
+    SFX.buy && SFX.buy();
+  }
+  // Zurück auf Standard-Optik (Kanone/Einschlag abrüsten)
+  function unequipForgeCat(cat) {
+    if (!profile) return;
+    const cos = cosOf(profile);
+    const std = cat === "cannon" ? "cannon_standard" : "impact_standard";
+    if (cos.equipped[cat] === std) return;
+    saveProfile(__spreadProps(__spreadValues({}, profile), { cosmetics: { owned: cos.owned, equipped: __spreadProps(__spreadValues({}, cos.equipped), { [cat]: std }) } }));
   }
   useEffect(() => {
     if (screen === "result") harvestDailyTasks((resultInfo || {}).winner);
@@ -3858,7 +4065,7 @@ window.FortressApp = function Fortress() {
         player: b.player,
         alive: b.alive
       })),
-      explosions: explosions.current.map((e) => ({ x: e.x, y: e.y, frame: e.frame, big: e.big })),
+      explosions: explosions.current.map((e) => ({ x: e.x, y: e.y, frame: e.frame, big: e.big, fx: e.fx })),
       scrapPops: scrapPops.current.map((f) => ({ x: f.x, y: f.y, amt: f.amt, player: f.player, frame: f.frame })),
       repairFx: repairFx.current.map((f) => ({ r: f.r, c: f.c, frame: f.frame })),
       phase: phase_r.current,
@@ -4111,7 +4318,9 @@ window.FortressApp = function Fortress() {
         wappen: a.wappen || (p2 === 2 ? "\u265A" : "\u265C"),
         color: a.color || (p2 === 2 ? "#dc2626" : "#059669"),
         elo: typeof a.elo === "number" ? a.elo : 1e3,
-        trail: a.trail, frame: a.frame // Kosmetik (v3.23.0), undefined = Standard
+        trail: a.trail, frame: a.frame, // Kosmetik (v3.23.0), undefined = Standard
+        cannon: typeof a.cannon === "string" && CANNON_SKIN[a.cannon] ? a.cannon : void 0,
+        impact: typeof a.impact === "string" && IMPACT_FX[a.impact] ? a.impact : void 0
       };
       playerInfo.current[1] = {
         name: (profile == null ? void 0 : profile.name) || "Host",
@@ -4119,7 +4328,9 @@ window.FortressApp = function Fortress() {
         color: (profile == null ? void 0 : profile.color) || "#2563eb",
         elo: typeof (m3 ? profile == null ? void 0 : profile.elo3 : profile == null ? void 0 : profile.elo) === "number" ? m3 ? profile.elo3 : profile.elo : 1e3,
         trail: cosOf(profile).equipped.trail,
-        frame: cosOf(profile).equipped.frame
+        frame: cosOf(profile).equipped.frame,
+        cannon: cosOf(profile).equipped.cannon,
+        impact: cosOf(profile).equipped.impact
       };
       joinedGuests.current[p2] = true;
       // Matchmaking: das Kandidat-Ticket dieses Gastes erst jetzt löschen, wo
@@ -4390,7 +4601,9 @@ window.FortressApp = function Fortress() {
       color: (profile == null ? void 0 : profile.color) || (role2 === 2 ? "#dc2626" : "#059669"),
       elo: myElo,
       trail: cosOf(profile).equipped.trail,
-      frame: cosOf(profile).equipped.frame
+      frame: cosOf(profile).equipped.frame,
+      cannon: cosOf(profile).equipped.cannon,
+      impact: cosOf(profile).equipped.impact
     });
     let role = 0;
     if (await fb.reserve(`games/${code}/guestAction2`, joinPayload(2))) {
@@ -4495,7 +4708,9 @@ window.FortressApp = function Fortress() {
       color: (profile == null ? void 0 : profile.color) || (role === 2 ? "#dc2626" : "#059669"),
       elo: myEloForMode(np),
       trail: cosOf(profile).equipped.trail,
-      frame: cosOf(profile).equipped.frame
+      frame: cosOf(profile).equipped.frame,
+      cannon: cosOf(profile).equipped.cannon,
+      impact: cosOf(profile).equipped.impact
     });
     // Existenz-Check (v3.15.3): Ist das Spiel schon wieder weg (Host-Watchdog/
     // Abbruch, veralteter matched-Status), NICHT per Reserve einen Orphan-Knoten
@@ -5168,6 +5383,7 @@ window.FortressApp = function Fortress() {
   const statRecorded = useRef(false);
   const eloChangeRef = useRef(null);
   const goldChangeRef = useRef(null);
+  const matChangeRef = useRef(null); // Schmiede-Material-Gewinn des letzten Matches (v3.33.0)
   const xpChangeRef = useRef(null);
   function startBuild() {
     const players = playersList();
@@ -5366,9 +5582,14 @@ window.FortressApp = function Fortress() {
     const hitR = Math.floor(ball.ty / CELL);
     if (hitR < 0 || hitR >= ROWS || hitC < 0 || hitC >= COLS) return;
     const target = g[hitR][hitC];
-    explosions.current.push({ x: ball.tx, y: ball.ty, frame: 0 });
+    // Schmiede-Einschlag-Effekt (v3.33.0): Palette des Schützen — Partikel
+    // lokal, fx-Feld wandert über den State-Sync auch zu den Gästen.
+    const impId = (playerInfo.current[ball.player] || {}).impact;
+    const impFx = impId ? IMPACT_FX[impId] : null;
+    explosions.current.push({ x: ball.tx, y: ball.ty, frame: 0, fx: impFx ? impId : void 0 });
     shakeRef.current = Math.max(shakeRef.current, 7);
     const pCap = particles.current.length < 350;
+    const firePal = impFx ? impFx.p : ["#fff9c4", "#fbbf24", "#f97316", "#ef4444"];
     for (let i = 0; i < 20; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = 1.5 + Math.random() * 4.5;
@@ -5381,7 +5602,7 @@ window.FortressApp = function Fortress() {
         life: fire ? 16 : 30,
         maxLife: fire ? 16 : 30,
         color: fire
-          ? ["#fff9c4", "#fbbf24", "#f97316", "#ef4444"][Math.floor(Math.random() * 4)]
+          ? firePal[Math.floor(Math.random() * 4)]
           : ["#9ca3af", "#6b7280", "#78716c"][Math.floor(Math.random() * 3)],
         size: fire ? 2 + Math.random() * 3 : 1.5 + Math.random() * 2,
         round: fire,
@@ -5708,7 +5929,9 @@ window.FortressApp = function Fortress() {
       color: (profile == null ? void 0 : profile.color) || "#2563eb",
       elo: 1e3,
       trail: cosOf(profile).equipped.trail, // eigene Kosmetik auch im Bot-Spiel sichtbar
-      frame: cosOf(profile).equipped.frame
+      frame: cosOf(profile).equipped.frame,
+      cannon: cosOf(profile).equipped.cannon,
+      impact: cosOf(profile).equipped.impact
     };
     playerInfo.current[2] = {
       name: BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)],
@@ -6871,12 +7094,16 @@ window.FortressApp = function Fortress() {
           }
         }
       }
+      // Schmiede-Kanonen-Skin (v3.33.0): EIN Lookup pro Spieler, dann pro
+      // Kanone nur das (skin-gecachte) Sprite blitten — keine neuen Frame-Kosten.
+      const pSkinId = (playerInfo.current[player] || {}).cannon;
+      const pSkinDef = pSkinId ? CANNON_SKIN[pSkinId] : null;
       for (const cn of list) {
         const cx = cn.c * CELL + CELL / 2;
         const cy = cn.r * CELL + CELL / 2;
         const isClosed = isReady(cn);
         if (p1Flipped) p1CounterFlip(cx, cy);
-        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player], now);
+        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player], now, pSkinDef ? pSkinId : null, pSkinDef);
         if (p1Flipped) p1CounterFlipEnd();
         if (cn.hp < CANNON_HP) {
           const bw = CELL * 2.4, bx = cx - bw / 2, by = p1Flipped ? cy + CELL * 2.1 : cy - CELL * 2.1;
@@ -6913,16 +7140,21 @@ window.FortressApp = function Fortress() {
       const drawY = by - h * 0.55;
       // projectile trail
       if (ball.trail) {
+        // Kosmetik-Trail (v3.23.0) + Meister-Trails aus der Schmiede (v3.33.0):
+        // Meister = längerer, kräftigerer, mehrfarbiger Schweif. Nur billige
+        // fillStyle-Farben + arcs — KEINE Gradients/shadowBlur (Perf-Regel).
+        const trailId = (playerInfo.current[ball.player] || {}).trail;
+        const mPal = trailId ? MASTER_TRAIL[trailId] : null;
+        const maxTrail = mPal ? 13 : 9;
         ball.trail.push({ x: bx, y: drawY });
-        if (ball.trail.length > 9) ball.trail.shift();
-        // Kosmetik-Trail (v3.23.0): gekaufte Trail-Farbe des Schützen, sonst Spielerfarbe
-        const trailCol = TRAIL_COLOR[(playerInfo.current[ball.player] || {}).trail] || BALL_MID[ball.player] || BALL_MID[1];
+        if (ball.trail.length > maxTrail) ball.trail.shift();
+        const trailCol = TRAIL_COLOR[trailId] || BALL_MID[ball.player] || BALL_MID[1];
         for (let ti = 0; ti < ball.trail.length - 1; ti++) {
           const tp = ball.trail[ti];
-          ctx.globalAlpha = (ti / ball.trail.length) * 0.4;
-          ctx.fillStyle = trailCol;
+          ctx.globalAlpha = (ti / ball.trail.length) * (mPal ? 0.75 : 0.4);
+          ctx.fillStyle = mPal ? mPal[ti % 3] : trailCol;
           ctx.beginPath();
-          ctx.arc(tp.x, tp.y, 1.5 + ti * 0.5, 0, Math.PI * 2);
+          ctx.arc(tp.x, tp.y, (mPal ? 2 : 1.5) + ti * 0.5, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -7005,10 +7237,13 @@ window.FortressApp = function Fortress() {
       const t = ex.frame / 22;
       const rr = t * CELL * (ex.big ? 6 : 2.8);
       const a = 1 - t;
+      // Schmiede-Einschlag-Farben (v3.33.0): ex.fx kommt auch bei Gästen an
+      const exFx = ex.fx ? IMPACT_FX[ex.fx] : null;
+      const ring = exFx ? exFx.ring : ["255,255,210", "251,191,36", "239,68,68"];
       const grd = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, Math.max(rr, 1));
-      grd.addColorStop(0, `rgba(255,255,210,${a})`);
-      grd.addColorStop(0.35, `rgba(251,191,36,${a * 0.9})`);
-      grd.addColorStop(0.7, `rgba(239,68,68,${a * 0.6})`);
+      grd.addColorStop(0, `rgba(${ring[0]},${a})`);
+      grd.addColorStop(0.35, `rgba(${ring[1]},${a * 0.9})`);
+      grd.addColorStop(0.7, `rgba(${ring[2]},${a * 0.6})`);
       grd.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = grd;
       ctx.beginPath();
@@ -7255,7 +7490,11 @@ window.FortressApp = function Fortress() {
     /* @__PURE__ */ React.createElement("button", { onClick: () => setShowGoldShop(true), title: t('goldShopTitle'), style: {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
-    } }, React.createElement(Icon, { name: "shoppingCart", size: 16 }))
+    } }, React.createElement(Icon, { name: "shoppingCart", size: 16 })),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForge(true), title: t('forgeTitle'), style: {
+      background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.35)",
+      color: "#fdba74", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
+    } }, React.createElement(Icon, { name: "hammer", size: 16 }))
   )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
@@ -7308,7 +7547,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.32.5")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.33.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",
@@ -7830,6 +8069,189 @@ window.FortressApp = function Fortress() {
           )
         );
       })()
+    );
+  })(), showForge && (() => {
+    const h = React.createElement;
+    const cos = cosOf(profile);
+    const mats = matOf(profile);
+    const gold = typeof (profile && profile.gold) === "number" ? profile.gold : 100;
+    // Vorschau je Kategorie (CSS, keine Canvas-Kosten)
+    const preview = (rec) => {
+      if (rec.cat === "cannon") {
+        const sk = CANNON_SKIN[rec.id];
+        return h("div", { style: {
+          width: 30, height: 30, borderRadius: "50%", position: "relative", flexShrink: 0,
+          background: "radial-gradient(circle at 34% 28%, " + sk.dome[0] + " 0%, " + sk.dome[1] + " 55%, " + sk.dome[2] + " 100%)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 9px " + sk.core + "66",
+          border: "1px solid rgba(255,255,255,0.25)"
+        } }, h("span", { style: { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 7, height: 7, borderRadius: "50%", background: sk.core } }));
+      }
+      if (rec.cat === "impact") {
+        const fx = IMPACT_FX[rec.id];
+        return h("div", { style: {
+          width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+          background: "radial-gradient(circle, rgba(" + fx.ring[0] + ",0.95) 0%, rgba(" + fx.ring[1] + ",0.85) 45%, rgba(" + fx.ring[2] + ",0.4) 75%, rgba(0,0,0,0) 100%)"
+        } });
+      }
+      const pal = MASTER_TRAIL[rec.id] || [];
+      return h("div", { style: { display: "flex", alignItems: "center", gap: 3, width: 30, flexShrink: 0 } },
+        pal.map((c, i) => h("span", { key: i, style: { width: 6 + i * 2.4, height: 6 + i * 2.4, borderRadius: "50%", background: c, boxShadow: "0 0 " + (3 + i * 2) + "px " + c } }))
+      );
+    };
+    const matChip = (k, n, need) => h("span", { key: k, style: {
+      display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999,
+      background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)",
+      fontSize: 10.5, fontWeight: 800, color: need !== void 0 && need > (mats[k] || 0) ? "#f87171" : "#e2e8f0", whiteSpace: "nowrap"
+    } },
+      h("span", { style: { width: 8, height: 8, background: MAT_META[k].c, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 5px " + MAT_META[k].c, flexShrink: 0 } }),
+      (need !== void 0 ? need : (mats[k] || 0)) + (need !== void 0 ? "" : "")
+    );
+    const goldChip = (n, short) => h("span", { style: {
+      display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999,
+      background: "rgba(0,0,0,0.35)", border: "1px solid rgba(251,191,36,0.3)",
+      fontSize: 10.5, fontWeight: 800, color: n > gold ? "#f87171" : "#fcd34d", whiteSpace: "nowrap"
+    } }, h(Icon, { name: "coins", size: 10, color: "#fbbf24" }), n);
+    const stdCard = (cat) => {
+      const std = cat === "cannon" ? "cannon_standard" : "impact_standard";
+      const isEq = cos.equipped[cat] === std;
+      return h("button", { key: std, onClick: () => unequipForgeCat(cat), style: {
+        display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+        border: isEq ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12, padding: "8px 11px", cursor: isEq ? "default" : "pointer",
+        background: isEq ? "rgba(74,222,128,0.07)" : "rgba(255,255,255,0.035)", marginBottom: 6
+      } },
+        h("div", { style: { width: 30, height: 30, borderRadius: "50%", flexShrink: 0, background: "radial-gradient(circle at 34% 28%, #5a6477 0%, #2c333f 55%, #10141d 100%)", border: "1px solid rgba(255,255,255,0.2)" } }),
+        h("div", { style: { flex: 1, fontSize: 12.5, fontWeight: 800, color: "#cbd5e1" } }, t("forgeStandard")),
+        isEq
+          ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))
+          : h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
+      );
+    };
+    const recipeCard = (rec) => {
+      const owned = cos.owned.includes(rec.id);
+      const isEq = cos.equipped[rec.cat] === rec.id;
+      const needsBase = !!(rec.base && !cos.owned.includes(rec.base));
+      const afford = canCraft(rec);
+      return h("button", { key: rec.id, onClick: () => {
+        if (isEq) return;
+        if (owned) { craftOrEquip(rec); return; }
+        if (afford) setConfirmCraft(rec);
+      }, disabled: isEq || (!owned && !afford), style: {
+        display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+        border: isEq ? "1px solid rgba(74,222,128,0.5)" : owned ? "1px solid rgba(96,165,250,0.35)" : "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12, padding: "8px 11px", cursor: isEq || (!owned && !afford) ? "default" : "pointer",
+        background: isEq ? "rgba(74,222,128,0.07)" : "rgba(255,255,255,0.035)",
+        opacity: !owned && !afford ? 0.6 : 1, marginBottom: 6
+      } },
+        preview(rec),
+        h("div", { style: { flex: 1, minWidth: 0 } },
+          h("div", { style: { fontSize: 12.5, fontWeight: 800, color: "#f1f5f9", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + rec.id)),
+          owned ? null : needsBase
+            ? h("div", { style: { fontSize: 9.5, color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 } }, h(Icon, { name: "lock", size: 9 }), t("forgeNeedsBase"))
+            : h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } },
+                MAT_ORDER.filter((k) => rec.cost[k]).map((k) => matChip(k, null, rec.cost[k])),
+                rec.cost.gold ? goldChip(rec.cost.gold) : null
+              )
+        ),
+        isEq
+          ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))
+          : owned
+            ? h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
+            : h("span", { style: {
+                fontSize: 10.5, fontWeight: 900, color: afford ? "#fdba74" : "#64748b",
+                border: "1px solid " + (afford ? "rgba(251,146,60,0.45)" : "rgba(255,255,255,0.1)"),
+                padding: "4px 10px", borderRadius: 999, whiteSpace: "nowrap",
+                background: afford ? "rgba(251,146,60,0.1)" : "transparent"
+              } }, t("forgeCraft"))
+      );
+    };
+    const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 12 } },
+      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, textAlign: "left" } }, label),
+      cat !== "trail" ? stdCard(cat) : null,
+      RECIPES.filter((r) => r.cat === cat).map(recipeCard)
+    );
+    return h("div", { key: "forgeModal", onClick: () => { setShowForge(false); setConfirmCraft(null); }, style: {
+      position: "fixed", inset: 0, zIndex: 1150, background: "rgba(2,6,15,0.92)",
+      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 14
+    } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: {
+        maxWidth: 440, width: "100%", maxHeight: "90vh", overflowY: "auto",
+        background: "linear-gradient(180deg, rgba(40,26,12,0.98) 0%, rgba(12,10,18,0.99) 100%)",
+        border: "1px solid rgba(251,146,60,0.25)", borderRadius: 20, padding: "16px 14px 13px",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)",
+        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left"
+      } },
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
+          h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+            h(Icon, { name: "hammer", size: 18, color: "#fdba74" }),
+            h("div", { style: { fontSize: 16, fontWeight: 900, color: "#fdba74" } }, t("forgeTitle"))
+          ),
+          h("div", { style: {
+            display: "flex", alignItems: "center", gap: 4, padding: "3px 11px 3px 8px",
+            background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.5)", boxShadow: "0 2px 9px rgba(245,158,11,0.45)"
+          } }, h(Icon, { name: "coins", size: 13, color: "#3b2606" }), h("span", { style: { fontSize: 13, fontWeight: 900, color: "#3b2606" } }, gold))
+        ),
+        h("div", { style: { fontSize: 11, color: "#94a3b8", marginBottom: 11, lineHeight: 1.4 } }, t("forgeSub")),
+        h("div", { style: { marginBottom: 12, padding: "8px 10px", borderRadius: 12, background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)" } },
+          h("div", { style: { fontSize: 9.5, fontWeight: 800, color: "#fdba74", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("forgeMats")),
+          h("div", { style: { display: "flex", gap: 5, flexWrap: "wrap" } },
+            MAT_ORDER.map((k) => h("span", { key: k, title: t("mat_" + k), style: {
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999,
+              background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)",
+              fontSize: 11, fontWeight: 900, color: "#e2e8f0"
+            } },
+              h("span", { style: { width: 9, height: 9, background: MAT_META[k].c, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 6px " + MAT_META[k].c } }),
+              mats[k] || 0
+            ))
+          ),
+          h("div", { style: { fontSize: 9, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo"))
+        ),
+        section("cannon", t("forgeCatCannon")),
+        section("impact", t("forgeCatImpact")),
+        section("trail", t("forgeCatTrail")),
+        h("button", { onClick: () => setShowForge(false), style: {
+          width: "100%", cursor: "pointer", borderRadius: 12, padding: "11px", marginTop: 2,
+          background: "rgba(255,255,255,0.08)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.14)",
+          fontSize: 13.5, fontWeight: 800
+        } }, t("shopInfoClose")),
+        // Schmiede-Bestätigung (analog Kauf-Bestätigung v3.26.2)
+        confirmCraft && (() => {
+          const rec = confirmCraft;
+          return h("div", { onClick: () => setConfirmCraft(null), style: {
+            position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.75)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 22,
+            backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)"
+          } },
+            h("div", { onClick: (e) => e.stopPropagation(), style: {
+              maxWidth: 330, width: "100%", background: "linear-gradient(180deg, rgba(48,30,12,0.99), rgba(14,11,20,0.99))",
+              border: "1px solid rgba(251,146,60,0.35)", borderRadius: 18, padding: "18px 16px",
+              boxShadow: "0 20px 55px rgba(0,0,0,0.75)", textAlign: "center",
+              animation: "dailyBounceIn 0.3s cubic-bezier(.36,1.5,.56,1) both"
+            } },
+              h("div", { style: { display: "flex", justifyContent: "center", marginBottom: 8 } }, preview(rec)),
+              h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", marginBottom: 3 } }, t("cos_" + rec.id)),
+              h("div", { style: { fontSize: 12, fontWeight: 800, color: "#fdba74", marginBottom: 10 } }, t("confirmCraftTitle")),
+              h("div", { style: { display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", marginBottom: 14 } },
+                MAT_ORDER.filter((k) => rec.cost[k]).map((k) => matChip(k, null, rec.cost[k])),
+                rec.cost.gold ? goldChip(rec.cost.gold) : null
+              ),
+              h("button", { onClick: () => { craftOrEquip(rec); setConfirmCraft(null); }, style: {
+                width: "100%", border: "none", cursor: "pointer", borderRadius: 12, padding: "12px",
+                background: "linear-gradient(180deg,#fdba74,#ea580c)", color: "#2b1204",
+                fontSize: 14, fontWeight: 900, letterSpacing: "0.03em", marginBottom: 8,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 14px rgba(234,88,12,0.4)"
+              } }, "✓ " + t("confirmCraftYes")),
+              h("button", { onClick: () => setConfirmCraft(null), style: {
+                width: "100%", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
+                borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.05)",
+                color: "#cbd5e1", fontSize: 13, fontWeight: 700
+              } }, t("cancel"))
+            )
+          );
+        })()
+      )
     );
   })(), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }

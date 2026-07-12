@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.32.5)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.33.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3031,3 +3031,37 @@ Host-Bildschirm gegeben — Gäste sahen weder eigene noch fremde Trails.
   `playerInfo[player].trail` (join-Payload) auf alle Clients.
 
 Tests grün. SW-Cache `fortress-v3.32.5`.
+
+### v3.33.0 — Die Schmiede: Crafting-System (Materialien + feste Rezepte)
+Nutzer-Wunsch nach der Konzeptphase: „alles — Kanonen-Skins, Einschlag-Effekte
+und Meister-Trails". Zweiter Meta-Loop neben dem Gold-Shop: Shop = kaufen,
+Schmiede = ERSPIELEN. Feste Rezepte, KEIN Glücksspiel/Lootboxen (Design- und
+Store-Entscheidung), rein kosmetisch (kein Pay2Win).
+- **Materialien** (`profile.materials`, Whitelist im Profil-Loader wie
+  cosmetics): Eisensplitter/Silbererz/Drachenstahl/Sternenstaub.
+  Verdienst: Online-Sieg +5 Eisen +1 Silber, Niederlage +2 Eisen, jede volle
+  3er-Siegesserie +1 Drachenstahl (in `recordResult`); Tagesaufgabe einlösen
+  +3 Eisen +1 Silber; Tag-7-Streak-Kiste +1 Drachenstahl; jedes frisch
+  freigeschaltete Achievement +1 Sternenstaub. `matChangeRef` hält den letzten
+  Match-Gewinn (für spätere Result-Anzeige).
+- **12 Rezepte** (`RECIPES`, Kosten = Materialien + Gold → zweiter Gold-Sink):
+  4 Kanonen-Skins (Kristall/Obsidian/Drache/Sternenwerfer — `CANNON_SKIN`,
+  Kuppel/Rohr/Kern-Farben; Spieler-Neonring bleibt IMMER zur Team-Erkennung;
+  Sprite-Cache-Key jetzt `player|skin`), 4 Einschlag-Effekte (Lava/Eis/Blitz/
+  Void — `IMPACT_FX`: Partikel-Palette in `impactAt` + Explosions-Gradient;
+  `explosions[].fx` wird serialisiert → Gäste sehen die Farben), 4 Meister-
+  Trails (`MASTER_TRAIL`, Veredeln: setzt Besitz des Shop-Basis-Trails voraus;
+  längerer 13-Punkte-Schweif, 3-Farben-Zyklus, kräftigeres Alpha).
+- **Ergebnisse** landen in `profile.cosmetics.owned/equipped` (neue Slots
+  `cannon`/`impact` mit Standard-Defaults in `cosOf`). Online-Sync: `cannon`/
+  `impact` in allen join-Payloads + playerInfo (Host validiert gegen die
+  Kataloge) + `initBotMatchIdentity`; `sanitizeAction` lässt kurze Strings zu.
+- **UI**: Hammer-Button (SVG, Design-Regel v3.27.0) neben dem Gold-Shop →
+  Modal mit Material-Inventar (Rauten-Chips), Verdienst-Legende, 3 Sektionen
+  mit Rezeptkarten (Zutaten-Chips, rot bei Mangel; Standard-Karten zum
+  Abrüsten; gesperrte Veredelungen zeigen „Basis-Trail zuerst kaufen").
+  Schmiede-Bestätigungsdialog analog Kauf-Bestätigung v3.26.2. i18n de/en.
+- Performance: Skins = einmalig gebackene Sprites (kein neuer Frame-Aufwand),
+  Trails/Partikel nur fillStyle+arc, Explosions-Gradient existierte bereits.
+
+Tests grün. SW-Cache `fortress-v3.33.0`.

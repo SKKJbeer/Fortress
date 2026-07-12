@@ -2208,6 +2208,118 @@ async function suiteDailyTasks(browser) {
 // ═══════════════════════════════════════════════════════════════
 // SUITE: Gold-Shop Kosmetik (v3.23.0) — Kauf-, Anlege- und Gold-Flow
 // ═══════════════════════════════════════════════════════════════
+
+// ── Schmiede (v3.33.0): Materialien + Craften + Anlegen ──────────────
+async function suiteSchmiede(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Schmiede (Crafting)\n' + '='.repeat(50));
+  const { ctx, page } = await makeCtx(browser);
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    // Materialien + Gold VOR dem App-Start ins Profil legen (Init-Script läuft
+    // nach PROFILE_INIT, aber vor dem App-Code — ein localStorage-Patch nach
+    // dem Laden würde vom nächsten saveProfile der App überschrieben).
+    await page.addInitScript(() => {
+      try {
+        const p = JSON.parse(localStorage.getItem('fortress_profile'));
+        if (p) {
+          p.materials = { iron: 50, silver: 12, dragon: 8, star: 3 };
+          p.gold = 2000;
+          p.achievementsRetroApplied = true; p.historicalXpApplied = true;
+          localStorage.setItem('fortress_profile', JSON.stringify(p));
+        }
+      } catch (e) {}
+    });
+    await loadMenu(page);
+
+    const opened = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Schmiede|Forge/i.test(x.getAttribute('title') || ''));
+      if (!b) return false; b.click(); return true;
+    });
+    if (!opened) { fail('Schmiede: Hammer-Button fehlt im Menü'); return { res, errs }; }
+    ok('Schmiede: Hammer-Button im Menü ✓');
+    await page.waitForTimeout(300);
+
+    const view = await page.evaluate(() => {
+      const t = document.body.innerText;
+      return {
+        title: /Schmiede|Forge/.test(t),
+        mats: /Eisensplitter|Iron shards/i.test(t) || /Deine Materialien|Your materials/i.test(t),
+        matCount: /50/.test(t),
+        sections: /Kanonen-Skins|Cannon skins/i.test(t) && /Einschlag-Effekte|Impact effects/i.test(t) && /Veredeln|Refine/i.test(t),
+        recipes: /Kristallkanone|Crystal cannon/.test(t) && /Lava-Einschlag|Lava impact/.test(t) && /Infernospur|Inferno trail/.test(t)
+      };
+    });
+    view.title ? ok('Schmiede: Modal mit Titel ✓') : fail('Schmiede: Modal fehlt');
+    view.mats && view.matCount ? ok('Schmiede: Material-Inventar sichtbar (50 Eisen) ✓') : fail('Schmiede: Material-Inventar fehlt');
+    view.sections ? ok('Schmiede: 3 Kategorien sichtbar ✓') : fail('Schmiede: Kategorien fehlen');
+    view.recipes ? ok('Schmiede: Rezeptkarten sichtbar ✓') : fail('Schmiede: Rezepte fehlen');
+
+    // ── Veredeln ohne Basis-Trail muss gesperrt sein ──
+    const lockCheck = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Infernospur|Inferno trail/.test(x.textContent || ''));
+      return b ? { disabled: b.disabled, hint: /Basis-Trail|base trail/i.test(b.textContent || '') } : null;
+    });
+    lockCheck && lockCheck.disabled && lockCheck.hint
+      ? ok('Schmiede: Veredeln ohne Basis-Trail gesperrt (Hinweis sichtbar) ✓')
+      : fail('Schmiede: Veredeln-Sperre fehlt (' + JSON.stringify(lockCheck) + ')');
+
+    // ── Craften: Kristallkanone (20 Eisen + 5 Silber + 200 G), zweistufig ──
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /Kristallkanone|Crystal cannon/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(300);
+    const dlg = await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return {
+        visible: /Schmieden\?|Forge it\?/.test(document.body.innerText),
+        notYet: !((p.cosmetics && p.cosmetics.owned) || []).includes('cannon_crystal')
+      };
+    });
+    dlg.visible ? ok('Schmiede: Bestätigungsdialog erscheint ✓') : fail('Schmiede: Bestätigungsdialog fehlt');
+    dlg.notYet ? ok('Schmiede: Ein-Tipp schmiedet NICHT sofort ✓') : fail('Schmiede: Craft ohne Bestätigung!');
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find(x => /✓ Schmieden|✓ Forge/.test(x.textContent || ''));
+      b && b.click();
+    });
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return {
+        mats: p.materials, gold: p.gold,
+        owned: ((p.cosmetics && p.cosmetics.owned) || []).includes('cannon_crystal'),
+        equipped: p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.cannon
+      };
+    });
+    after.mats && after.mats.iron === 30 && after.mats.silver === 7
+      ? ok(`Schmiede: Materialien abgezogen (Eisen 50→30, Silber 12→7) ✓`)
+      : fail(`Schmiede: Material-Abzug falsch (${JSON.stringify(after.mats)})`);
+    after.gold === 1800 ? ok('Schmiede: Gold abgezogen (2000→1800) ✓') : fail(`Schmiede: Gold falsch (${after.gold})`);
+    after.owned ? ok('Schmiede: cannon_crystal in owned[] ✓') : fail('Schmiede: owned fehlt');
+    after.equipped === 'cannon_crystal' ? ok('Schmiede: Skin direkt angelegt ✓') : fail(`Schmiede: equipped falsch (${after.equipped})`);
+
+    // ── Abrüsten: Standard-Karte in der Kanonen-Sektion ──
+    await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('button')].filter(x => /Standard/.test(x.textContent || '') && !x.disabled);
+      cards[0] && cards[0].click();
+    });
+    await page.waitForTimeout(250);
+    const unequipped = await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('fortress_profile'));
+      return p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.cannon;
+    });
+    unequipped === 'cannon_standard' ? ok('Schmiede: Abrüsten auf Standard ✓') : fail(`Schmiede: Abrüsten fehlgeschlagen (${unequipped})`);
+
+    errs.length ? errs.forEach(e => fail('JS: ' + e.slice(0, 80))) : ok('Schmiede: Keine JS-Fehler ✓');
+  } catch (e) {
+    fail('Schmiede-Suite Ausnahme: ' + e.message);
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
 async function suiteGoldShop(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -2909,7 +3021,7 @@ async function suiteTutorial(browser) {
     const mm3 = await suiteOnline3P(browser, FB_PORT);
     return { mm, mm3 };
   })();
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop] = await Promise.all([
+  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
@@ -2931,6 +3043,7 @@ async function suiteTutorial(browser) {
     suiteCannonKill(browser),
     suiteDailyTasks(browser),
     suiteGoldShop(browser),
+    suiteSchmiede(browser),
   ]);
 
   const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
@@ -2938,9 +3051,9 @@ async function suiteTutorial(browser) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));
