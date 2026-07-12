@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.33.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.34.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3065,3 +3065,41 @@ Store-Entscheidung), rein kosmetisch (kein Pay2Win).
   Trails/Partikel nur fillStyle+arc, Explosions-Gradient existierte bereits.
 
 Tests grün. SW-Cache `fortress-v3.33.0`.
+
+### v3.34.0 — Architektur Phase 1: Engine-Module + Unit-Tests (kein Verhaltens-Change)
+Umsetzung des Architektur-Reviews (Konzept „Schichten statt Datei-Splitting").
+index.html schrumpft 9433 → 8309 Zeilen; die reine Logik lebt jetzt in nativen
+ES-Modulen (KEIN Build-Schritt — Browser lädt sie direkt, GitHub Pages liefert
+sie aus, der Service Worker cached sie):
+- `src/engine/const.js` — Grid-/Zeit-/Zelltyp-Konstanten (gemeinsame Basis)
+- `src/engine/economy.js` — Schrott-Werte + Rüstphasen-SHOP (Balancing-Zahlen)
+- `src/engine/terrain.js` — makeRng, Welt-Themes, Terrain-Generatoren (2P/3P),
+  Sektor-Map, isBuildable (Determinismus = Online-Sync-Garantie)
+- `src/engine/flood.js` — Flood-Fill (computeOutsideMap, isCastleClosed,
+  closedCannons) — die Kern-Spielregel
+- `src/engine/progression.js` — ELO/Gold/XP/Level-Formeln (pure → können später
+  1:1 in einer Cloud Function serverseitig validiert werden)
+- `src/engine/catalog.js` — COSMETICS/RECIPES/Materialien + cosOf/matOf
+- `src/i18n.js` — LANGS komplett (de/en)
+index.html importiert alles via `import`-Statements im Modul-Script — identische
+Semantik, keine Verhaltens-Änderung. `src/package.json`+`tests/package.json`
+(`type: module`) machen die Module für Node ESM-fähig, ohne test_fortress.js
+(CommonJS) anzufassen.
+**Neue Test-Etage (Pyramide):** `node --test tests/engine.test.js tests/i18n.test.js`
+— 31 Unit-Tests in ~0,2s: ELO-Nullsumme, Gold-Grenzen, XP-Level-Aufstieg,
+Terrain-Determinismus (Seed→identisches Grid), Flood-Fill-Regeln inkl.
+Regression v1.0.6 (Gegner-Mauern schützen nicht), Rezept-Integrität
+(IDs eindeutig, Meister-Trails referenzieren Shop-Basis, Render-Defs vorhanden)
+und i18n-Parität (de≡en Keys, Platzhalter-Gleichheit, Katalog-Namen vollständig).
+Aufgeräumt: `fortress-pwa.html` (tot seit PWA-Umbau) entfernt; CLAUDE.md
+Doppel-Block bereinigt + Architektur-Abschnitt ergänzt.
+**Regel ab jetzt: Beide Testebenen müssen grün sein** (Unit + Playwright).
+Technische Details der Umstellung:
+- Das große Spiel-Script ist jetzt `type="module"` (Voraussetzung für
+  `import`). Das Firebase-Loader-Modul bekam `async`, damit der Spielstart
+  NICHT auf gstatic wartet (Module führen sonst in Dokument-Reihenfolge aus).
+- Modul-Scope-Konsequenzen: `window.SFX = SFX` explizit exportiert (Testsuite/
+  Debugging); `__spreadValues/__spreadProps` als lokale Helfer in terrain.js/
+  catalog.js (Object.assign-Äquivalent für die dortigen Nutzungen).
+
+Tests grün (31 Unit + Playwright-Suite). SW-Cache `fortress-v3.34.0`.

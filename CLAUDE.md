@@ -17,16 +17,31 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 ### Dateien
 | Datei | Inhalt |
 |---|---|
-| `index.html` | **Die einzige Quelldatei** — kompiliertes React (kein separates JSX mehr). ~3600 Zeilen. Enthält alles: Spiel-Logik, Rendering, Firebase, UI. |
+| `index.html` | Hauptdatei — kompiliertes React (kein JSX). ~8300 Zeilen: UI, Rendering, Firebase-Sync, Matchmaking. Importiert die Engine-Module. |
+| `src/engine/*.js` | **Engine-Schicht (seit v3.34.0)**: pure Logik/Daten als native ES-Module — `const.js` (Grid/Zelltypen), `economy.js` (Schrott/SHOP), `terrain.js` (RNG, Welten, Generatoren), `flood.js` (Umschlossen-Regel), `progression.js` (ELO/XP/Gold-Formeln), `catalog.js` (Kosmetik/Rezepte). Kein DOM/React/Firebase → unit-testbar. |
+| `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
+| `tests/*.test.js` | **Unit-Tests** (`node --test tests/engine.test.js tests/i18n.test.js`, ~0,2s). |
+| `test_fortress.js` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
-| `fortress-pwa.html` | Ältere PWA-Shell-Datei, nicht mehr aktiv genutzt. |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |
 
 ### Stack
-- **React** via unpkg CDN (kein Build-Schritt nötig — `index.html` direkt editieren)
+- **React** via unpkg CDN + **native ES-Module** für die Engine (KEIN Build-Schritt — Browser lädt `src/` direkt; neue Engine-Dateien in `sw.js` CORE eintragen!)
 - **Firebase Realtime Database** für Online-Multiplayer (Web SDK v10.12.2, ES-Module via gstatic CDN)
 - **GitHub Pages** für Hosting
 - **localStorage** für Spieler-Profile
+
+### Architektur-Regeln (seit v3.34.0, Phase 1 des Architektur-Konzepts)
+- **Pure Logik gehört in `src/engine/`** — neue Balancing-Konstanten, Formeln,
+  Kataloge NIE wieder inline in index.html anlegen.
+- **Ökonomie-Mutationen als pure Funktionen** halten (Signatur `(state, …) → state`),
+  damit eine spätere Cloud Function sie serverseitig validieren kann.
+- **Beide Testebenen müssen grün sein**: Unit (`node --test tests/…`) UND Playwright.
+- **Parallele KI-Sessions**: immer nur EINE Session an index.html-Features;
+  jede Session startet mit `git fetch` + Abgleich mit `origin/main`.
+- Geplante Phase 2: `src/net/protocol.js` (PROTO_VERSION + State-Schema) +
+  Matchmaking herauslösen. Phase 3: UI-Modals. Phase 4 (optional): esbuild-Bundling
+  in der Deploy-Action für Store-Builds.
 
 ### ⚠️ Kostenpolitik: ZERO laufende Kosten (aktuelle Phase)
 Solange das Spiel noch kein Einkommen generiert, bleiben alle Kosten bei null.
@@ -218,58 +233,6 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 
 ---
 
-## Langzeit-Progressionssystem (seit v3.11.0)
-
-### localStorage-Keys
-| Key | Inhalt |
-|---|---|
-| `fortress_profile` | Profil inkl. `level, xp, gold, peakElo, peakElo3, achievements[], dailyTasks[], seasonXp, unlockedRewards[]` |
-| `fortress_daily` | `{ lastCollect: timestamp, streak: number, lastStreakDay: "YYYY-MM-DD" }` |
-| `fortress_onboarded` | `'1'` = Tutorial/Onboarding gesehen (seit v3.12.1). Fehlt der Key → `OnboardingModal` zeigt sich automatisch beim ersten Menüstart. |
-| `fortress_sound` | `'1'`/`'0'` = Sound-Effekte an/aus (seit v3.12.2, Default an). Steuert `SFX.enabled`. |
-| `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
-
-### Neue Konstanten
-- `AVATAR_UNLOCKS`: Map avatar-key → required level (vampir/pestdoc/eismagie/schatten = 1; sternmage=5, golem=10, seehexe=15, feuergeist=20, totenmage=25, sturmreiter=30, golddrache=40, phoenix=50)
-- `DAILY_REWARDS`: Array von 7 täglichen Belohnungen (Tag 7 = Legendäre Kiste 200G+50XP)
-- `getLevelTier(level)`: gibt Tier-Objekt zurück `{ name, label, color, glow, border }`
-
-### Neue Komponenten
-- `LevelBadge({ level, size })`: Tier-farbiges Badge (Silber/Gold/Platin/Legendär) — `size="lg"` für größere Darstellung
-- `ConfettiBurst({ active })`: CSS-Konfetti bei Level-Up (20 Partikel, keine `Math.random()`)
-- `DailyRewardModal({ daily, onCollect, onClose })`: 7-Tage-Streak-Kalender + Belohnungsabholung
-
-### Neue CSS-Keyframes
-- `confettiFall`: Konfetti-Partikel fallen und drehen sich
-- `dailyBounceIn`: Modal-Einblendung mit Bounce
-- `badgePop`: Badge-Erscheinen mit Scale-Animation
-- `streakGlow`: Pulsierender Glow für aktiven Streak-Tag und Tages-Belohnungs-Button
-- `collectBounce`: Bounce-Feedback beim Abholen
-
-### State-Variablen (neu)
-- `dailyState`: `{ lastCollect, streak, lastStreakDay }` — aus `fortress_daily` geladen
-- `showDailyModal`: Boolean — steuert DailyRewardModal
-
-### Funktionen (neu)
-- `loadDailyState()` / `saveDailyState(d)`: localStorage-Helpers für Streak-Daten
-- `getDailyCollectable(daily)`: true wenn ≥24h seit letzter Abholung
-- `getDailyStreakIndex(daily)`: aktueller Streak-Index (0–6, zyklisch)
-- `handleDailyCollect(reward, streakIdx)`: Streak updaten, Gold/XP vergeben, Profil speichern
-
-### Design-Prinzipien
-- Kein Pay2Win: Alle Freischaltungen rein kosmetisch/motivational
-- Motivationskette: Online spielen → XP → Level → Belohnungen → Gold → Anpassungen → wieder spielen
-- Tägliche Rückkehr: Streak-System belohnt konsistentes Spielen (Tag 7 = Legendäre Kiste)
-- Progression sichtbar: LevelBadge neben Avatar im Profil und Menü
-
-### Vorbereitet (noch keine UI)
-- Achievements: Datenstruktur-Kommentare im Code
-- Daily Tasks: Datenstruktur-Kommentare im Code
-- Season-System: Datenstruktur-Kommentare im Code
-- Social Features: Vorbereitung für Freundessystem via Firebase
-
----
-
 ## 3-Spieler-Besonderheiten
 
 - **Terrain**: Y-förmig (Hub bei 40% Höhe), Flussarme bei 70°/180°/290°
@@ -326,10 +289,13 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 ## Automatisierter Test (IMMER nach jeder Änderung ausführen)
 
 ```bash
-# Server starten falls nicht läuft:
+# 1) Unit-Tests (Engine + i18n, ~0,2s — zuerst, schnellstes Feedback):
+node --test tests/engine.test.js tests/i18n.test.js
+
+# 2) Server starten falls nicht läuft:
 python3 -m http.server 8765 &
 
-# Test ausführen (Playwright, ~60s):
+# 3) E2E-Suite (Playwright, ~60s):
 node test_fortress.js
 ```
 
