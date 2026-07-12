@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.37.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3226,3 +3226,12 @@ ausmachen („beim Beschuss-Beispiel genau 3"), und nur nach außen.
 
 Tests grün (33 Engine-Unit gesamt 54, Playwright unverändert).
 SW-Cache `fortress-v3.37.3`.
+
+### v3.37.4 — Tutorial: Bot bestätigt die Rüstphase sofort
+Im Tutorial kauft der passive Bot nichts — trotzdem lief die Rüstphase die
+vollen 15s, weil er nie „Fertig" meldete (die Kaufstrategie-Prüfung hielt ihn
+für kauf-willig). Jetzt: `tutorialMode` → sofort `setArmoryReady(2)` beim
+ersten Bot-Tick der Rüstphase. Bestätigt der Spieler ebenfalls, springt der
+Timer wie gewohnt auf 3s — kein Leerlauf mehr im Tutorial.
+
+Tests grün. SW-Cache `fortress-v3.37.4`.

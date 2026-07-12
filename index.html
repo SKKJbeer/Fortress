@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.37.3</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.37.4</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4631,6 +4631,10 @@ window.FortressApp = function Fortress() {
       // Bot bestätigt „Fertig", sobald er nichts mehr kaufen/platzieren kann
       // (v3.18.1) → mit-auslösend fürs Vorspulen auf 3s.
       if (ph === "cannon" && cannonBudget.current[B] <= 0 && !armoryReady.current[B]) {
+        // Tutorial (v3.37.4): der passive Bot kauft nichts — sofort „Fertig",
+        // damit der Spieler nicht die volle Rüstphase absitzen muss (Timer
+        // springt auf 3s, sobald auch der Spieler bestätigt).
+        if (tutorialMode.current) { setArmoryReady(B); return; }
         const lvl = botLvl();
         const up = upgrades.current[B] || {};
         const have = scrap.current[B] || 0;
@@ -6004,7 +6008,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.3")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.37.4")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
