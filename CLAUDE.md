@@ -39,9 +39,11 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 - **Beide Testebenen müssen grün sein**: Unit (`node --test tests/…`) UND Playwright.
 - **Parallele KI-Sessions**: immer nur EINE Session an index.html-Features;
   jede Session startet mit `git fetch` + Abgleich mit `origin/main`.
-- Geplante Phase 2: `src/net/protocol.js` (PROTO_VERSION + State-Schema) +
-  Matchmaking herauslösen. Phase 3: UI-Modals. Phase 4 (optional): esbuild-Bundling
-  in der Deploy-Action für Store-Builds.
+- `src/net/` (seit v3.35.0, Phase 2): `protocol.js` (PROTO_VERSION, sanitize,
+  State-Schema-Doku — bei inkompatiblen Protokoll-Änderungen Version erhöhen!)
+  und `matchmaking.js` (mmRadius, MM_*-Konstanten, `computeMatchGroup`-Pairing).
+- Geplant — Phase 3: UI-Modals als Komponenten-Dateien. Phase 4 (optional):
+  esbuild-Bundling in der Deploy-Action für Store-Builds.
 
 ### ⚠️ Kostenpolitik: ZERO laufende Kosten (aktuelle Phase)
 Solange das Spiel noch kein Einkommen generiert, bleiben alle Kosten bei null.

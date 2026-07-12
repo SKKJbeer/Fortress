@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.34.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.35.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -140,6 +140,8 @@ import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastl
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
+import { PROTO_VERSION, sanitizeState, sanitizeAction } from './src/net/protocol.js';
+import { MM_BASE_RADIUS, MM_GROWTH_PER_SEC, mmRadius, MM_TICK_MS, MM_HEARTBEAT_STALE_MS, MM_CLAIM_HEAL_MS, MM_GUEST_JOIN_TIMEOUT_MS, MM_BOT_BACKFILL_S, computeMatchGroup } from './src/net/matchmaking.js';
 const { useState, useEffect, useRef, useCallback } = React;
 // ── Icon-System (Lucide-Pfade als Inline-SVG, React-nativ) ──────────────
 // Ersetzt Emojis durch saubere, konsistente Strich-Icons. textContent bleibt
@@ -644,14 +646,6 @@ function makeCode() {
   for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }
-// Matchmaking: ELO-naher Suchradius, der mit der Wartezeit wächst, damit
-// niemand ewig wartet. Sanftes Wachstum (±60 Basis, +8/s): nach 60s ±540,
-// nach 2min praktisch unbegrenzt — bevorzugt also möglichst faire Paarungen.
-const MM_BASE_RADIUS = 60;
-const MM_GROWTH_PER_SEC = 8;
-function mmRadius(waitSec) {
-  return MM_BASE_RADIUS + Math.max(0, waitSec) * MM_GROWTH_PER_SEC;
-}
 // Bot-Namen (v3.14.16): pro Bot-Spiel wird zufällig einer gezogen.
 // Burgen-/Belagerungs-Fantasy mit Augenzwinkern.
 const BOT_NAMES = [
@@ -674,51 +668,6 @@ const BOT_NAMES = [
   "Isolde Eisenpforte", "Der Letzte Zinnensteher"
 ];
 const BOT_WAPPEN = ["roboter", "skelett", "vampir", "pestdoc", "eismagie", "schatten"];
-const MM_TICK_MS = 2000;
-const MM_HEARTBEAT_STALE_MS = 35e3;
-const MM_CLAIM_HEAL_MS = 6e3;
-const MM_GUEST_JOIN_TIMEOUT_MS = 15e3;
-// Bot-Backfill (v3.32.4): nach dieser Wartezeit ohne Gegner wird die Suche
-// beendet und nahtlos ein Übungsmatch gegen den Bot gestartet (nur 2P-Queue;
-// zählt wie jedes Bot-Spiel NICHT für ELO/Stats). Verhindert den Launch-Killer
-// „leere Queue → Spieler wartet ewig → deinstalliert".
-const MM_BOT_BACKFILL_S = 60;
-function sanitizeState(s) {
-  if (!s || typeof s !== "object") return null;
-  if (!Array.isArray(s.grid) || !s.phase || typeof s.timer !== "number") return null;
-  if (!["setup", "build", "shoot", "cannon", "result", "menu", "game"].includes(s.phase)) return null;
-  if (s.grid.length > 200) return null;
-  for (const row of s.grid) if (!Array.isArray(row) || row.length > 200) return null;
-  if (s.timer < 0 || s.timer > 300) return null;
-  return s;
-}
-function sanitizeAction(raw) {
-  let a;
-  try {
-    a = typeof raw === "string" ? JSON.parse(raw) : raw;
-  } catch (e) {
-    return null;
-  }
-  if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy", "ready", "emote"];
-  if (!validTypes.includes(a.type)) return null;
-  if (a.type === "buy" && !["cannon", "reload", "armor", "repair"].includes(a.item)) return null;
-  if (a.type === "emote" && (typeof a.e !== "number" || a.e < 0 || a.e > 7)) return null;
-  if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
-  if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;
-  if (a.tx !== void 0 && (typeof a.tx !== "number" || a.tx < 0 || a.tx > W * 2)) return null;
-  if (a.ty !== void 0 && (typeof a.ty !== "number" || a.ty < 0 || a.ty > H * 2)) return null;
-  if (a.angle !== void 0 && (typeof a.angle !== "number" || !isFinite(a.angle))) return null;
-  if (a.elo !== void 0 && (typeof a.elo !== "number" || !isFinite(a.elo) || a.elo < 1 || a.elo > 9999)) return null;
-  if (a.name !== void 0) a.name = String(a.name).slice(0, 30);
-  if (a.wappen !== void 0) a.wappen = String(a.wappen).slice(0, 10);
-  if (a.color !== void 0 && !/^#[0-9a-f]{6}$/i.test(String(a.color))) delete a.color;
-  // Kosmetik-IDs (v3.33.0): nur kurze Strings durchlassen; inhaltliche
-  // Validierung (gegen CANNON_SKIN/IMPACT_FX) macht der Host beim join.
-  if (a.cannon !== void 0 && (typeof a.cannon !== "string" || a.cannon.length > 24)) delete a.cannon;
-  if (a.impact !== void 0 && (typeof a.impact !== "string" || a.impact.length > 24)) delete a.impact;
-  return a;
-}
 // ── Premium-Shop-Design (v3.17.0): pro Upgrade eine Farbwelt + maßgeschneidertes
 // SVG-Icon (kein Emoji). Rein optisch — Preise/Mechanik unverändert.
 const SHOP_THEME = {
@@ -2918,6 +2867,7 @@ window.FortressApp = function Fortress() {
     const rp = {};
     for (const p of players) rp[p] = Math.min(1, (performance.now() - ((_a2 = lastShot.current[p]) != null ? _a2 : -99999)) / reloadMsOf(p));
     return {
+      pv: PROTO_VERSION,
       grid: grid.current,
       terrainSeed: terrainSeed.current,
       numPlayers: numPlayersRef.current,
@@ -3037,6 +2987,12 @@ window.FortressApp = function Fortress() {
       dbg.current.lastErr = "sanitize FAIL grid=" + (Array.isArray(s0 == null ? void 0 : s0.grid) ? s0.grid.length : typeof (s0 == null ? void 0 : s0.grid)) + " phase=" + (s0 == null ? void 0 : s0.phase) + " timer=" + typeof (s0 == null ? void 0 : s0.timer);
       return;
     }
+    // Protokoll-Versions-Check (v3.35.0): Host ist neuer als dieser Client →
+    // einmalig freundlich auf Reload hinweisen statt still Geist-Bugs zu riskieren.
+    if (typeof s.pv === "number" && s.pv > PROTO_VERSION && !protoWarned.current) {
+      protoWarned.current = true;
+      showWarn(t('protoOutdated'));
+    }
     if (s.hostSession && s.hostSession !== hostSessionRef.current) {
       if (hostSessionRef.current) {
         dbg.current.lastErr = "session mismatch";
@@ -3143,6 +3099,7 @@ window.FortressApp = function Fortress() {
     }
   }
   const hostSessionRef = useRef("");
+  const protoWarned = useRef(false); // Proto-Versions-Hinweis nur einmal je Session (v3.35.0)
   async function pushState(force) {
     if (!online.current || myRole.current !== 1) return;
     const now = Date.now();
@@ -3813,34 +3770,14 @@ window.FortressApp = function Fortress() {
       wait.push({ id, elo: typeof tk.elo === "number" ? tk.elo : 1e3, ts: tk.ts || now });
     }
     if (wait.length < np) return;
-    // Deterministische Totalordnung: ELO, dann Session-ID (Tie-Break).
-    wait.sort((a, b) => a.elo - b.elo || (a.id < b.id ? -1 : 1));
-    const radOk = (a, b) => Math.abs(a.elo - b.elo) <= Math.max(mmRadius((now - a.ts) / 1e3), mmRadius((now - b.ts) / 1e3));
-    // Gierige Gruppenbildung über die sortierte Liste — identisch auf allen Clients.
-    let group = null;
-    let i = 0;
-    while (i + np <= wait.length) {
-      const g = wait.slice(i, i + np);
-      let okG = true;
-      for (let a = 0; a < g.length && okG; a++) {
-        for (let b = a + 1; b < g.length; b++) {
-          if (!radOk(g[a], g[b])) { okG = false; break; }
-        }
-      }
-      if (okG) {
-        if (g.some((x) => x.id === SESSION_ID)) { group = g; break; }
-        i += np; // fertige Gruppe anderer Spieler überspringen
-      } else {
-        i += 1;
-      }
-    }
-    if (typeof window !== "undefined" && window.__mmDebug) window.__mmDbg = { sid: SESSION_ID.slice(0, 6), n: wait.length, sorted: wait.map((x) => x.id.slice(0, 6) + ":" + x.elo), group: group && group.map((x) => x.id.slice(0, 6)), t: Date.now() };
-    if (!group) return;
-    // Genau EIN Claimer pro Gruppe: die kleinste Session-ID (wird Host).
-    const claimer = group.reduce((m, x) => x.id < m.id ? x : m, group[0]);
-    if (typeof window !== "undefined" && window.__mmDebug) window.__mmDbg.claimer = claimer.id.slice(0, 6);
-    if (claimer.id !== SESSION_ID) return; // der zuständige Partner claimt mich
-    const chosen = group.filter((x) => x.id !== SESSION_ID).map((x) => x.id);
+    // Pairing-Kern extrahiert (v3.35.0): src/net/matchmaking.js — identische
+    // Logik, jetzt unit-getestet (Determinismus über alle Clients).
+    const pairing = computeMatchGroup(wait, np, now, SESSION_ID);
+    if (typeof window !== "undefined" && window.__mmDebug) window.__mmDbg = { sid: SESSION_ID.slice(0, 6), n: wait.length, sorted: pairing.sorted.map((x) => x.id.slice(0, 6) + ":" + x.elo), group: pairing.group && pairing.group.map((x) => x.id.slice(0, 6)), t: Date.now() };
+    if (!pairing.group) return;
+    if (typeof window !== "undefined" && window.__mmDebug) window.__mmDbg.claimer = pairing.claimer.id.slice(0, 6);
+    if (pairing.claimer.id !== SESSION_ID) return; // der zuständige Partner claimt mich
+    const chosen = pairing.group.filter((x) => x.id !== SESSION_ID).map((x) => x.id);
     mmBusy.current = true;
     try {
       await mmClaimAndMatch(chosen);
@@ -6426,7 +6363,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.34.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.35.0")), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
     background: "rgba(2,6,15,0.93)",
     backdropFilter: "blur(16px)",
     display: "flex",

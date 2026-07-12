@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.34.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.35.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3103,3 +3103,25 @@ Technische Details der Umstellung:
   catalog.js (Object.assign-Äquivalent für die dortigen Nutzungen).
 
 Tests grün (31 Unit + Playwright-Suite). SW-Cache `fortress-v3.34.0`.
+
+### v3.35.0 — Architektur Phase 2: Netz-Schicht (Protokoll + Matchmaking-Kern)
+Fortsetzung des Architektur-Konzepts (kein Verhaltens-Change im Spiel):
+- **`src/net/protocol.js`**: `PROTO_VERSION` (=1), `sanitizeState`,
+  `sanitizeAction` + dokumentiertes State-Schema und die zwei Protokoll-Regeln
+  (neue Felder immer optional; inkompatible Änderungen → Version erhöhen).
+  `serializeState` sendet jetzt `pv`; `applyState` warnt einmalig freundlich
+  („Neue Spielversion verfügbar — bitte neu laden", `protoOutdated` de/en),
+  wenn der Host eine NEUERE Protokoll-Version fährt — statt stiller Geist-Bugs
+  zwischen unterschiedlich alten Clients. Alte Clients ignorieren `pv` (abwärts-
+  kompatibel).
+- **`src/net/matchmaking.js`**: `mmRadius` (+Konstanten MM_*) und der
+  deterministische Pairing-Kern als pure Funktion `computeMatchGroup(wait, np,
+  now, myId)` → `{sorted, group, claimer}`. Der mmTick-Code ruft sie auf —
+  identische Logik, jetzt isoliert testbar.
+- **13 neue Unit-Tests** (`tests/net.test.js`, gesamt 44): sanitize-Grenzen
+  (Shapes, Phasen, Koordinaten, Kosmetik-Feldhygiene), Pairing-Determinismus
+  (alle Gruppenmitglieder berechnen dieselbe Gruppe + denselben Claimer),
+  Schwarm-Eigenschaft (20 Wartende → 10 disjunkte Paare), ELO-Radius-Wachstum,
+  Livelock-Regression v3.14.13, Eingabe-Immutabilität.
+
+Tests grün (44 Unit + Playwright-Suite). SW-Cache `fortress-v3.35.0`.
