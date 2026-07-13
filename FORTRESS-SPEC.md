@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.39.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.39.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3316,3 +3316,17 @@ binden, langfristig serverseitige ELO-Verifikation (Blaze). ELO bleibt bis dahin
 bewusst „advisory". Details in LAUNCH-TODO.md + firebase-security-rules.json.
 
 Tests grün. SW-Cache `fortress-v3.39.1`.
+
+### v3.39.2 — App-Check-Client-Integration (gated, inaktiv bis Site-Key gesetzt)
+Vorbereitung für Firebase App Check (DoS-/Abuse-Schutz der DB, siehe Security-Pass
+v3.39.1). Im Firebase-Init-Block: dynamischer Import von `firebase-app-check.js` +
+`initializeAppCheck` mit `ReCaptchaV3Provider`, GATED hinter `APPCHECK_SITE_KEY`.
+Konstante ist leer → App Check wird NICHT initialisiert, kein Netzwerk-Load, kein
+Verhalten geändert (zero-risk). Sobald der Betreiber in der Firebase Console eine
+Web-App unter App Check mit reCAPTCHA v3 registriert und den Site-Key in die
+Konstante einträgt + deployt, ist Client-seitig alles bereit; danach kann RTDB in
+der Console auf „Erzwungen" gestellt werden. Dynamischer Import → ein Ausfall des
+App-Check-Moduls bricht nie die Firebase-Initialisierung. Reihenfolge/Links im
+Code-Kommentar + LAUNCH-TODO.
+
+Tests grün. SW-Cache `fortress-v3.39.2`.

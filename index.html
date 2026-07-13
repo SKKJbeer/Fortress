@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.39.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.39.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -86,6 +86,31 @@
         databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "fortress-cbe30",
       });
+      // ── Firebase App Check (v3.39.2) ─────────────────────────────────────
+      // Schützt Realtime Database + Queue vor Skript-/REST-Abuse und Flood-DoS.
+      // INAKTIV, solange der reCAPTCHA-v3-Site-Key leer ist (kein Bruch, kein
+      // Netzwerk-Load). So aktivierst du App Check:
+      //   1. Firebase Console → App Check → Web-App registrieren → reCAPTCHA v3.
+      //      Site-Key wird bei google.com/recaptcha/admin/create für die Domain
+      //      skkjbeer.github.io erstellt (Typ: reCAPTCHA v3).
+      //   2. Den SITE-Key (NICHT das Secret) unten eintragen und deployen.
+      //   3. Erst wenn in der App-Check-Console Tokens ankommen (Metrics):
+      //      Realtime Database auf "Erzwungen/Enforced" stellen.
+      // Dynamischer Import → ein Ausfall des App-Check-Moduls bricht NIE die
+      // Firebase-Initialisierung (Spiel läuft weiter).
+      const APPCHECK_SITE_KEY = ""; // <-- reCAPTCHA v3 Site-Key hier eintragen
+      if (APPCHECK_SITE_KEY) {
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js")
+          .then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
+            try {
+              initializeAppCheck(app, {
+                provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
+                isTokenAutoRefreshEnabled: true
+              });
+            } catch (e) { window.__appCheckError = e && (e.code || e.message); }
+          })
+          .catch((e) => { window.__appCheckError = e && e.message; });
+      }
       const db = getDatabase(app);
       window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, uid: null };
       window.dispatchEvent(new Event("fb-ready"));
@@ -6095,7 +6120,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.39.1")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.39.2")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
