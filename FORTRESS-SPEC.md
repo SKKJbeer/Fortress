@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.39.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3330,3 +3330,25 @@ App-Check-Moduls bricht nie die Firebase-Initialisierung. Reihenfolge/Links im
 Code-Kommentar + LAUNCH-TODO.
 
 Tests grün. SW-Cache `fortress-v3.39.2`.
+
+### v3.40.0 — Epische Schmiede-Enthüllung + dramatischer Sieg/Niederlage-Einstieg
+Ziel (Nutzer): frisch geschmiedete/„crazy" Items sollen sich richtig episch
+anfühlen → Sammel-Motivation; Sieg/Niederlage deutlicher zeigen.
+- **Item-Reveal beim Schmieden** (`ItemRevealModal`): Bisher war Schmieden
+  instant (nur `SFX.buy`). Jetzt Vollbild-Zelebrierung: rotierende Lichtstrahlen
+  (conic-gradient, maskiert), pulsierendes Halo, Item-Medaille groß (aus
+  `CANNON_SKIN`/`IMPACT_FX`/`MASTER_TRAIL` skaliert via `forgeItemVisual`),
+  Funken (deterministisch, keine `Math.random`), Raritäts-Badge, Item-Name,
+  „Tippen zum Fortfahren".
+- **Rarität** aus teuerstem Material im Rezept (`forgeRarity`): Sternenstaub =
+  Legendär (Gold-Shimmer), Drachenstahl = Episch (Lila), Silber = Selten (Blau),
+  sonst Standard. Farben/Intensität/Strahltempo skalieren mit Rarität;
+  Episch/Legendär bekommen den satteren `SFX.win`-Sound.
+- **Sieg/Niederlage-Einstieg** auf dem Result-Screen: einmaliger Farbblitz
+  (Gold bei Sieg, Rot bei Niederlage), Pokal/X mit `trophyPop`-Einschlag, Titel
+  mit `titleSlam` (zoomt heran) + größerer Siegestitel.
+- Neue Keyframes: `revealSpin/revealBurstIn/revealHalo/revealFlash/sparkFloat/
+  legShimmer/titleSlam/trophyPop`. i18n de/en (`rarity*`, `forgeReveal*`).
+  Rein additiv/kosmetisch, keine Mechanik/Balance geändert.
+
+Tests grün. SW-Cache `fortress-v3.40.0`.

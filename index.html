@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.39.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.40.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -54,6 +54,15 @@
     @keyframes coachDim{to{opacity:0.42}}
     @keyframes coachFlash{0%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}30%{box-shadow:0 0 0 3px rgba(255,255,255,0.9),0 8px 30px rgba(0,0,0,0.55)}100%{box-shadow:0 0 0 3px rgba(255,255,255,0.0),0 8px 30px rgba(0,0,0,0.55)}}
     @keyframes dangerGlow{0%,100%{box-shadow:0 0 0 2px rgba(239,68,68,0.25),0 8px 40px rgba(0,0,0,0.7)}50%{box-shadow:0 0 0 3px rgba(239,68,68,0.85),0 0 50px rgba(239,68,68,0.45),0 8px 40px rgba(0,0,0,0.7)}}
+    /* ── Epische Item-Enthüllung + Sieg/Niederlage-Einschlag (v3.40.0) ── */
+    @keyframes revealSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+    @keyframes revealBurstIn{0%{transform:scale(0.3);opacity:0}55%{transform:scale(1.14);opacity:1}78%{transform:scale(0.97)}100%{transform:scale(1);opacity:1}}
+    @keyframes revealHalo{0%,100%{opacity:0.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:0.92;transform:translate(-50%,-50%) scale(1.14)}}
+    @keyframes revealFlash{0%{opacity:0}16%{opacity:0.9}100%{opacity:0}}
+    @keyframes sparkFloat{0%{transform:translateY(6px) scale(0);opacity:0}25%{opacity:1;transform:translateY(-4px) scale(1)}100%{transform:translateY(-52px) scale(0.15);opacity:0}}
+    @keyframes legShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+    @keyframes titleSlam{0%{transform:scale(2.5);opacity:0;filter:blur(10px)}52%{transform:scale(0.9);opacity:1;filter:blur(0)}72%{transform:scale(1.06)}100%{transform:scale(1)}}
+    @keyframes trophyPop{0%{transform:scale(0) rotate(-30deg);opacity:0}55%{transform:scale(1.22) rotate(6deg);opacity:1}78%{transform:scale(0.94) rotate(-2deg)}100%{transform:scale(1) rotate(0)}}
     /* ── Premium-Shop (v3.17.0) ── */
     @keyframes shopRise{0%{transform:translateY(24px) scale(0.96);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
     @keyframes shopCardIn{0%{transform:translateY(16px) scale(0.9);opacity:0}60%{transform:translateY(-2px) scale(1.03)}100%{transform:translateY(0) scale(1);opacity:1}}
@@ -1171,6 +1180,103 @@ window.FortressApp = function Fortress() {
     return React.createElement("div", { style: { position: "fixed", left: 0, right: 0, top: 0, pointerEvents: "none", zIndex: 5 } },
       React.createElement(ConfettiBurst, { active: true }));
   }
+  // ── Schmiede-Enthüllung (v3.40.0): Rarität + episches Reveal-Overlay ──
+  // Rarität leitet sich aus dem teuersten Material im Rezept ab: Sternenstaub =
+  // Legendär, Drachenstahl = Episch, Silber = Selten, sonst Standard.
+  function forgeRarity(rec) {
+    const c = (rec && rec.cost) || {};
+    if (c.star) return "legendary";
+    if (c.dragon) return "epic";
+    if (c.silver) return "rare";
+    return "common";
+  }
+  function rarityMeta(r) {
+    const M = {
+      common:    { key: "common",    c: "#94a3b8", glow: "148,163,184", label: t("rarityCommon") },
+      rare:      { key: "rare",      c: "#60a5fa", glow: "59,130,246",   label: t("rarityRare") },
+      epic:      { key: "epic",      c: "#c084fc", glow: "168,85,247",   label: t("rarityEpic") },
+      legendary: { key: "legendary", c: "#fbbf24", glow: "251,191,36",   label: t("rarityLegendary") }
+    };
+    return M[r] || M.common;
+  }
+  // Große Item-Darstellung fürs Reveal (skaliert, gleiche Katalog-Daten wie die
+  // Mini-Vorschau in der Schmiede).
+  function forgeItemVisual(rec, S) {
+    const h = React.createElement;
+    if (rec.cat === "cannon") {
+      const sk = CANNON_SKIN[rec.id];
+      return h("div", { style: {
+        width: S, height: S, borderRadius: "50%", position: "relative",
+        background: "radial-gradient(circle at 34% 28%, " + sk.dome[0] + " 0%, " + sk.dome[1] + " 55%, " + sk.dome[2] + " 100%)",
+        boxShadow: "inset 0 2px 0 rgba(255,255,255,0.4), 0 0 " + (S * 0.4) + "px " + sk.core + "99",
+        border: "2px solid rgba(255,255,255,0.28)"
+      } }, h("span", { style: { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: S * 0.24, height: S * 0.24, borderRadius: "50%", background: sk.core, boxShadow: "0 0 " + (S * 0.18) + "px " + sk.core } }));
+    }
+    if (rec.cat === "impact") {
+      const fx = IMPACT_FX[rec.id];
+      return h("div", { style: {
+        width: S, height: S, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(" + fx.ring[0] + ",0.98) 0%, rgba(" + fx.ring[1] + ",0.9) 42%, rgba(" + fx.ring[2] + ",0.5) 72%, rgba(0,0,0,0) 100%)"
+      } });
+    }
+    const pal = MASTER_TRAIL[rec.id] || [];
+    return h("div", { style: { display: "flex", alignItems: "center", gap: S * 0.07 } },
+      pal.map((c, i) => h("span", { key: i, style: { width: S * (0.26 + i * 0.1), height: S * (0.26 + i * 0.1), borderRadius: "50%", background: c, boxShadow: "0 0 " + (S * 0.16) + "px " + c } })));
+  }
+  function ItemRevealModal({ rec, onClose }) {
+    const h = React.createElement;
+    const rar = rarityMeta(forgeRarity(rec));
+    const [vis, setVis] = React.useState(false);
+    React.useEffect(() => { const t1 = setTimeout(() => setVis(true), 30); return () => clearTimeout(t1); }, []);
+    const catLabel = rec.cat === "cannon" ? t("forgeCatCannon") : rec.cat === "impact" ? t("forgeCatImpact") : t("forgeCatTrail");
+    const legendary = rar.key === "legendary";
+    // Deterministische Funken rund um die Medaille (keine Math.random).
+    const sparks = Array.from({ length: 16 }, (_, i) => {
+      const ang = (i / 16) * Math.PI * 2;
+      const rad = 92 + (i % 3) * 16;
+      const x = Math.cos(ang) * rad, y = Math.sin(ang) * rad * 0.82;
+      const delay = ((i * 0.11) % 1.4).toFixed(2);
+      const sz = 4 + (i % 3) * 2;
+      return h("span", { key: i, style: {
+        position: "absolute", left: "calc(50% + " + x.toFixed(0) + "px)", top: "calc(44% + " + y.toFixed(0) + "px)",
+        width: sz, height: sz, borderRadius: "50%", background: rar.c,
+        boxShadow: "0 0 " + (sz + 3) + "px " + rar.c, pointerEvents: "none",
+        animation: "sparkFloat 1.8s " + delay + "s ease-out infinite"
+      } });
+    });
+    const badgeStyle = legendary
+      ? { backgroundImage: "linear-gradient(90deg,#fde68a,#fbbf24,#f59e0b,#fbbf24,#fde68a)", backgroundSize: "200% 100%", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "legShimmer 2s linear infinite, revealBurstIn 0.5s 0.28s both" }
+      : { color: rar.c, animation: "revealBurstIn 0.5s 0.28s both" };
+    return h("div", { onClick: onClose, style: {
+      position: "fixed", inset: 0, zIndex: 3000, cursor: "pointer", overflow: "hidden",
+      background: "radial-gradient(ellipse at center 44%, rgba(" + rar.glow + ",0.14) 0%, rgba(2,4,10,0.95) 60%)",
+      backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24
+    } },
+      // Einmaliger Farbblitz
+      h("div", { style: { position: "fixed", inset: 0, background: "rgba(" + rar.glow + ",0.55)", pointerEvents: "none", animation: "revealFlash 0.7s ease-out both" } }),
+      // Rotierende Lichtstrahlen
+      h("div", { style: {
+        position: "absolute", left: "50%", top: "44%", width: 560, height: 560,
+        opacity: vis ? 1 : 0, transition: "opacity 0.6s ease", pointerEvents: "none", borderRadius: "50%",
+        background: "repeating-conic-gradient(from 0deg, rgba(" + rar.glow + ",0) 0deg, rgba(" + rar.glow + ",0.22) 5deg, rgba(" + rar.glow + ",0) 11deg)",
+        animation: "revealSpin " + (legendary ? 10 : 16) + "s linear infinite",
+        WebkitMaskImage: "radial-gradient(circle, #000 26%, transparent 66%)", maskImage: "radial-gradient(circle, #000 26%, transparent 66%)"
+      } }),
+      h("div", { style: { fontSize: 12, fontWeight: 900, letterSpacing: "0.28em", color: "rgba(255,255,255,0.85)", marginBottom: 16, textTransform: "uppercase", animation: "revealBurstIn 0.5s 0.12s both" } }, t("forgeRevealNew")),
+      // Medaille mit pulsierendem Halo
+      h("div", { style: { position: "relative", marginBottom: 22, animation: "revealBurstIn 0.6s cubic-bezier(.2,1.5,.4,1) both" } },
+        h("div", { style: { position: "absolute", left: "50%", top: "50%", width: 230, height: 230, transform: "translate(-50%,-50%)", borderRadius: "50%", background: "radial-gradient(circle, rgba(" + rar.glow + ",0.5) 0%, transparent 68%)", filter: "blur(6px)", animation: "revealHalo 2.2s ease-in-out infinite", pointerEvents: "none" } }),
+        h("div", { style: { position: "relative", width: 152, height: 152, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 40% 32%, rgba(30,36,52,0.92), rgba(6,9,16,0.97))", border: "2px solid rgba(" + rar.glow + ",0.85)", boxShadow: "0 0 44px rgba(" + rar.glow + ",0.6), inset 0 0 30px rgba(" + rar.glow + ",0.22)" } },
+          forgeItemVisual(rec, rec.cat === "trail" ? 118 : 94))
+      ),
+      ...sparks,
+      h("div", { style: __spreadValues({ fontSize: 13, fontWeight: 900, letterSpacing: "0.2em", padding: "5px 20px", borderRadius: 999, border: "1.5px solid " + rar.c, marginBottom: 12, textShadow: "0 0 14px rgba(" + rar.glow + ",0.8)", background: "rgba(" + rar.glow + ",0.08)" }, badgeStyle) }, rar.label),
+      h("div", { style: { fontSize: "clamp(23px,7vw,32px)", fontWeight: 900, color: "#fff", textAlign: "center", textShadow: "0 0 24px rgba(" + rar.glow + ",0.7)", marginBottom: 6, animation: "revealBurstIn 0.5s 0.34s both" } }, t("cos_" + rec.id)),
+      h("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 30, animation: "revealBurstIn 0.5s 0.4s both" } }, catLabel + " · " + t("forgeRevealEquipped")),
+      h("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", animation: "glowpulse 1.6s ease-in-out infinite" } }, t("forgeRevealTap"))
+    );
+  }
   function WappenAvatar({ id, size = 36 }) {
     const src = WAPPEN_SRC[id] || WAPPEN_SRC.skelett;
     return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
@@ -1967,6 +2073,7 @@ window.FortressApp = function Fortress() {
   // ── Schmiede: Craften oder (bereits geschmiedet) an-/umlegen (v3.33.0) ──
   const [showForge, setShowForge] = useState(false);
   const [confirmCraft, setConfirmCraft] = useState(null); // Rezept, das zur Bestätigung ansteht
+  const [craftReveal, setCraftReveal] = useState(null); // frisch geschmiedetes Rezept → episches Reveal
   function canCraft(rec) {
     if (!profile) return false;
     const mats = matOf(profile);
@@ -1994,7 +2101,12 @@ window.FortressApp = function Fortress() {
       materials: newMats,
       cosmetics: { owned: [...cos.owned, rec.id], equipped: __spreadProps(__spreadValues({}, cos.equipped), { [rec.cat]: rec.id }) }
     }));
-    SFX.buy && SFX.buy();
+    // Episches Reveal (v3.40.0): frisch geschmiedete Items werden zelebriert.
+    // Höherwertige Raritäten bekommen den satteren Sieges-Sound.
+    const rar = forgeRarity(rec);
+    if ((rar === "epic" || rar === "legendary") && SFX.win) SFX.win();
+    else if (SFX.buy) SFX.buy();
+    setCraftReveal(rec);
   }
   // Zurück auf Standard-Optik (Kanone/Einschlag abrüsten)
   function unequipForgeCat(cat) {
@@ -6120,7 +6232,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.39.2")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -6943,6 +7055,10 @@ window.FortressApp = function Fortress() {
     key: achievementQueue[0].id + "_popup",
     item: achievementQueue[0],
     onDone: () => setAchievementQueue(function(prev) { return prev.slice(1); })
+  }), craftReveal && React.createElement(ItemRevealModal, {
+    key: "reveal_" + craftReveal.id,
+    rec: craftReveal,
+    onClose: () => setCraftReveal(null)
   }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
@@ -7328,6 +7444,12 @@ window.FortressApp = function Fortress() {
     }},
     // ── SIEGES-EFFEKT (v3.23.0): gekaufter Kosmetik-Effekt bei eigenem Sieg ──
     wonState && !drawn && React.createElement(WinFx, { kind: cosOf(profile).equipped.win }),
+    // ── EINMALIGER FARBBLITZ (v3.40.0): dramatischer Einstieg Sieg/Niederlage ──
+    !drawn && React.createElement("div", { key: "resflash", style: {
+      position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none",
+      background: wonState ? "rgba(251,191,36,0.55)" : "rgba(239,68,68,0.5)",
+      animation: "revealFlash 0.8s ease-out both"
+    }}),
     // ── ONLINE + SPIELERNAME CHIP ─────────────────────────────
     online.current && React.createElement("div", { style: {
       fontSize: 11, color: "#4ade80", marginBottom: 14, fontWeight: 700,
@@ -7351,15 +7473,17 @@ window.FortressApp = function Fortress() {
       }}),
       React.createElement("div", { style: {
         color: drawn ? "#fbbf24" : wonState ? "#fbbf24" : "#ef4444",
-        filter: "drop-shadow(0 0 24px currentColor)"
-      }}, React.createElement(Icon, { name: drawn ? "swords" : wonState ? "trophy" : "x", size: 70 }))
+        filter: "drop-shadow(0 0 24px currentColor)",
+        animation: "trophyPop 0.65s cubic-bezier(.2,1.5,.4,1) both"
+      }}, React.createElement(Icon, { name: drawn ? "swords" : wonState ? "trophy" : "x", size: wonState && !drawn ? 82 : 70 }))
     ),
     // ── SIEG / NIEDERLAGE TEXT ────────────────────────────────
     React.createElement("div", { style: {
-      fontSize: "clamp(24px,6.5vw,30px)", fontWeight: 900, marginBottom: 3,
+      fontSize: wonState && !drawn ? "clamp(28px,7.5vw,36px)" : "clamp(24px,6.5vw,30px)", fontWeight: 900, marginBottom: 3,
       letterSpacing: "-0.01em",
       color: drawn ? "#fbbf24" : wonState ? "#fbbf24" : "#ef4444",
-      textShadow: wonState || drawn ? "0 0 36px rgba(251,191,36,0.45)" : "0 0 22px rgba(239,68,68,0.4)"
+      textShadow: wonState || drawn ? "0 0 36px rgba(251,191,36,0.45)" : "0 0 22px rgba(239,68,68,0.4)",
+      animation: "titleSlam 0.6s 0.08s cubic-bezier(.2,1.3,.4,1) both"
     }}, (() => {
       const wname = (p) => {
         var _a2;
