@@ -21,31 +21,48 @@
     "Hinweis: Bestehende Leaderboard-Eintraege mit alter localStorage-ID werden einmalig",
     "verwaist (neuer Schluessel = auth.uid). Das ist akzeptabel (ELO ist vorlaeufig/advisory).",
     "",
-    "Was diese Rules NICHT loesen (braucht spaeter Blaze + Server):",
-    "  - Echte ELO-Integritaet (Client berechnet ELO weiterhin selbst)",
+    "Neu (v3.39.1 Security-Pass): ALLE numerischen Leaderboard-Felder sind jetzt",
+    "gedeckelt (elo/elo3/peakElo 0-9999, wins/losses/games <= 1e6, level <= 1000,",
+    "xp <= 1e8, gold <= 1e9) statt nur elo. games/$gameCode/state ist auf 200000",
+    "Zeichen begrenzt (Payload-DoS), guestAction2/3 auf 20000, Queue-Ticket-Strings",
+    "auf 2000 (Payload-Stuffing). name wird required (elo optional -> Merge-Writes",
+    "aus cleanupMyDuplicates gehen jetzt durch).",
+    "",
+    "DRINGENDSTE naechste Massnahme (kostenlos, Console-seitig): FIREBASE APP CHECK",
+    "aktivieren (reCAPTCHA v3 fuer Web, Play Integrity fuer die TWA) und fuer die",
+    "Realtime Database ERZWINGEN. Das ist der einzige wirksame Hebel gegen den",
+    "Queue-Wipe-DoS, Connection-Flood und skript-basierten REST-Abuse OHNE Blaze,",
+    "weil 'auth != null' via anonymem Login trivial zu erfuellen ist.",
+    "",
+    "Was diese Rules NICHT loesen (braucht spaeter Blaze + Server bzw. App Check):",
+    "  - Echte ELO-Integritaet (Client berechnet ELO weiterhin selbst; nur gedeckelt)",
     "  - Verifiziertes Spielergebnis (Host-autoritative P2P-Architektur)",
-    "  - Connection-Flood-DoS (braucht App Check)"
+    "  - Connection-Flood-DoS / Queue-Wipe (braucht App Check -> siehe oben)",
+    "  - Game-Node-Ownership: jeder mit dem Code kann das Spiel ueberschreiben/loeschen.",
+    "    Fix braucht per-Child-Rules (host-uid gebunden) + Test gegen echte DB."
   ],
   "rules": {
     "leaderboard": {
       ".read": true,
       "$playerId": {
         ".write": "auth != null && auth.uid === $playerId",
-        ".validate": "newData.hasChildren(['name','elo']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999"
+        ".validate": "newData.hasChildren(['name']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && (!newData.child('wappen').exists() || (newData.child('wappen').isString() && newData.child('wappen').val().length <= 20)) && (!newData.child('elo').exists() || (newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999)) && (!newData.child('elo3').exists() || (newData.child('elo3').isNumber() && newData.child('elo3').val() >= 0 && newData.child('elo3').val() <= 9999)) && (!newData.child('peakElo').exists() || (newData.child('peakElo').isNumber() && newData.child('peakElo').val() >= 0 && newData.child('peakElo').val() <= 9999)) && (!newData.child('peakElo3').exists() || (newData.child('peakElo3').isNumber() && newData.child('peakElo3').val() >= 0 && newData.child('peakElo3').val() <= 9999)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000)) && (!newData.child('losses').exists() || (newData.child('losses').isNumber() && newData.child('losses').val() >= 0 && newData.child('losses').val() <= 1000000)) && (!newData.child('games').exists() || (newData.child('games').isNumber() && newData.child('games').val() >= 0 && newData.child('games').val() <= 1000000)) && (!newData.child('wins3').exists() || (newData.child('wins3').isNumber() && newData.child('wins3').val() >= 0 && newData.child('wins3').val() <= 1000000)) && (!newData.child('losses3').exists() || (newData.child('losses3').isNumber() && newData.child('losses3').val() >= 0 && newData.child('losses3').val() <= 1000000)) && (!newData.child('games3').exists() || (newData.child('games3').isNumber() && newData.child('games3').val() >= 0 && newData.child('games3').val() <= 1000000)) && (!newData.child('level').exists() || (newData.child('level').isNumber() && newData.child('level').val() >= 0 && newData.child('level').val() <= 1000)) && (!newData.child('xp').exists() || (newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000)) && (!newData.child('gold').exists() || (newData.child('gold').isNumber() && newData.child('gold').val() >= 0 && newData.child('gold').val() <= 1000000000))"
       }
     },
     "queue2": {
       ".read": true,
       "$sessionId": {
         ".write": "auth != null",
-        ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())"
+        ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())",
+        "$field": { ".validate": "!newData.isString() || newData.val().length <= 2000" }
       }
     },
     "queue3": {
       ".read": true,
       "$sessionId": {
         ".write": "auth != null",
-        ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())"
+        ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())",
+        "$field": { ".validate": "!newData.isString() || newData.val().length <= 2000" }
       }
     },
     "games": {
@@ -56,7 +73,10 @@
       "$gameCode": {
         ".read": true,
         ".write": "auth != null",
-        ".validate": "newData == null || newData.hasChildren(['createdAt'])"
+        ".validate": "newData == null || newData.hasChildren(['createdAt'])",
+        "state": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200000)" },
+        "guestAction2": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)" },
+        "guestAction3": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)" }
       }
     }
   }

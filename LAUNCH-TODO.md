@@ -19,6 +19,15 @@
 - [ ] **Firebase Security Rules aktivieren**: Regeln aus `firebase-security-rules.json`
       in Firebase Console → Realtime Database → Rules eintragen & veröffentlichen.
       (Aktuell ist die DB offen les-/schreibbar — vor öffentlichem Launch schließen!)
+      v3.39.1: Rules zusätzlich gehärtet (alle numerischen Leaderboard-Felder
+      gedeckelt, state/guestAction/Queue-Payload-Größen begrenzt).
+- [ ] **Firebase App Check aktivieren** (KOSTENLOS, höchste Security-Priorität):
+      Console → App Check → reCAPTCHA v3 (Web) + Play Integrity (TWA), für Realtime
+      Database ERZWINGEN. Einziger wirksamer Schutz gegen Queue-Wipe-DoS,
+      Connection-Flood und Skript-/REST-Abuse ohne Blaze (denn `auth != null` ist
+      via anonymem Login trivial erfüllbar). Client-SDK-Init + reCAPTCHA-Site-Key nötig.
+- [ ] **Anonymous Auth aktivieren** (Console → Authentication → Sign-in method):
+      Voraussetzung, damit die auth-gebundenen Rules greifen (sonst Fallback offen).
 - [ ] **Screenshots erstellen**: `screenshots/`-Verzeichnis mit echten Spielbildern
       (390×844 PNG): Menü, Bauphase, Schussphase, Sieg. Mind. 2, besser 4–8.
 - [ ] **Service-Worker-Offline-Test**: Flugmodus → App startet weiter aus Cache.

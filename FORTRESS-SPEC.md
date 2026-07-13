@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.39.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.39.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3289,3 +3289,30 @@ Tests grün. SW-Cache `fortress-v3.38.1`.
 - Musikdateien weiterhin NICHT precached (~11 MB gesamt) — Runtime-Cache.
 
 Tests grün. SW-Cache `fortress-v3.39.0`.
+
+### v3.39.1 — Security-Pass (Store-Härtung): Manipulations- & DB-Angriffsschutz
+Vollständiges Security-Review vor Store-Publikation (Fokus: Ergebnisse nicht
+manipulierbar, kein Angriff auf Betreiber/DB). XSS/Secrets: sauber (die zwei
+`dangerouslySetInnerHTML` rendern nur die statische `SHOP_ICONS`-Konstante; alle
+spielergesteuerten Strings gehen als React-Text → autoescaped; keine
+`innerHTML`/`eval`; keine echten Secrets committet — Firebase-Config ist public
+by design). Umgesetzte Fixes:
+- **`sanitizeState` deckelt Kollektionsgrößen** (`src/net/protocol.js`: cannons je
+  Spieler/balls/explosions/scrapPops/repairFx ≤ 400, playerInfo-Name ≤ 40): ein
+  manipulierter Host konnte sonst Millionen-Einträge schicken → Gast friert/OOM
+  im Render-Loop (außerhalb schützender try/catch).
+- **`cleanupMyDuplicates` wählt nicht mehr nach Name** (Namen sind nicht eindeutig
+  → man konnte fremde Leaderboard-Einträge gleichen Namens löschen). Jetzt nur
+  eigene Schlüssel (auth.uid + evtl. alter localStorage-ID-Key).
+- **Firebase-Rules gehärtet** (`firebase-security-rules.json`): ALLE numerischen
+  Leaderboard-Felder gedeckelt (nicht nur elo), `state`-Payload ≤ 200000 Zeichen,
+  guestAction ≤ 20000, Queue-Ticket-Strings ≤ 2000. name required (elo optional →
+  Merge-Writes gehen durch).
+- **Privacy-Policy** auf aktuellen Stand.
+Dokumentierte, noch offene Härtung (Betreiber-seitig): **Firebase App Check
+aktivieren** (Top-Priorität, kostenlos, gegen Queue-DoS/Flood), Rules publizieren
++ Anonymous Auth aktivieren (sonst DB offen), Game-Node-Ownership an host-uid
+binden, langfristig serverseitige ELO-Verifikation (Blaze). ELO bleibt bis dahin
+bewusst „advisory". Details in LAUNCH-TODO.md + firebase-security-rules.json.
+
+Tests grün. SW-Cache `fortress-v3.39.1`.

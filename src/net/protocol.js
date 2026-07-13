@@ -32,6 +32,26 @@ export function sanitizeState(s) {
   if (s.grid.length > 200) return null;
   for (const row of s.grid) if (!Array.isArray(row) || row.length > 200) return null;
   if (s.timer < 0 || s.timer > 300) return null;
+  // Security (v3.39.1): Kollektionsgroessen deckeln. Ein manipulierter Host
+  // koennte sonst Millionen-Eintraege in balls/explosions/cannons schicken →
+  // der Gast iteriert sie im Render-Loop (ausserhalb schuetzender try/catch)
+  // → Freeze/OOM. Reale Werte liegen weit unter diesen Grenzen (Feld 44×68).
+  if (Array.isArray(s.balls) && s.balls.length > 400) return null;
+  if (Array.isArray(s.explosions) && s.explosions.length > 400) return null;
+  if (Array.isArray(s.scrapPops) && s.scrapPops.length > 400) return null;
+  if (Array.isArray(s.repairFx) && s.repairFx.length > 400) return null;
+  // cannons ist pro Spieler ein Array ({1:[...],2:[...],3:[...]})
+  if (s.cannons && typeof s.cannons === "object") {
+    for (const k in s.cannons) {
+      if (Array.isArray(s.cannons[k]) && s.cannons[k].length > 400) return null;
+    }
+  }
+  if (s.playerInfo && typeof s.playerInfo === "object") {
+    for (const k in s.playerInfo) {
+      const pi = s.playerInfo[k];
+      if (pi && typeof pi.name === "string" && pi.name.length > 40) pi.name = pi.name.slice(0, 40);
+    }
+  }
   return s;
 }
 export function sanitizeAction(raw) {

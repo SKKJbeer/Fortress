@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.39.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.39.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2147,8 +2147,15 @@ window.FortressApp = function Fortress() {
         setCleanupBusy(false);
         return;
       }
-      const myName = (profile.name || "").trim().toLowerCase();
-      const mine = Object.entries(data).filter(([id]) => id !== "ping").map(([id, v]) => __spreadValues({ id }, v)).filter((e) => (e.name || "").trim().toLowerCase() === myName);
+      // Security (v3.39.1): NUR EIGENE Eintraege zusammenfuehren — der aktuelle
+      // auth.uid-Schluessel plus ein evtl. verwaister alter localStorage-ID-Key
+      // aus der Migration. NIE nach Name auswaehlen: Namen sind nicht eindeutig,
+      // die alte Version loeschte damit fremde Leaderboard-Eintraege mit gleichem
+      // Namen (Griefing). Fremde Schluessel werden hier nie angefasst; die Rules
+      // (auth.uid === $playerId) sind die zweite Verteidigungslinie.
+      const myKey = writeId(profile.id);
+      const ownIds = [myKey, profile.id].filter((v, i, a) => v && a.indexOf(v) === i);
+      const mine = ownIds.map((id) => data[id] ? __spreadValues({ id }, data[id]) : null).filter(Boolean);
       if (mine.length <= 1) {
         setCleanupBusy(false);
         setLbRaw(null);
@@ -2167,7 +2174,6 @@ window.FortressApp = function Fortress() {
         games3: Math.max(...mine.map((e) => e.games3 || 0)),
         updatedAt: Date.now()
       };
-      const myKey = writeId(profile.id);
       await fb.set(`leaderboard/${myKey}`, merged);
       for (const e of mine) {
         if (e.id !== myKey) await fb.delete(`leaderboard/${e.id}`);
@@ -6089,7 +6095,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.39.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.39.1")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
