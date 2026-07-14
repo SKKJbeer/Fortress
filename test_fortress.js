@@ -241,6 +241,26 @@ async function suiteMenu(browser) {
     mmBtn ? ok(`Matchmaking-Button: "${mmBtn.slice(0, 40)}" ✓`) : fail('Matchmaking-Button fehlt');
 
     await page.screenshot({ path: '/tmp/s0_menu.png' });
+
+    // ── v3.40.1: Deeplink-Beitritt (?join=CODE) ──
+    // Frisch mit ?join=TESTAB laden → App soll direkt in die Join-Lobby
+    // navigieren, den Code vorbefüllen und die URL bereinigen.
+    await page.goto('http://localhost:8765/?join=TESTAB', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 8000 });
+    await page.waitForTimeout(300);
+    const deep = await page.evaluate(() => {
+      const vals = [...document.querySelectorAll('input')].map(i => (i.value || '').toUpperCase());
+      return {
+        codeMatched: vals.includes('TESTAB'),
+        vals,
+        urlCleaned: window.location.search === '',
+        joinScreen: /Code|beitreten|join/i.test(document.body.innerText)
+      };
+    });
+    deep.codeMatched ? ok('Deeplink: Code aus ?join= vorbefüllt (TESTAB) ✓') : fail(`Deeplink: Code nicht vorbefüllt (inputs: ${deep.vals.join(',')})`);
+    deep.urlCleaned ? ok('Deeplink: URL bereinigt (kein erneuter Auto-Join) ✓') : fail('Deeplink: URL nicht bereinigt');
+    deep.joinScreen ? ok('Deeplink: Join-Lobby geöffnet ✓') : fail('Deeplink: Join-Lobby nicht geöffnet');
+
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Keine JS-Fehler ✓');
   } finally { await ctx.close(); }
   return { res, errs };

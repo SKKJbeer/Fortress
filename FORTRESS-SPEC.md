@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3352,3 +3352,22 @@ anfühlen → Sammel-Motivation; Sieg/Niederlage deutlicher zeigen.
   Rein additiv/kosmetisch, keine Mechanik/Balance geändert.
 
 Tests grün. SW-Cache `fortress-v3.40.0`.
+
+### v3.40.1 — Wachstum: Ein-Tap-Einladung (Deeplink-Beitritt)
+Erste GTM-Maßnahme: den viralen Multiplayer-Loop entfriktionieren. Bisher gab
+„Code kopieren" nur den nackten Code — der Freund musste die Seite selbst
+öffnen, „Beitreten" finden und den Code abtippen (4 Schritte).
+- **Deeplink-Beitritt**: `?join=CODE` wird beim Laden ausgewertet
+  (`deepJoinHandled`-Guard, Mount-`useEffect`) → App öffnet direkt die Join-Lobby,
+  füllt den Code vor und ruft `guestJoinGame(code)` nach kurzem Tick. URL via
+  `history.replaceState` bereinigt (kein erneuter Auto-Join bei Reload).
+  `guestJoinGame` nimmt jetzt optional einen String-Code (Event-Guard, da auch
+  onClick-Handler). Scheitert der Join (Spiel weg/voll): Code bleibt, Fehler+Retry.
+- **„Code kopieren" → „Freund einladen"**: der grüne Lobby-Button teilt jetzt via
+  `navigator.share` (WhatsApp/iMessage …) den vollen Link `…/Fortress/?join=CODE`
+  + Einladungstext (Clipboard-Fallback). Der Code-Chip bleibt reines Kopieren.
+  i18n `inviteFriend`/`inviteText` de/en. Nutzt bestehende „join"-Action
+  (kompatibel mit `sanitizeAction` aus dem Security-Pass).
+- Test (suiteMenu): `?join=TESTAB` → Code vorbefüllt, Lobby offen, URL bereinigt.
+
+Tests grün. SW-Cache `fortress-v3.40.1`.

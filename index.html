@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.40.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.40.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2401,6 +2401,30 @@ window.FortressApp = function Fortress() {
       navigator.clipboard.writeText(code).then(done).catch(fallback);
     } else fallback();
   }
+  // Ein-Tap-Einladung (v3.40.1): teilt den vollen Deeplink statt nur den Code.
+  // Der Freund tippt den Link an → landet direkt in der Lobby (guestJoinGame via
+  // ?join=CODE beim Laden). navigator.share (WhatsApp/iMessage …), sonst Clipboard.
+  function inviteFriend() {
+    const code = mpCode;
+    const link = "https://skkjbeer.github.io/Fortress/?join=" + code;
+    const text = t('inviteText');
+    const done = () => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2e3); };
+    const clipFallback = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text + " " + link;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta);
+        done();
+      } catch (e) {}
+    };
+    if (navigator.share) {
+      navigator.share({ title: "FORTRESS", text, url: link }).catch(() => {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text + " " + link).then(done).catch(clipFallback);
+    } else clipFallback();
+  }
   const [pasteError, setPasteError] = useState("");
   function pasteCode() {
     setPasteError("");
@@ -3168,9 +3192,11 @@ window.FortressApp = function Fortress() {
     startPolling(code, 1);
   }
   const gameStarted = useRef(false);
-  async function guestJoinGame() {
+  async function guestJoinGame(explicitCode) {
     setMpError("");
-    const code = mpInput.trim().toUpperCase();
+    // explicitCode kommt vom Deeplink (?join=CODE); als onClick-Handler wird
+    // stattdessen ein Event übergeben → nur echte Strings akzeptieren.
+    const code = ((typeof explicitCode === "string" ? explicitCode : mpInput) || "").trim().toUpperCase();
     if (code.length !== 6) {
       setMpError(t('warnCode6'));
       return;
@@ -3234,6 +3260,25 @@ window.FortressApp = function Fortress() {
     startPolling(code, role);
     setMpScreen("waiting");
   }
+  // Deeplink-Beitritt (v3.40.1): ?join=CODE beim Laden → direkt in die Lobby.
+  // Verwandelt die Einladung von „Code abtippen" (4 Schritte) in einen Tap.
+  const deepJoinHandled = useRef(false);
+  useEffect(() => {
+    if (deepJoinHandled.current) return;
+    deepJoinHandled.current = true;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code = (params.get("join") || "").toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
+      if (code.length !== 6) return;
+      // URL bereinigen, damit ein Reload nicht erneut auto-joint.
+      try { window.history.replaceState(null, "", window.location.pathname); } catch (e) {}
+      setMpInput(code);
+      setMpScreen("joining");
+      // kurzer Tick, damit Firebase/Profil bereitstehen; scheitert der Join
+      // (Spiel weg/voll), bleibt der Code im Feld → Nutzer sieht Fehler + Retry.
+      setTimeout(() => { guestJoinGame(code); }, 400);
+    } catch (e) {}
+  }, []);
   // ───────────────── Matchmaking (2 oder 3 Spieler) ─────────────────
   // Statt aktiv einen Code zu teilen, trägt sich der Spieler in
   // /queue2/{SESSION_ID} (2-Spieler) bzw. /queue3/{SESSION_ID} (3-Spieler) ein.
@@ -6232,7 +6277,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.1")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7385,7 +7430,7 @@ window.FortressApp = function Fortress() {
     borderRadius: 10,
     padding: "14px",
     marginBottom: 8
-  } }, mpCode, /* @__PURE__ */ React.createElement("span", { style: { display: "inline-flex", alignItems: "center", color: codeCopied ? "#4ade80" : "#94a3b8" } }, codeCopied ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, "\u2713") : /* @__PURE__ */ React.createElement(Icon, { name: "copy", size: 17 }))), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+  } }, mpCode, /* @__PURE__ */ React.createElement("span", { style: { display: "inline-flex", alignItems: "center", color: codeCopied ? "#4ade80" : "#94a3b8" } }, codeCopied ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 18 } }, "\u2713") : /* @__PURE__ */ React.createElement(Icon, { name: "copy", size: 17 }))), /* @__PURE__ */ React.createElement("button", { onClick: inviteFriend, style: {
     width: "100%",
     cursor: "pointer",
     marginBottom: 8,
@@ -7396,8 +7441,9 @@ window.FortressApp = function Fortress() {
     borderRadius: 10,
     fontSize: 15,
     fontWeight: 700,
-    transition: "all 0.2s"
-  } }, codeCopied ? t('copied') : t('copyCode')), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? t('waitFor', {count: (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0), total: 2}) : t('gameStartsAuto'))), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, t('guestJoined', {n: myRole.current === 2 ? "2 ♚" : "3 ♜"}), /* @__PURE__ */ React.createElement("br", null), t('waitFirstState'), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, t('startsAuto'))), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+    transition: "all 0.2s",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+  } }, codeCopied ? t('copied') : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Icon, { name: "share", size: 16 }), t('inviteFriend'))), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? t('waitFor', {count: (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0), total: 2}) : t('gameStartsAuto'))), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, t('guestJoined', {n: myRole.current === 2 ? "2 ♚" : "3 ♜"}), /* @__PURE__ */ React.createElement("br", null), t('waitFirstState'), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, t('startsAuto'))), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
     color: "#64748b",
     border: "none",
