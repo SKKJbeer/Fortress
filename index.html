@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.40.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.40.3</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -6277,7 +6277,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.2")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.3")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7866,6 +7866,13 @@ window.FortressApp = function Fortress() {
           return true;
         })() }
       ];
+      // Spieler-Kennung im Shop-Header (v3.40.3): bei mehreren Panels (lokaler
+      // 2–3-Spieler-Hotseat) muss klar sein, WESSEN Shop das ist. Farbe + Flagge
+      // wie im HUD; online/Bot der echte Name, lokal P1/P2/P3.
+      const pColor = sp === 1 ? "#93c5fd" : sp === 2 ? "#fca5a5" : "#6ee7b7";
+      const pGlow = sp === 1 ? "rgba(59,130,246,0.5)" : sp === 2 ? "rgba(239,68,68,0.5)" : "rgba(16,185,129,0.5)";
+      const pFlag = FLAG_OF[sp] || "";
+      const pName = (online.current || botMode.current) && playerInfo.current[sp] && playerInfo.current[sp].name ? playerInfo.current[sp].name : ("P" + sp);
       return { kind: "shop", el: h("div", { key: "shop" + sp, style: {
           width: "100%", maxWidth: 452, pointerEvents: "auto",
           background: "linear-gradient(180deg, rgba(30,41,66,0.96) 0%, rgba(11,16,30,0.975) 100%)",
@@ -7875,9 +7882,10 @@ window.FortressApp = function Fortress() {
           animation: "shopRise 0.42s cubic-bezier(.22,1,.36,1) both"
         } },
           h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, padding: "0 3px" } },
-            h("div", { style: { display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, letterSpacing: "0.09em", color: "#94a3b8", textTransform: "uppercase" } },
-              h(Icon, { name: "hammer", size: 12 }),
-              h("span", null, t("bannerCannonTitle"))
+            h("div", { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: "1 1 auto" } },
+              h("span", { style: { fontSize: 15, lineHeight: 1, color: pColor, flexShrink: 0, textShadow: "0 0 8px " + pGlow } }, pFlag),
+              h("span", { style: { fontSize: 12.5, fontWeight: 800, letterSpacing: "0.03em", color: pColor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 2px rgba(0,0,0,0.55)" } }, pName),
+              h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", color: "#64748b", textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
             ),
             h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
               h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: {

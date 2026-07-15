@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3388,3 +3388,14 @@ massiv und stapelten sich unsauber übereinander.
   identisch (P2 einzeln oben).
 
 Tests grün. SW-Cache `fortress-v3.40.2`.
+
+### v3.40.3 — Shop-Header zeigt Spieler-Kennung (wer kauft wo)
+Im lokalen 2–3-Spieler-Hotseat liegen mehrere Kaufmenüs gleichzeitig auf dem
+Schirm (seit v3.40.2 sauber gestapelt) — es fehlte aber die Zuordnung, WESSEN
+Shop welcher ist.
+- **Farbige Spieler-Kennung** im Shop-Header: Flagge (♔/♚/♜) + Name in der
+  HUD-Spielerfarbe (P1 blau, P2 rot, P3 grün). Online/Bot zeigt den echten
+  Profilnamen, lokal P1/P2/P3. Das bisherige „RÜSTPHASE" bleibt klein/gedimmt
+  als Phasen-Kontext daneben stehen.
+
+Tests grün. SW-Cache `fortress-v3.40.3`.
