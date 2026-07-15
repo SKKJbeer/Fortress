@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3371,3 +3371,20 @@ Erste GTM-Maßnahme: den viralen Multiplayer-Loop entfriktionieren. Bisher gab
 - Test (suiteMenu): `?join=TESTAB` → Code vorbefüllt, Lobby offen, URL bereinigt.
 
 Tests grün. SW-Cache `fortress-v3.40.1`.
+
+### v3.40.2 — Fix: Kaufmenü-Überlappung im lokalen 3-Spieler-Modus
+Im lokalen Hotseat bekam jedes Nicht-P1-Panel eine eigene *fixe* Position
+(`top: 54px` für P2, `top: 116px` für P3). Ein volles Shop-Panel ist aber
+~200px hoch → im 3-Spieler-Modus überlappten sich die beiden oberen Panels
+massiv und stapelten sich unsauber übereinander.
+- **Flex-Spalten-Container statt Einzel-Offsets**: Die `phase === "cannon"`-
+  Render-Logik trennt jetzt „Panel-Inhalt bauen" (`renderInner(sp)` → `{kind,el}`)
+  von der Positionierung. Lokal werden alle Nicht-P1-Panels in EINEN oben fixierten
+  Flexbox-Spalten-Container (`flexDirection:column`, `gap:8`) gestapelt → garantiert
+  überlappungsfrei, unabhängig von Panel-Höhe/-Zustand (Shop/Warte-Pille/Platzier-
+  Hinweis). P1 bleibt unten. Container pointer-events-transparent, nur Panels klickbar.
+- **Online/Bot unverändert**: genau ein eigenes Panel, Platzier-Hinweis oben,
+  sonst unten (bisheriges Verhalten 1:1 erhalten). 2-Spieler-lokal ebenfalls
+  identisch (P2 einzeln oben).
+
+Tests grün. SW-Cache `fortress-v3.40.2`.

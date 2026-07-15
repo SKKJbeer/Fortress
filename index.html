@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.40.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.40.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -6277,7 +6277,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.1")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.2")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7824,7 +7824,7 @@ window.FortressApp = function Fortress() {
   } }, warn), phase === "cannon" && (() => {
     const mine = online.current ? [myRole.current] : botMode.current ? [1] : playersList();
     const h = React.createElement;
-    return mine.filter((sp) => sp >= 1 && !eliminated.current[sp]).map((sp) => {
+    const renderInner = (sp) => {
       // Kanone gekauft und wartet auf Platzierung → Shop AUSBLENDEN (v3.17.1),
       // damit das ganze Feld frei ist (das Panel verdeckte sonst die eigene
       // Burg unten, man konnte dort nicht platzieren). Stattdessen ein schmaler,
@@ -7833,29 +7833,23 @@ window.FortressApp = function Fortress() {
       // Reparatur-Highlight (v3.32.0): Shop kurz weg, Blick aufs Feld frei
       if ((shopHideUntil.current[sp] || 0) > performance.now()) return null;
       if ((cannonBudget.current[sp] || 0) > 0) {
-        return h("div", { key: "placehint" + sp, style: { position: "fixed", left: 0, right: 0, top: "calc(env(safe-area-inset-top, 0px) + 52px)", zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" } },
-          h("div", { style: {
+        return { kind: "placehint", el: h("div", { key: "placehint" + sp, style: {
             padding: "6px 15px", borderRadius: 999, fontSize: 12, fontWeight: 800, color: "#fde68a",
             background: "linear-gradient(180deg, rgba(30,41,66,0.94), rgba(11,16,30,0.94))",
             border: "1px solid rgba(251,191,36,0.45)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
             backdropFilter: "blur(8px)", animation: "shopCoinPulse 1.1s ease-in-out infinite"
-          } }, t("armoryPlaceHint"))
-        );
+          } }, t("armoryPlaceHint")) };
       }
       // Spieler hat „Fertig" bestätigt → kompaktes Warte-Panel statt Shop (v3.18.1)
       if (armoryReady.current[sp]) {
-        const isTopW = !online.current && !botMode.current && sp !== 1;
-        const posW = isTopW ? { top: "calc(env(safe-area-inset-top, 0px) + " + (sp === 3 ? 116 : 54) + "px)" } : { bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" };
-        return h("div", { key: "armoryWait" + sp, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" }, posW) },
-          h("div", { style: {
+        return { kind: "wait", el: h("div", { key: "armoryWait" + sp, style: {
             padding: "9px 18px", borderRadius: 14, fontSize: 13, fontWeight: 800, color: "#6ee7b7",
             background: "linear-gradient(180deg, rgba(30,41,66,0.94), rgba(11,16,30,0.96))",
             border: "1px solid rgba(52,211,153,0.4)",
             boxShadow: "0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
             backdropFilter: "blur(10px)", animation: "shopRise 0.32s cubic-bezier(.22,1,.36,1) both"
-          } }, t("armoryWaiting"))
-        );
+          } }, t("armoryWaiting")) };
       }
       const up = upgrades.current[sp] || {};
       const have = scrap.current[sp] || 0;
@@ -7872,12 +7866,7 @@ window.FortressApp = function Fortress() {
           return true;
         })() }
       ];
-      const isTop = !online.current && !botMode.current && sp !== 1;
-      const pos = isTop
-        ? { top: "calc(env(safe-area-inset-top, 0px) + " + (sp === 3 ? 116 : 54) + "px)" }
-        : { bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" };
-      return h("div", { key: "shop" + sp, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" }, pos) },
-        h("div", { style: {
+      return { kind: "shop", el: h("div", { key: "shop" + sp, style: {
           width: "100%", maxWidth: 452, pointerEvents: "auto",
           background: "linear-gradient(180deg, rgba(30,41,66,0.96) 0%, rgba(11,16,30,0.975) 100%)",
           border: "1px solid rgba(255,255,255,0.10)", borderRadius: 20, padding: "9px 10px 11px",
@@ -7964,9 +7953,32 @@ window.FortressApp = function Fortress() {
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6
           } }, "✓ " + t("armoryDone"))
-        )
-      );
-    });
+        ) };
+    };
+    const active = mine.filter((sp) => sp >= 1 && !eliminated.current[sp]);
+    const parts = active.map((sp) => ({ sp, r: renderInner(sp) })).filter((x) => x.r);
+    if (!parts.length) return null;
+    // Online/Bot: genau ein eigenes Panel — Platzier-Hinweis oben, sonst unten.
+    if (online.current || botMode.current) {
+      return parts.map(({ sp, r }) => h("div", {
+        key: "shopwrap" + sp,
+        style: __spreadValues({ position: "fixed", zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" },
+          r.kind === "placehint"
+            ? { left: 0, right: 0, top: "calc(env(safe-area-inset-top, 0px) + 52px)" }
+            : { left: 6, right: 6, bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" })
+      }, r.el));
+    }
+    // Lokaler 2–3-Spieler-Hotseat (v3.40.2): alle Nicht-P1-Panels sauber in einer
+    // Flex-Spalte oben stapeln (mit Gap) statt fixer Einzel-Offsets 54/116px, die
+    // sich bei vollhohen Shop-Panels überlappten. P1 bleibt unten. Der Container
+    // ist pointer-events-transparent; nur die Panels selbst sind klickbar.
+    const stack = (list, posStyle, key) => list.length ? h("div", {
+      key, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, pointerEvents: "none" }, posStyle)
+    }, list.map((x) => x.r.el)) : null;
+    return [
+      stack(parts.filter((x) => x.sp !== 1), { top: "calc(env(safe-area-inset-top, 0px) + 54px)" }, "shopStackTop"),
+      stack(parts.filter((x) => x.sp === 1), { bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }, "shopStackBot")
+    ];
   })(), showShopInfo && phase === "cannon" && (() => {
     const h = React.createElement;
     const earn = [
