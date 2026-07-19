@@ -1,0 +1,639 @@
+<style>
+:root{
+  --bg:#070b13; --bg2:#0a1020; --ink:#eef2f9; --muted:#93a1b5; --faint:#5c6a80;
+  --line:rgba(255,255,255,0.09); --line2:rgba(255,255,255,0.16);
+  --gold:#fbbf24; --goldsoft:#fcd34d;
+  --blue:#60a5fa; --red:#f87171; --green:#34d399;
+  --panel:rgba(17,24,39,0.72);
+  --fdisp:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --fmono:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; overflow:hidden; color:var(--ink);
+  background:
+    radial-gradient(120% 90% at 50% -10%, #16233f 0%, #0a1224 46%, #060a12 80%, #04070d 100%);
+  font-family:var(--fdisp); -webkit-font-smoothing:antialiased;
+}
+/* ---------- deck ---------- */
+.deck{position:fixed; inset:0}
+.slide{
+  position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+  padding:clamp(28px,6vh,80px) clamp(22px,7vw,120px);
+  opacity:0; visibility:hidden; transform:translateY(18px) scale(0.995);
+  transition:opacity .5s ease, transform .55s cubic-bezier(.22,1,.36,1), visibility .5s;
+  pointer-events:none;
+}
+.slide.active{opacity:1; visibility:visible; transform:none; pointer-events:auto}
+.slide.prev{transform:translateY(-18px) scale(0.995)}
+@media(prefers-reduced-motion:reduce){ .slide{transition:opacity .2s} .slide.prev{transform:none} }
+
+.eyebrow{
+  display:inline-flex; align-items:center; gap:9px; align-self:flex-start;
+  font-size:clamp(10px,1.3vw,12px); font-weight:800; letter-spacing:0.26em; text-transform:uppercase;
+  color:var(--gold); margin-bottom:clamp(14px,2.4vh,26px);
+}
+.eyebrow .pip{width:7px;height:7px;border-radius:2px;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+h1{font-family:var(--fdisp); font-weight:900; letter-spacing:-0.02em; line-height:0.95; margin:0; text-wrap:balance}
+h2{font-family:var(--fdisp); font-weight:900; letter-spacing:-0.018em; line-height:1.02; margin:0 0 clamp(12px,2vh,22px);
+   font-size:clamp(28px,5.2vw,60px); text-wrap:balance}
+.lede{font-size:clamp(15px,2.1vw,22px); color:var(--muted); max-width:60ch; line-height:1.5; margin:0}
+.big{font-size:clamp(15px,2.4vw,24px); color:var(--ink); max-width:56ch; line-height:1.5}
+b,strong{color:var(--ink); font-weight:800}
+.gold{color:var(--gold)} .cblue{color:var(--blue)} .cred{color:var(--red)} .cgreen{color:var(--green)}
+.mono{font-family:var(--fmono)}
+
+/* ---------- cover ---------- */
+#cover h1{font-size:clamp(58px,15vw,180px); background:linear-gradient(180deg,#fff 0%,#ffe9b0 55%,#f59e0b 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 8px 40px rgba(251,191,36,0.35))}
+#cover .sub{font-size:clamp(16px,2.6vw,28px); font-weight:700; color:var(--ink); margin-top:6px}
+#cover .sub .dim{color:var(--muted); font-weight:500}
+#coverfx{position:absolute; inset:0; width:100%; height:100%; z-index:-1; opacity:0.9}
+.coverfoot{position:absolute; left:clamp(22px,7vw,120px); bottom:clamp(24px,5vh,54px); display:flex; gap:22px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--faint)}
+.coverfoot .url{color:var(--goldsoft); font-family:var(--fmono); font-weight:600}
+.tags{display:flex; gap:8px; flex-wrap:wrap; margin-top:clamp(18px,3vh,30px)}
+.tag{font-size:12px; font-weight:700; letter-spacing:0.04em; padding:6px 13px; border-radius:999px;
+  border:1px solid var(--line2); background:rgba(255,255,255,0.04); color:var(--muted)}
+.tag b{color:var(--ink)}
+
+/* ---------- generic layout ---------- */
+.row{display:flex; gap:clamp(16px,2.5vw,34px); align-items:center; flex-wrap:wrap}
+.col{display:flex; flex-direction:column}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:clamp(14px,2vw,26px)}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(12px,1.6vw,20px)}
+@media(max-width:820px){ .grid2,.grid3{grid-template-columns:1fr} }
+
+.card{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:clamp(16px,2vw,24px);
+  backdrop-filter:blur(8px); box-shadow:0 18px 44px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)}
+.card h3{font-size:clamp(15px,1.7vw,19px); font-weight:800; margin:0 0 10px; display:flex; align-items:center; gap:10px}
+.card p{font-size:clamp(13px,1.5vw,16px); color:var(--muted); line-height:1.5; margin:0}
+.chip{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+
+ul.clean{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:clamp(10px,1.6vh,16px)}
+ul.clean li{position:relative; padding-left:26px; font-size:clamp(14px,1.8vw,19px); color:var(--muted); line-height:1.45}
+ul.clean li::before{content:""; position:absolute; left:0; top:0.5em; width:9px;height:9px;border-radius:2px;
+  background:var(--gold); box-shadow:0 0 10px rgba(251,191,36,0.5)}
+ul.clean li b{color:var(--ink)}
+
+/* stats */
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(12px,1.6vw,22px); width:100%}
+@media(max-width:820px){ .stats{grid-template-columns:repeat(2,1fr)} }
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:clamp(16px,2.2vw,28px) clamp(14px,1.6vw,22px); text-align:left}
+.stat .num{font-family:var(--fmono); font-weight:800; font-size:clamp(34px,5.6vw,66px); line-height:1; color:var(--gold);
+  font-variant-numeric:tabular-nums; text-shadow:0 0 30px rgba(251,191,36,0.3)}
+.stat .lab{font-size:clamp(12px,1.4vw,15px); color:var(--muted); margin-top:10px; line-height:1.35}
+
+/* pipeline loop */
+.pipe{display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; width:100%; margin-top:6px}
+.node{flex:1 1 0; min-width:130px; background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:clamp(14px,1.8vw,22px) 14px; text-align:center; position:relative}
+.node .n{font-family:var(--fmono); font-size:12px; color:var(--gold); font-weight:700}
+.node .t{font-size:clamp(14px,1.7vw,19px); font-weight:800; margin-top:6px}
+.node .d{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.35}
+.arrow{align-self:center; color:var(--faint); font-size:22px; flex-shrink:0}
+.loopback{margin-top:16px; text-align:center; font-size:14px; color:var(--goldsoft); font-weight:600}
+.loopback .mono{color:var(--muted)}
+
+/* timeline */
+.tl{position:relative; width:100%; margin-top:clamp(18px,4vh,40px); padding:0 4px}
+.tl .line{position:absolute; left:0; right:0; top:11px; height:2px; background:linear-gradient(90deg,var(--line2),var(--gold))}
+.tl .marks{display:flex; justify-content:space-between; position:relative}
+.tl .m{display:flex; flex-direction:column; align-items:center; gap:10px; flex:1; min-width:0}
+.tl .dot{width:14px;height:14px;border-radius:50%; background:var(--gold); box-shadow:0 0 0 4px rgba(251,191,36,0.15), 0 0 16px rgba(251,191,36,0.6)}
+.tl .v{font-family:var(--fmono); font-size:clamp(11px,1.3vw,14px); font-weight:700; color:var(--goldsoft)}
+.tl .l{font-size:clamp(10px,1.15vw,13px); color:var(--muted); text-align:center; line-height:1.25; max-width:12ch}
+
+/* anecdote before/after */
+.beat{display:flex; gap:14px; align-items:flex-start; font-size:clamp(14px,1.7vw,18px); color:var(--muted); line-height:1.45}
+.beat .k{font-family:var(--fmono); color:var(--gold); font-weight:800; flex-shrink:0; width:26px}
+.beat b{color:var(--ink)}
+.panelbox{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; font-family:var(--fmono); font-size:13px}
+.prow{display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:9px; margin-bottom:7px}
+.prow.p1{background:rgba(96,165,250,0.14); border:1px solid rgba(96,165,250,0.35); color:#bfdbfe}
+.prow.p2{background:rgba(248,113,113,0.14); border:1px solid rgba(248,113,113,0.35); color:#fecaca}
+.prow.p3{background:rgba(52,211,153,0.14); border:1px solid rgba(52,211,153,0.35); color:#a7f3d0}
+.verdict{margin-top:8px; font-family:var(--fmono); font-size:13px}
+.ok{color:var(--green)} .bad{color:var(--red)}
+.pull{font-size:clamp(20px,3.2vw,34px); font-weight:800; line-height:1.2; color:var(--ink); text-wrap:balance; max-width:22ch}
+.pull .gold{text-shadow:0 0 30px rgba(251,191,36,0.35)}
+
+/* art thumbs */
+.thumbs{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; width:100%}
+@media(max-width:820px){ .thumbs{grid-template-columns:1fr} }
+.thumb{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#04070d}
+.thumb canvas{display:block; width:100%; height:auto; aspect-ratio:4/3}
+.thumb .cap{padding:11px 14px; font-size:13px}
+.thumb .cap b{display:block; font-size:15px; margin-bottom:2px}
+.thumb .cap span{color:var(--muted)}
+
+/* chrome */
+.chrome{position:fixed; inset:0; pointer-events:none; z-index:40}
+.sectiontag{position:absolute; top:22px; left:clamp(22px,7vw,120px); font-size:11px; font-weight:800; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--faint)}
+.counter{position:absolute; top:20px; right:clamp(22px,5vw,60px); font-family:var(--fmono); font-size:13px; color:var(--muted)}
+.counter b{color:var(--gold)}
+.pbar{position:absolute; left:0; bottom:0; height:3px; background:linear-gradient(90deg,var(--goldsoft),var(--gold));
+  box-shadow:0 0 12px var(--gold); transition:width .5s cubic-bezier(.22,1,.36,1); width:0}
+.dots{position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:9px; pointer-events:auto}
+.dots i{width:8px;height:8px;border-radius:50%; background:rgba(255,255,255,0.18); cursor:pointer; transition:all .25s}
+.dots i.on{background:var(--gold); box-shadow:0 0 10px var(--gold); transform:scale(1.25)}
+.nav{position:absolute; bottom:16px; right:clamp(22px,5vw,60px); display:flex; gap:8px; pointer-events:auto}
+.nav button{width:40px;height:40px;border-radius:12px; border:1px solid var(--line2); background:rgba(255,255,255,0.05);
+  color:var(--ink); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .2s}
+.nav button:hover{background:rgba(251,191,36,0.16)}
+.hint{position:absolute; bottom:22px; left:clamp(22px,7vw,120px); font-size:12px; color:var(--faint)}
+.hint kbd{font-family:var(--fmono); background:rgba(255,255,255,0.07); border:1px solid var(--line2); border-radius:5px; padding:1px 6px; font-size:11px; color:var(--muted)}
+
+/* notes drawer */
+.notes{position:fixed; left:0; right:0; bottom:0; z-index:60; transform:translateY(100%); transition:transform .35s cubic-bezier(.22,1,.36,1);
+  background:linear-gradient(180deg, rgba(8,12,20,0.97), rgba(4,7,13,0.99)); border-top:2px solid var(--gold);
+  padding:20px clamp(22px,7vw,120px) 26px; max-height:44vh; overflow:auto; box-shadow:0 -20px 60px rgba(0,0,0,0.6)}
+.notes.show{transform:none}
+.notes .nh{font-size:11px; font-weight:800; letter-spacing:0.2em; text-transform:uppercase; color:var(--gold); margin-bottom:10px}
+.notes .nbody{font-size:clamp(14px,1.7vw,17px); color:var(--ink); line-height:1.6; max-width:90ch}
+.notes .nbody li{margin-bottom:6px}
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 0 COVER -->
+  <section class="slide" id="cover" data-tag="Team-Day · Wissensaustausch"
+    data-notes="Begrüßung. Ich zeig euch heute zwei Dinge in einem: ein kleines Spiel, das ich gebaut habe — UND, viel spannender für uns als AI-Team, WIE es entsteht: im Team mit einem KI-Coding-Agenten. Es geht mir nicht ums Spiel an sich, sondern um das Vorgehen, die Disziplin und einen echten Aha-Moment, der zeigt, wo KI heute stark ist und wo der Mensch führen muss. Dauer ~7 Minuten, danach gern Fragen. Tipp: Pfeiltasten blättern, Taste N zeigt mir meine Notizen. Geheimtipp fürs Finale: Taste G löst einen Goldregen aus — guter Abschluss-Gag.">
+    <canvas id="coverfx"></canvas>
+    <span class="eyebrow"><span class="pip"></span>Team-Day · Wissensaustausch</span>
+    <h1>FORTRESS</h1>
+    <div class="sub">Ein Spiel. <span class="dim">Und ein Experiment im Bauen <b class="gold">mit</b> KI.</span></div>
+    <div class="tags">
+      <span class="tag"><b>2–3 Spieler</b> · online</span>
+      <span class="tag">gebaut mit <b>Claude Code</b></span>
+      <span class="tag"><b>0 €</b> Kosten · CFO-approved</span>
+      <span class="tag">live im <b>Browser</b> · kein Install-Gebettel</span>
+    </div>
+    <div class="coverfoot">
+      <span>Jetzt live spielen: <span class="url">skkjbeer.github.io/Fortress</span></span>
+    </div>
+  </section>
+
+  <!-- 1 WAS IST FORTRESS -->
+  <section class="slide" data-tag="Das Spiel"
+    data-notes="Kurz das Spiel, damit ihr den Kontext habt — dann geht's ums Vorgehen. FORTRESS ist die Neuauflage eines alten Flash-Klassikers 'Festung'. Zwei bis drei Leute bauen abwechselnd Burgmauern aus Tetris-Steinen. Wichtig: Am Bauende muss deine Burg komplett von Mauern umschlossen sein — sonst fliegst du raus (das prüfen wir per Flood-Fill). Dann kommt die Schussphase: ihr beschießt euch gegenseitig. Dazwischen eine Rüstphase mit Shop — Kanonen, Panzermauern, Reparatur, alles mit einer In-Match-Währung namens Schrott. Läuft komplett im Browser, auf dem Handy, online über Firebase. Das ist die Bühne — jetzt der eigentliche Star.">
+    <span class="eyebrow"><span class="pip"></span>Das Spiel in 30 Sekunden</span>
+    <div class="row" style="gap:clamp(20px,4vw,60px); align-items:stretch">
+      <div class="col" style="flex:1 1 380px; justify-content:center">
+        <h2>Burgen bauen.<br>Dann Krieg.</h2>
+        <ul class="clean" style="margin-top:8px">
+          <li><b>Bauen</b> — Mauern aus Tetrominos, Burg komplett umschließen</li>
+          <li><b>Schießen</b> — Zieh-und-Los, triff die gegnerische Festung</li>
+          <li><b>Rüsten</b> — Shop: Kanonen, Panzermauern, Reparatur (Währung: <span class="gold">Schrott ⚙</span>)</li>
+          <li><b>7 Welten</b>, ELO, Level, Gold, Kosmetik — alles kostenlos & fair</li>
+        </ul>
+      </div>
+      <div class="thumb" style="flex:1 1 300px; align-self:center; max-width:440px; width:100%">
+        <canvas id="gamefx" width="440" height="330"></canvas>
+        <div class="cap"><b>Live im Browser & als PWA</b><span>44×68 Grid · Canvas · Handy-first</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 DER STAR -->
+  <section class="slide" data-tag="Der eigentliche Punkt"
+    data-notes="Das hier ist die Kernbotschaft der ganzen Präsentation. Ich schreibe keine Zeile Code selbst mehr in dem Sinne, dass ich alles tippe. Ich arbeite als Product Owner und Reviewer mit einem KI-Agenten (Claude Code), der im Repo lebt: liest Dateien, schreibt Code, führt Tests aus, startet das Spiel, macht Screenshots, committet, deployt. Ich gebe Richtung, Geschmack und Prioritäten — der Agent macht die Ausführung UND die Verifikation. Das Interessante ist nicht 'KI schreibt Code' — das kennen wir. Das Interessante ist die Arbeitsteilung und die Disziplin drumherum. Genau das zeig ich euch jetzt.">
+    <span class="eyebrow"><span class="pip"></span>Nicht 'KI schreibt Code'. Sondern: ein Team.</span>
+    <div class="grid2" style="align-items:stretch">
+      <div class="card">
+        <h3><span class="chip" style="background:var(--blue)"></span>Mensch</h3>
+        <p style="font-size:clamp(14px,1.7vw,18px)">Setzt die <b>Richtung</b>. Entscheidet über <b>Geschmack</b>, <b>Prioritäten</b> und <b>„gut genug"</b>. Reviewt, hinterfragt, sagt <b>Nein</b>. Trinkt Kaffee. Hat Meinungen.</p>
+      </div>
+      <div class="card">
+        <h3><span class="chip" style="background:var(--gold)"></span>KI-Agent <span class="mono" style="font-size:13px;color:var(--faint);font-weight:600">(Claude Code)</span></h3>
+        <p style="font-size:clamp(14px,1.7vw,18px)">Lebt <b>im Repo</b>: liest, schreibt, <b>führt Tests aus</b>, <b>startet das Spiel</b>, macht Screenshots, committet, deployt. Schläft nie. Beschwert sich nie. <b>Verifiziert alles.</b></p>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:clamp(18px,3vh,30px)">Der spannende Teil ist nicht das Tippen. Es ist die <span class="gold">Arbeitsteilung</span> und die <span class="gold">Disziplin</span> dahinter.</p>
+  </section>
+
+  <!-- 3 STACK -->
+  <section class="slide" data-tag="Der Stack"
+    data-notes="Ganz kurz die Technik, weil sie eine bewusste Entscheidung ist: radikal einfach und kostenlos. Eine einzige HTML-Datei mit React aus dem CDN — kein Build-Schritt, der Browser lädt direkt. Reine Spiellogik ist in native ES-Module ausgelagert (Engine-Schicht), damit sie unit-testbar ist. Gerendert wird auf Canvas 2D, mit Sprite-Cache für Performance auf dem Handy. Multiplayer über Firebase Realtime Database im kostenlosen Spark-Plan. Hosting: GitHub Pages, gratis. Der Weg in den Play Store läuft über eine Trusted Web Activity — die PWA wird zur Android-App, ohne React Native. Leitprinzip: Solange kein Einkommen, null laufende Kosten. Das diszipliniert die Architektur.">
+    <span class="eyebrow"><span class="pip"></span>Radikal einfach, radikal günstig</span>
+    <h2>Der Stack passt auf einen Bierdeckel <span style="font-size:0.5em;color:var(--muted);font-weight:600">(getestet: passt)</span></h2>
+    <div class="grid3" style="margin-top:6px">
+      <div class="card"><h3><span class="chip" style="background:var(--gold)"></span>Eine Datei</h3><p>React via CDN, <b>kein Build-Schritt</b>. Pure Logik als ES-Module → unit-testbar. Canvas-2D-Rendering mit Sprite-Cache.</p></div>
+      <div class="card"><h3><span class="chip" style="background:var(--blue)"></span>Firebase Spark</h3><p>Realtime Database für Online-Multiplayer & Matchmaking. <b>Kostenloser Plan</b>. Host-autoritativ, Gäste senden Actions.</p></div>
+      <div class="card"><h3><span class="chip" style="background:var(--green)"></span>Pages → Play Store</h3><p>GitHub Pages hostet gratis. Push auf <span class="mono">main</span> → <b>Auto-Deploy</b>. Weg zur App: PWA als TWA, kein Native-Rewrite.</p></div>
+    </div>
+    <p class="lede" style="margin-top:clamp(18px,3vh,28px)"><span class="gold">Leitprinzip:</span> Solange kein Einkommen → <b>0 € laufende Kosten.</b> Das hält die Architektur ehrlich.</p>
+  </section>
+
+  <!-- 4 ZAHLEN -->
+  <section class="slide" data-tag="Zahlen" data-count="1"
+    data-notes="Ein paar Zahlen, die das Tempo zeigen. Über 40 Releases seit der ersten Online-Version — das Ding wird fast täglich weitergebaut. Rund 8.300 Zeilen in der Hauptdatei. Und jetzt der wichtige Teil für uns: 39 Unit-Tests laufen in einer Fünftelsekunde, plus 309 End-to-End-Checks mit Playwright, die das echte Spiel im Browser durchspielen — 2 Spieler, 3 Spieler, online, Matchmaking. Sieben Welten. Null Euro Kosten. Merkt euch die 309 — die kommen gleich in der Anekdote nochmal vor, und zwar mit einer Pointe.">
+    <span class="eyebrow"><span class="pip"></span>Ein bisschen Angeberei</span>
+    <div class="stats">
+      <div class="stat"><div class="num" data-to="40" data-suffix="+">0</div><div class="lab">Releases seit v3.0<br>(fast täglich)</div></div>
+      <div class="stat"><div class="num" data-to="8300" data-sep="1">0</div><div class="lab">Zeilen in EINER Datei<br>(ja. wir wissen.)</div></div>
+      <div class="stat"><div class="num" data-to="39">0</div><div class="lab">Unit-Tests<br>in ~0,2 Sekunden</div></div>
+      <div class="stat"><div class="num" data-to="309">0</div><div class="lab">E2E-Checks<br>(Playwright, echtes Spiel)</div></div>
+      <div class="stat"><div class="num" data-to="7">0</div><div class="lab">Spielwelten<br>(deterministisch)</div></div>
+      <div class="stat"><div class="num" data-to="3">0</div><div class="lab">Spieler gleichzeitig<br>online</div></div>
+      <div class="stat"><div class="num" data-to="0" data-suffix=" €">0</div><div class="lab">laufende<br>Kosten</div></div>
+      <div class="stat"><div class="num" data-to="100" data-suffix=" %">0</div><div class="lab">im Browser<br>kein Install-Zwang</div></div>
+    </div>
+  </section>
+
+  <!-- 5 LOOP -->
+  <section class="slide" data-tag="Wie wir arbeiten"
+    data-notes="Das ist der Arbeits-Loop, jede Änderung läuft da durch. Erstens: die SPEC — eine Markdown-Datei, die verbindliche Spielregeln plus kompletter Changelog ist. Sie wird IMMER mitgepflegt, sie ist das Gedächtnis. Zweitens: Code. Drittens: Tests — Unit und E2E müssen grün sein, sonst kein Commit. Das ist eine harte Regel. Viertens, und das ist der Teil, den die meisten weglassen: Live-Verifikation. Der Agent startet das echte Spiel und schaut nach, ob die Änderung im echten Verhalten wirklich tut, was sie soll. Nicht nur 'Tests grün', sondern 'ich hab's gesehen'. Erst dann: Deploy per Push. Und dann von vorn. Kleine Schritte, jeder abgesichert.">
+    <span class="eyebrow"><span class="pip"></span>Der Loop — jede Änderung läuft hier durch</span>
+    <h2>Spec → Code → Test → <span class="gold">Verify</span> → Deploy</h2>
+    <div class="pipe">
+      <div class="node"><div class="n">01</div><div class="t">Spec</div><div class="d">Regeln + Changelog, immer aktuell. Das Gedächtnis.</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="n">02</div><div class="t">Code</div><div class="d">Kleine, klar umrissene Änderung.</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="n">03</div><div class="t">Test</div><div class="d">Unit + E2E. Kein Commit ohne Grün.</div></div>
+      <div class="arrow">→</div>
+      <div class="node" style="border-color:rgba(251,191,36,0.5); box-shadow:0 0 0 1px rgba(251,191,36,0.3), 0 18px 44px rgba(0,0,0,0.4)"><div class="n" style="color:var(--goldsoft)">04</div><div class="t gold">Verify</div><div class="d">Echtes Spiel starten, hinschauen.</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="n">05</div><div class="t">Deploy</div><div class="d">Push → Auto-Deploy → live.</div></div>
+    </div>
+    <div class="loopback">↻ &nbsp;und wieder von vorn — <span class="mono">kleine Schritte, jeder abgesichert</span></div>
+  </section>
+
+  <!-- 6 DISZIPLIN -->
+  <section class="slide" data-tag="Disziplin"
+    data-notes="Warum funktioniert das mit einem KI-Agenten überhaupt zuverlässig? Wegen vier Disziplin-Regeln, die im Projekt festgeschrieben sind — der Agent liest sie bei jedem Start. Erstens: die SPEC ist die einzige Wahrheit; kein Feature ohne Spec-Eintrag. Zweitens: das Test-Gate — grün oder gar nicht. Drittens: Versionsdisziplin — jede Änderung erhöht die Version an mehreren Stellen, wird getaggt, als Release veröffentlicht. Viertens, mein Favorit: ein Bug-Register. Gelöste Bugs werden mit Ursache dokumentiert, mit der Regel 'nie wieder einführen'. So sammelt das Projekt institutionelles Wissen, das der Agent respektiert. Das ist im Grunde gute Engineering-Kultur — nur eben so aufgeschrieben, dass eine KI sie befolgen kann.">
+    <span class="eyebrow"><span class="pip"></span>Warum das mit KI verlässlich läuft</span>
+    <h2>Disziplin, aufgeschrieben für Mensch <span class="dim" style="color:var(--muted)">und</span> Maschine</h2>
+    <div class="grid2">
+      <ul class="clean">
+        <li><b>Single Source of Truth</b> — kein Feature ohne SPEC-Eintrag</li>
+        <li><b>Test-Gate</b> — grün oder es wird nicht committet</li>
+      </ul>
+      <ul class="clean">
+        <li><b>Versionsdisziplin</b> — hochzählen, taggen, Release, jedes Mal</li>
+        <li><b>Bug-Register</b> — gelöste Bugs mit Ursache + „nie wieder"</li>
+      </ul>
+    </div>
+    <p class="lede" style="margin-top:clamp(18px,3vh,30px)">Nichts Magisches — nur <b>gute Engineering-Kultur</b>, so notiert, dass ein <span class="gold">Agent sie befolgen kann</span>.</p>
+  </section>
+
+  <!-- 7 ANEKDOTE -->
+  <section class="slide" data-tag="Der Aha-Moment"
+    data-notes="Und jetzt die Geschichte, für die ich eigentlich hier bin — sie ist von heute, echt passiert. Aufgabe: Im lokalen 3-Spieler-Modus überlappten sich die Shop-Menüs. Der Agent hat das Layout sauber umgebaut. DABEI hat er sich selbst einen neuen Bug eingebaut — ein winziger Tippfehler, er hat auf die falsche Objekt-Ebene zugegriffen, dadurch wurden die Shops leer gerendert. Der Clou: Die 309 Tests waren ALLE grün. Die hätten den Bug nie gefangen, weil sie die Shop-Sichtbarkeit gar nicht prüfen. Wenn der Agent hier gestoppt hätte — 'Tests grün, fertig' — wäre ein kaputtes Feature live gegangen. Hat er aber nicht. In der Verify-Phase hat er das echte Spiel bis zur Rüstphase gesteuert, Screenshots gemacht UND die Pixel-Boxen der Panels gemessen — und gemerkt: Die Shops sind gar nicht im DOM. Fehler gefunden, behoben, nochmal verifiziert, DANN erst deployt. Die Lektion: Tests sagen dir, ob Code tut was du behauptest. Verifikation sagt dir, ob er tut was der Nutzer braucht. Bei KI-Agenten ist dieser Schritt nicht optional — er ist der wichtigste.">
+    <span class="eyebrow"><span class="pip"></span>Heute passiert · die Pointe</span>
+    <div class="row" style="gap:clamp(20px,4vw,56px); align-items:center">
+      <div class="col" style="flex:1 1 400px">
+        <div class="beat"><span class="k">1</span><div><b>Bug:</b> 3-Spieler-Shops überlappen sich.</div></div>
+        <div class="beat" style="margin-top:14px"><span class="k">2</span><div>Agent baut das Layout um — <b>und schleust dabei einen neuen Bug ein</b> (falsche Objekt-Ebene → Shops leer).</div></div>
+        <div class="beat" style="margin-top:14px"><span class="k">3</span><div><b class="ok">309 / 309 Tests grün.</b> Sie hätten es <b>nie</b> gefangen.</div></div>
+        <div class="beat" style="margin-top:14px"><span class="k">4</span><div><b class="gold">Verify statt vertrauen:</b> echtes Spiel gefahren, Panels gemessen → <b>Shops fehlen im DOM.</b></div></div>
+        <div class="beat" style="margin-top:14px"><span class="k">5</span><div>Fix → erneut verifiziert → <b>dann</b> deployt. <span class="ok" style="font-weight:800">✓</span> <span style="color:var(--faint)">Bug eingebaut, gefunden & gefixt — 100&nbsp;% Eigenleistung.</span></div></div>
+      </div>
+      <div class="col" style="flex:1 1 300px; max-width:420px; gap:14px">
+        <div class="panelbox">
+          <div style="color:var(--faint);margin-bottom:8px">gemessene Panel-Boxen (live)</div>
+          <div class="prow p2">♚ P2 &nbsp;·&nbsp; top 54 → 246</div>
+          <div class="prow p3">♜ P3 &nbsp;·&nbsp; top 254 → 446</div>
+          <div class="prow p1">♔ P1 &nbsp;·&nbsp; bottom (640 → 832)</div>
+          <div class="verdict"><span class="ok">✓ gap 8px · OVERLAP: false · 0 JS-Fehler</span></div>
+        </div>
+        <div class="pull"><span class="gold">Vertrauen ist gut.</span><br>Verifikation ist besser.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 KREATIVPHASE -->
+  <section class="slide" data-tag="Kreativ mit KI"
+    data-notes="KI kann nicht nur Bugs jagen, sondern auch kreativ mithelfen — mit ehrlichen Grenzen. Für den nächsten großen Schritt, bessere Grafik, wollte ich eine Stilrichtung finden. Statt zu diskutieren, hat der Agent ein interaktives Mockup gebaut: dieselbe Spielszene live in drei Stilen nebeneinander — Supercell-Cartoon, handgemalt-Fantasy, Neon-modern. Zum Anschauen statt zum Vorlesen. Und ganz wichtig, die ehrliche Ansage: Der Agent baut Engine, Effekte, Integration und schreibt die Prompts — aber Rasterbilder malen, also echte Texturen und Illustrationen, kann er nicht selbst; dafür braucht es eine Bild-KI oder Menschen. Diese ehrliche Selbsteinschätzung ist Gold wert: Man weiß genau, wer welchen Teil macht.">
+    <span class="eyebrow"><span class="pip"></span>KI als Kreativ-Sparringspartner</span>
+    <h2>Zeigen statt vorlesen</h2>
+    <div class="thumbs">
+      <div class="thumb"><canvas class="artc" data-style="A" width="320" height="240"></canvas><div class="cap"><b>Supercell-Cartoon</b><span>warm, dicke Outlines</span></div></div>
+      <div class="thumb"><canvas class="artc" data-style="B" width="320" height="240"></canvas><div class="cap"><b>Hand-painted</b><span>Textur, Fackeln, Rahmen</span></div></div>
+      <div class="thumb"><canvas class="artc" data-style="C" width="320" height="240"></canvas><div class="cap"><b>Neon-modern</b><span>Glühen, Energie</span></div></div>
+    </div>
+    <p class="lede" style="margin-top:clamp(16px,2.6vh,26px)"><b>Ehrliche Rollen:</b> KI = Engine, Effekte, Integration, Prompts. <span class="gold">Bild-KI / Mensch</span> = die gemalten Assets. Kein Bluff.</p>
+  </section>
+
+  <!-- 9 TIMELINE -->
+  <section class="slide" data-tag="Tempo"
+    data-notes="Kurz das Tempo visuell: Von der ersten Online-Version bis heute — Multiplayer, dann ein ganzes Progressionssystem mit Level und Gold, dann sieben deterministische Welten, die Schrott-Ökonomie mit Shop, KI-Gegner in mehreren Schwierigkeitsstufen, echte Soundeffekte, dann eine saubere Modularisierung der Engine in Testbare Module — und heute die Politur-Fixes. Jeder Punkt ist ein Release mit grünen Tests. Das ist die Velocity, die entsteht, wenn Ausführung und Verifikation an den Agenten gehen und der Mensch die Richtung hält.">
+    <span class="eyebrow"><span class="pip"></span>Von Multiplayer bis heute</span>
+    <h2>Velocity, abgesichert</h2>
+    <div class="tl">
+      <div class="line"></div>
+      <div class="marks">
+        <div class="m"><div class="dot"></div><div class="v">v3.0</div><div class="l">Online-Multiplayer</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.11</div><div class="l">Level & Gold</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.15</div><div class="l">7 Welten</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.16</div><div class="l">Schrott-Ökonomie</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.20</div><div class="l">KI-Gegner</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.28</div><div class="l">Sound</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.34</div><div class="l">Engine-Module</div></div>
+        <div class="m"><div class="dot"></div><div class="v">v3.40</div><div class="l">heute · Politur</div></div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:clamp(24px,5vh,50px)">Jeder Punkt = ein Release mit <span class="gold">grünen Tests</span>. Richtung: Mensch. Ausführung + Verifikation: Agent.</p>
+  </section>
+
+  <!-- 10 LEARNINGS -->
+  <section class="slide" data-tag="Learnings"
+    data-notes="Was nehme ich mit — ehrlich, mit Grenzen. Wo KI heute richtig stark ist: Fleißarbeit, Refactoring, Tests schreiben und ausführen, und eben Verifikation — das echte Ding starten und beobachten. Wo der Mensch führt: Richtung, Geschmack, Prioritäten, das Gefühl für 'gut genug' und wann man Nein sagt. Und wo die Grenzen sind: Der Agent kann keine Bilder malen — und man darf ihm nicht blind vertrauen; grüne Tests sind kein Beweis, dass das Feature funktioniert. Deshalb ist die Verify-Phase der Herzschlag des Ganzen.">
+    <span class="eyebrow"><span class="pip"></span>Ehrliche Bilanz</span>
+    <h2>Wer kann was — heute</h2>
+    <div class="grid3">
+      <div class="card"><h3><span class="chip" style="background:var(--gold)"></span>KI ist stark bei</h3><p>Fleißarbeit, Refactoring, <b>Tests schreiben & ausführen</b>, und <b>Verifikation</b> — das echte Ding starten und beobachten.</p></div>
+      <div class="card"><h3><span class="chip" style="background:var(--blue)"></span>Mensch führt bei</h3><p><b>Richtung</b>, Geschmack, Prioritäten, das Gefühl für <b>„gut genug"</b> — und wann man <b>Nein</b> sagt.</p></div>
+      <div class="card"><h3><span class="chip" style="background:var(--red)"></span>Grenzen</h3><p>Keine gemalten <b>Bilder</b>. Und: <b>grüne Tests ≠ Beweis</b>. Blindes Vertrauen ist der Fehler.</p></div>
+    </div>
+  </section>
+
+  <!-- 11 VISION -->
+  <section class="slide" data-tag="Die Vision"
+    data-notes="Wohin geht die Reise? Drei Etappen. Erstens: AAA-Optik — wir haben die Stilrichtung per interaktivem Mockup gewählt, der Plan ist ein Hybrid: der Agent baut Engine, Licht und Effekte, eine Bild-KI malt die Assets. Zweitens: der Play Store — die PWA wird per Trusted Web Activity zur Android-App, ohne Rewrite, ohne Native-Team. Drittens: Wachstum — Ein-Tap-Einladungen, Matchmaking, ELO sind schon drin; monetarisiert wird erst, wenn es sich lohnt, bis dahin bleiben die Kosten bei exakt null. Und ja, 'Weltherrschaft' ist als optionales Stretch-Goal eingeplant.">
+    <span class="eyebrow"><span class="pip"></span>Wohin die Reise geht</span>
+    <h2>Roadmap zur <span class="gold">Weltherrschaft</span> <span style="font-size:0.5em;color:var(--muted);font-weight:600">(bescheidene Ausbaustufe)</span></h2>
+    <div class="grid3">
+      <div class="card"><h3><span class="chip" style="background:var(--gold)"></span>Etappe 1 · AAA-Optik</h3><p>Stil per <b>Live-Mockup</b> gewählt statt totdiskutiert. Hybrid: <b>Agent</b> baut Engine, Licht & Partikel — <b>Bild-KI</b> malt die Kunst.</p></div>
+      <div class="card"><h3><span class="chip" style="background:var(--green)"></span>Etappe 2 · Play Store</h3><p>PWA → <b>TWA</b> → Android-App. Kein Rewrite, kein Native-Team, <b>keine Ausreden</b>.</p></div>
+      <div class="card"><h3><span class="chip" style="background:var(--blue)"></span>Etappe 3 · Wachstum</h3><p>Ein-Tap-Einladung, Matchmaking, ELO — läuft. Monetarisierung? <b>Erst wenn's brummt.</b> Bis dahin: 0 €.</p></div>
+    </div>
+    <p class="lede" style="margin-top:clamp(18px,3vh,28px)">Gleiche Methode wie bisher: <span class="gold">kleine Züge, jeder verifiziert</span> — nur das Ziel wird größer.</p>
+  </section>
+
+  <!-- 12 TAKEAWAYS / OUTRO -->
+  <section class="slide" data-tag="Für uns" id="outro"
+    data-notes="Zum Mitnehmen für unser Team, vier Dinge. Erstens: Schreibt eure Regeln so auf, dass eine KI sie lesen kann — Spec, Konventionen, gelöste Bugs. Zweitens: Baut ein hartes Test-Gate; der Agent hält sich dran, wenn ihr es festlegt. Drittens, das Wichtigste: verifizieren statt vertrauen — lasst den Agenten das echte Verhalten beobachten, nicht nur Tests bestehen. Viertens: kleine Schritte, jeder abgesichert und deploybar. Und dann der Aufruf: Spielt es einfach mal — der Link ist offen, drei Leute, ein Match, das ist ein guter Team-Day-Zeitvertreib. Danke, und jetzt her mit euren Fragen.">
+    <span class="eyebrow"><span class="pip"></span>Zum Mitnehmen</span>
+    <h2>Vier Dinge für unser Team</h2>
+    <div class="grid2">
+      <ul class="clean">
+        <li><b>Regeln KI-lesbar aufschreiben</b> — Spec, Konventionen, Bug-Register</li>
+        <li><b>Hartes Test-Gate</b> — der Agent hält sich dran, wenn's festgelegt ist</li>
+      </ul>
+      <ul class="clean">
+        <li><b class="gold">Verifizieren statt vertrauen</b> — echtes Verhalten beobachten</li>
+        <li><b>Kleine Schritte</b> — jeder abgesichert & deploybar</li>
+      </ul>
+    </div>
+    <div class="row" style="margin-top:clamp(22px,4vh,40px); gap:28px; align-items:baseline">
+      <div class="pull" style="max-width:none"><span class="gold">Spielt's mal.</span> 3 Leute, 1 Match.</div>
+      <div class="mono" style="font-size:clamp(15px,2vw,22px); color:var(--goldsoft)">skkjbeer.github.io/Fortress</div>
+    </div>
+    <p class="lede" style="margin-top:14px">Danke! &nbsp;<span class="dim" style="color:var(--faint)">— Fragen?</span></p>
+  </section>
+
+</div>
+
+<!-- chrome -->
+<div class="chrome">
+  <div class="sectiontag" id="sectiontag"></div>
+  <div class="counter"><b id="cnum">01</b> / <span id="ctot">12</span></div>
+  <div class="dots" id="dots"></div>
+  <div class="nav">
+    <button id="prev" aria-label="zurück">‹</button>
+    <button id="next" aria-label="weiter">›</button>
+  </div>
+  <div class="hint"><kbd>←</kbd> <kbd>→</kbd> blättern · <kbd>N</kbd> Notizen · <kbd>F</kbd> Vollbild · <kbd>G</kbd> ?</div>
+  <div class="pbar" id="pbar"></div>
+</div>
+
+<div class="notes" id="notes">
+  <div class="nh">Presenter-Notizen · <span id="nnum"></span></div>
+  <div class="nbody" id="nbody"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var idx = 0;
+  var dotsWrap = document.getElementById('dots');
+  document.getElementById('ctot').textContent = slides.length;
+
+  slides.forEach(function(s,i){
+    var d = document.createElement('i'); d.dataset.i = i;
+    d.addEventListener('click', function(){ go(i); });
+    dotsWrap.appendChild(d);
+  });
+  var dots = Array.prototype.slice.call(dotsWrap.children);
+
+  function pad(n){ return String(n+1).padStart(2,'0'); }
+
+  function go(n){
+    n = Math.max(0, Math.min(slides.length-1, n));
+    if(n === idx && slides[idx].classList.contains('active')) { /* re-trigger anims ok */ }
+    slides.forEach(function(s,i){
+      s.classList.toggle('active', i===n);
+      s.classList.toggle('prev', i<n);
+    });
+    dots.forEach(function(d,i){ d.classList.toggle('on', i===n); });
+    idx = n;
+    document.getElementById('cnum').textContent = pad(n);
+    document.getElementById('sectiontag').textContent = slides[n].dataset.tag || '';
+    document.getElementById('pbar').style.width = ((n)/(slides.length-1)*100)+'%';
+    updateNotes();
+    onEnter(slides[n]);
+  }
+
+  // ---- per-slide enter hooks ----
+  var counted = false;
+  function onEnter(slide){
+    if(slide.dataset.count && !counted){ counted = true; runCounts(slide); }
+    coverActive = (slide.id === 'cover');
+  }
+
+  function runCounts(slide){
+    slide.querySelectorAll('.num[data-to]').forEach(function(el){
+      var to = parseFloat(el.dataset.to), sep = el.dataset.sep, suf = el.dataset.suffix||'';
+      var dur = reduce ? 0 : 1100, t0 = performance.now();
+      function fmt(v){ v = Math.round(v); var s = sep ? v.toLocaleString('de-DE') : String(v); return s + suf; }
+      (function tick(t){
+        var p = dur ? Math.min(1,(t-t0)/dur) : 1;
+        var e = 1-Math.pow(1-p,3);
+        el.textContent = fmt(to*e);
+        if(p<1) requestAnimationFrame(tick);
+      })(t0);
+    });
+  }
+
+  // ---- notes ----
+  var notes = document.getElementById('notes');
+  function updateNotes(){
+    document.getElementById('nnum').textContent = pad(idx)+' / '+slides.length;
+    document.getElementById('nbody').textContent = slides[idx].dataset.notes || '';
+  }
+
+  // ---- keys ----
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ') { e.preventDefault(); go(idx+1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); go(idx-1); }
+    else if(e.key==='Home'){ go(0); } else if(e.key==='End'){ go(slides.length-1); }
+    else if(e.key==='n'||e.key==='N'){ notes.classList.toggle('show'); }
+    else if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); else document.exitFullscreen&&document.exitFullscreen(); }
+  });
+  document.getElementById('next').addEventListener('click', function(){ go(idx+1); });
+  document.getElementById('prev').addEventListener('click', function(){ go(idx-1); });
+
+  // swipe
+  var tx=0, ty=0;
+  addEventListener('touchstart', function(e){ tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
+  addEventListener('touchend', function(e){
+    var dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)) go(idx + (dx<0?1:-1));
+  }, {passive:true});
+
+  // ===================== CANVAS SCENES =====================
+  function rr(ctx,x,y,w,h,r){ if(ctx.roundRect){ctx.beginPath();ctx.roundRect(x,y,w,h,r);return;} ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath(); }
+  var DPR = Math.min(2, devicePixelRatio||1);
+
+  function fit(cv){ var w=cv.width, h=cv.height; cv.width=w*DPR; cv.height=h*DPR; var c=cv.getContext('2d'); c.setTransform(DPR,0,0,DPR,0,0); return {c:c, w:w, h:h}; }
+
+  // block drawing
+  function block(c,x,y,u,col,edge,neon){
+    var g=c.createLinearGradient(x,y,x,y+u); g.addColorStop(0,col[0]); g.addColorStop(1,col[1]);
+    rr(c,x+1,y+1,u-2,u-2, neon?4:4); c.fillStyle=g; c.fill();
+    if(neon){ c.save(); c.lineWidth=1.4; c.strokeStyle=edge; c.shadowColor=edge; c.shadowBlur=8; c.stroke(); c.restore(); }
+    else { c.lineWidth=2; c.strokeStyle=edge; c.stroke(); c.fillStyle='rgba(255,255,255,0.4)'; rr(c,x+3,y+3,u-6,4,2); c.fill(); }
+  }
+
+  // FORTRESS scene (used on cover big + game thumb) with build animation
+  function fortressScene(cv, opts){
+    opts=opts||{}; var S=fit(cv), c=S.c, W=S.w, H=S.h;
+    var scale = opts.scale||1;
+    var ground = H*0.86;
+    var cx = W*0.5;
+    var kW=64*scale, kX=cx-kW/2, kTop=ground-118*scale, u=16*scale;
+    // wall unit positions (ring around keep)
+    var wall=[];
+    for(var x=kX-4*u; x<kX; x+=u) wall.push([x,ground-u]);
+    for(var x2=kX+kW; x2<=kX+kW+3*u; x2+=u) wall.push([x2,ground-u]);
+    wall.push([kX-4*u,ground-2*u]); wall.push([kX+kW+3*u,ground-2*u]);
+    var cannons=[[kX-2.5*u, ground-2*u-2],[kX+kW+1.5*u, ground-2*u-2]];
+
+    var parts=[]; for(var i=0;i<10;i++) parts.push({x:Math.random()*W,y:Math.random()*H,s:0.3+Math.random()*0.7,ph:Math.random()*6.28});
+
+    function frame(t){
+      c.clearRect(0,0,W,H);
+      // sky glow
+      var sg=c.createRadialGradient(cx,-40,0,cx,-40,H*1.1); sg.addColorStop(0,'rgba(37,55,90,0.5)'); sg.addColorStop(1,'rgba(4,7,13,0)');
+      c.fillStyle=sg; c.fillRect(0,0,W,H);
+      // ground
+      c.fillStyle='#0c1526'; c.fillRect(0,ground,W,H-ground);
+      c.fillStyle='#13324f'; c.fillRect(0,ground,W,3);
+      // gold particles rising
+      for(var i=0;i<parts.length;i++){var p=parts[i];var yy=((p.y - t*0.02*p.s*60)%(H+20)); if(yy<0)yy+=H+20;
+        c.globalAlpha=0.25+0.3*Math.sin(t*0.003+p.ph); c.fillStyle='#fcd34d'; c.beginPath(); c.arc(p.x,yy,1.4,0,6.28); c.fill();}
+      c.globalAlpha=1;
+      // keep
+      var kg=c.createLinearGradient(0,kTop,0,ground); kg.addColorStop(0,'#3b6aa8'); kg.addColorStop(1,'#1e3a63');
+      rr(c,kX,kTop,kW,ground-kTop,7); c.fillStyle=kg; c.fill(); c.lineWidth=2.4; c.strokeStyle='#0b1830'; c.stroke();
+      for(var m=0;m<4;m++){ var mx=kX+3+m*((kW-6)/4); rr(c,mx,kTop-11*scale,((kW-6)/4)-2,13*scale,3); c.fillStyle='#3b6aa8'; c.fill(); c.strokeStyle='#0b1830'; c.lineWidth=2; c.stroke(); }
+      // door
+      c.fillStyle='rgba(0,0,0,0.4)'; rr(c,cx-11*scale,ground-34*scale,22*scale,34*scale,10); c.fill();
+      // crest
+      c.fillStyle='#fbbf24'; c.font='900 '+(16*scale)+'px '+'Segoe UI,system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle';
+      c.fillText('♔', cx, kTop+26*scale);
+      // walls build up progressively (loop ~ every 7s)
+      var cyc=(t%7000)/7000; var shown=Math.floor(cyc*(wall.length+3));
+      for(var w=0; w<wall.length; w++){
+        if(w>shown) continue;
+        var drop = w===shown ? (1-((cyc*(wall.length+3))-shown)) : 0;
+        block(c, wall[w][0], wall[w][1]-drop*40, u, ['#5b8fd6','#2f5da0'], '#0b1830', false);
+      }
+      // cannons (after walls)
+      if(shown>=wall.length){
+        for(var k=0;k<2;k++){ var cc=cannons[k];
+          c.beginPath(); c.arc(cc[0]+u/2, cc[1]+u/2, 10*scale, 0, 6.28); var dg=c.createRadialGradient(cc[0]+u/2-3,cc[1]+u/2-3,1,cc[0]+u/2,cc[1]+u/2,11*scale); dg.addColorStop(0,'#8b95a3'); dg.addColorStop(1,'#4b5563'); c.fillStyle=dg; c.fill(); c.strokeStyle='#0b1830'; c.lineWidth=2; c.stroke();
+        }
+        // projectile arc
+        var pt=((t%2400)/2400); if(pt<0.7){ var pp=pt/0.7; var sx=cannons[0][0]+u/2, sy=cannons[0][1]; var ex=cannons[1][0]+u/2, ey=cannons[1][1];
+          var bx=sx+(ex-sx)*pp, by=sy+(ey-sy)*pp-Math.sin(Math.PI*pp)*70*scale;
+          c.fillStyle='#fcd34d'; c.shadowColor='#fbbf24'; c.shadowBlur=12; c.beginPath(); c.arc(bx,by,4*scale,0,6.28); c.fill(); c.shadowBlur=0; }
+      }
+      // vignette
+      var vg=c.createRadialGradient(cx,H*0.5,H*0.25,cx,H*0.5,H*0.75); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.5)'); c.fillStyle=vg; c.fillRect(0,0,W,H);
+    }
+    return frame;
+  }
+
+  // mini art-style thumbnails (static-ish)
+  function artThumb(cv, style){
+    var S=fit(cv), c=S.c, W=S.w, H=S.h; var ground=H*0.82, cx=W*0.5, u=13, kW=54, kX=cx-kW/2, kTop=ground-70;
+    function draw(t){
+      c.clearRect(0,0,W,H);
+      if(style==='A'){ var sk=c.createLinearGradient(0,0,0,H); sk.addColorStop(0,'#ffd59e'); sk.addColorStop(0.6,'#8fd0ff'); sk.addColorStop(1,'#5aa9ee'); c.fillStyle=sk; c.fillRect(0,0,W,H); c.fillStyle='#5aa03a'; c.fillRect(0,ground,W,H-ground); }
+      else if(style==='B'){ var sb=c.createLinearGradient(0,0,0,H); sb.addColorStop(0,'#2b3a4a'); sb.addColorStop(1,'#46566a'); c.fillStyle=sb; c.fillRect(0,0,W,H); c.fillStyle='#5f5340'; c.fillRect(0,ground,W,H-ground); }
+      else { c.fillStyle='#0a0e1a'; c.fillRect(0,0,W,H); c.fillStyle='#0a1526'; c.fillRect(0,ground,W,H-ground); var hg=c.createRadialGradient(cx,ground,4,cx,ground,120); hg.addColorStop(0,'rgba(34,211,238,0.22)'); hg.addColorStop(1,'rgba(34,211,238,0)'); c.fillStyle=hg; c.fillRect(0,ground-60,W,H-ground+60); }
+      var col = style==='A'?['#e6b877','#c0824a']: style==='B'?['#9aa088','#6b7160']:['#12233f','#0b1224'];
+      var edge = style==='A'?'#3a2413': style==='B'?'#241f18':'#22d3ee';
+      var neon = style==='C';
+      // keep
+      var kg=c.createLinearGradient(0,kTop,0,ground); kg.addColorStop(0,col[0]); kg.addColorStop(1,col[1]);
+      rr(c,kX,kTop,kW,ground-kTop,6); c.fillStyle=kg; c.fill(); if(neon){c.strokeStyle=edge;c.lineWidth=1.4;c.shadowColor=edge;c.shadowBlur=8;c.stroke();c.shadowBlur=0;} else {c.strokeStyle=edge;c.lineWidth=2;c.stroke();}
+      c.fillStyle= style==='A'?'#ffd23f': style==='B'?'#c9a24a':'#7fe9f5'; c.font='900 13px Segoe UI,system-ui,sans-serif'; c.textAlign='center'; c.textBaseline='middle'; if(neon){c.shadowColor=c.fillStyle;c.shadowBlur=10;} c.fillText('♚',cx,kTop+20); c.shadowBlur=0;
+      // walls
+      for(var x=kX-2*u;x<kX;x+=u) block(c,x,ground-u,u,col,edge,neon);
+      for(var x2=kX+kW;x2<=kX+kW+u;x2+=u) block(c,x2,ground-u,u,col,edge,neon);
+      // frame for B
+      if(style==='B'){ c.strokeStyle='rgba(201,162,74,0.8)'; c.lineWidth=4; c.strokeRect(2,2,W-4,H-4); }
+      if(neon){ // pulse ring
+        var pu=0.5+0.4*Math.sin(t*0.005); c.strokeStyle='rgba(34,211,238,'+(0.3+0.4*pu)+')'; c.lineWidth=1.5; c.shadowColor=edge; c.shadowBlur=8;
+        c.beginPath(); c.arc(kX-u/2,ground-u/2,10,0,6.28); c.stroke(); c.beginPath(); c.arc(kX+kW+u/2,ground-u/2,10,0,6.28); c.stroke(); c.shadowBlur=0;
+      }
+    }
+    return draw;
+  }
+
+  var coverFrame = fortressScene(document.getElementById('coverfx'), {scale:1.5});
+  var gameFrame = fortressScene(document.getElementById('gamefx'), {scale:1.05});
+  var artFrames = Array.prototype.map.call(document.querySelectorAll('.artc'), function(cv){ return artThumb(cv, cv.dataset.style); });
+  var coverActive = true;
+
+  var t0 = performance.now();
+  function loop(t){
+    var e = t - t0;
+    if(coverActive || reduce) coverFrame(e);
+    gameFrame(e);
+    for(var i=0;i<artFrames.length;i++) artFrames[i](e);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---- Easter Egg: Taste G = Goldregen (Demo-Gag) ----
+  var egg = document.createElement('canvas');
+  egg.style.cssText = 'position:fixed;inset:0;z-index:55;pointer-events:none';
+  document.body.appendChild(egg);
+  var ec = egg.getContext('2d'), eggUntil = 0, drops = [];
+  function eggResize(){ egg.width = innerWidth*DPR; egg.height = innerHeight*DPR; ec.setTransform(DPR,0,0,DPR,0,0); }
+  addEventListener('resize', eggResize); eggResize();
+  function eggLoop(t){
+    ec.clearRect(0,0,innerWidth,innerHeight);
+    if(t > eggUntil) return;
+    for(var i=0;i<drops.length;i++){
+      var d = drops[i]; d.y += d.v; d.r += d.vr;
+      if(d.y > innerHeight+30){ d.y = -30; d.x = Math.random()*innerWidth; }
+      ec.save(); ec.translate(d.x,d.y); ec.rotate(d.r);
+      ec.globalAlpha = Math.min(1,(eggUntil-t)/500);
+      ec.fillStyle = d.c; ec.font = '900 '+d.s+'px ui-monospace,monospace'; ec.textAlign='center';
+      ec.fillText(d.g, 0, 0); ec.restore();
+    }
+    requestAnimationFrame(eggLoop);
+  }
+  document.addEventListener('keydown', function(e){
+    if(e.key==='g' || e.key==='G'){
+      drops = [];
+      for(var i=0;i<64;i++) drops.push({ x:Math.random()*innerWidth, y:-Math.random()*innerHeight, v:3.5+Math.random()*5.5,
+        r:Math.random()*6.28, vr:(Math.random()-0.5)*0.22, s:15+Math.random()*20,
+        g:Math.random()<0.72?'⚙':'★', c:Math.random()<0.5?'#fcd34d':'#fbbf24' });
+      eggUntil = performance.now()+2800;
+      requestAnimationFrame(eggLoop);
+    }
+  });
+
+  go(0);
+})();
+</script>
