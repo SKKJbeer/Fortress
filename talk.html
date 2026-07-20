@@ -116,7 +116,32 @@ ul.clean li b{color:var(--ink)}
 /* game thumb */
 .thumb{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#04070d;
   box-shadow:0 18px 44px rgba(0,0,0,0.45)}
-.thumb img{display:block; width:100%; height:auto; aspect-ratio:390/640; object-fit:cover; object-position:top}
+.thumb canvas{display:block; width:100%; height:auto; aspect-ratio:440/330}
+
+/* feature tiles */
+.feats{display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(12px,1.6vw,20px); width:100%}
+@media(max-width:900px){ .feats{grid-template-columns:repeat(2,1fr)} }
+.feat{background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%); border:1px solid var(--line); border-radius:18px;
+  padding:clamp(14px,1.8vw,22px); display:flex; flex-direction:column; gap:10px;
+  box-shadow:0 14px 34px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition:transform .25s, border-color .25s}
+.feat:hover{transform:translateY(-3px); border-color:rgba(251,191,36,0.35)}
+.feat .ic{width:44px;height:44px;border-radius:13px; display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%, rgba(251,191,36,0.26), rgba(251,191,36,0.06));
+  border:1px solid rgba(251,191,36,0.4); box-shadow:0 0 16px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.12)}
+.feat .ic svg{width:23px;height:23px;stroke:#fcd34d;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.feat .ft{font-size:clamp(14px,1.6vw,18px); font-weight:800}
+.feat .fd{font-size:clamp(11.5px,1.25vw,14px); color:var(--muted); line-height:1.35}
+.slide.active .feat{animation:featIn .5s cubic-bezier(.22,1.2,.36,1) both}
+.slide.active .feat:nth-child(2){animation-delay:.05s}
+.slide.active .feat:nth-child(3){animation-delay:.10s}
+.slide.active .feat:nth-child(4){animation-delay:.15s}
+.slide.active .feat:nth-child(5){animation-delay:.20s}
+.slide.active .feat:nth-child(6){animation-delay:.25s}
+.slide.active .feat:nth-child(7){animation-delay:.30s}
+.slide.active .feat:nth-child(8){animation-delay:.35s}
+@keyframes featIn{from{opacity:0; transform:translateY(16px) scale(0.96)} to{opacity:1}}
+@media(prefers-reduced-motion:reduce){ .slide.active .feat{animation:none} }
 .thumb .cap{padding:11px 14px; font-size:13px}
 .thumb .cap b{display:block; font-size:15px; margin-bottom:2px}
 .thumb .cap span{color:var(--muted)}
@@ -190,9 +215,9 @@ ul.clean li b{color:var(--ink)}
           <li><b>Repeat</b> — browser, phone, online, free</li>
         </ul>
       </div>
-      <div class="thumb" style="flex:0 1 290px; align-self:center; width:100%">
-        <img src="talk-img/worlds.png" alt="Real 3-player match on the Nebelmoor map">
-        <div class="cap"><b>The real thing</b><span>3-player match · one of 7 worlds</span></div>
+      <div class="thumb" style="flex:1 1 300px; align-self:center; max-width:440px; width:100%">
+        <canvas id="gamefx" width="440" height="330"></canvas>
+        <div class="cap"><b>The loop in miniature</b><span>build → shoot → repeat, forever</span></div>
       </div>
     </div>
   </section>
@@ -282,35 +307,20 @@ ul.clean li b{color:var(--ink)}
 
   <!-- 7 WHAT'S ON TAP -->
   <section class="slide" data-tag="The Features"
-    data-notes="So what is actually in the game by now? Quite a lot. Seven worlds with procedurally generated terrain — rivers, ice, lava — deterministic, so all players see the same map. An in-match economy: you earn scrap by destroying things and spend it in an armory shop between rounds — extra cannons, armored walls, repairs. Bot opponents in three difficulty levels and an interactive tutorial for new players. Competitive layer: ELO ranking with a global leaderboard and quick matchmaking with one-tap invites. And a full progression system — levels, gold, daily quests, login streaks, cosmetics you can forge and equip. All of it built in the same loop: small batches, every one tasted. The screenshots on the right are the actual game, by the way — not mockups.">
+    data-notes="So what is actually in the game by now? Quite a lot. Seven worlds with procedurally generated terrain — rivers, ice, lava — deterministic, so all players see the same map. An in-match economy: you earn scrap by destroying things and spend it in an armory shop between rounds — extra cannons, armored walls, repairs. Bot opponents in three difficulty levels and an interactive tutorial. Competitive layer: ELO ranking with a global leaderboard and quick matchmaking with one-tap invites. And a full progression system — levels, gold, daily quests, login streaks, cosmetics you can forge and equip. Every one of these features shipped through the same loop: small batches, all tasted.">
     <span class="eyebrow"><span class="pip"></span>The feature menu</span>
     <h2>What's on tap</h2>
-    <div class="row" style="gap:clamp(20px,3.5vw,50px); align-items:center; flex-wrap:nowrap">
-      <div class="grid2" style="flex:1 1 380px; min-width:0">
-        <ul class="clean">
-          <li><b>7 worlds</b> — same map for everyone</li>
-          <li><b>Armory shop</b> — cannons, armor, repairs</li>
-          <li><b>Scrap economy</b> — destroy to earn</li>
-          <li><b>Bot opponents</b> — 3 difficulty levels</li>
-        </ul>
-        <ul class="clean">
-          <li><b>ELO + leaderboard</b> — ranked matches</li>
-          <li><b>Matchmaking</b> — plus one-tap invites</li>
-          <li><b>Progression</b> — levels, gold, cosmetics</li>
-          <li><b>Daily quests</b> — and login streaks</li>
-        </ul>
-      </div>
-      <div class="row" style="flex:0 0 auto; gap:14px; flex-wrap:nowrap">
-        <div class="thumb" style="width:clamp(150px,16vw,215px)">
-          <img src="talk-img/build.png" alt="Build phase on the Frostreich map">
-          <div class="cap"><b>Build phase</b><span>Frostreich world</span></div>
-        </div>
-        <div class="thumb" style="width:clamp(150px,16vw,215px)">
-          <img src="talk-img/armory.png" alt="Armory phase with both player shops">
-          <div class="cap"><b>Armory</b><span>shop between rounds</span></div>
-        </div>
-      </div>
+    <div class="feats">
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg></div><div class="ft">7 worlds</div><div class="fd">same map for everyone</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3 L19 6 V11 C19 16 16 19.5 12 21 C8 19.5 5 16 5 11 V6 Z"/></svg></div><div class="ft">Armory</div><div class="fd">cannons, armor, repairs</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><line x1="17.5" y1="12" x2="20" y2="12"/><line x1="15.9" y1="15.9" x2="17.7" y2="17.7"/><line x1="12" y1="17.5" x2="12" y2="20"/><line x1="8.1" y1="15.9" x2="6.3" y2="17.7"/><line x1="6.5" y1="12" x2="4" y2="12"/><line x1="8.1" y1="8.1" x2="6.3" y2="6.3"/><line x1="12" y1="6.5" x2="12" y2="4"/><line x1="15.9" y1="8.1" x2="17.7" y2="6.3"/></svg></div><div class="ft">Scrap economy</div><div class="fd">destroy to earn</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><rect x="6" y="8" width="12" height="10" rx="3"/><circle cx="9.5" cy="13" r="1.1"/><circle cx="14.5" cy="13" r="1.1"/><line x1="12" y1="8" x2="12" y2="5"/><circle cx="12" cy="4" r="1"/></svg></div><div class="ft">Bot opponents</div><div class="fd">3 difficulty levels</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><path d="M7 4 H17 V9 C17 12 15 14 12 14 C9 14 7 12 7 9 Z"/><path d="M7 6 H4 C4 9 5.5 10.5 7 10.5"/><path d="M17 6 H20 C20 9 18.5 10.5 17 10.5"/><line x1="12" y1="14" x2="12" y2="17"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="17" x2="12" y2="20"/></svg></div><div class="ft">ELO + leaderboard</div><div class="fd">ranked play</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><path d="M13 2 L5 13 H11 L9.5 22 L19 10 H13 Z"/></svg></div><div class="ft">Quick match</div><div class="fd">one-tap invites</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><polyline points="6,14 12,8 18,14"/><polyline points="6,19 12,13 18,19"/></svg></div><div class="ft">Progression</div><div class="fd">levels, gold, cosmetics</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="15" rx="2.5"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="4" y1="10" x2="20" y2="10"/><polyline points="9,15.5 11.5,18 15,13.5"/></svg></div><div class="ft">Daily quests</div><div class="fd">streak rewards</div></div>
     </div>
+    <p class="lede" style="margin-top:clamp(16px,2.8vh,26px)">Every one of these shipped through the loop — <span class="gold">small batches, all tasted</span>.</p>
   </section>
 
   <!-- 8 LEARNINGS -->
@@ -533,6 +543,7 @@ ul.clean li b{color:var(--ink)}
   }
 
   var coverFrame = fortressScene(document.getElementById('coverfx'), {scale:1.5});
+  var gameFrame = fortressScene(document.getElementById('gamefx'), {scale:1.05});
   var coverActive = true;
 
   // ---- ambient game layer: two castle silhouettes trading slow cannonballs ----
@@ -591,6 +602,7 @@ ul.clean li b{color:var(--ink)}
   function loop(t){
     var e = t - t0;
     if(coverActive || reduce) coverFrame(e);
+    gameFrame(e);
     if(coverActive){ ac.clearRect(0, 0, innerWidth, innerHeight); ambStatic = false; }
     else if(reduce){ if(!ambStatic){ ambStatic = true; ambientFrame(1000); } }
     else ambientFrame(e);
