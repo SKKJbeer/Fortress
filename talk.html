@@ -114,8 +114,9 @@ ul.clean li b{color:var(--ink)}
 .pull .gold{text-shadow:0 0 30px rgba(251,191,36,0.35)}
 
 /* game thumb */
-.thumb{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#04070d}
-.thumb canvas{display:block; width:100%; height:auto; aspect-ratio:440/330}
+.thumb{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#04070d;
+  box-shadow:0 18px 44px rgba(0,0,0,0.45)}
+.thumb img{display:block; width:100%; height:auto; aspect-ratio:390/640; object-fit:cover; object-position:top}
 .thumb .cap{padding:11px 14px; font-size:13px}
 .thumb .cap b{display:block; font-size:15px; margin-bottom:2px}
 .thumb .cap span{color:var(--muted)}
@@ -189,9 +190,9 @@ ul.clean li b{color:var(--ink)}
           <li><b>Repeat</b> — browser, phone, online, free</li>
         </ul>
       </div>
-      <div class="thumb" style="flex:1 1 300px; align-self:center; max-width:440px; width:100%">
-        <canvas id="gamefx" width="440" height="330"></canvas>
-        <div class="cap"><b>Live in the browser</b><span>That's it. That's the game part of this talk.</span></div>
+      <div class="thumb" style="flex:0 1 290px; align-self:center; width:100%">
+        <img src="talk-img/worlds.png" alt="Real 3-player match on the Nebelmoor map">
+        <div class="cap"><b>The real thing</b><span>3-player match · one of 7 worlds</span></div>
       </div>
     </div>
   </section>
@@ -228,7 +229,7 @@ ul.clean li b{color:var(--ink)}
 
   <!-- 4 THE BAR TAB -->
   <section class="slide" data-tag="The Tab" data-count="1"
-    data-notes="A few numbers — call it the bar tab. Over 40 releases since version 3.0, shipping almost daily. 8,300 lines in one file — yes, we know, and it is fine. 39 unit tests that run in a fifth of a second, plus 309 end-to-end checks with Playwright that actually play the game in a real browser: two players, three players, online, matchmaking. One human, one AI agent, zero euros. Remember the 309 — it comes back in a minute with a punchline.">
+    data-notes="A few numbers — call it the bar tab. Over 40 releases since version 3.0, shipping almost daily. 8,300 lines in one file — yes, we know, and it is fine. 39 unit tests that run in a fifth of a second, plus 309 end-to-end checks with Playwright that actually play the game in a real browser: two players, three players, online, matchmaking. One human, one AI agent, zero euros. Not bad for a side project that runs on beer-coaster infrastructure.">
     <span class="eyebrow"><span class="pip"></span>The bar tab</span>
     <div class="stats">
       <div class="stat"><div class="num" data-to="40" data-suffix="+">0</div><div class="lab">releases since v3.0<br>(almost daily)</div></div>
@@ -279,27 +280,35 @@ ul.clean li b{color:var(--ink)}
     <p class="lede" style="margin-top:clamp(18px,3vh,30px)">Just <b>good engineering culture</b> — written so <span class="gold">a machine can follow it</span>. Works on humans, too.</p>
   </section>
 
-  <!-- 7 THE PLOT TWIST -->
-  <section class="slide" data-tag="The Plot Twist"
-    data-notes="And now the story this talk exists for — it happened literally while building this. The task: in local 3-player mode the shop menus overlapped. The agent rebuilt the layout nicely. And WHILE doing that, it introduced a brand-new bug — a tiny typo, wrong object level, which made the shops render completely empty. Here is the kicker: all 309 automated checks stayed green. They never test shop visibility, so they would never have caught it. If the agent had stopped at 'tests green, ship it', a broken feature would have gone live. But it did not stop. In the drink-your-own-beer step it drove the real game into the shop phase, took screenshots, and measured the actual pixel boxes of the panels — and noticed: the shops are not in the DOM at all. Bug caught, fixed, re-verified, and only THEN shipped. The lesson: tests tell you the code does what you claimed. Tasting tells you it does what the player needs. With AI agents this step is not optional — it is the most important one.">
-    <span class="eyebrow"><span class="pip"></span>A true story · with a punchline</span>
-    <div class="row" style="gap:clamp(20px,4vw,56px); align-items:center">
-      <div class="col" style="flex:1 1 400px">
-        <div class="beat"><span class="k">1</span><div><b>Bug:</b> shop menus overlap.</div></div>
-        <div class="beat" style="margin-top:14px"><span class="k">2</span><div>Agent fixes the layout — <b>and brews a NEW bug into the batch.</b></div></div>
-        <div class="beat" style="margin-top:14px"><span class="k">3</span><div><b class="ok">All 309 taste tests: green.</b> Completely useless here.</div></div>
-        <div class="beat" style="margin-top:14px"><span class="k">4</span><div><b class="gold">Drink your own beer:</b> real game, measured pixels → <b>shops missing.</b></div></div>
-        <div class="beat" style="margin-top:14px"><span class="k">5</span><div>Fix → re-taste → <b>then</b> ship. <span class="ok" style="font-weight:800">✓</span> <span style="color:var(--faint)">Bug brewed, found &amp; fixed in-house.</span></div></div>
+  <!-- 7 WHAT'S ON TAP -->
+  <section class="slide" data-tag="The Features"
+    data-notes="So what is actually in the game by now? Quite a lot. Seven worlds with procedurally generated terrain — rivers, ice, lava — deterministic, so all players see the same map. An in-match economy: you earn scrap by destroying things and spend it in an armory shop between rounds — extra cannons, armored walls, repairs. Bot opponents in three difficulty levels and an interactive tutorial for new players. Competitive layer: ELO ranking with a global leaderboard and quick matchmaking with one-tap invites. And a full progression system — levels, gold, daily quests, login streaks, cosmetics you can forge and equip. All of it built in the same loop: small batches, every one tasted. The screenshots on the right are the actual game, by the way — not mockups.">
+    <span class="eyebrow"><span class="pip"></span>The feature menu</span>
+    <h2>What's on tap</h2>
+    <div class="row" style="gap:clamp(20px,3.5vw,50px); align-items:center; flex-wrap:nowrap">
+      <div class="grid2" style="flex:1 1 380px; min-width:0">
+        <ul class="clean">
+          <li><b>7 worlds</b> — same map for everyone</li>
+          <li><b>Armory shop</b> — cannons, armor, repairs</li>
+          <li><b>Scrap economy</b> — destroy to earn</li>
+          <li><b>Bot opponents</b> — 3 difficulty levels</li>
+        </ul>
+        <ul class="clean">
+          <li><b>ELO + leaderboard</b> — ranked matches</li>
+          <li><b>Matchmaking</b> — plus one-tap invites</li>
+          <li><b>Progression</b> — levels, gold, cosmetics</li>
+          <li><b>Daily quests</b> — and login streaks</li>
+        </ul>
       </div>
-      <div class="col" style="flex:1 1 300px; max-width:420px; gap:14px">
-        <div class="panelbox">
-          <div style="color:var(--faint);margin-bottom:8px">measured panel boxes (live)</div>
-          <div class="prow p2">♚ P2 &nbsp;·&nbsp; top 54 → 246</div>
-          <div class="prow p3">♜ P3 &nbsp;·&nbsp; top 254 → 446</div>
-          <div class="prow p1">♔ P1 &nbsp;·&nbsp; bottom (640 → 832)</div>
-          <div class="verdict"><span class="ok">✓ gap 8px · OVERLAP: false · 0 JS errors</span></div>
+      <div class="row" style="flex:0 0 auto; gap:14px; flex-wrap:nowrap">
+        <div class="thumb" style="width:clamp(150px,16vw,215px)">
+          <img src="talk-img/build.png" alt="Build phase on the Frostreich map">
+          <div class="cap"><b>Build phase</b><span>Frostreich world</span></div>
         </div>
-        <div class="pull">All tests passed. <span class="gold">The beer was still flat.</span></div>
+        <div class="thumb" style="width:clamp(150px,16vw,215px)">
+          <img src="talk-img/armory.png" alt="Armory phase with both player shops">
+          <div class="cap"><b>Armory</b><span>shop between rounds</span></div>
+        </div>
       </div>
     </div>
   </section>
@@ -524,7 +533,6 @@ ul.clean li b{color:var(--ink)}
   }
 
   var coverFrame = fortressScene(document.getElementById('coverfx'), {scale:1.5});
-  var gameFrame = fortressScene(document.getElementById('gamefx'), {scale:1.05});
   var coverActive = true;
 
   // ---- ambient game layer: two castle silhouettes trading slow cannonballs ----
@@ -583,7 +591,6 @@ ul.clean li b{color:var(--ink)}
   function loop(t){
     var e = t - t0;
     if(coverActive || reduce) coverFrame(e);
-    gameFrame(e);
     if(coverActive){ ac.clearRect(0, 0, innerWidth, innerHeight); ambStatic = false; }
     else if(reduce){ if(!ambStatic){ ambStatic = true; ambientFrame(1000); } }
     else ambientFrame(e);
