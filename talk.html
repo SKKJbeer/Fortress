@@ -120,6 +120,10 @@ ul.clean li b{color:var(--ink)}
 .thumb .cap b{display:block; font-size:15px; margin-bottom:2px}
 .thumb .cap span{color:var(--muted)}
 
+/* ambient game layer (behind everything) */
+#ambient{position:fixed; inset:0; width:100%; height:100%; z-index:0; opacity:0.75; pointer-events:none}
+@media(prefers-reduced-motion:reduce){ #ambient{opacity:0.3} }
+
 /* chrome */
 .chrome{position:fixed; inset:0; pointer-events:none; z-index:40}
 .sectiontag{position:absolute; top:22px; left:clamp(22px,7vw,120px); font-size:11px; font-weight:800; letter-spacing:0.2em;
@@ -148,6 +152,8 @@ ul.clean li b{color:var(--ink)}
 </style>
 </head>
 <body>
+
+<canvas id="ambient"></canvas>
 
 <div class="deck" id="deck">
 
@@ -521,18 +527,73 @@ ul.clean li b{color:var(--ink)}
   var gameFrame = fortressScene(document.getElementById('gamefx'), {scale:1.05});
   var coverActive = true;
 
+  // ---- ambient game layer: two castle silhouettes trading slow cannonballs ----
+  var amb = document.getElementById('ambient'), ac = amb.getContext('2d');
+  function ambResize(){ amb.width = innerWidth*DPR; amb.height = innerHeight*DPR; ac.setTransform(DPR,0,0,DPR,0,0); }
+  addEventListener('resize', ambResize); ambResize();
+  var ambEmbers = []; (function(){ var s=777; function r(){ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; }
+    for(var i=0;i<12;i++) ambEmbers.push({x:r(), y:r(), sp:0.25+r()*0.5, ph:r()*6.28}); })();
+  function ambCastle(x, gy, flagColor, t, dir){
+    ac.fillStyle='#182a45'; ac.strokeStyle='rgba(130,170,230,0.40)'; ac.lineWidth=1.5;
+    rr(ac, x-20, gy-72, 40, 72, 4); ac.fill(); ac.stroke();
+    ac.fillStyle='#182a45';
+    ac.fillRect(x-19, gy-82, 10, 12); ac.fillRect(x-5, gy-82, 10, 12); ac.fillRect(x+9, gy-82, 12, 12);
+    for(var s=-1; s<=1; s+=2){ for(var i=1; i<=3; i++){
+      rr(ac, x + s*(20 + i*17) - 7, gy-15, 14, 15, 3); ac.fillStyle='#1c3050'; ac.fill(); ac.stroke(); } }
+    var fx0 = x + dir*13, fy0 = gy - 90, wv = Math.sin(t*0.0035 + x)*2.5;
+    ac.strokeStyle='rgba(120,160,220,0.30)'; ac.beginPath(); ac.moveTo(fx0, fy0); ac.lineTo(fx0, gy-80); ac.stroke();
+    ac.globalAlpha = 0.8; ac.fillStyle = flagColor;
+    ac.beginPath(); ac.moveTo(fx0, fy0); ac.lineTo(fx0 + dir*13, fy0 + 3 + wv); ac.lineTo(fx0, fy0 + 7); ac.closePath(); ac.fill();
+    ac.globalAlpha = 1;
+  }
+  function ambientFrame(t){
+    var W = innerWidth, H = innerHeight;
+    ac.clearRect(0, 0, W, H);
+    var gy = H - 26;
+    ac.fillStyle='rgba(59,130,246,0.10)'; ac.fillRect(0, gy, W, 2);
+    var LX = W*0.085, RX = W*0.915;
+    ambCastle(LX, gy, '#60a5fa', t, 1);
+    ambCastle(RX, gy, '#f87171', t, -1);
+    for(var i=0; i<ambEmbers.length; i++){ var em = ambEmbers[i];
+      var yy = ((em.y - t*0.000016*em.sp*1000) % 1); if(yy < 0) yy += 1;
+      ac.globalAlpha = 0.16 + 0.20*Math.sin(t*0.002 + em.ph);
+      ac.fillStyle='#fcd34d'; ac.beginPath(); ac.arc(em.x*W, yy*H, 1.3, 0, 6.28); ac.fill(); }
+    ac.globalAlpha = 1;
+    var per = 6400, cyc = Math.floor(t/per), ph = (t%per)/per, l2r = (cyc%2 === 0);
+    var sx = l2r ? LX : RX, ex = l2r ? RX : LX, fy = gy - 86;
+    if(ph < 0.44){
+      var pp = ph/0.44;
+      for(var tr=4; tr>=1; tr--){ var pt = pp - tr*0.022; if(pt < 0) continue;
+        var tx2 = sx + (ex-sx)*pt, ty2 = fy - Math.sin(Math.PI*pt)*H*0.20;
+        ac.globalAlpha = (1 - tr/5)*0.30; ac.fillStyle='#fcd34d';
+        ac.beginPath(); ac.arc(tx2, ty2, 1.6 + tr*0.3, 0, 6.28); ac.fill(); }
+      ac.globalAlpha = 0.85;
+      var bx = sx + (ex-sx)*pp, by = fy - Math.sin(Math.PI*pp)*H*0.20;
+      ac.fillStyle='#fcd34d'; ac.shadowColor='#fbbf24'; ac.shadowBlur = 9;
+      ac.beginPath(); ac.arc(bx, by, 3.2, 0, 6.28); ac.fill(); ac.shadowBlur = 0; ac.globalAlpha = 1;
+    } else if(ph < 0.58){
+      var q = (ph-0.44)/0.14;
+      ac.globalAlpha = (1-q)*0.4; ac.strokeStyle='#fbbf24'; ac.lineWidth = 2;
+      ac.beginPath(); ac.arc(ex, fy, 4 + q*22, 0, 6.28); ac.stroke(); ac.globalAlpha = 1;
+    }
+  }
+
   var t0 = performance.now();
+  var ambStatic = false;
   function loop(t){
     var e = t - t0;
     if(coverActive || reduce) coverFrame(e);
     gameFrame(e);
+    if(coverActive){ ac.clearRect(0, 0, innerWidth, innerHeight); ambStatic = false; }
+    else if(reduce){ if(!ambStatic){ ambStatic = true; ambientFrame(1000); } }
+    else ambientFrame(e);
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
 
   // ---- Easter egg: G = gold rain (demo gag) ----
   var egg = document.createElement('canvas');
-  egg.style.cssText = 'position:fixed;inset:0;z-index:55;pointer-events:none';
+  egg.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:55;pointer-events:none';
   document.body.appendChild(egg);
   var ec = egg.getContext('2d'), eggUntil = 0, eggDrops = [];
   function eggResize(){ egg.width = innerWidth*DPR; egg.height = innerHeight*DPR; ec.setTransform(DPR,0,0,DPR,0,0); }
