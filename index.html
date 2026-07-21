@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.40.3</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.40.4</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4952,10 +4952,21 @@ window.FortressApp = function Fortress() {
   function liftedGhost(player, x, y) {
     const fl = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
     let gr = Math.floor(y / CELL) + (fl ? LIFT_ROWS : -LIFT_ROWS);
-    // Beidseitig klemmen (v3.16.2): vorher konnte der Ghost über den Rand
-    // hinaus zeigen → Vorschau teils unsichtbar, Platzierung schlug still fehl.
-    gr = Math.max(1, Math.min(ROWS - 2, gr));
-    const gc = Math.max(1, Math.min(COLS - 2, Math.floor(x / CELL)));
+    let gc = Math.floor(x / CELL);
+    // Formabhängig klemmen (v3.40.4): placePiece setzt den Anker (gr,gc) per
+    // offR=gr-floor(maxR/2) / offC=gc-floor(maxC/2) in Zellen um. Der frühere
+    // feste Clamp [1,ROWS-2]/[1,COLS-2] (v3.16.2) hielt nur den ANKER im Feld,
+    // nicht die versetzten Teil-Zellen — je nach Teil-Breite/Höhe fehlte 1 Zelle
+    // Reichweite nach rechts/links/unten, dort schlug die Platzierung still fehl
+    // (Tester-Report). Jetzt so klemmen, dass GENAU alle Zellen des Teils ins
+    // Grid [0..ROWS-1]×[0..COLS-1] passen — nicht mehr, nicht weniger.
+    const cells = (pieces.current[player] && pieces.current[player].cells) || [[0, 0]];
+    const maxR = Math.max(...cells.map(([r]) => r));
+    const maxC = Math.max(...cells.map(([, c]) => c));
+    const loR = Math.floor(maxR / 2), hiR = maxR - loR; // = ceil(maxR/2)
+    const loC = Math.floor(maxC / 2), hiC = maxC - loC;
+    gr = Math.max(loR, Math.min(ROWS - 1 - hiR, gr));
+    gc = Math.max(loC, Math.min(COLS - 1 - hiC, gc));
     return { gr, gc };
   }
   const onPointerDown = useCallback((e) => {
@@ -6277,7 +6288,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.3")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.40.4")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

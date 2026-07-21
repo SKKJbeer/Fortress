@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3399,3 +3399,18 @@ Shop welcher ist.
   als Phasen-Kontext daneben stehen.
 
 Tests grün. SW-Cache `fortress-v3.40.3`.
+
+### v3.40.4 — Fix: Teile am Feldrand (rechts/links/unten) nicht platzierbar
+Tester-Report: manche Bauteile ließen sich am Rand nicht vollständig platzieren.
+Ursache: `liftedGhost` klemmte den **Anker** `(gr,gc)` teil-unabhängig auf
+`[1,ROWS-2]`/`[1,COLS-2]` (v3.16.2). `placePiece` versetzt die Teil-Zellen aber
+per `offR=gr-floor(maxR/2)` / `offC=gc-floor(maxC/2)` relativ zum Anker — der
+nötige Anker-Bereich hängt also von Teil-Breite/Höhe ab. Folge: je nach Form
+fehlte 1 Zelle Reichweite → rechts/unten schlug die Platzierung **still** fehl
+(unterste/rechteste Zelle out-of-grid → `placePiece` return), links blieb stets
+eine Spalte frei. Fix: Anker **formabhängig** klemmen auf
+`[floor(max/2), DIM-1-ceil(max/2)]`, sodass genau alle Zellen ins Grid passen.
+Rechnerisch verifiziert: alle 41 Form-Orientierungen erreichen jeden Rand,
+keine out-of-grid-Zelle mehr.
+
+Tests grün. SW-Cache `fortress-v3.40.4`.
