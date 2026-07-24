@@ -4,37 +4,68 @@
 // der Sprites, NIE pro Objekt pro Frame. Im Frame-Loop wird nur geblittet.
 import { CELL } from '../engine/const.js';
 
+// Mauerblock mit Volumen (v3.41.0, AAA-Stufe 1: Licht & Tiefe).
+// Licht kommt global von OBEN LINKS (siehe SHADOW_DX/DY in index.html).
+// Wird einmal in ein Sprite gebacken (wallSprite) → im Frame-Loop nur geblittet,
+// die PERF-Regel „keine Gradients pro Objekt pro Frame" bleibt eingehalten.
 export function drawWall(ctx, px, py, base, hi, lo, mortar) {
   const m = 0.6;
   const x = px + m, y = py + m, w = CELL - 2 * m, hgt = CELL - 2 * m;
-  // glasiger Körper: hell oben → Basis → dunkel unten
-  const g = ctx.createLinearGradient(px, py, px, py + CELL);
+  // 1) Körper — Verlauf jetzt DIAGONAL entlang der Lichtachse statt rein vertikal
+  const g = ctx.createLinearGradient(px, py, px + CELL * 0.75, py + CELL);
   g.addColorStop(0, hi);
-  g.addColorStop(0.22, base);
+  g.addColorStop(0.26, base);
   g.addColorStop(1, lo);
   ctx.fillStyle = g;
   roundRectPath(ctx, x, y, w, hgt, 3.5);
   ctx.fill();
-  // Neon-Oberkante (durchgehende Leuchtlinie über Mauerreihen)
+  // 2) Steinkorn — feine deterministische Sprenkel, brechen den Plastik-Look
+  ctx.save();
+  roundRectPath(ctx, x, y, w, hgt, 3.5);
+  ctx.clip();
+  for (let i = 0; i < 7; i++) {
+    // deterministisch aus i: identisch bei jedem Backen, kein Math.random
+    const h1 = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
+    const h2 = Math.abs(Math.sin(i * 78.233 + 1.7) * 43758.5453) % 1;
+    ctx.fillStyle = h1 > 0.5 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.16)";
+    ctx.beginPath();
+    ctx.arc(x + h1 * w, y + h2 * hgt, 0.5 + h2 * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 3) Ambient Occlusion — Abdunklung zur lichtabgewandten Seite (unten/rechts)
+  const ao = ctx.createLinearGradient(x + w * 0.35, y + hgt * 0.35, x + w, y + hgt);
+  ao.addColorStop(0, "rgba(0,0,0,0)");
+  ao.addColorStop(1, "rgba(0,0,0,0.40)");
+  ctx.fillStyle = ao;
+  ctx.fillRect(x, y, w, hgt);
+  // 4) Specular — weiches Glanzlicht an der lichtzugewandten Ecke
+  const sp = ctx.createRadialGradient(x + w * 0.28, y + hgt * 0.24, 0, x + w * 0.28, y + hgt * 0.24, w * 0.62);
+  sp.addColorStop(0, "rgba(255,255,255,0.26)");
+  sp.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sp;
+  ctx.fillRect(x, y, w, hgt);
+  ctx.restore();
+  // 5) Leuchtende Oberkante (durchgehende Linie über Mauerreihen — bleibt)
   ctx.fillStyle = hi;
-  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, 2.2, 1.4);
+  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, 2.0, 1.3);
   ctx.fill();
-  // Glanz-Highlight
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  roundRectPath(ctx, x + 1.4, y + 1.4, w - 2.8, 1.5, 1);
-  ctx.fill();
-  // dunkle Fase unten/rechts (Tiefe)
-  ctx.strokeStyle = "rgba(0,0,0,0.38)";
-  ctx.lineWidth = 1;
+  // 6) Harte Steinfase: helle Kante oben/links …
+  ctx.strokeStyle = "rgba(255,255,255,0.42)";
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.moveTo(x + w - 0.5, y + 2);
-  ctx.lineTo(x + w - 0.5, y + hgt - 0.5);
-  ctx.lineTo(x + 2, y + hgt - 0.5);
+  ctx.moveTo(x + 1, y + hgt - 2.5);
+  ctx.lineTo(x + 1, y + 2.5);
+  ctx.lineTo(x + 2.5, y + 1);
+  ctx.lineTo(x + w - 2.5, y + 1);
   ctx.stroke();
-  // feiner heller Innenrahmen
-  ctx.strokeStyle = "rgba(255,255,255,0.10)";
-  ctx.lineWidth = 0.8;
-  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, hgt - 1, 3);
+  // … dunkle Kante unten/rechts (Tiefe)
+  ctx.strokeStyle = "rgba(0,0,0,0.52)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x + w - 0.8, y + 2.5);
+  ctx.lineTo(x + w - 0.8, y + hgt - 2.5);
+  ctx.lineTo(x + w - 2.5, y + hgt - 0.8);
+  ctx.lineTo(x + 2.5, y + hgt - 0.8);
   ctx.stroke();
 }
 function __oldWall(ctx, px, py, base, hi, lo, mortar) {

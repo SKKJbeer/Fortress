@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.40.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.41.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3414,3 +3414,26 @@ Rechnerisch verifiziert: alle 41 Form-Orientierungen erreichen jeden Rand,
 keine out-of-grid-Zelle mehr.
 
 Tests grün. SW-Cache `fortress-v3.40.4`.
+
+### v3.41.0 — AAA-Stufe 1: Licht & Tiefe
+Design-Review (`review.html`) ergab: der Abstand zu AAA-Optik ist kein Stil-,
+sondern ein **Licht- und Dichte-Problem**. Mauern/Burgen/Kanonen lagen flach in
+derselben Ebene — nichts warf Schatten, dadurch wirkte alles wie aufgeklebt.
+Stufe 1 setzt eine durchgehende Lichtführung um.
+- **Globale Lichtrichtung** `SHADOW_DX/DY` (oben links) — eine Sonne für die
+  ganze Szene. Inkonsistentes Licht ist der Hauptgrund für „flache" 2D-Optik.
+- **Kontaktschatten-Ebene**: versetzte, weichgezeichnete Silhouette aller
+  massiven Zellen, gebacken pro `gridVersion` (Muster wie `zoneCanvas`) → pro
+  Frame nur EIN `drawImage`. Zwei Lagen: breiter Schlagschatten + enger
+  Kontaktschatten an der Kante. Wird VOR den Mauern gezeichnet.
+  **Silhouette in halber Auflösung** (der Schatten ist ohnehin weich): Bake-
+  Spitze 14,7 ms → 5,9 ms, Median 4,2 → 1,0 ms bei ~1000 massiven Zellen.
+  Wichtig, weil das Grid auch mitten im Schuss kippt (zerstörte Mauern).
+- **`drawWall` mit Volumen**: diagonaler Verlauf entlang der Lichtachse,
+  deterministisches Steinkorn (kein `Math.random` — Sprites werden gebacken),
+  Ambient Occlusion zur lichtabgewandten Seite, Specular an der Lichtecke,
+  harte Steinfase (hell oben/links, dunkel unten/rechts). Alles EINMAL in
+  `wallSprite` gebacken → PERF-Regel „keine Gradients pro Objekt pro Frame"
+  bleibt eingehalten.
+
+Tests grün (Unit 39/39, E2E 309/309 in zwei Läufen). SW-Cache `fortress-v3.41.0`.
