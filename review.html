@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FORTRESS · Visual Review & AAA-Konzept</title>
+<style>
+:root{
+  --bg:#0a0a0c; --bg2:#0f0f13; --panel:#141419; --panel2:#101015;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.13);
+  --ink:#f2f0ee; --muted:#9a958f; --faint:#615c58;
+  --copper:#e8955a; --copperdim:#8a5533;
+  --bad:#e2564d; --warn:#e0a83a; --good:#4fbf8b;
+  --fdisp:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --fmono:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+  --maxw:1080px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--fdisp);
+  -webkit-font-smoothing:antialiased; line-height:1.55;
+}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 clamp(18px,4vw,40px)}
+
+/* ---------- hero ---------- */
+.hero{position:relative; padding:clamp(48px,10vh,110px) 0 clamp(34px,6vh,60px); overflow:hidden}
+.hero::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--copperdim),transparent)}
+.kicker{display:inline-flex; align-items:center; gap:10px; font-family:var(--fmono);
+  font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--copper); margin-bottom:22px}
+.kicker::before{content:""; width:26px; height:1px; background:var(--copper)}
+h1{font-size:clamp(34px,6.6vw,66px); font-weight:800; letter-spacing:-0.028em; line-height:1.02; margin:0 0 18px; text-wrap:balance}
+h1 em{font-style:normal; color:var(--copper)}
+.sub{font-size:clamp(15px,2vw,19px); color:var(--muted); max-width:60ch; margin:0}
+.meta{display:flex; gap:26px; flex-wrap:wrap; margin-top:28px; font-family:var(--fmono); font-size:12px; color:var(--faint)}
+.meta b{color:var(--muted); font-weight:500}
+
+/* ---------- verdict ---------- */
+.verdict{display:grid; grid-template-columns:1.15fr 1fr; gap:clamp(16px,3vw,30px); margin-top:clamp(30px,6vh,54px)}
+@media(max-width:760px){ .verdict{grid-template-columns:1fr} }
+.vbox{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:14px; padding:clamp(18px,2.4vw,26px)}
+.vbox h3{margin:0 0 14px; font-size:13px; letter-spacing:0.14em; text-transform:uppercase; color:var(--faint); font-family:var(--fmono); font-weight:600}
+.vbox p{margin:0; font-size:15.5px; color:var(--muted)}
+.vbox p + p{margin-top:12px}
+.vbox b{color:var(--ink)}
+.scores{display:flex; flex-direction:column; gap:13px}
+.score{display:grid; grid-template-columns:118px 1fr 34px; align-items:center; gap:12px}
+.score .l{font-size:13px; color:var(--muted)}
+.score .bar{height:6px; border-radius:3px; background:rgba(255,255,255,0.07); overflow:hidden}
+.score .bar i{display:block; height:100%; border-radius:3px}
+.score .n{font-family:var(--fmono); font-size:12px; color:var(--faint); text-align:right; font-variant-numeric:tabular-nums}
+
+/* ---------- sections ---------- */
+section{padding:clamp(44px,8vh,86px) 0; border-top:1px solid var(--line)}
+.sechead{display:flex; align-items:baseline; gap:16px; margin-bottom:10px}
+.secnum{font-family:var(--fmono); font-size:12px; color:var(--copper); letter-spacing:0.1em}
+h2{font-size:clamp(24px,3.8vw,38px); font-weight:800; letter-spacing:-0.02em; margin:0; text-wrap:balance}
+.lede{font-size:clamp(15px,1.9vw,18px); color:var(--muted); max-width:66ch; margin:14px 0 0}
+.lede b{color:var(--ink)}
+
+/* ---------- findings ---------- */
+.finding{display:grid; grid-template-columns:44px 1fr; gap:18px; padding:22px 0; border-bottom:1px solid var(--line)}
+.finding:last-child{border-bottom:none}
+.fnum{font-family:var(--fmono); font-size:13px; color:var(--copper); padding-top:3px}
+.ftitle{font-size:clamp(17px,2.2vw,21px); font-weight:700; margin:0 0 7px; display:flex; align-items:center; gap:11px; flex-wrap:wrap}
+.tag{font-family:var(--fmono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 8px; border-radius:4px}
+.tag.crit{background:rgba(226,86,77,0.14); color:var(--bad); border:1px solid rgba(226,86,77,0.3)}
+.tag.med{background:rgba(224,168,58,0.13); color:var(--warn); border:1px solid rgba(224,168,58,0.28)}
+.fbody{font-size:15px; color:var(--muted); margin:0}
+.fbody b{color:var(--ink)}
+.fbody code{font-family:var(--fmono); font-size:13px; background:rgba(255,255,255,0.06); padding:1.5px 6px; border-radius:4px; color:var(--copper)}
+.fix{margin-top:11px; padding-left:14px; border-left:2px solid rgba(79,191,139,0.45); font-size:14.5px; color:var(--muted)}
+.fix b{color:var(--good); font-weight:700}
+
+/* ---------- compare widget ---------- */
+.cmp{margin-top:clamp(22px,4vh,40px)}
+.cmp + .cmp{margin-top:clamp(34px,6vh,60px)}
+.cmphead{display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:12px; flex-wrap:wrap}
+.cmphead h4{margin:0; font-size:16px; font-weight:700}
+.cmphead .hint{font-family:var(--fmono); font-size:11px; color:var(--faint)}
+.stage{position:relative; border:1px solid var(--line2); border-radius:12px; overflow:hidden; background:#000;
+  touch-action:none; cursor:ew-resize; user-select:none; -webkit-user-select:none}
+.stage canvas{display:block; width:100%; height:auto}
+.stage canvas.after{position:absolute; inset:0; width:100%; height:100%}
+.handle{position:absolute; top:0; bottom:0; width:2px; background:var(--copper); pointer-events:none;
+  box-shadow:0 0 12px rgba(232,149,90,0.8)}
+.handle::after{content:"◂ ▸"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:11px; letter-spacing:1px; color:#0a0a0c; background:var(--copper); padding:5px 8px; border-radius:999px;
+  font-family:var(--fmono); white-space:nowrap}
+.lbl{position:absolute; top:10px; font-family:var(--fmono); font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+  padding:4px 9px; border-radius:5px; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); pointer-events:none}
+.lbl.l{left:10px; color:var(--muted); border:1px solid var(--line2)}
+.lbl.r{right:10px; color:var(--copper); border:1px solid rgba(232,149,90,0.4)}
+.cmpnote{margin-top:11px; font-size:14px; color:var(--muted)}
+.cmpnote b{color:var(--ink)}
+
+/* ---------- phases ---------- */
+.phases{display:flex; flex-direction:column; gap:14px; margin-top:26px}
+.phase{display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:start;
+  background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:14px; padding:20px 22px}
+@media(max-width:700px){ .phase{grid-template-columns:auto 1fr} .phase .effort{grid-column:2} }
+.pnum{font-family:var(--fmono); font-size:22px; font-weight:700; color:var(--copper); width:30px; line-height:1.2}
+.phase h4{margin:0 0 5px; font-size:17px; font-weight:700}
+.phase p{margin:0; font-size:14.5px; color:var(--muted)}
+.phase ul{margin:10px 0 0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:7px}
+.phase li{font-family:var(--fmono); font-size:11px; color:var(--muted); background:rgba(255,255,255,0.05);
+  border:1px solid var(--line); border-radius:5px; padding:3px 8px}
+.effort{text-align:right; min-width:96px}
+.effort .e{font-family:var(--fmono); font-size:11px; color:var(--faint); display:block; margin-bottom:5px}
+.dots{display:inline-flex; gap:4px}
+.dots i{width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.14)}
+.dots i.on{background:var(--copper)}
+.dots.impact i.on{background:var(--good)}
+
+/* ---------- matrix ---------- */
+.mtx{width:100%; border-collapse:collapse; margin-top:24px; font-size:14.5px}
+.mtx th{text-align:left; font-family:var(--fmono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--faint); font-weight:600; padding:0 12px 12px 0; border-bottom:1px solid var(--line2)}
+.mtx td{padding:13px 12px 13px 0; border-bottom:1px solid var(--line); color:var(--muted); vertical-align:top}
+.mtx td b{color:var(--ink)}
+.mtx .pill{font-family:var(--fmono); font-size:10.5px; padding:3px 8px; border-radius:4px; white-space:nowrap}
+.pill.hi{background:rgba(79,191,139,0.14); color:var(--good); border:1px solid rgba(79,191,139,0.3)}
+.pill.mid{background:rgba(224,168,58,0.13); color:var(--warn); border:1px solid rgba(224,168,58,0.28)}
+.pill.lo{background:rgba(255,255,255,0.06); color:var(--faint); border:1px solid var(--line2)}
+.tblwrap{overflow-x:auto}
+
+/* ---------- callout ---------- */
+.callout{margin-top:clamp(26px,5vh,44px); background:linear-gradient(135deg,rgba(232,149,90,0.09),rgba(232,149,90,0.02));
+  border:1px solid rgba(232,149,90,0.28); border-radius:14px; padding:clamp(20px,3vw,30px)}
+.callout .lab{font-family:var(--fmono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--copper); margin-bottom:11px}
+.callout p{margin:0; font-size:16px; color:var(--ink)}
+.callout p + p{margin-top:11px; color:var(--muted); font-size:14.5px}
+.callout b{color:var(--copper)}
+
+footer{padding:40px 0 60px; border-top:1px solid var(--line); font-size:13px; color:var(--faint); line-height:1.7}
+footer a{color:var(--copper); text-decoration:none}
+@media(prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <span class="kicker">Design-Review · v3.40.4</span>
+    <h1>FORTRESS sieht <em>gut</em> aus.<br>Für AAA fehlen drei Dinge.</h1>
+    <p class="sub">Ein ehrliches Review der visuellen Qualität — auf Basis des echten Render-Codes und frischer Screenshots. Mit einem Konzept, das ohne neue Kosten, ohne Build-Schritt und ohne Asset-Berg auskommt.</p>
+    <div class="meta">
+      <span><b>Analysiert:</b> src/render/sprites.js · Terrain-Renderer · 7 Welten</span>
+      <span><b>Basis:</b> Canvas 2D · ~8.300 Zeilen</span>
+      <span><b>Ziel:</b> Play Store</span>
+    </div>
+  </header>
+
+  <!-- VERDICT -->
+  <div class="verdict">
+    <div class="vbox">
+      <h3>Kurzurteil</h3>
+      <p><b>Das Fundament ist überdurchschnittlich.</b> Sprite-Cache, gebackene Gradients, 7 deterministische Welten, saubere Farbsysteme pro Spieler, konsistente Icon-Sprache. Das ist mehr Sorgfalt, als 90 % der Hobby-Projekte haben.</p>
+      <p><b>Der Abstand zu AAA ist kein Stil-Problem — es ist ein Dichte- und Licht-Problem.</b> Das Spielfeld ist zu ~70 % leer, und nichts wirft Schatten. Dadurch wirkt alles flach und unfertig, obwohl die Einzelteile gut gezeichnet sind.</p>
+      <p>Die gute Nachricht: Beides ist <b>reine Render-Arbeit im Code</b> — keine gekauften Assets, keine neue Engine, kein laufender Cent.</p>
+    </div>
+    <div class="vbox">
+      <h3>Bewertung</h3>
+      <div class="scores">
+        <div class="score"><span class="l">Farbsystem</span><span class="bar"><i style="width:78%;background:var(--good)"></i></span><span class="n">7.8</span></div>
+        <div class="score"><span class="l">UI / HUD</span><span class="bar"><i style="width:72%;background:var(--good)"></i></span><span class="n">7.2</span></div>
+        <div class="score"><span class="l">Icon-Sprache</span><span class="bar"><i style="width:80%;background:var(--good)"></i></span><span class="n">8.0</span></div>
+        <div class="score"><span class="l">Lesbarkeit</span><span class="bar"><i style="width:75%;background:var(--good)"></i></span><span class="n">7.5</span></div>
+        <div class="score"><span class="l">Material / Textur</span><span class="bar"><i style="width:42%;background:var(--warn)"></i></span><span class="n">4.2</span></div>
+        <div class="score"><span class="l">Szenen-Dichte</span><span class="bar"><i style="width:30%;background:var(--bad)"></i></span><span class="n">3.0</span></div>
+        <div class="score"><span class="l">Licht &amp; Tiefe</span><span class="bar"><i style="width:22%;background:var(--bad)"></i></span><span class="n">2.2</span></div>
+        <div class="score"><span class="l">Impact / Juice</span><span class="bar"><i style="width:38%;background:var(--warn)"></i></span><span class="n">3.8</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIAGNOSE -->
+  <section id="diagnose">
+    <div class="sechead"><span class="secnum">01</span><h2>Diagnose</h2></div>
+    <p class="lede">Was ich im echten Spiel sehe — sortiert nach Wirkung auf den wahrgenommenen Produktionswert. Kritisch heißt: <b>das ist der Grund, warum es nicht „teuer" aussieht.</b></p>
+
+    <div class="finding">
+      <span class="fnum">01</span>
+      <div>
+        <h3 class="ftitle">Das Spielfeld ist zu ~70 % leer <span class="tag crit">kritisch</span></h3>
+        <p class="fbody">Zwischen den Burgen liegt eine große, fast ereignislose Fläche. Der Terrain-Renderer legt zwar weiche Farbinseln und ein Punktraster an — aber mit <code>alpha 0.05–0.13</code> sind die praktisch unsichtbar. Übrig bleiben ein Verlauf und ein paar 10-px-Deko-Kegel. <b>Es fehlt komplett die mittlere Detailfrequenz</b> — also alles zwischen „riesiger weicher Fleck" und „1-px-Punkt".</p>
+        <div class="fix"><b>Fix:</b> Eine Zwischenebene aus Felsformationen, Geröllfeldern, Rissen und Bodenkanten — vorgebacken im bgCanvas, also <b>null Frame-Kosten</b>.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="fnum">02</span>
+      <div>
+        <h3 class="ftitle">Nichts wirft einen Schatten <span class="tag crit">kritisch</span></h3>
+        <p class="fbody">Mauern, Burgen, Kanonen und Terrain liegen alle in derselben Ebene. Es gibt kein gerichtetes Licht, keine Kontaktschatten, keine Verdeckung. Deshalb wirkt selbst ein gut gezeichneter Mauerblock wie ein Aufkleber statt wie ein Objekt. <b>Das ist der größte Einzelhebel</b> — Tiefe ist zu 80 % das, was „AAA" beim ersten Blick ausmacht.</p>
+        <div class="fix"><b>Fix:</b> Eine konsequente Lichtrichtung (oben links) + Kontaktschatten unter jedem Objekt + Ambient Occlusion in den Fugen. Kostet einen zusätzlichen Sprite-Layer, kein Shader.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="fnum">03</span>
+      <div>
+        <h3 class="ftitle">Alles spricht dieselbe Form-Sprache <span class="tag crit">kritisch</span></h3>
+        <p class="fbody">Mauer, Lava-Fluss, Burgring und Deko bestehen alle aus demselben abgerundeten Quadrat in unterschiedlichen Farben. Die Lava liest sich dadurch als <b>„orange Blöcke"</b>, nicht als Flüssigkeit. Materialien brauchen unterschiedliche Kanten: Stein = harte Fase, Flüssigkeit = weiche Ränder + Fließmuster, Metall = scharfes Specular.</p>
+        <div class="fix"><b>Fix:</b> Pro Material eine eigene Kantenlogik. Größter Einzeleffekt: den Fluss auf echte Flüssigkeits-Optik umbauen (weiche Ufer, Strömungsadern, Uferglut).</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="fnum">04</span>
+      <div>
+        <h3 class="ftitle">Keine visuelle Hierarchie <span class="tag med">mittel</span></h3>
+        <p class="fbody">Deko-Kegel, Mauern und die eigene Burg haben ähnliche Sättigung und Helligkeit. Das Auge weiß nicht, wohin. In gut produzierten Spielen sind Randbereiche entsättigt und abgedunkelt, während das Wichtige Kontrast und Licht bekommt.</p>
+        <div class="fix"><b>Fix:</b> Vignette + Entsättigung zum Rand, dezentes Eigenlicht auf beiden Burgen, Deko um 30–40 % zurücknehmen.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="fnum">05</span>
+      <div>
+        <h3 class="ftitle">Treffer fühlen sich zu leicht an <span class="tag med">mittel</span></h3>
+        <p class="fbody">Ein Kugeleinschlag ist der emotionale Höhepunkt jeder Runde — aktuell ist er ein kurzer Partikel-Effekt. Es fehlen die Zutaten, die Wucht erzeugen: Lichtblitz, Druckwelle, fliegende Trümmer, Staub, kurzer Kamera-Ruck, Nachglühen im Krater.</p>
+        <div class="fix"><b>Fix:</b> Impact-Stack aus 5 gestaffelten Elementen. Rein prozedural, kein Asset nötig.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <span class="fnum">06</span>
+      <div>
+        <h3 class="ftitle">Phasen-Banner verdeckt das Feld <span class="tag med">mittel</span></h3>
+        <p class="fbody">Der große „FEUER FREI!"-Kasten legt sich mitten über das Spielfeld und verdeckt beide Burgen — genau in dem Moment, in dem man die Lage einschätzen will. Premium-Spiele zeigen Phasenwechsel als schmales Band oder Sweep, das die Sicht freilässt.</p>
+        <div class="fix"><b>Fix:</b> Banner auf ein oberes Band reduzieren, mit kurzem Sweep-In. Mehr Sichtfeld, weniger Wartegefühl.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE VERGLEICHE -->
+  <section id="konzept">
+    <div class="sechead"><span class="secnum">02</span><h2>Das Konzept — zum Anfassen</h2></div>
+    <p class="lede">Statt es zu beschreiben, habe ich die vier zentralen Techniken <b>live implementiert</b>. Links der heutige Stand, rechts die AAA-Variante. <b>Zieh den Regler.</b> Alles läuft in Canvas 2D — genau der Technik, die das Spiel schon nutzt.</p>
+
+    <div class="cmp">
+      <div class="cmphead"><h4>1 · Licht &amp; Tiefe — der größte Hebel</h4><span class="hint">ziehen ⇄</span></div>
+      <div class="stage" data-demo="wall">
+        <canvas class="before" width="900" height="420"></canvas>
+        <canvas class="after" width="900" height="420"></canvas>
+        <span class="lbl l">Jetzt</span><span class="lbl r">AAA</span>
+        <div class="handle"></div>
+      </div>
+      <p class="cmpnote">Dieselben Mauerblöcke, dieselbe Farbe. Rechts nur ergänzt: <b>Kontaktschatten</b>, <b>Ambient Occlusion</b> in den Fugen, gerichtetes Licht von oben links und eine <b>harte Steinfase</b>. Das Ergebnis wirkt gebaut statt aufgeklebt — ohne ein einziges neues Asset.</p>
+    </div>
+
+    <div class="cmp">
+      <div class="cmphead"><h4>2 · Terrain-Dichte — gegen die Leere</h4><span class="hint">ziehen ⇄</span></div>
+      <div class="stage" data-demo="terrain">
+        <canvas class="before" width="900" height="420"></canvas>
+        <canvas class="after" width="900" height="420"></canvas>
+        <span class="lbl l">Jetzt</span><span class="lbl r">AAA</span>
+        <div class="handle"></div>
+      </div>
+      <p class="cmpnote">Links: Verlauf + verstreute Deko-Kegel. Rechts: <b>drei Detailfrequenzen</b> übereinander — großflächige Wertvariation, mittlere Felsformationen mit eigenem Schattenwurf, feines Geröll und Bodenrisse. Dazu Vignette zur Bildmitte. Wird <b>einmal gebacken</b>, kostet im Frame nichts.</p>
+    </div>
+
+    <div class="cmp">
+      <div class="cmphead"><h4>3 · Material-Identität — Lava soll fließen</h4><span class="hint">ziehen ⇄</span></div>
+      <div class="stage" data-demo="lava">
+        <canvas class="before" width="900" height="420"></canvas>
+        <canvas class="after" width="900" height="420"></canvas>
+        <span class="lbl l">Jetzt</span><span class="lbl r">AAA</span>
+        <div class="handle"></div>
+      </div>
+      <p class="cmpnote">Links liest sich der Fluss als Reihe oranger Blöcke — dieselbe Form wie die Mauern. Rechts: <b>weiche verschmolzene Ufer</b>, dunkle Kruste an den Rändern, hellglühende <b>Strömungsadern</b> in der Mitte und ein Lichtabfall aufs Ufer. Jetzt ist es Flüssigkeit.</p>
+    </div>
+
+    <div class="cmp">
+      <div class="cmphead"><h4>4 · Impact — der emotionale Höhepunkt</h4><span class="hint">ziehen ⇄ · klicken für neuen Einschlag</span></div>
+      <div class="stage" data-demo="impact">
+        <canvas class="before" width="900" height="420"></canvas>
+        <canvas class="after" width="900" height="420"></canvas>
+        <span class="lbl l">Jetzt</span><span class="lbl r">AAA</span>
+        <div class="handle"></div>
+      </div>
+      <p class="cmpnote">Rechts der volle <b>Impact-Stack</b>: Lichtblitz → Druckwelle → fliegende Trümmer mit Rotation → Staubwolke → Nachglühen im Krater. Im Spiel kommt ein kurzer Kamera-Ruck dazu. Fünf gestaffelte Elemente statt einem — das ist der Unterschied zwischen „getroffen" und <b>„WUMM"</b>.</p>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="roadmap">
+    <div class="sechead"><span class="secnum">03</span><h2>Der Weg dorthin</h2></div>
+    <p class="lede">Drei Ausbaustufen, jede für sich sichtbar und einzeln auslieferbar. Ich würde <b>strikt in dieser Reihenfolge</b> gehen — Stufe 1 bringt den größten Sprung pro investierter Stunde.</p>
+
+    <div class="phases">
+      <div class="phase">
+        <span class="pnum">1</span>
+        <div>
+          <h4>Licht &amp; Tiefe</h4>
+          <p>Eine Lichtrichtung für die ganze Szene, Kontaktschatten unter allen Objekten, AO in den Fugen, Steinfase auf Mauern. Berührt nur <code style="font-family:var(--fmono);font-size:13px;color:var(--copper)">sprites.js</code> — Spiellogik bleibt unangetastet.</p>
+          <ul><li>drawWall</li><li>drawCastle</li><li>Kanonen-Sprites</li><li>Schattenebene</li></ul>
+        </div>
+        <div class="effort">
+          <span class="e">Aufwand</span><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
+          <span class="e" style="margin-top:9px">Wirkung</span><span class="dots impact"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <span class="pnum">2</span>
+        <div>
+          <h4>Welt-Dichte &amp; Materialien</h4>
+          <p>Mittlere Detailfrequenz im gebackenen Hintergrund, Fluss-Material pro Welt (Lava / Eis / Wasser / Nebel), Vignette und Randentsättigung. Macht aus 7 Farbvarianten <b>7 Orte</b>.</p>
+          <ul><li>bgCanvas-Layer</li><li>Fluss-Renderer</li><li>WORLD_THEMES+</li><li>Vignette</li></ul>
+        </div>
+        <div class="effort">
+          <span class="e">Aufwand</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+          <span class="e" style="margin-top:9px">Wirkung</span><span class="dots impact"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+        </div>
+      </div>
+
+      <div class="phase">
+        <span class="pnum">3</span>
+        <div>
+          <h4>Juice &amp; Politur</h4>
+          <p>Impact-Stack, Kamera-Ruck, Mündungsfeuer, Trefferblitz auf getroffenen Mauern, schlankeres Phasen-Banner, sanftere Übergänge. Der Teil, der das Spiel <b>„fühlen"</b> lässt.</p>
+          <ul><li>Impact-Stack</li><li>Screenshake</li><li>Muzzle-Flash</li><li>Banner-Sweep</li></ul>
+        </div>
+        <div class="effort">
+          <span class="e">Aufwand</span><span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
+          <span class="e" style="margin-top:9px">Wirkung</span><span class="dots impact"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tblwrap">
+      <table class="mtx">
+        <thead><tr><th>Maßnahme</th><th>Wirkung</th><th>Aufwand</th><th>Risiko</th><th>Performance</th></tr></thead>
+        <tbody>
+          <tr><td><b>Kontaktschatten + AO</b></td><td><span class="pill hi">sehr hoch</span></td><td><span class="pill lo">gering</span></td><td><span class="pill lo">gering</span></td><td>1× gebacken, 0 pro Frame</td></tr>
+          <tr><td><b>Terrain-Mittelfrequenz</b></td><td><span class="pill hi">sehr hoch</span></td><td><span class="pill mid">mittel</span></td><td><span class="pill lo">gering</span></td><td>bgCanvas, 0 pro Frame</td></tr>
+          <tr><td><b>Fluss als Flüssigkeit</b></td><td><span class="pill hi">hoch</span></td><td><span class="pill mid">mittel</span></td><td><span class="pill mid">Kollision prüfen</span></td><td>bgCanvas + 1 Anim-Layer</td></tr>
+          <tr><td><b>Impact-Stack</b></td><td><span class="pill hi">hoch</span></td><td><span class="pill lo">gering</span></td><td><span class="pill lo">gering</span></td><td>nur bei Treffer, gedeckelt</td></tr>
+          <tr><td><b>Vignette + Entsättigung</b></td><td><span class="pill mid">mittel</span></td><td><span class="pill lo">sehr gering</span></td><td><span class="pill lo">gering</span></td><td>1 Overlay-Sprite</td></tr>
+          <tr><td><b>Schlankes Phasen-Banner</b></td><td><span class="pill mid">mittel</span></td><td><span class="pill lo">sehr gering</span></td><td><span class="pill lo">gering</span></td><td>reines DOM</td></tr>
+          <tr><td>Gemalte Raster-Assets (Bild-KI)</td><td><span class="pill hi">hoch</span></td><td><span class="pill mid">hoch</span></td><td><span class="pill mid">Ladezeit / PWA</span></td><td>+ Atlas-Downloads</td></tr>
+          <tr><td>WebGL / PixiJS-Umbau</td><td><span class="pill mid">mittel*</span></td><td><span class="pill mid">sehr hoch</span></td><td><span class="pill mid">hoch</span></td><td>GPU, aber Umbau-Risiko</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede" style="margin-top:18px; font-size:14.5px">* Ehrlich: WebGL bringt <b>weniger als man denkt</b>, solange Licht und Dichte fehlen. Ein flaches Bild mit Bloom bleibt ein flaches Bild. Erst Stufe 1–3 — danach ist Bloom das Sahnehäubchen, nicht die Rettung.</p>
+  </section>
+
+  <!-- EMPFEHLUNG -->
+  <section id="empfehlung">
+    <div class="sechead"><span class="secnum">04</span><h2>Meine Empfehlung</h2></div>
+    <div class="callout">
+      <div class="lab">Der nächste konkrete Schritt</div>
+      <p><b>Stufe 1 als geschlossenes Paket bauen — Licht &amp; Tiefe.</b> Das berührt ausschließlich die Zeichenfunktionen in <code style="font-family:var(--fmono)">src/render/sprites.js</code>, kein Spielzustand, keine Netzwerklogik, keine Balance. Damit ist es risikoarm, in einem Rutsch testbar und sofort im echten Spiel sichtbar.</p>
+      <p>Danach entscheidest du am laufenden Spiel, ob Stufe 2 folgt — statt jetzt eine große Grafik-Offensive zu planen, die drei Wochen nichts Sichtbares liefert. Gleiche Methode wie bisher: <b>kleine Chargen, jede verifiziert</b>.</p>
+    </div>
+    <p class="lede" style="margin-top:26px">Und zur Ausgangsfrage „schaffen wir AAA?" — <b>ja, aber nicht durch mehr Effekte.</b> Der Unterschied zwischen deinem Spiel und einem Supercell-Titel ist nicht die Menge an Glow. Es ist, dass dort jedes Objekt Volumen hat, jede Fläche Geschichte erzählt und jeder Treffer sich anfühlt wie ein Ereignis. Genau das sind die drei Stufen oben — und keine davon braucht Geld, einen Server oder eine neue Engine.</p>
+  </section>
+
+  <footer>
+    Review erstellt auf Basis des Render-Codes (<span style="font-family:var(--fmono)">src/render/sprites.js</span>, Terrain-Renderer in <span style="font-family:var(--fmono)">index.html</span>) und frischer Screenshots aus dem laufenden Spiel, v3.40.4.<br>
+    Alle Vergleichs-Demos oben sind echter, lauffähiger Canvas-2D-Code — dieselbe Technik, die im Spiel bereits läuft.<br>
+    <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> · <a href="https://skkjbeer.github.io/Fortress/talk.html">Zum Team-Day-Deck</a>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function rr(c,x,y,w,h,r){ if(c.roundRect){c.beginPath();c.roundRect(x,y,w,h,r);return;}
+    c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);
+    c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath(); }
+  function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+    var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296; }; }
+
+  // ============ DEMO 1: WALLS — flat vs. lit ============
+  var CELL=34;
+  function wallGrid(){ // a small fort ring
+    var g=[]; for(var i=0;i<11;i++){ g.push([i,0]); g.push([i,5]); }
+    for(var j=1;j<5;j++){ g.push([0,j]); g.push([10,j]); }
+    return g;
+  }
+  function drawWallFlat(c,px,py,base,hi,lo){
+    var m=1.4, x=px+m, y=py+m, w=CELL-2*m, h=CELL-2*m;
+    var g=c.createLinearGradient(px,py,px,py+CELL);
+    g.addColorStop(0,hi); g.addColorStop(0.22,base); g.addColorStop(1,lo);
+    c.fillStyle=g; rr(c,x,y,w,h,8); c.fill();
+    c.fillStyle=hi; rr(c,x+1,y+1,w-2,5,3); c.fill();
+    c.fillStyle='rgba(255,255,255,0.22)'; rr(c,x+3,y+3,w-6,3.5,2); c.fill();
+    c.strokeStyle='rgba(0,0,0,0.38)'; c.lineWidth=2; c.beginPath();
+    c.moveTo(x+w-1,y+5); c.lineTo(x+w-1,y+h-1); c.lineTo(x+5,y+h-1); c.stroke();
+  }
+  function drawWallLit(c,px,py,base,hi,lo,seed){
+    var m=1.4, x=px+m, y=py+m, w=CELL-2*m, h=CELL-2*m;
+    var rnd=mulberry(seed);
+    // 1 — cast shadow (light from top-left) — long + soft, this is what sells depth
+    c.save(); c.globalAlpha=0.72; c.fillStyle='#000';
+    rr(c,x+8,y+10,w,h,7); c.filter='blur(6px)'; c.fill(); c.filter='none'; c.restore();
+    c.save(); c.globalAlpha=0.5; c.fillStyle='#000';
+    rr(c,x+3.5,y+4.5,w,h,7); c.filter='blur(2.5px)'; c.fill(); c.filter='none'; c.restore();
+    // 2 — body with vertical light falloff
+    var g=c.createLinearGradient(px,py,px+CELL*0.6,py+CELL);
+    g.addColorStop(0,hi); g.addColorStop(0.30,base); g.addColorStop(1,lo);
+    c.fillStyle=g; rr(c,x,y,w,h,6); c.fill();
+    // 3 — stone grain (micro texture)
+    c.save(); rr(c,x,y,w,h,6); c.clip();
+    for(var i=0;i<16;i++){
+      var gx=x+rnd()*w, gy=y+rnd()*h, gr=0.7+rnd()*2.1;
+      c.fillStyle='rgba(0,0,0,'+(0.05+rnd()*0.09)+')';
+      c.beginPath(); c.arc(gx,gy,gr,0,6.28); c.fill();
+    }
+    for(var k=0;k<5;k++){
+      var lx=x+rnd()*w, ly=y+rnd()*h;
+      c.strokeStyle='rgba(255,255,255,0.055)'; c.lineWidth=0.9;
+      c.beginPath(); c.moveTo(lx,ly); c.lineTo(lx+3+rnd()*5,ly+1.5); c.stroke();
+    }
+    // 4 — ambient occlusion: inner darkening at bottom/right
+    var ao=c.createLinearGradient(x,y+h*0.45,x,y+h);
+    ao.addColorStop(0,'rgba(0,0,0,0)'); ao.addColorStop(1,'rgba(0,0,0,0.42)');
+    c.fillStyle=ao; c.fillRect(x,y,w,h);
+    var ao2=c.createLinearGradient(x+w*0.5,y,x+w,y);
+    ao2.addColorStop(0,'rgba(0,0,0,0)'); ao2.addColorStop(1,'rgba(0,0,0,0.28)');
+    c.fillStyle=ao2; c.fillRect(x,y,w,h);
+    c.restore();
+    // 5 — hard lit bevel on the light-facing edges
+    c.strokeStyle='rgba(255,255,255,0.5)'; c.lineWidth=2.1;
+    c.beginPath(); c.moveTo(x+3,y+h-2.5); c.lineTo(x+1.4,y+3.5);
+    c.arcTo(x+1.4,y+1.4,x+4,y+1.4,3); c.lineTo(x+w-3,y+1.4); c.stroke();
+    // 6 — dark contact edge on the shadow side
+    c.strokeStyle='rgba(0,0,0,0.55)'; c.lineWidth=2;
+    c.beginPath(); c.moveTo(x+w-1.2,y+4); c.lineTo(x+w-1.2,y+h-3.5);
+    c.arcTo(x+w-1.2,y+h-1.2,x+w-4,y+h-1.2,3); c.lineTo(x+4,y+h-1.2); c.stroke();
+    // 7 — specular glint on the top-left corner
+    var sp=c.createRadialGradient(x+w*0.26,y+h*0.2,0,x+w*0.26,y+h*0.2,w*0.5);
+    sp.addColorStop(0,'rgba(255,255,255,0.30)'); sp.addColorStop(1,'rgba(255,255,255,0)');
+    c.fillStyle=sp; rr(c,x,y,w,h,6); c.fill();
+  }
+  function demoWall(c,W,H,after){
+    c.clearRect(0,0,W,H);
+    var bg=c.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#241a12'); bg.addColorStop(1,'#140d09');
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    if(after){ // ground plane light so shadows have something to land on
+      var gl=c.createRadialGradient(W*0.30,H*0.16,0,W*0.30,H*0.16,H*1.25);
+      gl.addColorStop(0,'rgba(255,214,170,0.13)'); gl.addColorStop(1,'rgba(0,0,0,0)');
+      c.fillStyle=gl; c.fillRect(0,0,W,H);
+    }
+    var cells=wallGrid();
+    var ox=W/2-(11*CELL)/2, oy=H/2-(6*CELL)/2;
+    for(var i=0;i<cells.length;i++){
+      var px=ox+cells[i][0]*CELL, py=oy+cells[i][1]*CELL;
+      if(after) drawWallLit(c,px,py,'#3f7fe0','#8fc0ff','#1b3f7a',(cells[i][0]*17+cells[i][1]*31));
+      else drawWallFlat(c,px,py,'#3f7fe0','#8fc0ff','#1b3f7a');
+    }
+    if(after){
+      var vg=c.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.95);
+      vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.5)');
+      c.fillStyle=vg; c.fillRect(0,0,W,H);
+    }
+  }
+
+  // ============ DEMO 2: TERRAIN ============
+  function demoTerrain(c,W,H,after){
+    c.clearRect(0,0,W,H);
+    var bg=c.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#3a2410'); bg.addColorStop(0.5,'#2a1a0c'); bg.addColorStop(1,'#160d05');
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    var rnd=mulberry(20260724);
+    // low-frequency colour islands (both versions have these)
+    for(var i=0;i<9;i++){
+      var bx=rnd()*W, by=rnd()*H, br=90+rnd()*170;
+      var bl=c.createRadialGradient(bx,by,0,bx,by,br);
+      bl.addColorStop(0, i%2 ? 'rgba(217,164,65,'+(after?0.16:0.10)+')' : 'rgba(87,52,20,'+(after?0.34:0.30)+')');
+      bl.addColorStop(1,'rgba(0,0,0,0)');
+      c.fillStyle=bl; c.fillRect(bx-br,by-br,br*2,br*2);
+    }
+    if(!after){
+      // current: faint dot grid + tiny sparse cones
+      c.fillStyle='rgba(251,211,141,0.05)';
+      for(var r=0;r<H;r+=42) for(var cc=((r/42)%2?21:0);cc<W;cc+=84){
+        c.beginPath(); c.arc(cc,r,1.6,0,6.28); c.fill(); }
+      var r2=mulberry(77);
+      for(var k=0;k<26;k++){
+        var x=r2()*W, y=r2()*H, s=7+r2()*7;
+        c.fillStyle='rgba(120,90,55,0.85)';
+        c.beginPath(); c.moveTo(x,y-s); c.lineTo(x+s*0.62,y+s*0.5); c.lineTo(x-s*0.62,y+s*0.5); c.closePath(); c.fill();
+        c.fillStyle='rgba(210,170,110,0.5)';
+        c.beginPath(); c.moveTo(x,y-s); c.lineTo(x+s*0.2,y+s*0.5); c.lineTo(x-s*0.2,y+s*0.5); c.closePath(); c.fill();
+      }
+      return;
+    }
+    // === AAA: three detail frequencies ===
+    var R=mulberry(4242);
+    // (a) mid-frequency ground patches — organic sediment fields, NOT geometric plates
+    function organicBlob(cx3,cy3,rad,squash,jag){
+      var n=9+Math.floor(R()*4); c.beginPath();
+      for(var v=0;v<=n;v++){
+        var a=v/n*6.28, rr2=rad*(1-jag*0.5+R()*jag);
+        var vx=cx3+Math.cos(a)*rr2, vy=cy3+Math.sin(a)*rr2*squash;
+        if(v===0) c.moveTo(vx,vy); else c.lineTo(vx,vy);
+      }
+      c.closePath();
+    }
+    for(var p=0;p<22;p++){
+      var px=R()*W, py=R()*H, prad=34+R()*72;
+      // sunken depression: dark core, lit upper rim (light top-left)
+      c.save(); c.globalAlpha=0.5;
+      organicBlob(px,py,prad,0.52,0.4); c.filter='blur(9px)';
+      c.fillStyle='rgba(0,0,0,0.5)'; c.fill(); c.filter='none'; c.restore();
+      c.save(); c.globalAlpha=0.5; c.filter='blur(2.5px)';
+      organicBlob(px,py-2,prad*0.92,0.5,0.42);
+      c.fillStyle='rgba(188,132,68,0.15)'; c.fill();
+      c.strokeStyle='rgba(255,198,132,0.10)'; c.lineWidth=2.2; c.stroke();
+      c.filter='none'; c.restore();
+    }
+    // (b) cracks running across the ground — branching, with lit edge
+    for(var cr=0;cr<18;cr++){
+      var sx=R()*W, sy=R()*H, ang0=R()*6.28;
+      var cx2=sx, cy2=sy, ang=ang0;
+      c.beginPath(); c.moveTo(cx2,cy2);
+      for(var seg=0;seg<5;seg++){
+        ang+=(R()-0.5)*1.1; var len=18+R()*44;
+        cx2+=Math.cos(ang)*len; cy2+=Math.sin(ang)*len; c.lineTo(cx2,cy2);
+      }
+      c.strokeStyle='rgba(0,0,0,0.55)'; c.lineWidth=1.4+R()*2.2; c.lineCap='round'; c.stroke();
+      c.strokeStyle='rgba(255,186,116,0.16)'; c.lineWidth=0.9; c.stroke();
+    }
+    // (c) rock formations WITH cast shadow + lit top (the missing mid layer)
+    for(var q=0;q<22;q++){
+      var x=R()*W, y=60+R()*(H-100), s=11+R()*22;
+      // shadow
+      c.save(); c.globalAlpha=0.5; c.fillStyle='#000';
+      c.beginPath(); c.ellipse(x+s*0.42,y+s*0.42,s*0.95,s*0.42,0,0,6.28);
+      c.filter='blur(5px)'; c.fill(); c.filter='none'; c.restore();
+      // body
+      var rg=c.createLinearGradient(x-s*0.4,y-s,x+s*0.5,y+s*0.6);
+      rg.addColorStop(0,'#8a6338'); rg.addColorStop(0.45,'#5c4224'); rg.addColorStop(1,'#2b1d10');
+      c.fillStyle=rg;
+      c.beginPath();
+      c.moveTo(x-s*0.9,y+s*0.55);
+      c.lineTo(x-s*0.5,y-s*0.55);
+      c.lineTo(x+s*0.12,y-s*0.85);
+      c.lineTo(x+s*0.82,y-s*0.15);
+      c.lineTo(x+s*0.95,y+s*0.55);
+      c.closePath(); c.fill();
+      // lit top edge
+      c.strokeStyle='rgba(255,208,150,0.42)'; c.lineWidth=1.6;
+      c.beginPath(); c.moveTo(x-s*0.5,y-s*0.55); c.lineTo(x+s*0.12,y-s*0.85); c.lineTo(x+s*0.82,y-s*0.15); c.stroke();
+      // contact shading at the base
+      c.fillStyle='rgba(0,0,0,0.35)';
+      c.beginPath(); c.ellipse(x,y+s*0.55,s*0.9,s*0.16,0,0,6.28); c.fill();
+    }
+    // (d) fine gravel — high frequency
+    for(var g2=0;g2<230;g2++){
+      var gx=R()*W, gy=R()*H, gs=0.7+R()*1.7;
+      c.fillStyle= R()>0.55 ? 'rgba(226,182,122,0.22)' : 'rgba(0,0,0,0.28)';
+      c.beginPath(); c.arc(gx,gy,gs,0,6.28); c.fill();
+    }
+    // (e) heat haze glow + vignette for focus
+    var hz=c.createRadialGradient(W*0.5,H*0.62,0,W*0.5,H*0.62,W*0.5);
+    hz.addColorStop(0,'rgba(255,120,40,0.07)'); hz.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=hz; c.fillRect(0,0,W,H);
+    var vg2=c.createRadialGradient(W/2,H/2,H*0.28,W/2,H/2,H*1.0);
+    vg2.addColorStop(0,'rgba(0,0,0,0)'); vg2.addColorStop(1,'rgba(0,0,0,0.58)');
+    c.fillStyle=vg2; c.fillRect(0,0,W,H);
+  }
+
+  // ============ DEMO 3: LAVA RIVER ============
+  function lavaPath(W,H){
+    var pts=[]; for(var x=-40;x<=W+40;x+=34) pts.push([x, H*0.5 + Math.sin(x*0.011)*34 + Math.sin(x*0.027)*15]);
+    return pts;
+  }
+  function demoLava(c,W,H,after,t){
+    c.clearRect(0,0,W,H);
+    var bg=c.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#2a130e'); bg.addColorStop(1,'#0d0504');
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    var pts=lavaPath(W,H), TH=30;
+    if(!after){
+      // current: rows of rounded blocks
+      for(var i=0;i<pts.length;i++){
+        for(var k=-1;k<=1;k++){
+          var x=pts[i][0], y=pts[i][1]+k*TH*0.78;
+          var g=c.createLinearGradient(x,y-15,x,y+15);
+          g.addColorStop(0,'#f97316'); g.addColorStop(1,'#c2410c');
+          c.fillStyle=g; rr(c,x-16,y-15,31,30,9); c.fill();
+        }
+      }
+      return;
+    }
+    // === AAA lava ===
+    // (a) ground scorch glow around the river
+    c.save();
+    var sc=c.createLinearGradient(0,H*0.5-110,0,H*0.5+110);
+    sc.addColorStop(0,'rgba(0,0,0,0)'); sc.addColorStop(0.5,'rgba(255,110,30,0.16)'); sc.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=sc; c.fillRect(0,H*0.5-110,W,220); c.restore();
+    function ribbon(w,style,blur){
+      c.save(); if(blur){ c.filter='blur('+blur+'px)'; }
+      c.beginPath(); c.moveTo(pts[0][0],pts[0][1]);
+      for(var i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]);
+      c.lineWidth=w; c.lineCap='round'; c.lineJoin='round'; c.strokeStyle=style; c.stroke();
+      c.filter='none'; c.restore();
+    }
+    ribbon(TH*2.9,'rgba(255,90,20,0.16)',18);      // outer heat bloom
+    ribbon(TH*2.1,'#3d1408',0);                     // dark cooled crust bank
+    ribbon(TH*1.75,'#7c2d12',0);                    // crust
+    ribbon(TH*1.35,'#c2410c',0);                    // hot rock
+    ribbon(TH*0.95,'#ea580c',0);                    // molten
+    ribbon(TH*0.55,'#fb923c',0);                    // core
+    // (b) flowing veins — bright animated streaks along the flow
+    for(var v=0;v<3;v++){
+      c.save(); c.globalAlpha=0.5+0.25*Math.sin(t*0.0016+v);
+      c.beginPath();
+      for(var i2=0;i2<pts.length;i2++){
+        var off=Math.sin(pts[i2][0]*0.05+v*2.1+t*0.0012)*8;
+        if(i2===0) c.moveTo(pts[i2][0],pts[i2][1]+off); else c.lineTo(pts[i2][0],pts[i2][1]+off);
+      }
+      c.lineWidth=3.4-v*0.9; c.lineCap='round'; c.strokeStyle= v===0?'#fff3c4':'#fde68a'; c.stroke();
+      c.restore();
+    }
+    // (c) crust cracks across the surface
+    var R2=mulberry(9911);
+    for(var ck=0;ck<26;ck++){
+      var idx=Math.floor(R2()*(pts.length-1)), p0=pts[idx];
+      var yo=(R2()-0.5)*TH*1.5;
+      c.strokeStyle='rgba(20,6,2,0.55)'; c.lineWidth=1+R2()*1.4;
+      c.beginPath(); c.moveTo(p0[0],p0[1]+yo);
+      c.lineTo(p0[0]+(R2()-0.5)*26, p0[1]+yo+(R2()-0.5)*16); c.stroke();
+    }
+    // (d) rising embers
+    for(var e=0;e<26;e++){
+      var ex=(e*137.5)%W, base=H*0.5+Math.sin(ex*0.011)*34;
+      var life=((t*0.00016*(0.5+(e%5)*0.16))+e*0.11)%1;
+      var ey=base-life*130, al=(1-life)*0.75;
+      c.globalAlpha=al; c.fillStyle= e%3?'#fbbf24':'#fb923c';
+      c.beginPath(); c.arc(ex+Math.sin(life*7+e)*11, ey, 1.5+(1-life)*1.3, 0,6.28); c.fill();
+    }
+    c.globalAlpha=1;
+  }
+
+  // ============ DEMO 4: IMPACT ============
+  function drawFortForImpact(c,W,H,ox,oy){
+    for(var i=0;i<7;i++) for(var j=0;j<3;j++){
+      var px=ox+i*CELL, py=oy+j*CELL;
+      drawWallLit(c,px,py,'#dd4f4f','#ffa3a3','#7a1d1d',(i*13+j*29));
+    }
+  }
+  function demoImpact(c,W,H,after,t,t0){
+    c.clearRect(0,0,W,H);
+    var bg=c.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#1b1410'); bg.addColorStop(1,'#0b0705');
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    var ox=W/2-(7*CELL)/2, oy=H/2-(3*CELL)/2;
+    var el=(t-t0);
+    var IX=W/2, IY=H/2;
+    var shake = after && el<220 ? (1-el/220)*7 : 0;
+    c.save();
+    if(shake) c.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+    // fort with a hole where the hit landed
+    for(var i=0;i<7;i++) for(var j=0;j<3;j++){
+      if(el>60 && i>=3 && i<=4 && j>=1) continue; // destroyed cells
+      drawWallLit(c,ox+i*CELL,oy+j*CELL,'#dd4f4f','#ffa3a3','#7a1d1d',(i*13+j*29));
+    }
+    if(!after){
+      // current: simple particle puff
+      if(el<620){
+        var q=el/620;
+        for(var p=0;p<10;p++){
+          var a=p/10*6.28, d=q*54;
+          c.globalAlpha=(1-q)*0.85; c.fillStyle='#f87171';
+          c.beginPath(); c.arc(IX+Math.cos(a)*d, IY+Math.sin(a)*d, 3.5*(1-q)+1,0,6.28); c.fill();
+        }
+        c.globalAlpha=1;
+      }
+      c.restore(); return;
+    }
+    // === AAA impact stack ===
+    // 1 flash
+    if(el<260){ var f=1-el/260;
+      var fl=c.createRadialGradient(IX,IY,0,IX,IY,150*f+40);
+      fl.addColorStop(0,'rgba(255,250,220,'+(0.95*f)+')');
+      fl.addColorStop(0.4,'rgba(255,180,90,'+(0.5*f)+')');
+      fl.addColorStop(1,'rgba(255,120,40,0)');
+      c.fillStyle=fl; c.fillRect(0,0,W,H); }
+    // 2 shockwave rings
+    for(var w=0;w<2;w++){
+      var st=el-w*70;
+      if(st>0&&st<520){ var s=st/520;
+        c.globalAlpha=(1-s)*0.75; c.strokeStyle= w? 'rgba(255,190,120,0.9)':'#fff3c4';
+        c.lineWidth=(1-s)*5+0.8;
+        c.beginPath(); c.arc(IX,IY, s*150+12, 0, 6.28); c.stroke(); }
+    }
+    c.globalAlpha=1;
+    // 3 debris with rotation
+    var DR=mulberry(31337);
+    for(var d2=0;d2<16;d2++){
+      var ang=DR()*6.28, spd=90+DR()*230, sz=3+DR()*7;
+      var dt=Math.min(el,1100)/1000;
+      var dx=IX+Math.cos(ang)*spd*dt, dy=IY+Math.sin(ang)*spd*dt+300*dt*dt;
+      if(el>1100) continue;
+      c.save(); c.globalAlpha=Math.max(0,1-el/1100);
+      c.translate(dx,dy); c.rotate(ang+el*0.006*(DR()>0.5?1:-1));
+      var dg=c.createLinearGradient(-sz,-sz,sz,sz);
+      dg.addColorStop(0,'#e08a8a'); dg.addColorStop(1,'#6b1717');
+      c.fillStyle=dg; rr(c,-sz/2,-sz/2,sz,sz,1.5); c.fill();
+      c.restore();
+    }
+    // 4 dust cloud
+    if(el<1400){
+      var DU=mulberry(555);
+      for(var u=0;u<12;u++){
+        var ua=DU()*6.28, ud=DU()*40, ut=Math.min(el,1400)/1400;
+        var ux=IX+Math.cos(ua)*(ud+ut*95), uy=IY+Math.sin(ua)*(ud+ut*62)-ut*26;
+        var ur=10+ut*40+DU()*14;
+        c.globalAlpha=(1-ut)*0.20;
+        var dgr=c.createRadialGradient(ux,uy,0,ux,uy,ur);
+        dgr.addColorStop(0,'rgba(190,170,150,0.9)'); dgr.addColorStop(1,'rgba(190,170,150,0)');
+        c.fillStyle=dgr; c.beginPath(); c.arc(ux,uy,ur,0,6.28); c.fill();
+      }
+      c.globalAlpha=1;
+    }
+    // 5 lingering ember glow in the crater
+    if(el>60){
+      var gl2=0.5+0.3*Math.sin(t*0.006);
+      var cg=c.createRadialGradient(IX,IY,0,IX,IY,46);
+      cg.addColorStop(0,'rgba(255,140,50,'+(0.42*gl2)+')');
+      cg.addColorStop(1,'rgba(255,90,20,0)');
+      c.fillStyle=cg; c.beginPath(); c.arc(IX,IY,46,0,6.28); c.fill();
+      for(var em=0;em<5;em++){
+        var et=((t*0.0004)+em*0.2)%1;
+        c.globalAlpha=(1-et)*0.75; c.fillStyle='#fbbf24';
+        c.beginPath(); c.arc(IX+Math.sin(et*6+em)*18, IY-et*44, 1.6,0,6.28); c.fill();
+      }
+      c.globalAlpha=1;
+    }
+    c.restore();
+  }
+
+  // ============ wire up compare widgets ============
+  var stages=[].slice.call(document.querySelectorAll('.stage'));
+  var live=[];
+  stages.forEach(function(st){
+    var before=st.querySelector('.before'), after=st.querySelector('.after');
+    var handle=st.querySelector('.handle');
+    var bc=before.getContext('2d'), ac=after.getContext('2d');
+    var W=before.width, H=before.height;
+    var pos=0.5, demo=st.dataset.demo, t0=0;
+    function apply(){
+      after.style.clipPath='inset(0 0 0 '+(pos*100)+'%)';
+      handle.style.left=(pos*100)+'%';
+    }
+    function paint(t){
+      if(demo==='wall'){ demoWall(bc,W,H,false); demoWall(ac,W,H,true); }
+      else if(demo==='terrain'){ demoTerrain(bc,W,H,false); demoTerrain(ac,W,H,true); }
+      else if(demo==='lava'){ demoLava(bc,W,H,false,t); demoLava(ac,W,H,true,t); }
+      else if(demo==='impact'){ demoImpact(bc,W,H,false,t,t0); demoImpact(ac,W,H,true,t,t0); }
+    }
+    // static demos paint once; animated ones register
+    if(demo==='wall'||demo==='terrain'){ paint(0); }
+    else { live.push({paint:paint, reset:function(t){t0=t;}, get t0(){return t0;}}); }
+    apply();
+    function setFromEvent(e){
+      var r=st.getBoundingClientRect();
+      var cx=(e.touches?e.touches[0].clientX:e.clientX);
+      pos=Math.max(0,Math.min(1,(cx-r.left)/r.width)); apply();
+    }
+    var dragging=false;
+    st.addEventListener('pointerdown',function(e){
+      dragging=true; try{st.setPointerCapture(e.pointerId);}catch(err){}
+      if(demo==='impact'){ live.forEach(function(l){ if(l.isImpact) l.reset(performance.now()); }); }
+      setFromEvent(e);
+    });
+    st.addEventListener('pointermove',function(e){ if(dragging) setFromEvent(e); });
+    st.addEventListener('pointerup',function(){ dragging=false; });
+    st.addEventListener('pointercancel',function(){ dragging=false; });
+    if(demo==='impact'){ live[live.length-1].isImpact=true;
+      st.addEventListener('click',function(){ live.forEach(function(l){ if(l.isImpact) l.reset(performance.now()); }); }); }
+  });
+
+  if(live.length){
+    var start=performance.now();
+    live.forEach(function(l){ l.reset(start); });
+    var loopCycle=1900;
+    function loop(t){
+      live.forEach(function(l){
+        if(l.isImpact && t-l.t0>loopCycle) l.reset(t);
+        l.paint(t);
+      });
+      requestAnimationFrame(loop);
+    }
+    if(reduce){ live.forEach(function(l){ l.paint(1200); }); }
+    else requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
