@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.41.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.42.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2496,6 +2496,9 @@ window.FortressApp = function Fortress() {
   });
   const gridVersion = useRef(0);
   const zoneCanvas = useRef(null);
+  // Fließ-Adern des Flusses (v3.41.0): Kernzellen aus dem bgCanvas-Bake,
+  // pro Frame als leichte Animationsebene darübergelegt.
+  const riverFlow = useRef({ cells: [], anim: "255,255,255" });
   // Kontaktschatten-Ebene (v3.41.0): gebacken pro gridVersion, siehe Render-Loop.
   const shadowCanvas = useRef(null);
   const shadowSilhouette = useRef(null);
@@ -5350,42 +5353,184 @@ window.FortressApp = function Fortress() {
           bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, 1, 0, Math.PI * 2);
           bc.fill();
         }
+      // ── MITTLERE Detailfrequenz (v3.41.0, AAA-Stufe 2) ──────────────────────
+      // Bisher gab es nur sehr grobe Farbinseln und ein sehr feines Punktraster
+      // — dazwischen NICHTS. Genau diese Lücke ließ das Feld leer wirken.
+      // Alles hier wird EINMAL gebacken → im Frame-Loop null Kosten.
+      // Deko meidet die Burgumgebung, damit der Bauplatz lesbar bleibt.
+      const nearCastle = (px2, py2) => {
+        for (const p of [1, 2, 3]) {
+          const ct2 = castles.current[p];
+          if (!ct2) continue;
+          if (Math.abs(px2 - (ct2.c * CELL)) < CELL * 9 && Math.abs(py2 - (ct2.r * CELL)) < CELL * 7) return true;
+        }
+        return false;
+      };
+      // (a) Sedimentfelder — organische Senken mit Licht von oben links
+      for (let i = 0; i < 22; i++) {
+        const px2 = drng() * W, py2 = drng() * H, rad = CELL * (2.4 + drng() * 4.2);
+        if (nearCastle(px2, py2)) continue;
+        const n = 9 + Math.floor(drng() * 4);
+        const pts2 = [];
+        for (let v = 0; v <= n; v++) {
+          const ang2 = v / n * Math.PI * 2, rr3 = rad * (0.78 + drng() * 0.42);
+          pts2.push([px2 + Math.cos(ang2) * rr3, py2 + Math.sin(ang2) * rr3 * 0.55]);
+        }
+        bc.beginPath();
+        bc.moveTo(pts2[0][0], pts2[0][1]);
+        for (let v = 1; v < pts2.length; v++) bc.lineTo(pts2[v][0], pts2[v][1]);
+        bc.closePath();
+        // Nur Füllung, KEINE umlaufende Kontur: eine durchgehende Outline ließ
+        // die Felder wie Low-Poly-Flächen wirken statt wie weicher Boden.
+        bc.fillStyle = "rgba(0,0,0,0.14)";
+        bc.fill();
+        // Lichtkante nur an der OBERSEITE (Licht von oben links) → wirkt als Senke
+        bc.save();
+        bc.clip();
+        bc.strokeStyle = WT.tex1;
+        bc.lineWidth = 2.6;
+        bc.beginPath();
+        bc.moveTo(px2 - rad, py2 - rad * 0.3);
+        bc.lineTo(px2 + rad, py2 - rad * 0.3);
+        bc.stroke();
+        bc.restore();
+      }
+      // (b) Bodenrisse — verzweigt, mit heller Lichtkante an der Oberseite
+      for (let i = 0; i < 16; i++) {
+        let cx5 = drng() * W, cy5 = drng() * H, ang3 = drng() * Math.PI * 2;
+        if (nearCastle(cx5, cy5)) continue;
+        bc.beginPath();
+        bc.moveTo(cx5, cy5);
+        for (let seg = 0; seg < 5; seg++) {
+          ang3 += (drng() - 0.5) * 1.1;
+          const len = CELL * (1.2 + drng() * 2.6);
+          cx5 += Math.cos(ang3) * len; cy5 += Math.sin(ang3) * len;
+          bc.lineTo(cx5, cy5);
+        }
+        bc.strokeStyle = "rgba(0,0,0,0.42)";
+        bc.lineWidth = 1.1 + drng() * 1.5;
+        bc.lineCap = "round";
+        bc.stroke();
+        bc.strokeStyle = WT.mtnEdge;
+        bc.lineWidth = 0.7;
+        bc.stroke();
+      }
+      // (c) Geröll — Streusteine MIT Bodenschatten (Licht von oben links).
+      // Das ist der eigentliche Dichte-Gewinn: kleine Objekte, die Volumen haben.
+      for (let i = 0; i < 34; i++) {
+        const px2 = drng() * W, py2 = drng() * H, s2 = CELL * (0.30 + drng() * 0.5);
+        if (nearCastle(px2, py2)) continue;
+        bc.fillStyle = "rgba(0,0,0,0.34)";
+        bc.beginPath();
+        bc.ellipse(px2 + s2 * 0.45, py2 + s2 * 0.5, s2 * 1.05, s2 * 0.5, 0, 0, Math.PI * 2);
+        bc.fill();
+        bc.fillStyle = WT.mtn[0];
+        bc.beginPath();
+        bc.moveTo(px2 - s2, py2 + s2 * 0.5);
+        bc.lineTo(px2 - s2 * 0.5, py2 - s2 * 0.6);
+        bc.lineTo(px2 + s2 * 0.35, py2 - s2 * 0.8);
+        bc.lineTo(px2 + s2, py2 + s2 * 0.5);
+        bc.closePath();
+        bc.fill();
+        bc.fillStyle = WT.mtn[1];
+        bc.beginPath();
+        bc.moveTo(px2 + s2 * 0.35, py2 - s2 * 0.8);
+        bc.lineTo(px2 + s2, py2 + s2 * 0.5);
+        bc.lineTo(px2 + s2 * 0.2, py2 + s2 * 0.5);
+        bc.closePath();
+        bc.fill();
+      }
       // — Organischer Fluss (Metaball-Look: weiche runde Ufer statt Kacheln) —
       const waterCells = [];
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++)
           if (ter[r][c] === 3) waterCells.push([r, c]);
-      // Pass 1: Uferband (etwas größere Kreise in Ufer-Farbe).
-      // ⚠ Radien-Regel (v3.30.1): Das Wasser darf visuell NICHT nennenswert in
-      // bebaubare Nachbarzellen ragen — mit 0.95 sah eine Mauer auf der
-      // Nachbarzelle aus, als stünde sie „im Wasser" (Nutzer-Bug-Report).
+      // ── Fluss als FLÜSSIGKEIT (v3.41.0, AAA-Stufe 2) ────────────────────────
+      // Vorher: gleichfarbige Kreise → las sich als „orange Blöcke", also
+      // dieselbe Formsprache wie die Mauern. Jetzt: TIEFENKARTE (BFS vom Ufer
+      // nach innen) und Einfärbung nach Abstand zum Ufer — außen dunkle Kruste,
+      // innen glühender Kern. Das erzeugt den Flüssigkeits-Look, OHNE die
+      // Radien zu vergrößern.
+      // ⚠ Radien-Regel (v3.30.1) bleibt unangetastet: max 0.68·CELL, sonst sieht
+      // eine Mauer auf der Nachbarzelle aus, als stünde sie „im Wasser".
       // >0.5 bleibt Pflicht, damit benachbarte Kreise zum Band verschmelzen.
+      const wIdx = (r, c) => r * COLS + c;
+      const wDepth = new Int16Array(ROWS * COLS).fill(-1);
+      let wQueue = [];
+      for (const [r, c] of waterCells) {
+        // Randzelle = hat mindestens einen Nicht-Wasser-Nachbarn (4er-Nachbarschaft)
+        const edge = r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1 ||
+          ter[r - 1][c] !== 3 || ter[r + 1][c] !== 3 || ter[r][c - 1] !== 3 || ter[r][c + 1] !== 3;
+        if (edge) { wDepth[wIdx(r, c)] = 0; wQueue.push([r, c]); }
+      }
+      let wMax = 0;
+      for (let qi = 0; qi < wQueue.length; qi++) {
+        const [r, c] = wQueue[qi], d = wDepth[wIdx(r, c)];
+        const nb = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+        for (const [nr, nc] of nb) {
+          if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+          if (ter[nr][nc] !== 3 || wDepth[wIdx(nr, nc)] !== -1) continue;
+          wDepth[wIdx(nr, nc)] = d + 1;
+          if (d + 1 > wMax) wMax = d + 1;
+          wQueue.push([nr, nc]);
+        }
+      }
+      // Farbverlauf Ufer → Kern. Kern-Ton aus waterEdge (hellster Themenwert).
+      const hex2rgb = (h) => {
+        const s = h.replace("#", "");
+        return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+      };
+      const mixHex = (a, b, t) => {
+        const A = hex2rgb(a), B = hex2rgb(b);
+        return "rgb(" + Math.round(A[0] + (B[0] - A[0]) * t) + "," +
+          Math.round(A[1] + (B[1] - A[1]) * t) + "," + Math.round(A[2] + (B[2] - A[2]) * t) + ")";
+      };
+      // Pass 1: Uferband / erkaltete Kruste (dunkelster Ton, größter Radius)
       bc.fillStyle = WT.bank;
       for (const [r, c] of waterCells) {
         bc.beginPath();
         bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, CELL * 0.68, 0, Math.PI * 2);
         bc.fill();
       }
-      // Pass 2: Wasserkörper (dunkler Grundton) mit Glow
+      // Pass 2: Körper mit Glow — Ton wandert mit der Tiefe von dunkel nach hell
       bc.save();
       bc.shadowColor = WT.waterGlow;
       bc.shadowBlur = 10;
-      bc.fillStyle = WT.water[1];
       for (const [r, c] of waterCells) {
+        const t2 = wMax > 0 ? wDepth[wIdx(r, c)] / wMax : 1;
+        bc.fillStyle = mixHex(WT.water[1], WT.water[0], t2 * 0.85);
         bc.beginPath();
         bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2, CELL * 0.6, 0, Math.PI * 2);
         bc.fill();
       }
       bc.restore();
-      // Pass 3: helle Strömung — Radius > halber Zellabstand, damit die Kreise
-      // horizontal verschmelzen (durchgängiges Band statt Punktkette)
-      bc.fillStyle = WT.water[0];
+      // Pass 3: glühender Kern — nur die inneren Zellen, dadurch entsteht die
+      // charakteristische helle Ader in der Flussmitte statt einer flachen Fläche
       for (const [r, c] of waterCells) {
+        const d = wDepth[wIdx(r, c)];
+        if (wMax > 0 && d < wMax * 0.5) continue;
+        const t3 = wMax > 0 ? (d - wMax * 0.5) / Math.max(0.5, wMax * 0.5) : 1;
+        bc.fillStyle = mixHex(WT.water[0], WT.waterEdge.startsWith("#") ? WT.waterEdge : WT.water[0], Math.min(1, t3) * 0.7);
         bc.beginPath();
-        bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2 - 1, CELL * 0.52, 0, Math.PI * 2);
+        bc.arc(c * CELL + CELL / 2, r * CELL + CELL / 2 - 1, CELL * 0.5, 0, Math.PI * 2);
         bc.fill();
       }
-      // Pass 4: Glanzlichter an der Oberkante (nur oberste Wasserzellen)
+      // Pass 4: erkaltete Krustenschollen an den Uferzellen — dunkle Flecken
+      // statt Linien. Linien lasen sich als gleichförmige „Kratzer"; Schollen
+      // wirken wie aufgebrochene Oberfläche.
+      for (const [r, c] of waterCells) {
+        if (wDepth[wIdx(r, c)] !== 0) continue;
+        const h = Math.abs(Math.sin(r * 12.9898 + c * 78.233) * 43758.5453) % 1;
+        if (h > 0.4) continue;
+        const h2 = Math.abs(Math.sin(r * 45.164 + c * 21.71) * 43758.5453) % 1;
+        const cx4 = c * CELL + CELL / 2 + (h - 0.5) * CELL * 0.35;
+        const cy4 = r * CELL + CELL / 2 + (h2 - 0.5) * CELL * 0.35;
+        bc.fillStyle = "rgba(0,0,0,0.26)";
+        bc.beginPath();
+        bc.ellipse(cx4, cy4, CELL * (0.16 + h * 0.16), CELL * (0.11 + h2 * 0.12), h * 3, 0, Math.PI * 2);
+        bc.fill();
+      }
+      // Pass 5: Glanzlichter an der Oberkante (nur oberste Wasserzellen)
       bc.fillStyle = WT.waterEdge;
       for (const [r, c] of waterCells) {
         if (r === 0 || ter[r - 1][c] !== 3) {
@@ -5394,6 +5539,12 @@ window.FortressApp = function Fortress() {
           bc.fill();
         }
       }
+      // Kernzellen für die animierte Strömung merken (Pro-Frame-Layer, gedeckelt)
+      const flowCells = [];
+      for (const [r, c] of waterCells) {
+        if (wMax > 0 && wDepth[wIdx(r, c)] >= wMax * 0.65) flowCells.push([r, c]);
+      }
+      riverFlow.current = { cells: flowCells.slice(0, 220), anim: WT.waterAnim || "255,255,255" };
       // — Plastische Berge: Bodenschatten + Licht-/Schattenfacette + Gipfel —
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++) {
@@ -5535,6 +5686,15 @@ window.FortressApp = function Fortress() {
       bc.globalAlpha = 0.75;
       bc.fillText(wtLabel, 16, H - 9);
       bc.restore();
+      // ── Vignette (v3.41.0, AAA-Stufe 2) ─────────────────────────────────────
+      // Randbereiche abdunkeln → das Auge wandert zur Spielmitte. Ohne das
+      // konkurrieren Deko und Spielobjekte um dieselbe Aufmerksamkeit.
+      // Kommt ZULETZT in den Bake, liegt also über der gesamten Deko.
+      const vg2 = bc.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.72);
+      vg2.addColorStop(0, "rgba(0,0,0,0)");
+      vg2.addColorStop(1, "rgba(0,0,0,0.42)");
+      bc.fillStyle = vg2;
+      bc.fillRect(0, 0, W, H);
     }
     if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
     const WTa = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
@@ -5549,16 +5709,23 @@ window.FortressApp = function Fortress() {
             if (ter[r][c] === 3) wc.push(r * COLS + c);
         waterCellsRef.current = { seed: wSeed, cells: wc };
       }
-      ctx.strokeStyle = `rgba(${WTa.waterAnim},${0.15 + 0.1 * Math.sin(now / 500)})`;
-      ctx.lineWidth = 1;
-      const wFrame = Math.floor(now / 600) % 8;
-      for (const idx of waterCellsRef.current.cells) {
-        const r = (idx / COLS) | 0, c = idx - r * COLS;
-        if ((r * 3 + c) % 8 === wFrame) {
+      // Fließ-Adern (v3.41.0, AAA-Stufe 2): helle Glanzpunkte wandern über die
+      // KERNZELLEN des Flusses (aus dem bgCanvas-Bake). Dadurch wirkt das Band
+      // wie strömende Flüssigkeit statt wie eine statische Fläche.
+      // Kosten: max ~220 Zellen, davon pro Frame ein Bruchteil → vernachlässigbar.
+      const rf = riverFlow.current;
+      if (rf && rf.cells.length) {
+        const wave = now / 900;
+        for (let i = 0; i < rf.cells.length; i++) {
+          const r = rf.cells[i][0], c = rf.cells[i][1];
+          // Phase entlang der Fließrichtung (diagonal versetzt) → wandernde Ader
+          const ph = Math.sin((c * 0.55 + r * 0.28) - wave * 2.2);
+          if (ph < 0.55) continue;
+          const a = (ph - 0.55) / 0.45;
+          ctx.fillStyle = `rgba(${rf.anim},${(0.30 * a).toFixed(3)})`;
           ctx.beginPath();
-          ctx.moveTo(c * CELL + 2, r * CELL + CELL / 2);
-          ctx.lineTo(c * CELL + CELL - 2, r * CELL + CELL / 2);
-          ctx.stroke();
+          ctx.ellipse(c * CELL + CELL / 2, r * CELL + CELL / 2, CELL * 0.40, CELL * 0.20, 0, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     }
@@ -6000,13 +6167,21 @@ window.FortressApp = function Fortress() {
     }
     prevExplCount.current = explNow;
     prevBigCount.current = bigNow;
+    // ── Impact-Stack (v3.41.0, AAA-Stufe 3: Juice) ──────────────────────────
+    // Vorher: EIN Radialverlauf → der Treffer, also der emotionale Höhepunkt
+    // jeder Runde, fühlte sich an wie ein Klick. Jetzt fünf gestaffelte Lagen.
+    // ⚠ MUSS deterministisch sein: Explosionen werden online synchronisiert
+    // (nur x/y/frame gehen über den Draht) — daher Pseudo-Zufall aus x,y,i
+    // statt Math.random, sonst sähen Host und Gast Unterschiedliches.
     for (const ex of explosions.current) {
       const t = ex.frame / 22;
       const rr = t * CELL * (ex.big ? 6 : 2.8);
       const a = 1 - t;
-      // Schmiede-Einschlag-Farben (v3.33.0): ex.fx kommt auch bei Gästen an
       const exFx = ex.fx ? IMPACT_FX[ex.fx] : null;
       const ring = exFx ? exFx.ring : ["255,255,210", "251,191,36", "239,68,68"];
+      const seed0 = (ex.x * 12.9898 + ex.y * 78.233);
+      const rnd2 = (i) => Math.abs(Math.sin(seed0 + i * 37.719) * 43758.5453) % 1;
+      // (1) Kernglut — der bisherige Verlauf, bleibt als Basis
       const grd = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, Math.max(rr, 1));
       grd.addColorStop(0, `rgba(${ring[0]},${a})`);
       grd.addColorStop(0.35, `rgba(${ring[1]},${a * 0.9})`);
@@ -6016,6 +6191,65 @@ window.FortressApp = function Fortress() {
       ctx.beginPath();
       ctx.arc(ex.x, ex.y, Math.max(rr, 1), 0, Math.PI * 2);
       ctx.fill();
+      // (2) Lichtblitz — kurz, hell, überstrahlt den Einschlagpunkt
+      if (t < 0.28) {
+        const f = 1 - t / 0.28;
+        const fr = CELL * (ex.big ? 3.4 : 1.8) * (0.5 + f);
+        const fl = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, fr);
+        fl.addColorStop(0, `rgba(255,255,245,${(0.9 * f).toFixed(3)})`);
+        fl.addColorStop(0.5, `rgba(${ring[1]},${(0.45 * f).toFixed(3)})`);
+        fl.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = fl;
+        ctx.beginPath();
+        ctx.arc(ex.x, ex.y, fr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // (3) Druckwelle — zwei versetzte Ringe, werden dünner beim Aufweiten
+      for (let w = 0; w < 2; w++) {
+        const wt = t - w * 0.10;
+        if (wt <= 0 || wt > 0.75) continue;
+        const wp = wt / 0.75;
+        ctx.strokeStyle = `rgba(${w ? ring[1] : ring[0]},${((1 - wp) * 0.75).toFixed(3)})`;
+        ctx.lineWidth = (1 - wp) * (ex.big ? 4.5 : 2.6) + 0.6;
+        ctx.beginPath();
+        ctx.arc(ex.x, ex.y, wp * CELL * (ex.big ? 7 : 3.6) + CELL * 0.3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // (4) Trümmer — fliegen mit Schwerkraft auseinander, drehen sich
+      const nDeb = ex.big ? 12 : 7;
+      for (let d = 0; d < nDeb; d++) {
+        const ang = rnd2(d) * Math.PI * 2;
+        const spd = CELL * (1.6 + rnd2(d + 50) * 3.2) * (ex.big ? 1.5 : 1);
+        const dx2 = ex.x + Math.cos(ang) * spd * t;
+        const dy2 = ex.y + Math.sin(ang) * spd * t + CELL * 5 * t * t;
+        const sz = (1.4 + rnd2(d + 90) * 2.2) * (1 - t * 0.5);
+        if (sz <= 0.2) continue;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, a);
+        ctx.translate(dx2, dy2);
+        ctx.rotate(ang + t * 9 * (rnd2(d + 20) > 0.5 ? 1 : -1));
+        ctx.fillStyle = `rgba(${ring[2]},0.95)`;
+        ctx.fillRect(-sz / 2, -sz / 2, sz, sz);
+        ctx.restore();
+      }
+      // (5) Staubwolke — weiche Puffs, bleiben am längsten stehen
+      const nDust = ex.big ? 7 : 4;
+      for (let u = 0; u < nDust; u++) {
+        const ua = rnd2(u + 130) * Math.PI * 2;
+        const ud = CELL * (0.5 + rnd2(u + 160) * 1.4) * (ex.big ? 1.8 : 1);
+        const ux = ex.x + Math.cos(ua) * (ud + t * CELL * 2.6);
+        const uy = ex.y + Math.sin(ua) * (ud + t * CELL * 1.9) - t * CELL * 0.8;
+        const ur = CELL * (0.5 + t * (ex.big ? 2.2 : 1.3));
+        ctx.globalAlpha = Math.max(0, (1 - t) * 0.22);
+        const dg2 = ctx.createRadialGradient(ux, uy, 0, ux, uy, ur);
+        dg2.addColorStop(0, "rgba(210,196,180,0.85)");
+        dg2.addColorStop(1, "rgba(210,196,180,0)");
+        ctx.fillStyle = dg2;
+        ctx.beginPath();
+        ctx.arc(ux, uy, ur, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
       ex.frame++;
     }
     // decorative gold battlefield border
@@ -6347,7 +6581,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.41.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.42.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -8194,7 +8428,7 @@ window.FortressApp = function Fortress() {
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#94a3b8", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", marginBottom: 9, boxShadow: "0 4px 20px rgba(124,58,237,0.35)" } }, React.createElement(Icon, { name: "globe", size: 15, style: { verticalAlign: "-2px", marginRight: 6 } }), t('tutorialToOnline')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { width: "100%", background: "rgba(255,255,255,0.06)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
-  )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "42%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "center", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `2px solid ${pb.color}`, borderRadius: 22, padding: "22px 44px", boxShadow: `0 0 70px ${pb.glow}, 0 8px 48px rgba(0,0,0,0.7)`, minWidth: 220, backdropFilter: "blur(14px)" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: pb.color, display: "flex", justifyContent: "center", filter: `drop-shadow(0 0 18px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 48 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 26, fontWeight: 900, color: pb.color, letterSpacing: "0.05em", textShadow: `0 0 24px ${pb.glow}` } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 7, fontWeight: 600, lineHeight: 1.4 } }, t(pbSubKey))); })(), /* @__PURE__ */ React.createElement("div", { style: {
+  )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 96px)", left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `1.5px solid ${pb.color}`, borderRadius: 14, padding: "9px 20px", boxShadow: `0 0 34px ${pb.glow}, 0 6px 24px rgba(0,0,0,0.6)`, maxWidth: "min(92vw,430px)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: pb.color, display: "flex", flexShrink: 0, filter: `drop-shadow(0 0 12px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 900, color: pb.color, letterSpacing: "0.04em", textShadow: `0 0 16px ${pb.glow}`, lineHeight: 1.15 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", marginTop: 2, fontWeight: 600, lineHeight: 1.3 } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: buildUrgencyOpen ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.07)",

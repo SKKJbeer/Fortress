@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.41.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.42.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3437,3 +3437,35 @@ Stufe 1 setzt eine durchgehende Lichtführung um.
   bleibt eingehalten.
 
 Tests grün (Unit 39/39, E2E 309/309 in zwei Läufen). SW-Cache `fortress-v3.41.0`.
+
+### v3.42.0 — AAA-Stufe 2 & 3: Dichte, Material, Juice
+Zweiter und dritter Block aus dem Design-Review (`review.html`).
+- **Fluss als FLÜSSIGKEIT** (Stufe 2): Vorher gleichfarbige Kreise → las sich
+  als „orange Blöcke", also dieselbe Formsprache wie die Mauern. Jetzt
+  **Tiefenkarte** (BFS vom Ufer nach innen) und Einfärbung nach Ufer-Abstand:
+  außen dunkle Kruste, innen glühender Kern, dazu erkaltete Krustenschollen an
+  den Rändern. ⚠ Die Radien-Regel (v3.30.1, max 0.68·CELL) bleibt UNANGETASTET —
+  der Flüssigkeits-Look entsteht rein über Farbe/Tiefe, nicht über größere
+  Radien. Sonst sähe eine Mauer auf der Nachbarzelle wieder aus, als stünde sie
+  „im Wasser". Zusätzlich **Fließ-Adern** als leichte Pro-Frame-Ebene über den
+  Kernzellen (max 220), ersetzt die alte Strich-Animation.
+- **Mittlere Detailfrequenz** (Stufe 2): Es gab nur sehr grobe Farbinseln und
+  ein sehr feines Punktraster — dazwischen nichts, genau das ließ das Feld leer
+  wirken. Neu im gebackenen bgCanvas: Sedimentfelder (organische Senken mit
+  Lichtkante oben), verzweigte Bodenrisse, Geröll MIT Bodenschatten. Deko meidet
+  die Burgumgebung, damit der Bauplatz lesbar bleibt.
+- **Vignette** (Stufe 2): Randabdunklung zur Spielmitte, kommt zuletzt in den
+  Bake. Vorher konkurrierten Deko und Spielobjekte um dieselbe Aufmerksamkeit.
+- **Impact-Stack** (Stufe 3): Der Treffer — emotionaler Höhepunkt jeder Runde —
+  war ein einzelner Radialverlauf. Jetzt fünf gestaffelte Lagen: Kernglut,
+  Lichtblitz, zwei Druckwellen-Ringe, Trümmer mit Schwerkraft+Rotation,
+  Staubwolke. ⚠ MUSS deterministisch sein (Explosionen werden online
+  synchronisiert, nur x/y/frame gehen über den Draht) → Pseudo-Zufall aus x,y,i
+  statt `Math.random`, sonst sähen Host und Gast Unterschiedliches.
+- **Phasen-Banner verschlankt** (Stufe 3): Der große mittige Kasten verdeckte
+  beide Burgen genau dann, wenn man die Lage einschätzen will. Jetzt schmales
+  Band oben (Icon + Titel + Sub nebeneinander), Feld bleibt sichtbar.
+
+Gemessen: Frame-Zeichendauer median 0,5 ms / p95 0,8 ms / max 4,5 ms (Budget
+16,7 ms bei 60 fps). Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.42.0`.
