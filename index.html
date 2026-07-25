@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.45.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.46.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -6595,7 +6595,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.45.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.46.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7237,19 +7237,56 @@ window.FortressApp = function Fortress() {
     const preview = (rec) => {
       if (rec.cat === "cannon") {
         const sk = CANNON_SKIN[rec.id];
-        return h("div", { style: {
-          width: 30, height: 30, borderRadius: "50%", position: "relative", flexShrink: 0,
-          background: "radial-gradient(circle at 34% 28%, " + sk.dome[0] + " 0%, " + sk.dome[1] + " 55%, " + sk.dome[2] + " 100%)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 9px " + sk.core + "66",
-          border: "1px solid rgba(255,255,255,0.25)"
-        } }, h("span", { style: { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 7, height: 7, borderRadius: "50%", background: sk.core } }));
+        // Echtes Geschuetz-Modell (v3.46.0): vorher eine Farbkugel - dieselbe
+        // Kugel fuer alle Skins, dadurch war im Crafting nicht erkennbar, WAS
+        // man bekommt. Jetzt identisch zum Gold-Shop das gerenderte Modell.
+        return h("canvas", {
+          width: 80, height: 80,
+          style: { width: 40, height: 40, display: "block", flexShrink: 0 },
+          ref: (el) => {
+            if (!el || el.__drawn === rec.id) return;
+            el.__drawn = rec.id;
+            const c2 = el.getContext("2d");
+            c2.clearRect(0, 0, 80, 80);
+            c2.save();
+            c2.translate(40, 40); c2.scale(0.8, 0.8); c2.translate(-40, -40);
+            try { drawCannonFull(c2, 40, 40, -0.6, 1, 1, 3000, rec.id, sk); } catch (e) {}
+            c2.restore();
+          }
+        });
       }
       if (rec.cat === "impact") {
         const fx = IMPACT_FX[rec.id];
-        return h("div", { style: {
-          width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-          background: "radial-gradient(circle, rgba(" + fx.ring[0] + ",0.95) 0%, rgba(" + fx.ring[1] + ",0.85) 45%, rgba(" + fx.ring[2] + ",0.4) 75%, rgba(0,0,0,0) 100%)"
-        } });
+        // Einschlag-Vorschau (v3.46.0): zeichnet Druckwelle + Truemmer + Kernglut
+        // in der Palette des Effekts, statt nur eines Farbverlaufs.
+        return h("canvas", {
+          width: 80, height: 80,
+          style: { width: 40, height: 40, display: "block", flexShrink: 0 },
+          ref: (el) => {
+            if (!el || el.__drawn === rec.id) return;
+            el.__drawn = rec.id;
+            const c2 = el.getContext("2d");
+            const R = fx.ring, P = fx.p || [];
+            c2.clearRect(0, 0, 80, 80);
+            const g2 = c2.createRadialGradient(40, 40, 0, 40, 40, 30);
+            g2.addColorStop(0, "rgba(" + R[0] + ",1)");
+            g2.addColorStop(0.32, "rgba(" + R[1] + ",0.92)");
+            g2.addColorStop(0.68, "rgba(" + R[2] + ",0.5)");
+            g2.addColorStop(1, "rgba(0,0,0,0)");
+            c2.fillStyle = g2;
+            c2.beginPath(); c2.arc(40, 40, 30, 0, Math.PI * 2); c2.fill();
+            c2.strokeStyle = "rgba(" + R[0] + ",0.9)"; c2.lineWidth = 2.4;
+            c2.beginPath(); c2.arc(40, 40, 21, 0, Math.PI * 2); c2.stroke();
+            c2.strokeStyle = "rgba(" + R[1] + ",0.65)"; c2.lineWidth = 1.6;
+            c2.beginPath(); c2.arc(40, 40, 30, 0, Math.PI * 2); c2.stroke();
+            for (let d = 0; d < 8; d++) {
+              const a = d / 8 * Math.PI * 2 + 0.4, dd = 20 + (d % 3) * 6;
+              c2.save(); c2.translate(40 + Math.cos(a) * dd, 40 + Math.sin(a) * dd); c2.rotate(a);
+              c2.fillStyle = P[d % P.length] || "rgba(" + R[1] + ",1)";
+              c2.fillRect(-2.4, -2.4, 4.8, 4.8); c2.restore();
+            }
+          }
+        });
       }
       const pal = MASTER_TRAIL[rec.id] || [];
       return h("div", { style: { display: "flex", alignItems: "center", gap: 3, width: 30, flexShrink: 0 } },
@@ -7278,7 +7315,30 @@ window.FortressApp = function Fortress() {
         borderRadius: 12, padding: "8px 11px", cursor: isEq ? "default" : "pointer",
         background: isEq ? "rgba(74,222,128,0.07)" : "rgba(255,255,255,0.035)", marginBottom: 6
       } },
-        h("div", { style: { width: 30, height: 30, borderRadius: "50%", flexShrink: 0, background: "radial-gradient(circle at 34% 28%, #5a6477 0%, #2c333f 55%, #10141d 100%)", border: "1px solid rgba(255,255,255,0.2)" } }),
+        // Auch die Standard-Zeile zeigt das ECHTE Modell (v3.46.0) — sonst
+        // bleibt genau die Zeile eine Farbkugel, gegen die man vergleicht.
+        h("canvas", { width: 80, height: 80, style: { width: 40, height: 40, display: "block", flexShrink: 0 },
+          ref: (el) => {
+            if (!el || el.__drawn === cat) return;
+            el.__drawn = cat;
+            const c2 = el.getContext("2d");
+            c2.clearRect(0, 0, 80, 80);
+            if (cat === "cannon") {
+              c2.save(); c2.translate(40, 40); c2.scale(0.8, 0.8); c2.translate(-40, -40);
+              try { drawCannonFull(c2, 40, 40, -0.6, 1, 1, 3000, null, null); } catch (e) {}
+              c2.restore();
+            } else {
+              const g2 = c2.createRadialGradient(40, 40, 0, 40, 40, 28);
+              g2.addColorStop(0, "rgba(255,255,210,1)");
+              g2.addColorStop(0.35, "rgba(251,191,36,0.9)");
+              g2.addColorStop(0.7, "rgba(239,68,68,0.45)");
+              g2.addColorStop(1, "rgba(0,0,0,0)");
+              c2.fillStyle = g2; c2.beginPath(); c2.arc(40, 40, 28, 0, Math.PI * 2); c2.fill();
+              c2.strokeStyle = "rgba(255,255,210,0.8)"; c2.lineWidth = 2;
+              c2.beginPath(); c2.arc(40, 40, 20, 0, Math.PI * 2); c2.stroke();
+            }
+          }
+        }),
         h("div", { style: { flex: 1, fontSize: 12.5, fontWeight: 800, color: "#cbd5e1" } }, t("forgeStandard")),
         isEq
           ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))
@@ -7316,10 +7376,20 @@ window.FortressApp = function Fortress() {
           : owned
             ? h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
             : h("span", { style: {
-                fontSize: 10.5, fontWeight: 900, color: afford ? "#fdba74" : "#64748b",
-                border: "1px solid " + (afford ? "rgba(251,146,60,0.45)" : "rgba(255,255,255,0.1)"),
-                padding: "4px 10px", borderRadius: 999, whiteSpace: "nowrap",
-                background: afford ? "rgba(251,146,60,0.1)" : "transparent"
+                // Massiver Button statt Umriss-Chip (v3.46.0): Schmieden ist die
+                // teuerste Aktion im Spiel und sah aus wie ein passives Label.
+                // Metallfassung + Glanzkante, gleiche Sprache wie die Shop-Plaketten.
+                fontSize: 11, fontWeight: 900, letterSpacing: "0.02em",
+                color: afford ? "#2a1705" : "#64748b",
+                border: afford ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.1)",
+                padding: "5px 13px", borderRadius: 999, whiteSpace: "nowrap",
+                background: afford
+                  ? "linear-gradient(180deg,#fdba74 0%,#f97316 55%,#c2410c 100%)"
+                  : "rgba(255,255,255,0.04)",
+                boxShadow: afford
+                  ? "inset 0 1.5px 0 rgba(255,255,255,0.6), inset 0 -2px 4px rgba(120,53,15,0.5), 0 3px 9px rgba(249,115,22,0.45)"
+                  : "none",
+                textShadow: afford ? "0 1px 0 rgba(255,255,255,0.35)" : "none"
               } }, t("forgeCraft"))
       );
     };

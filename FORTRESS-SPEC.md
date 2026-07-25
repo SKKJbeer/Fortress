@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.45.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.46.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3550,3 +3550,22 @@ egal wie fein die Farben waren. Jetzt echtes Artillerie-Layout in Draufsicht.
 
 Gemessen: Frame-Zeichendauer median 0,3 ms / p95 0,4 / max 2,1 ms.
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.45.0`.
+
+### v3.46.0 — Design-Audit: Schmiede an die neue Bildsprache angeglichen
+Vollständiges Audit aller Oberflächen (Menü, Gold-Shop, Schmiede, Achievements,
+Tagesaufgaben, Profil, HUD, Rüstphase). Größter Befund: Nach dem Geschütz-
+Redesign (v3.45.0) zeigte der Gold-Shop echte Modelle, die **Schmiede aber
+weiterhin Farbkugeln** — eine selbst eingeführte Inkonsistenz an genau der
+Stelle, an der man die teuersten Entscheidungen trifft.
+- **Kanonen-Vorschau in der Schmiede**: gerendertes Modell statt Farbkugel,
+  identisch zum Gold-Shop. Vorher war nicht erkennbar, WAS man bekommt.
+- **Einschlag-Vorschau**: zeichnet Druckwelle, Trümmer und Kernglut in der
+  Palette des Effekts, statt nur eines Farbverlaufs. Die vier Effekte waren
+  vorher praktisch nicht unterscheidbar.
+- **Standard-Zeilen** zeigen ebenfalls das echte Modell — sonst bleibt genau
+  die Referenzzeile, gegen die man vergleicht, eine Farbkugel.
+- **„Schmieden"-Button**: von Umriss-Chip zu massivem Button mit Metallfassung
+  und Glanzkante (gleiche Sprache wie die Shop-Plaketten). Die teuerste Aktion
+  im Spiel sah vorher aus wie ein passives Label.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.46.0`.
