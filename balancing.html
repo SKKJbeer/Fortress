@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FORTRESS · Balancing-Analyse</title>
+<style>
+:root{
+  --bg:#0a0c10; --panel:#141821; --panel2:#10141c;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.14);
+  --ink:#f0f2f6; --muted:#98a2b3; --faint:#606a7b;
+  --acc:#5eb0ef; --accdim:#2b5f8a;
+  --bad:#e2564d; --warn:#e0a83a; --good:#4fbf8b;
+  --fm:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:1000px;margin:0 auto;padding:0 clamp(16px,4vw,36px)}
+.hero{padding:clamp(40px,9vh,90px) 0 clamp(28px,5vh,48px);border-bottom:1px solid var(--line)}
+.kick{display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:11px;
+  letter-spacing:0.2em;text-transform:uppercase;color:var(--acc);margin-bottom:18px}
+.kick::before{content:"";width:24px;height:1px;background:var(--acc)}
+h1{font-size:clamp(30px,5.6vw,54px);font-weight:800;letter-spacing:-0.025em;line-height:1.03;margin:0 0 16px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--acc)}
+.lede{font-size:clamp(15px,2vw,19px);color:var(--muted);max-width:62ch;margin:0}
+.meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:24px;font-family:var(--fm);font-size:12px;color:var(--faint)}
+.meta b{color:var(--muted);font-weight:500}
+section{padding:clamp(38px,7vh,72px) 0;border-bottom:1px solid var(--line)}
+.sh{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sn{font-family:var(--fm);font-size:12px;color:var(--acc)}
+h2{font-size:clamp(22px,3.5vw,34px);font-weight:800;letter-spacing:-0.02em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:15.5px;max-width:66ch;margin:12px 0 0}
+.sub b{color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:24px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.kpi .n{font-family:var(--fm);font-weight:800;font-size:clamp(23px,3.4vw,32px);line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35}
+.n.bad{color:var(--bad)} .n.warn{color:var(--warn)} .n.good{color:var(--good)} .n.acc{color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:18px}
+th{text-align:left;font-family:var(--fm);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;padding:0 12px 10px 0;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:11px 12px 11px 0;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+td b{color:var(--ink)} .tw{overflow-x:auto}
+.mono{font-family:var(--fm)}
+.find{display:grid;grid-template-columns:40px 1fr;gap:16px;padding:20px 0;border-bottom:1px solid var(--line)}
+.find:last-child{border-bottom:none}
+.fn{font-family:var(--fm);font-size:13px;color:var(--acc);padding-top:3px}
+.ft{font-size:clamp(16px,2.1vw,20px);font-weight:700;margin:0 0 7px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--fm);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.tag.crit{background:rgba(226,86,77,0.14);color:var(--bad);border:1px solid rgba(226,86,77,0.3)}
+.tag.med{background:rgba(224,168,58,0.13);color:var(--warn);border:1px solid rgba(224,168,58,0.28)}
+.tag.ok{background:rgba(79,191,139,0.13);color:var(--good);border:1px solid rgba(79,191,139,0.3)}
+.fb{font-size:15px;color:var(--muted);margin:0}
+.fb b{color:var(--ink)}
+.fb code{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+.prop{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;margin-top:16px}
+.prop h3{margin:0 0 4px;font-size:18px;font-weight:800;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.prop .why{font-size:13px;color:var(--faint);font-family:var(--fm);margin:0 0 12px}
+.prop p{margin:0 0 10px;font-size:14.5px;color:var(--muted)}
+.prop p:last-child{margin-bottom:0}
+.prop b{color:var(--ink)}
+.eff{display:inline-flex;gap:5px;align-items:center;font-family:var(--fm);font-size:10.5px;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.eff.hi{border-color:rgba(79,191,139,0.4);color:var(--good)}
+.warnbox{margin-top:22px;background:rgba(224,168,58,0.07);border:1px solid rgba(224,168,58,0.28);
+  border-radius:14px;padding:18px 22px}
+.warnbox .l{font-family:var(--fm);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--warn);margin-bottom:9px}
+.warnbox p{margin:0;font-size:14.5px;color:var(--muted)}
+.warnbox p+p{margin-top:9px}
+.warnbox b{color:var(--ink)}
+footer{padding:36px 0 60px;font-size:12.5px;color:var(--faint);line-height:1.7}
+footer a{color:var(--acc);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">Balancing-Analyse · v3.47.0</span>
+    <h1>114 Partien KI gegen KI.<br><em>94 %</em> enden nie.</h1>
+    <p class="lede">Die KI hat gegen sich selbst gespielt — drei Schwierigkeitsstufen, Schnappschüsse in jeder Rüstphase, plus Messung jedes einzelnen Einschlags. Das Ergebnis ist kein Feinschliff-Problem: <b style="color:var(--ink)">Die Offensive funktioniert einwandfrei — und trotzdem entscheidet sich fast nichts.</b></p>
+    <div class="meta">
+      <span><b>Methode:</b> <span class="mono">__botSelfPlay</span>, Snapshot je Rüstphase</span>
+      <span><b>Stichprobe:</b> 96 + 18 Partien, 357 gemessene Einschläge</span>
+      <span><b>Stufen:</b> Leicht / Mittel / Schwer je 32</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sh"><span class="sn">01</span><h2>Die Kernzahlen</h2></div>
+    <div class="kpis">
+      <div class="kpi"><div class="n bad" id="k-res">6 %</div><div class="l">der Partien enden regulär</div></div>
+      <div class="kpi"><div class="n bad" id="k-rub">40–51 %</div><div class="l">aller Schüsse landen auf <b>Trümmern</b></div></div>
+      <div class="kpi"><div class="n good">51 %</div><div class="l">Trefferquote — die Offensive <b>funktioniert</b></div></div>
+      <div class="kpi"><div class="n bad">0,0</div><div class="l">Reparatur-Käufe auf allen Stufen</div></div>
+      <div class="kpi"><div class="n good">30,2 / 30,3</div><div class="l">Schrott P1 vs P2 — perfekt symmetrisch</div></div>
+      <div class="kpi"><div class="n warn">25,5</div><div class="l">zerstörte Mauern je Partie — trotzdem kein Ende</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">02</span><h2>Befunde</h2></div>
+    <p class="sub">Sortiert nach Auswirkung auf das Spielgefühl.</p>
+
+    <div class="find">
+      <span class="fn">01</span>
+      <div>
+        <h3 class="ft">Verteidigung ist gratis und unbegrenzt <span class="tag crit">kritisch</span></h3>
+        <p class="fb">Im Kontrolllauf mit voll funktionierender Offensive: <b>51 % Trefferquote</b>, <b>25,5 zerstörte Mauern je Partie</b> — und trotzdem endete nur <b>1 von 18 Partien</b> (6 %). Das ist der eigentliche Befund: Es liegt <b>nicht</b> am Feuer. Es liegt daran, dass jede Bresche in der nächsten Bauphase <b>kostenlos und unbegrenzt</b> geschlossen werden kann. Angriff kostet Schrott und Zeit, Verteidigung kostet nichts. Die Umschlossen-Regel ist zudem die einzige Verlustbedingung — wer versiegelt, kann nicht verlieren.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">02</span>
+      <div>
+        <h3 class="ft">Salven verschwenden sich selbst <span class="tag crit">kritisch</span></h3>
+        <p class="fb">Alle schussbereiten Kanonen feuern auf <b>denselben Zielpunkt</b> (Streuung max. 1 Zelle). Die erste Kugel zerstört die Mauer — die übrigen landen im frisch geschlagenen Loch. Direkt gemessen: <b>40–51 % aller Einschläge treffen Trümmer</b>, also bereits zerstörte Zellen. Ein Mörser richtet nur an seinem Aufschlagpunkt Schaden an, es gibt keine Bahnkollision.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">03</span>
+      <div>
+        <h3 class="ft">Der ungenaue Bot trifft am besten <span class="tag med">Paradox</span></h3>
+        <p class="fb">„Leicht" (Streuung 2,4) erzielt <b>54 % Mauertreffer</b>, „Schwer" (Streuung 0,4) nur <b>42 %</b>. Präzision ist ein Nachteil, weil eng gebündeltes Feuer alle Kugeln in dieselbe Lücke schickt. Ein Balancing-Signal, das gegen die Intuition läuft — und Befund 02 unabhängig bestätigt.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">04</span>
+      <div>
+        <h3 class="ft">Schrott staut sich ohne Senke <span class="tag med">mittel</span></h3>
+        <p class="fb">Ø-Schrott: <b>8,6</b> (R2) → <b>34,5</b> (R10) → <b>47,1</b> (R14). Käufe stagnieren bei 2,7 je Spieler. Sobald Kanonen, Schnellladen und Panzermauern gesättigt sind, gibt es <b>nichts mehr zu kaufen</b>. Auf „Leicht" sammeln sich bis Runde 16 im Schnitt <b>94,6</b> Schrott an, die nie etwas bewirken.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">05</span>
+      <div>
+        <h3 class="ft">Reparatur ist totes Kapital <span class="tag med">mittel</span></h3>
+        <p class="fb">Über alle 96 Partien und alle drei Stufen: <b>0,0 Reparatur-Käufe</b>. Im Code bestätigt — der Kaufzweig existiert nur im <code>optimal</code>-Pfad. Aber selbst dort lohnt er kaum: In der Bauphase lassen sich Mauern <b>kostenlos</b> nachbauen. Reparatur konkurriert mit Gratisarbeit und verliert immer.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">06</span>
+      <div>
+        <h3 class="ft">Startseite spielt keine Rolle <span class="tag ok">gesund</span></h3>
+        <p class="fb">Schrott P1 <b>30,2</b> vs P2 <b>30,3</b>, Kanonen <b>3,2</b> vs <b>3,2</b> über alle Snapshots. Kein messbarer Startvorteil — das Fundament ist fair.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">03</span><h2>Optimierungsvorschläge</h2></div>
+    <p class="sub">Vier Eingriffe, die ineinandergreifen. <b>1 und 2 zusammen</b> lösen den Kern; 3 und 4 machen die Ökonomie wieder zu einer Entscheidung.</p>
+
+    <div class="prop">
+      <h3>1 · Salven-Fächer <span class="eff hi">größter Hebel</span> <span class="eff">klein umzusetzen</span></h3>
+      <p class="why">gegen Befund 02 + 03</p>
+      <p>Statt alle Kanonen auf einen Punkt: Jede Kanone einer Salve bekommt ein <b>eigenes Ziel</b> aus der Nachbarschaft — die Mauerreihe wird auf ganzer Breite abgetragen statt punktuell durchlöchert.</p>
+      <p><b>Erwartete Wirkung:</b> Die 40–51 % Trümmer-Fehlschüsse fallen weitgehend weg — die Offensive verdoppelt sich effektiv, ohne dass ein einziger Zahlenwert am Schaden geändert wird. Nebeneffekt: Kanonen werden ihren Preis endlich wert, und Präzision wird wieder ein Vorteil statt ein Nachteil.</p>
+    </div>
+
+    <div class="prop">
+      <h3>2 · Belagerungsdruck <span class="eff hi">DER Kernfix</span></h3>
+      <p class="why">gegen Befund 01 — direkt am Ursprung</p>
+      <p>Die Bauphase schrumpft mit jeder Runde um 1 Sekunde (25 s → Untergrenze 12 s). Damit bekommt Verteidigung <b>zum ersten Mal einen Preis</b>: Zeit. Ab etwa Runde 13 reicht sie nicht mehr, um alle 25 zerstörten Mauern zu ersetzen — Löcher bleiben offen, Partien finden ein Ende.</p>
+      <p><b>Warum das der richtige Hebel ist:</b> Die Messung zeigt, dass genug Schaden entsteht (25,5 Mauern je Partie). Es fehlt nur die Knappheit auf der Gegenseite. Alternativ oder ergänzend: die Zahl der Bauteile je Runde deckeln — gleiche Wirkung, noch klarer kommuniziert.</p>
+      <p><b>Warum das eleganter ist als ein Rundenlimit:</b> Es erzeugt <b>steigende Spannung</b> statt eines abrupten Abbruchs, und es belohnt genau die Spieler, die ihre Mauern kompakt halten. Zusätzlich macht es <b>Reparatur schlagartig wertvoll</b> (Befund 05) — denn Gratis-Nachbauen kostet plötzlich das, was knapp wird: Zeit.</p>
+    </div>
+
+    <div class="prop">
+      <h3>3 · Überladung <span class="eff">Schrott-Senke</span> <span class="eff">Comeback-Moment</span></h3>
+      <p class="why">gegen Befund 04</p>
+      <p>Neuer Shop-Eintrag in der Rüstphase: <b>Überladung ⚙40</b> — die nächste Salve schlägt ein 3×3-Feld heraus statt einer Zelle.</p>
+      <p>Absorbiert genau den Überschuss, der sich ab Runde 12 aufbaut, und verwandelt gehortetes Kapital in einen <b>dramatischen Moment</b> statt einer toten Zahl. Wer hinten liegt, kann sich damit zurückkaufen — das ist spannender als eine gleichmäßige Preisinflation.</p>
+    </div>
+
+    <div class="prop">
+      <h3>4 · Reparatur reparieren <span class="eff">klein</span></h3>
+      <p class="why">gegen Befund 05</p>
+      <p>Zwei Teile: den Kaufzweig auch für <code>standard</code> (Stufe Mittel) freischalten, <b>und</b> Reparatur sofort wirken lassen statt erst in der Bauphase — dann ist sie das, was sie sein soll: die schnelle Notlösung, wenn die Zeit fehlt.</p>
+      <p>Ohne Vorschlag 2 bleibt Reparatur allerdings schwach, weil Bauzeit im Überfluss vorhanden ist. <b>Beide Änderungen gehören zusammen.</b></p>
+    </div>
+
+    <div class="warnbox">
+      <div class="l">Methodik — was ich unterwegs korrigieren musste</div>
+      <p>Die erste Serie (96 Partien) lief unter starkem Zeitraffer. Dabei schlugen <b>Kugeln teilweise nicht mehr ein</b>, bevor die Schussphase endete: nur <b>2,2</b> zerstörte Mauern je Partie statt 25,5. Die daraus abgeleitete Trefferquote von 4 % war ein <b>Messartefakt</b> — ebenso meine erste These, mehr Kanonen brächten sinkenden Ertrag. Diese These ist widerlegt.</p>
+      <p>Belastbar sind die Zahlen aus dem <b>Kontrolllauf</b> (18 Partien, milder Zeitraffer, Kugeln landen zuverlässig) und der <b>direkten Einschlagsmessung</b> über <span class="mono">__impactStats</span> (357 Einschläge): 51 % Trefferquote, 25,5 zerstörte Mauern, 6 % Entscheidungsrate, 40–51 % Trümmer-Fehlschüsse.</p>
+      <p><b>Der Befund wurde durch die Korrektur nicht schwächer, sondern schärfer:</b> Wäre die Offensive kaputt, wäre das ein Zahlenproblem. Da sie nachweislich funktioniert und Partien <i>trotzdem</i> nicht enden, liegt es an der kostenlosen Verteidigung — das ist eine Struktur-, keine Balancing-Frage.</p>
+    </div>
+  </section>
+
+  <footer>
+    Rohdaten: 96 + 18 Partien (<span class="mono">__botSelfPlay</span>, Snapshot je Rüstphase) + 357 Einschlagsmessungen über
+    <span class="mono">__impactStats</span>. Auswertung reproduzierbar über die Diagnose-Hooks im Spiel
+    (<span class="mono">window.__mmDebug = true</span>).<br>
+    <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/stats.html">Live-Telemetrie echter Partien</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/review.html">Visual Review</a>
+  </footer>
+</div>
+</body>
+</html>

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.47.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.48.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4293,6 +4293,22 @@ window.FortressApp = function Fortress() {
     const hitR = Math.floor(ball.ty / CELL);
     if (hitR < 0 || hitR >= ROWS || hitC < 0 || hitC >= COLS) return;
     const target = g[hitR][hitC];
+    // Einschlags-Diagnose (v3.48.0, gated): zaehlt, WORAUF Kugeln landen.
+    // Aus der Balancing-Analyse: 40-51 % aller Einschlaege treffen TRUEMMER,
+    // also bereits zerstoerte Zellen - weil alle Kanonen einer Salve nahezu
+    // denselben Punkt beschiessen. Auswertung: window.__impactStats.
+    if (typeof window !== "undefined" && window.__mmDebug) {
+      const st = window.__impactStats = window.__impactStats || {empty:0, ownWall:0, enemyWall:0, rubble:0, cannon:0, castle:0, terrain:0, total:0};
+      st.total++;
+      const ep2 = ball.player === 1 ? 2 : 1;
+      if (target === EMPTY) st.empty++;
+      else if (target === WALL_OF[ep2]) st.enemyWall++;
+      else if (target === WALL_OF[ball.player]) st.ownWall++;
+      else if (target === RUBBLE || target === RUBBLE_C) st.rubble++;
+      else if (target === CANNON_OF[ep2] || target === CANNON_OF[ball.player]) st.cannon++;
+      else if (target === CASTLE_OF[1] || target === CASTLE_OF[2] || target === CASTLE_OF[3]) st.castle++;
+      else st.terrain++;
+    }
     // Schmiede-Einschlag-Effekt (v3.33.0): Palette des Schützen — Partikel
     // lokal, fx-Feld wandert über den State-Sync auch zu den Gästen.
     const impId = (playerInfo.current[ball.player] || {}).impact;
@@ -6654,7 +6670,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.47.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.48.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

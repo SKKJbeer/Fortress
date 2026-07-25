@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.47.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.48.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3600,3 +3600,39 @@ Aufschlüsselung, letzte Matches). Security-Rules um `telemetry` ergänzt:
 Schreiben nur authentifiziert und nur als NEUER Eintrag, Lesen offen.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.47.0`.
+
+### v3.48.0 — Balancing-Serie: 114 Partien KI gegen KI
+Große Selbstspiel-Serie (96 Partien schnell + 18 Kontrolllauf) plus direkte
+Einschlagsmessung (357 Einschläge). Report: **`balancing.html`**.
+- **Neuer gated Hook `__impactStats`**: zählt, worauf Kugeln landen
+  (leer / Gegnermauer / eigene Mauer / Trümmer / Kanone / Burg).
+- **Befund 1 — Verteidigung ist gratis:** Im Kontrolllauf mit voll
+  funktionierender Offensive (51 % Trefferquote, 25,5 zerstörte Mauern je
+  Partie) endeten trotzdem nur **1 von 18 Partien (6 %)**. Ursache ist NICHT
+  schwaches Feuer, sondern dass Breschen in der Bauphase kostenlos und
+  unbegrenzt geschlossen werden. Angriff kostet Schrott, Verteidigung nichts.
+- **Befund 2 — Salven verschwenden sich selbst:** **40–51 % aller Einschläge**
+  treffen Trümmer. Alle Kanonen feuern auf denselben Punkt (Streuung max. 1
+  Zelle); die erste Kugel zerstört die Mauer, die übrigen landen im Loch.
+  Ein Mörser schadet nur am Aufschlagpunkt, es gibt keine Bahnkollision.
+- **Befund 3 — Genauigkeits-Paradox:** „Leicht" (Streuung 2,4) trifft
+  **54 %** Mauern, „Schwer" (0,4) nur **42 %**. Breite Streuung verteilt die
+  Kugeln auf verschiedene Zellen und umgeht damit Befund 2.
+- **Befund 4 — Schrott ohne Senke:** 8,6 (R2) → 47,1 (R14); Käufe stagnieren
+  bei 2,7. Auf „Leicht" 94,6 ungenutzter Schrott bei R16.
+- **Befund 5 — Reparatur ist totes Kapital:** 0,0 Käufe über alle 114 Partien
+  und alle Stufen. Kaufzweig existiert nur im `optimal`-Pfad — und selbst dort
+  konkurriert Reparatur mit kostenlosem Nachbauen in der Bauphase.
+- **Befund 6 — Symmetrie gesund:** Schrott P1 30,2 vs P2 30,3, Kanonen 3,2/3,2.
+
+⚠ **Methodischer Fund:** Unter starkem Zeitraffer schlagen Kugeln teilweise
+nicht mehr ein, bevor die Schussphase endet (2,2 statt 25,5 zerstörte Mauern je
+Partie). Trefferzahlen aus der schnellen Serie sind daher NICHT belastbar; die
+erste daraus abgeleitete These („mehr Kanonen = sinkender Ertrag") ist widerlegt.
+Belastbare Zahlen stammen aus Kontrolllauf und Einschlagsmessung.
+
+Vorschläge (noch NICHT umgesetzt — Balancing ist eine Design-Entscheidung):
+Salven-Fächer, Belagerungsdruck (schrumpfende Bauzeit), Überladung als
+Schrott-Senke, Reparatur in die `standard`-Kauflogik. Details im Report.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.48.0`.
