@@ -39,7 +39,11 @@
     "  - Verifiziertes Spielergebnis (Host-autoritative P2P-Architektur)",
     "  - Connection-Flood-DoS / Queue-Wipe (braucht App Check -> siehe oben)",
     "  - Game-Node-Ownership: jeder mit dem Code kann das Spiel ueberschreiben/loeschen.",
-    "    Fix braucht per-Child-Rules (host-uid gebunden) + Test gegen echte DB."
+    "    Fix braucht per-Child-Rules (host-uid gebunden) + Test gegen echte DB.",
+    "",
+    "Neu (v3.47.0): Knoten 'telemetry' — anonyme Match-Zusammenfassungen fuers Balancing.",
+    "Schreiben nur authentifiziert und nur als NEUER Eintrag (kein Ueberschreiben).",
+    "Lesen offen (Dashboard stats.html). Enthaelt KEINE Namen/Profil-IDs."
   ],
   "rules": {
     "leaderboard": {
@@ -54,7 +58,9 @@
       "$sessionId": {
         ".write": "auth != null",
         ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())",
-        "$field": { ".validate": "!newData.isString() || newData.val().length <= 2000" }
+        "$field": {
+          ".validate": "!newData.isString() || newData.val().length <= 2000"
+        }
       }
     },
     "queue3": {
@@ -62,7 +68,9 @@
       "$sessionId": {
         ".write": "auth != null",
         ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())",
-        "$field": { ".validate": "!newData.isString() || newData.val().length <= 2000" }
+        "$field": {
+          ".validate": "!newData.isString() || newData.val().length <= 2000"
+        }
       }
     },
     "games": {
@@ -74,9 +82,23 @@
         ".read": true,
         ".write": "auth != null",
         ".validate": "newData == null || newData.hasChildren(['createdAt'])",
-        "state": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200000)" },
-        "guestAction2": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)" },
-        "guestAction3": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)" }
+        "state": {
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200000)"
+        },
+        "guestAction2": {
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)"
+        },
+        "guestAction3": {
+          ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)"
+        }
+      }
+    },
+    "telemetry": {
+      "_c": "Match-Telemetrie (v3.47.0): anonyme Aggregate fuer Balancing-Auswertung. Schreiben nur authentifiziert und nur NEUE Eintraege (kein Ueberschreiben/Loeschen fremder Datensaetze). Lesen offen, damit das Dashboard stats.html ohne Login funktioniert — die Daten enthalten bewusst KEINE Namen oder Profil-IDs.",
+      ".read": true,
+      "$id": {
+        ".write": "auth != null && !data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['ts','mode','rounds','per']) && newData.child('rounds').isNumber() && newData.child('rounds').val() <= 500"
       }
     }
   }

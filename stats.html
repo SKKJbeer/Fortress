@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FORTRESS · Spiel-Statistik</title>
+<style>
+:root{
+  --bg:#070b13; --panel:#111827; --panel2:#0d1420;
+  --line:rgba(255,255,255,0.08); --line2:rgba(255,255,255,0.14);
+  --ink:#eef2f9; --muted:#93a1b5; --faint:#5c6a80;
+  --gold:#fbbf24; --goldsoft:#fcd34d; --blue:#60a5fa; --red:#f87171; --green:#34d399;
+  --fm:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(120% 90% at 50% -10%,#16233f 0%,#0a1224 46%,#060a12 80%,#04070d 100%);
+  color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:1080px;margin:0 auto;padding:clamp(20px,4vw,44px) clamp(14px,3vw,32px) 70px}
+h1{font-size:clamp(26px,4.4vw,42px);font-weight:900;letter-spacing:-0.02em;margin:0 0 6px}
+h1 .g{color:var(--gold)}
+.sub{color:var(--muted);font-size:15px;margin:0 0 8px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0 26px}
+button,select{font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);
+  background:rgba(255,255,255,0.06);border:1px solid var(--line2);border-radius:10px;padding:9px 14px;cursor:pointer}
+button:hover{background:rgba(251,191,36,0.15)}
+button.on{background:linear-gradient(180deg,#fde68a,#f59e0b);color:#3b2606;border-color:rgba(255,255,255,0.5)}
+.status{font-family:var(--fm);font-size:12px;color:var(--faint);margin-left:auto}
+h2{font-size:14px;letter-spacing:0.14em;text-transform:uppercase;color:var(--faint);
+  font-weight:700;margin:30px 0 12px;font-family:var(--fm)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:16px 18px}
+.kpi .n{font-family:var(--fm);font-weight:800;font-size:clamp(24px,3.6vw,34px);color:var(--gold);
+  line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:4px}
+th{text-align:left;font-family:var(--fm);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;padding:0 10px 10px 0;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line);color:var(--muted);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+td b{color:var(--ink)}
+.tw{overflow-x:auto}
+.mono{font-family:var(--fm)}
+.pill{font-family:var(--fm);font-size:10.5px;padding:2px 7px;border-radius:5px;border:1px solid var(--line2);color:var(--muted)}
+.pill.w{background:rgba(52,211,153,0.14);color:var(--green);border-color:rgba(52,211,153,0.3)}
+.chart{display:flex;align-items:flex-end;gap:5px;height:130px;padding:10px 0 0;border-bottom:1px solid var(--line2)}
+.chart .b{flex:1;min-width:8px;background:linear-gradient(180deg,var(--goldsoft),rgba(251,191,36,0.25));
+  border-radius:4px 4px 0 0;position:relative}
+.chart .b span{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-family:var(--fm);
+  font-size:10px;color:var(--muted)}
+.xlab{display:flex;gap:5px;margin-top:6px}
+.xlab span{flex:1;min-width:8px;text-align:center;font-family:var(--fm);font-size:10px;color:var(--faint)}
+.empty{background:var(--panel2);border:1px dashed var(--line2);border-radius:16px;padding:34px;text-align:center;color:var(--muted)}
+.empty code{font-family:var(--fm);color:var(--goldsoft);font-size:12.5px}
+footer{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--faint);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>FORTRESS · <span class="g">Spiel-Statistik</span></h1>
+  <p class="sub">Anonyme Match-Telemetrie aus echten Partien — Kanonen, Mauern, Schrott, Trefferquote, Spieldauer.</p>
+
+  <div class="bar">
+    <button class="on" data-f="all">Alle</button>
+    <button data-f="online2">Online 2P</button>
+    <button data-f="online3">Online 3P</button>
+    <button data-f="bot">Gegen Bot</button>
+    <button data-f="local">Lokal</button>
+    <button id="reload">↻ Neu laden</button>
+    <span class="status" id="status">lade …</span>
+  </div>
+
+  <div id="content"></div>
+
+  <footer>
+    Daten stammen aus <span class="mono">telemetry/</span> in der Firebase-Datenbank des Spiels.
+    Erfasst wird pro Match: Modus, Runden, Welt, Sieger und je Spieler Mauern, Kanonen, Schrott,
+    Schüsse, Treffer, Käufe und Ausbaustufen. <b>Keine Namen, keine Profil-IDs</b> — reine Aggregate.
+    <br>Bei Online-Matches schreibt nur der Host, damit jede Partie genau einmal in den Daten liegt.
+  </footer>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+// Identisch zur Konfiguration im Spiel (index.html) — sonst zeigt das
+// Dashboard auf eine andere Datenbank und bleibt leer.
+const CFG = {
+  databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fortress-cbe30"
+};
+
+const $ = (s) => document.querySelector(s);
+let ALL = [], FILTER = 'all';
+
+function num(v){ return typeof v === 'number' && isFinite(v) ? v : 0; }
+function avg(arr, f){ if(!arr.length) return 0; return arr.reduce((s,x)=>s+f(x),0)/arr.length; }
+function fmt(v, d){ return (Math.round(v*(d?10**d:1))/(d?10**d:1)).toLocaleString('de-DE'); }
+
+function perPlayerRows(matches){
+  const out = [];
+  for(const m of matches){
+    const per = m.per || {};
+    for(const k of Object.keys(per)) out.push({ m, p: k, s: per[k] });
+  }
+  return out;
+}
+
+function render(){
+  const ms = FILTER === 'all' ? ALL : ALL.filter(m => m.mode === FILTER);
+  const c = $('#content');
+  if(!ms.length){
+    c.innerHTML = '<div class="empty">Noch keine Matches für diesen Filter.<br><br>'
+      + 'Telemetrie entsteht, sobald Partien mit <code>v3.47.0+</code> zu Ende gespielt werden.</div>';
+    return;
+  }
+  const rows = perPlayerRows(ms);
+  const shots = rows.reduce((s,r)=>s+num(r.s.shots),0);
+  const hits  = rows.reduce((s,r)=>s+num(r.s.hits),0);
+  const hitPct = shots ? (hits/shots*100) : 0;
+
+  const kpi = (n,l) => `<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  let html = '<h2>Überblick</h2><div class="kpis">'
+    + kpi(fmt(ms.length), 'Matches erfasst')
+    + kpi(fmt(avg(ms, m=>num(m.rounds)),1), 'Runden pro Match')
+    + kpi(fmt(avg(rows, r=>num(r.s.cannons)),1), 'Kanonen pro Spieler')
+    + kpi(fmt(avg(rows, r=>num(r.s.walls)),0), 'Mauern pro Spieler')
+    + kpi(fmt(avg(rows, r=>num(r.s.scrap)),0), 'Schrott verdient')
+    + kpi(fmt(hitPct,1)+' %', 'Trefferquote')
+    + kpi(fmt(avg(rows, r=>num(r.s.buys)),1), 'Käufe pro Spieler')
+    + kpi(fmt(avg(rows, r=>num(r.s.left)),0), 'Schrott übrig am Ende')
+    + '</div>';
+
+  // Rundenverteilung
+  const buckets = [[1,2],[3,4],[5,6],[7,8],[9,12],[13,16],[17,24],[25,99]];
+  const counts = buckets.map(([a,b]) => ms.filter(m=>num(m.rounds)>=a && num(m.rounds)<=b).length);
+  const mx = Math.max(1, ...counts);
+  html += '<h2>Matchlänge (Runden)</h2><div class="chart">'
+    + counts.map(n=>`<div class="b" style="height:${Math.max(3,n/mx*100)}%"><span>${n||''}</span></div>`).join('')
+    + '</div><div class="xlab">' + buckets.map(([a,b])=>`<span>${b>90?a+'+':a+'-'+b}</span>`).join('') + '</div>';
+
+  // Ausbaustufen
+  html += '<h2>Ausbaustufen — was wird tatsächlich gekauft</h2><div class="kpis">'
+    + kpi(fmt(avg(rows, r=>num(r.s.reload)),2), 'Schnellladen (max 2)')
+    + kpi(fmt(avg(rows, r=>num(r.s.armor)),2), 'Panzermauern (max 1)')
+    + kpi(fmt(avg(rows, r=>num(r.s.repair)),2), 'Reparatur (unbegrenzt)')
+    + '</div>';
+
+  // Modus-Aufschlüsselung
+  const modes = [...new Set(ALL.map(m=>m.mode))];
+  html += '<h2>Nach Modus</h2><div class="tw"><table><thead><tr>'
+    + '<th>Modus</th><th>Matches</th><th>Ø Runden</th><th>Ø Kanonen</th><th>Ø Mauern</th><th>Trefferquote</th></tr></thead><tbody>';
+  for(const mo of modes){
+    const sub = ALL.filter(m=>m.mode===mo), sr = perPlayerRows(sub);
+    const sh = sr.reduce((s,r)=>s+num(r.s.shots),0), hi = sr.reduce((s,r)=>s+num(r.s.hits),0);
+    html += `<tr><td><b>${mo}</b></td><td>${sub.length}</td><td>${fmt(avg(sub,m=>num(m.rounds)),1)}</td>`
+      + `<td>${fmt(avg(sr,r=>num(r.s.cannons)),1)}</td><td>${fmt(avg(sr,r=>num(r.s.walls)),0)}</td>`
+      + `<td>${sh?fmt(hi/sh*100,1)+' %':'–'}</td></tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  // Letzte Matches
+  const last = ms.slice().sort((a,b)=>num(b.ts)-num(a.ts)).slice(0,25);
+  html += '<h2>Letzte Matches</h2><div class="tw"><table><thead><tr>'
+    + '<th>Zeit</th><th>Modus</th><th>Welt</th><th>Runden</th><th>Sieger</th><th>Kanonen</th><th>Mauern</th><th>Treffer/Schüsse</th></tr></thead><tbody>';
+  for(const m of last){
+    const per = m.per||{}, ks = Object.keys(per);
+    const cs = ks.map(k=>num(per[k].cannons)).join(' / ');
+    const ws = ks.map(k=>num(per[k].walls)).join(' / ');
+    const hs = ks.map(k=>num(per[k].hits)+'/'+num(per[k].shots)).join(' · ');
+    const d = new Date(num(m.ts));
+    html += `<tr><td class="mono">${d.toLocaleDateString('de-DE')} ${d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</td>`
+      + `<td><span class="pill">${m.mode||'?'}</span></td><td>${m.world||'–'}</td><td><b>${num(m.rounds)}</b></td>`
+      + `<td><span class="pill w">${m.winner||'?'}</span></td><td>${cs}</td><td>${ws}</td><td class="mono">${hs}</td></tr>`;
+  }
+  html += '</tbody></table></div>';
+  c.innerHTML = html;
+}
+
+async function load(){
+  $('#status').textContent = 'lade …';
+  try{
+    const app = initializeApp(CFG);
+    const db = getDatabase(app);
+    const snap = await get(ref(db, 'telemetry'));
+    const val = snap.val() || {};
+    ALL = Object.keys(val).map(k => val[k]).filter(x => x && typeof x === 'object');
+    $('#status').textContent = ALL.length + ' Matches geladen';
+  }catch(e){
+    ALL = [];
+    $('#status').textContent = 'Fehler: ' + (e && e.message ? e.message.slice(0,60) : e);
+  }
+  render();
+}
+
+document.querySelectorAll('button[data-f]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('button[data-f]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); FILTER = b.dataset.f; render();
+}));
+$('#reload').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>

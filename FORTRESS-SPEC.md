@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.46.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.47.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3569,3 +3569,34 @@ Stelle, an der man die teuersten Entscheidungen trifft.
   im Spiel sah vorher aus wie ein passives Label.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.46.0`.
+
+### v3.47.0 — Balancing-Analyse (KI-Selbstspiel) + Match-Telemetrie
+**Selbstspiel-Serie** (`__botSelfPlay`, Stufe „Mittel", 4 Matches, Runden-
+Snapshots je Rüstphase). Drei belastbare Befunde:
+1. **Matches enden bei kompetentem Spiel praktisch nie.** 3 von 4 Partien
+   liefen 42+ Runden ohne Auflösung — beide Seiten versiegeln zuverlässig, und
+   die Umschlossen-Regel ist die EINZIGE Verlustbedingung. Es fehlt eine
+   Eskalation, die lange Partien zur Entscheidung zwingt.
+2. **Schrott-Inflation im Spätspiel.** Ø-Schrott: 11 (R5) → 31 (R26) →
+   120 (R38) → 156 (R42). Sobald Kanonen (Bot-Cap 6), Schnellladen (max 2) und
+   Panzermauern (max 1) gesättigt sind, gibt es keine Senke mehr.
+3. **Reparatur wird auf „Mittel" nie gekauft** (0.0 über 42 Runden) — der
+   Kaufzweig existiert nur im „optimal"-Pfad (Stufe Schwer). Bestätigt im Code.
+   Symmetrie P1/P2 dagegen sauber (23/23 … 155,7/156,3) — kein Startvorteil.
+
+**Nebenfund + Fix — Rundenzähler online falsch:** `setRound()` aktualisierte nur
+den React-State, `roundRefVal` wurde lokal nie hochgezählt. Da der Host genau
+diesen Ref im State an die Gäste sendet, sahen **Gäste das ganze Match über
+„R1"**. Jetzt wird der Ref bei jedem `setRound` mitgezogen.
+
+**Match-Telemetrie** (`pushTelemetry`): schreibt anonyme Zusammenfassungen nach
+`telemetry/` — Modus, Runden, Welt, Sieger und je Spieler Mauern, Kanonen,
+Schrott, Schüsse, Treffer, Käufe, Ausbaustufen, Restschrott. Bewusst OHNE Namen
+oder Profil-IDs. Online schreibt nur der Host (sonst läge jedes Match mehrfach
+in den Daten). Zwei Einhängepunkte nötig: Umschlossen-Regel (lokal/Bot/online)
+UND Verbindungsende — mit nur einem fehlten alle regulär gewonnenen Partien.
+Auswertung: **`stats.html`** (Dashboard mit KPIs, Rundenverteilung, Modus-
+Aufschlüsselung, letzte Matches). Security-Rules um `telemetry` ergänzt:
+Schreiben nur authentifiziert und nur als NEUER Eintrag, Lesen offen.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.47.0`.

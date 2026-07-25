@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.46.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.47.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2135,6 +2135,47 @@ window.FortressApp = function Fortress() {
     if (screen === "result") harvestDailyTasks((resultInfo || {}).winner);
     else tasksHarvested.current = false; // nächste Runde/Spiel darf wieder ernten
   }, [screen, resultInfo]);
+  // ── Match-Telemetrie (v3.47.0) ──────────────────────────────────────────
+  // Schreibt eine ANONYME Match-Zusammenfassung nach Firebase, damit sich
+  // Spielverhalten und Balancing über viele echte Partien auswerten lassen
+  // (Dashboard: stats.html). Bewusst OHNE Namen/Profil-IDs — es geht um
+  // Aggregate (wie viele Kanonen, wie viel Schrott, wie lange), nicht um
+  // Einzelpersonen. Best-effort: Fehler dürfen das Spiel nie stören.
+  function pushTelemetry(winner) {
+    try {
+      if (tutorialMode.current) return;           // Tutorial verfälscht die Daten
+      if (telemetrySent.current) return;          // pro Match genau einmal
+      telemetrySent.current = true;
+      const players = playersList();
+      const per = {};
+      for (const p of players) {
+        const m = matchStats.current[p] || {};
+        const u = upgrades.current[p] || {};
+        per["p" + p] = {
+          walls: m.walls || 0, cannons: m.cannons || 0, scrap: m.scrap || 0,
+          shots: m.shots || 0, hits: m.hits || 0, buys: m.buys || 0,
+          reload: u.reload || 0, armor: u.armor || 0, repair: u.repair || 0,
+          left: scrap.current[p] || 0,
+          alive: !eliminated.current[p]
+        };
+      }
+      const rec = {
+        ts: Date.now(),
+        v: "3.47.0",
+        mode: online.current ? (numPlayersRef.current === 3 ? "online3" : "online2")
+             : botMode.current ? "bot" : "local",
+        botLvl: botMode.current ? (botLevel.current || "mid") : null,
+        rounds: roundRefVal.current,
+        world: (worldThemeOf(terrainSeed.current || 0) || {}).name || null,
+        winner: winner === null || winner === void 0 ? "draw" : ("p" + winner),
+        players: players.length,
+        per
+      };
+      const id = rec.ts.toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+      if (typeof window !== "undefined") window.__lastTelemetry = rec;  // Diagnose/Test
+      if (window.__fb) fb.set("telemetry/" + id, rec);
+    } catch (e) { /* Telemetrie darf nie das Spiel stören */ }
+  }
   async function quitGame() {
     setShowQuitConfirm(false);
     running.current = false;
@@ -2554,6 +2595,7 @@ window.FortressApp = function Fortress() {
   // Result-Screen und die Daily Tasks. buys zählt Rüstungs-Shop-Käufe.
   function msZero() { return { walls: 0, cannons: 0, scrap: 0, shots: 0, hits: 0, buys: 0 }; }
   const matchStats = useRef({ 1: msZero(), 2: msZero(), 3: msZero() });
+  const telemetrySent = useRef(false);   // Telemetrie pro Match nur einmal (v3.47.0)
   function msOf(p) { return matchStats.current[p] || (matchStats.current[p] = msZero()); }
   const wallHp = useRef({});
   // „Fertig"-Bestätigung in der Rüstphase (v3.18.1): Sind alle aktiven Spieler
@@ -3093,6 +3135,9 @@ window.FortressApp = function Fortress() {
         const myWin = winner === myRole.current ? true : winner === null ? null : false;
         recordResult(myWin, numPlayersRef.current);
       }
+      // Nur der Host schreibt Telemetrie — sonst läge jedes Online-Match
+      // mehrfach in den Daten (einmal je Gerät).
+      if (!online.current || myRole.current === 1) pushTelemetry(winner);
       pushState(true);
       setTimeout(() => pushState(true), 300);
       setTimeout(() => pushState(true), 800);
@@ -3203,6 +3248,7 @@ window.FortressApp = function Fortress() {
     mmPendingCandidates.current = {};
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
+    telemetrySent.current = false;
     // KEIN onDisconnect-Auto-Löschen des Spielknotens mehr (v3.14.10):
     // Mobile Browser trennen die Firebase-Verbindung schon beim kurzen App-Wechsel
     // (z.B. Code per WhatsApp teilen) → der Server löschte das Spiel, der Gast fand
@@ -3275,6 +3321,7 @@ window.FortressApp = function Fortress() {
     hostSessionRef.current = "";
     // ⚠ ELO-Fix (v3.30.3): Gast-Eintrittspfad — siehe mmJoinMatchedGame.
     statRecorded.current = false;
+    telemetrySent.current = false;
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -3409,6 +3456,7 @@ window.FortressApp = function Fortress() {
     // true und applyState verbuchte für alle Folge-Spiele der Session weder
     // Stats noch ELO. Muss in JEDEM Gast-Eintrittspfad stehen.
     statRecorded.current = false;
+    telemetrySent.current = false;
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -3437,6 +3485,7 @@ window.FortressApp = function Fortress() {
     guestActionApplied.current = { 2: 0, 3: 0 };
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
+    telemetrySent.current = false;
     setMpCode(code);
     setMpScreen("waiting");
     startPolling(code, 1);
@@ -3788,6 +3837,7 @@ window.FortressApp = function Fortress() {
     online.current = true;
     lastSeenPhase.current = null;
     statRecorded.current = false;
+    telemetrySent.current = false;
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -4021,6 +4071,11 @@ window.FortressApp = function Fortress() {
         setTimeout(() => pushState(true), 300);
         setTimeout(() => pushState(true), 800);
       }
+      // Telemetrie auch auf DIESEM Pfad (v3.47.0): hier enden lokale-, Bot- und
+      // Online-Matches durch die Umschlossen-Regel. Der zweite Einhängepunkt
+      // weiter unten deckt nur das Ausscheiden per Verbindungsende ab — ohne
+      // diesen hier fehlten sämtliche regulär gewonnenen Partien in den Daten.
+      if (!online.current || myRole.current === 1) pushTelemetry(winner);
       return false;
     }
     if (newlyOut.length && numPlayersRef.current === 3) {
@@ -4118,10 +4173,12 @@ window.FortressApp = function Fortress() {
   function endCannon() {
     setShowShopInfo(false);
     setRound((r) => r + 1);
+    roundRefVal.current = roundRefVal.current + 1; // Ref mitziehen (v3.47.0) — er wird an die Gaeste gesendet
     startBuild();
   }
   function endSetup() {
     setRound(1);
+    roundRefVal.current = 1;
     startShoot();
   }
   function startTimer() {
@@ -6389,6 +6446,7 @@ window.FortressApp = function Fortress() {
   function startGame() {
     initGrid();
     setRound(1);
+    roundRefVal.current = 1;
     // Neues Spiel: Ökonomie zurücksetzen — mit ⚙15 Startkapital (v3.16.4),
     // damit schon in der ersten Rüstphase eine echte Kaufentscheidung möglich ist.
     resetEconomy();
@@ -6404,6 +6462,7 @@ window.FortressApp = function Fortress() {
   function nextRound() {
     initGrid();
     setRound((r) => r + 1);
+    roundRefVal.current = roundRefVal.current + 1; // Ref mitziehen (v3.47.0) — er wird an die Gaeste gesendet
     // Match-Bilanz zählt pro Runde (v3.21.0): Result-Screen und Daily-Task-
     // Ernte beziehen sich auf die gerade gespielte Runde, nicht die Session.
     matchStats.current = { 1: msZero(), 2: msZero(), 3: msZero() };
@@ -6595,7 +6654,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.46.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.47.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
