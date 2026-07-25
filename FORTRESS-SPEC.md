@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.50.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.50.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3760,3 +3760,60 @@ hinfällig (28→6: 24/24 aber 7 Partien in Runde ≤2; 30→6: 21/24, Median 11
 
 Report: `waffen.html` Abschnitt 06. Spielregeln weiterhin UNVERÄNDERT.
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.50.1`.
+
+---
+
+## v3.50.2 — Store-Reife: Assets, Manifest, Datenschutz
+
+Erste Runde der Play-Store-Vorbereitung. Alle Assets sind **generierbar**, nicht
+einmalig gemalt — `tools/make-icons.js` und `tools/make-screenshots.js` erzeugen
+sie reproduzierbar neu.
+
+**App-Icons neu gezeichnet.** Das alte Icon (Stand Juli, vor dem AAA-Umbau) waren
+flache Rechtecke und passte nicht mehr zum Spiel. Neu: Draufsicht-Festung im
+Sprite-Stil (Steinlagen, Fase, AO, Licht von oben links wie `SHADOW_DX/DY`),
+blauer Mauerring mit einer Bresche, Burg mit vier Ecktürmen und Wappenscheibe,
+Glut am Einschlag. Bewusst reduziert gezeichnet: Zinnenkränze zerfallen bei
+48–96 px zu Grieß, deshalb tragen die Türme nur noch als dunkler Stein mit
+hellem Kern. Deterministische Körnung (`Math.sin`-Hash statt `Math.random`) →
+jeder Lauf erzeugt bitgleiche Dateien.
+
+Neu erzeugt: `icon-96/192/512.png`, `icon-maskable-192/512.png` (eigene Dateien
+mit 20 % Sicherheitsrand — vorher waren dieselben Dateien doppelt als `any` UND
+`maskable` deklariert, was auf Android beschneidet), `store/play-icon-512.png`,
+`store/feature-graphic-1024x500.png` (Play-Store-Pflicht, fehlte komplett).
+
+**Screenshots.** `screenshots/` war im Manifest referenziert, existierte aber
+NICHT — vier tote Einträge. Jetzt vier echte Aufnahmen aus dem laufenden Spiel
+(Menü, Bauphase, Schussphase, Rüst-Shop) in 1080×2340. Der Generator wartet die
+Phase hart ab und prüft sie nach dem Settling; ein stiller Timeout hatte zuvor
+zweimal denselben Frame gespeichert. Zusätzlich Duplikat-Prüfung per Hash.
+
+**Manifest** ergänzt um `id`, `display_override`, `dir`, getrennte maskable-Icons
+und vier Screenshots mit korrekten Größen.
+
+**Datenschutzerklärung überarbeitet** (war Stand v3.39.1). Sie nannte die
+**Match-Telemetrie aus v3.47.0 nicht** — das war eine echte Lücke, und der Satz
+„kein Analytics" stimmte nicht mehr. Neu: eigener Abschnitt, der genau auflistet,
+was der Datensatz enthält (nur Zahlen zum Spielverlauf) und was NICHT
+(kein Name, keine Profil-Kennung, keine Geräte-Kennung). Ergänzt um Kosmetik,
+Handwerks-Materialien und Geräte-Kennung in der Lokal-Liste sowie die anonyme
+Firebase-Anmeldung. Optik an das Spiel angeglichen; **im Menü verlinkt**
+(i18n `privacyLink`) — vorher war die Seite von nirgendwo erreichbar.
+
+**Meta-Tags** ergänzt: `description`, Open-Graph und Twitter-Card — beim Teilen
+des Links gab es vorher keine Vorschau.
+
+**Offener Befund (nicht behoben):** Auf allen modernen Hochkant-Handys bleiben
+**23–25 % der Bildschirmhöhe ungenutzt** (Pixel 5: 193 px, Galaxy S22 Ultra:
+210 px, iPhone 14 Pro: 194 px). Das Brett ist mit 44×68 Zellen fest im
+Seitenverhältnis 0,647 und wird breitenbegrenzt skaliert; darunter folgt nur
+eine 8 px hohe Leiste und dann Schwarz. Auf dem alten iPhone SE sind es nur 6 %.
+Ein Layout-Umbau, der die Fläche der Steuerung zuschlägt, ist der nächste
+sinnvolle Schritt — bewusst NICHT nebenbei mitgemacht, weil er das Spielgefühl
+für alle Nutzer ändert.
+
+`.well-known/assetlinks.json` bleibt Platzhalter — die Werte entstehen erst mit
+dem Bubblewrap-Keystore (Paketname + SHA-256-Fingerprint).
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.50.2`.
