@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="192 Selbstspiel-Partien: Warum die Kanonen-Taktik echter Spieler im aktuellen Build kein Spiel gewinnen kann.">
+<title>FORTRESS · Die Kanonen-Taktik</title>
+<style>
+:root{
+  --bg:#0a0c10; --panel:#141821; --panel2:#10141c;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.14);
+  --ink:#f0f2f6; --muted:#98a2b3; --faint:#606a7b;
+  --acc:#5eb0ef; --accdim:#2b5f8a;
+  --bad:#e2564d; --warn:#e0a83a; --good:#4fbf8b;
+  --fm:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:1000px;margin:0 auto;padding:0 clamp(16px,4vw,36px)}
+.hero{padding:clamp(40px,9vh,90px) 0 clamp(28px,5vh,48px);border-bottom:1px solid var(--line)}
+.kick{display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:11px;
+  letter-spacing:0.2em;text-transform:uppercase;color:var(--acc);margin-bottom:18px}
+.kick::before{content:"";width:24px;height:1px;background:var(--acc)}
+h1{font-size:clamp(30px,5.6vw,54px);font-weight:800;letter-spacing:-0.025em;line-height:1.03;margin:0 0 16px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--acc)}
+.lede{font-size:clamp(15px,2vw,19px);color:var(--muted);max-width:64ch;margin:0}
+.meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:24px;font-family:var(--fm);font-size:12px;color:var(--faint)}
+.meta b{color:var(--muted);font-weight:500}
+section{padding:clamp(38px,7vh,72px) 0;border-bottom:1px solid var(--line)}
+.sh{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sn{font-family:var(--fm);font-size:12px;color:var(--acc)}
+h2{font-size:clamp(22px,3.5vw,34px);font-weight:800;letter-spacing:-0.02em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:15.5px;max-width:70ch;margin:12px 0 0}
+.sub b{color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:24px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.kpi .n{font-family:var(--fm);font-weight:800;font-size:clamp(23px,3.4vw,32px);line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35}
+.n.bad{color:var(--bad)} .n.warn{color:var(--warn)} .n.good{color:var(--good)} .n.acc{color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:18px}
+th{text-align:left;font-family:var(--fm);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;padding:0 12px 10px 0;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:11px 12px 11px 0;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+td b{color:var(--ink)} .tw{overflow-x:auto}
+.mono{font-family:var(--fm)}
+.find{display:grid;grid-template-columns:40px 1fr;gap:16px;padding:20px 0;border-bottom:1px solid var(--line)}
+.find:last-child{border-bottom:none}
+.fn{font-family:var(--fm);font-size:13px;color:var(--acc);padding-top:3px}
+.ft{font-size:clamp(16px,2.1vw,20px);font-weight:700;margin:0 0 7px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--fm);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.tag.crit{background:rgba(226,86,77,0.14);color:var(--bad);border:1px solid rgba(226,86,77,0.3)}
+.tag.med{background:rgba(224,168,58,0.13);color:var(--warn);border:1px solid rgba(224,168,58,0.28)}
+.tag.ok{background:rgba(79,191,139,0.13);color:var(--good);border:1px solid rgba(79,191,139,0.3)}
+.fb{font-size:15px;color:var(--muted);margin:0}
+.fb b{color:var(--ink)}
+.fb code,.fb .mono{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+.prop{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;margin-top:16px}
+.prop h3{margin:0 0 4px;font-size:18px;font-weight:800;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.prop .why{font-size:13px;color:var(--faint);font-family:var(--fm);margin:0 0 12px}
+.prop p{margin:0 0 10px;font-size:14.5px;color:var(--muted)}
+.prop p:last-child{margin-bottom:0}
+.prop b{color:var(--ink)}
+.prop .mono{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+.eff{display:inline-flex;gap:5px;align-items:center;font-family:var(--fm);font-size:10.5px;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.eff.hi{border-color:rgba(79,191,139,0.4);color:var(--good)}
+.warnbox{margin-top:22px;background:rgba(224,168,58,0.07);border:1px solid rgba(224,168,58,0.28);
+  border-radius:14px;padding:18px 22px}
+.warnbox .l{font-family:var(--fm);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--warn);margin-bottom:9px}
+.warnbox p{margin:0;font-size:14.5px;color:var(--muted)}
+.warnbox p+p{margin-top:9px}
+.warnbox b{color:var(--ink)}
+.warnbox .mono{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+footer{padding:36px 0 60px;font-size:12.5px;color:var(--faint);line-height:1.7}
+footer a{color:var(--acc);text-decoration:none}
+.wpgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:24px}
+.wp{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:0 0 16px;overflow:hidden}
+.wp canvas{display:block;width:100%;height:190px;background:#0d1117;border-bottom:1px solid var(--line)}
+.wp .b{padding:14px 18px 0}
+.wp h3{margin:0 0 3px;font-size:16.5px;font-weight:800;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.wp .m{font-family:var(--fm);font-size:11px;color:var(--faint);margin:0 0 9px}
+.wp p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.5}
+.wp p b{color:var(--ink)}
+.wp .mono{font-family:var(--fm);font-size:12.5px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">Zielstrategie-Studie · v3.51.0 · 192 Partien</span>
+    <h1>Die Taktik echter Spieler<br>kann <em>kein einziges</em> Spiel gewinnen.</h1>
+    <p class="lede">Hinweis aus dem Playtest: <b style="color:var(--ink)">Reale Spieler gehen von Anfang an auf die Kanonen.</b> Meine Test-KI tat das nie — sie beschoss immer zuerst die Mauern. Alle bisherigen Balancing-Zahlen beruhen also auf einer Strategie, die niemand spielt. Also nachgebaut und gemessen. Das Ergebnis war schlimmer als erwartet.</p>
+    <div class="meta">
+      <span><b>Methode:</b> <span class="mono">aim: "cannon"</span> + Fokusfeuer auf die schwächste Kanone</span>
+      <span><b>Stichprobe:</b> 192 Partien, 8 Varianten</span>
+      <span><b>Status:</b> alles gated, Spiel unverändert</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sh"><span class="sn">01</span><h2>Der Befund</h2></div>
+    <div class="kpis">
+      <div class="kpi"><div class="n bad">0/24</div><div class="l">Partien entschieden, wenn beide Seiten auf Kanonen spielen</div></div>
+      <div class="kpi"><div class="n bad">144</div><div class="l">Kanonen zerstört — davon <b>0</b>, die eine Burg geöffnet haben</div></div>
+      <div class="kpi"><div class="n bad">0,0</div><div class="l">Mauern durch die Kill-Explosion zerstört</div></div>
+      <div class="kpi"><div class="n good">19/24</div><div class="l">nach dem Ein-Zeilen-Fix — Median Runde 10</div></div>
+    </div>
+    <p class="sub" style="margin-top:22px">Die Kanonentaktik verdient hervorragend: 18 Schrott pro Kill, dem Gegner fehlt Feuerkraft. Sie kann nur eines nicht — <b>gewinnen</b>. Die einzige Verlustbedingung ist die offene Burg, und wer ausschließlich auf Kanonen schießt, öffnet nie eine.</p>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">02</span><h2>Warum: ein Sprengradius, der sich selbst trifft</h2></div>
+    <p class="sub">Laut Spezifikation seit v3.16.0: <i>„Zerstörte Kanonen reißen im 3×3 auch die MAUERN des Besitzers mit — <b>Kill öffnet die Hülle</b>."</i> Das ist der Grund, warum die Kanonentaktik überhaupt Sinn ergeben soll. Nur passiert es nicht.</p>
+
+    <div class="wpgrid">
+      <div class="wp"><canvas data-fx="blast1"></canvas><div class="b">
+        <h3>Radius 1 — heute <span class="tag crit">wirkungslos</span></h3>
+        <p class="m">for (dr = -1; dr &lt;= 1; dr++)</p>
+        <p>Eine Kanone belegt in <span class="mono">placeCannon</span> <b>selbst</b> ein 3×3-Feld. Der Sprengradius 1 deckt exakt diese neun Zellen ab — also nur die Kanone. Er erreicht <b>keine einzige Mauer</b>, egal wie eng die Burg gebaut ist.</p>
+      </div></div>
+      <div class="wp"><canvas data-fx="blast2"></canvas><div class="b">
+        <h3>Radius 2 <span class="tag ok">Empfehlung</span></h3>
+        <p class="m">killBlast: 2 — ein Ring darüber hinaus</p>
+        <p>Erst der Ring <b>außerhalb</b> der Kanone trifft die Mauern, in die sie eingebaut ist. Gemessen: <b>43 % aller Kills öffnen</b> die Burg des Besitzers. Genau die Wirkung, die im Regelwerk steht.</p>
+      </div></div>
+    </div>
+
+    <div class="find" style="margin-top:6px">
+      <span class="fn">01</span>
+      <div>
+        <h3 class="ft">Eine dokumentierte Mechanik, die nie gefeuert hat <span class="tag crit">Fehler</span></h3>
+        <p class="fb">Über <b>144 Kanonen-Kills</b> in 24 Partien wurde <b>keine einzige Mauer</b> von einer Kill-Explosion zerstört und <b>keine einzige Burg</b> geöffnet. Auch die im Regelwerk beschriebene Bergungs-Prämie („+1 Schrott je Mauer an den Schützen") konnte deshalb nie anfallen. Der Fehler ist nicht das Balancing, sondern eine Radius-Annahme: Der Code sprengt <span class="mono">cn.r ± 1</span> — und das ist zufällig exakt der Grundriss der Kanone selbst.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">03</span><h2>Die Messung</h2></div>
+    <p class="sub">Je 24 Partien, drei Bot-Stufen gleichverteilt, Rundenlimit 16. „Kills→offen" = Anteil der Kanonen-Kills, deren Explosion die Burg des Besitzers geöffnet hat.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Variante</th><th>entschieden</th><th>Ø Rd</th><th>Median</th><th>Spanne</th><th>Mauern</th><th>Kan-Kills</th><th>Kills→offen</th></tr></thead>
+      <tbody>
+        <tr><td><b>Mauern zuerst</b> (Test-KI bisher)</td><td class="mono">3/24</td><td class="mono">14,3</td><td class="mono">16</td><td class="mono">1–4</td><td class="mono">45,9</td><td class="mono">0,0</td><td class="mono">–</td></tr>
+        <tr><td><b>Kanonen zuerst</b> (wie reale Spieler)</td><td class="mono" style="color:var(--bad)">0/24</td><td class="mono">16,0</td><td class="mono">16</td><td class="mono">–</td><td class="mono" style="color:var(--bad)">0,0</td><td class="mono">6,0</td><td class="mono" style="color:var(--bad)">0 % (0/144)</td></tr>
+        <tr><td>Abwechselnd Kanone/Mauer</td><td class="mono">2/24</td><td class="mono">14,9</td><td class="mono">16</td><td class="mono">1–4</td><td class="mono">18,3</td><td class="mono">3,7</td><td class="mono">0 % (0/88)</td></tr>
+        <tr><td>Nur der Fix (Blast 2, alte Mauer-KI)</td><td class="mono">4/24</td><td class="mono">15,2</td><td class="mono">16</td><td class="mono">4–15</td><td class="mono">48,7</td><td class="mono">0,0</td><td class="mono">–</td></tr>
+        <tr style="background:rgba(79,191,139,0.05)"><td><b>Kanonen zuerst + Blast 2</b></td><td class="mono" style="color:var(--good)">19/24</td><td class="mono">11,1</td><td class="mono">10</td><td class="mono">9–14</td><td class="mono">31,6</td><td class="mono">4,5</td><td class="mono" style="color:var(--good)">43 % (47/109)</td></tr>
+        <tr><td>Kanonen zuerst + Blast 2, <b>ohne</b> Fokusfeuer</td><td class="mono">9/24</td><td class="mono">14,4</td><td class="mono">16</td><td class="mono">11–14</td><td class="mono">–</td><td class="mono">–</td><td class="mono">–</td></tr>
+        <tr><td>Abwechselnd + Blast 2</td><td class="mono">11/24</td><td class="mono">13,8</td><td class="mono">16</td><td class="mono">8–15</td><td class="mono">45,6</td><td class="mono">3,5</td><td class="mono">47 % (39/83)</td></tr>
+        <tr><td>Kanonen zuerst + Blast 3</td><td class="mono" style="color:var(--good)">18/24</td><td class="mono">10,2</td><td class="mono">10</td><td class="mono">5–15</td><td class="mono" style="color:var(--warn)">92,0</td><td class="mono">3,8</td><td class="mono">84 % (77/92)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">04</span><h2>Befunde</h2></div>
+
+    <div class="find">
+      <span class="fn">01</span>
+      <div>
+        <h3 class="ft">Weder der Fix allein noch die Taktik allein wirken <span class="tag ok">Kern</span></h3>
+        <p class="fb">Das ist das eigentliche Ergebnis. Der Fix mit der heutigen Mauer-KI: <b>4/24</b> — praktisch nichts, weil diese KI nie eine Kanone tötet (0,0 Kills). Die Spieler-Taktik mit dem heutigen Code: <b>0/24</b> — sie kann prinzipiell nicht gewinnen. <b>Zusammen: 19/24.</b> Die Mechanik existiert erst, wenn beides zusammenkommt — und genau die eine Hälfte davon bringen reale Spieler von sich aus mit.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">02</span>
+      <div>
+        <h3 class="ft">Fokusfeuer ist die halbe Miete <span class="tag med">Spielerskill</span></h3>
+        <p class="fb">Dieselbe Taktik, aber Schaden gleichmäßig über alle Kanonen verteilt statt eine nach der anderen zu erledigen: <b>9/24 statt 19/24</b>, Median Runde 16 statt 10. Bei 12 Trefferpunkten je Kanone ist verteiltes Feuer schlicht verschenkt. Das ist eine echte Fertigkeit, die gute von schwachen Spielern trennt — und ein guter Kandidat für einen Tipp im Tutorial.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">03</span>
+      <div>
+        <h3 class="ft">Radius 3 wäre zu brachial <span class="tag med">dosieren</span></h3>
+        <p class="fb">Mit Radius 3 öffnen <b>84 %</b> aller Kills, und der Mauerschaden verdreifacht sich auf 92 je Partie. Acht von 18 Partien fielen in Runde 5. Das ist keine Belagerung mehr, sondern ein Abriss. Radius 2 ist die dosierte Variante: Er trifft genau den Mauerring, in dem die Kanone steckt, und nicht mehr.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">04</span>
+      <div>
+        <h3 class="ft">Die Rundenverteilung ist verdächtig eng <span class="tag med">offen</span></h3>
+        <p class="fb">Bei Blast 2 fielen <b>zwölf von 19 Partien exakt in Runde 9</b>, weitere fünf in Runde 10. Zwei identisch spielende Bots erreichen den Kipppunkt gleichzeitig — das ist ein Artefakt des Selbstspiels, kein Beweis für einen Countdown. Die gemischte Strategie streut mit 8–15 deutlich breiter und liegt vermutlich näher an echten Partien. Vor einer Übernahme gehört das an menschlichen Partien gegengeprüft; die Telemetrie dafür läuft bereits.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">05</span><h2>Was das für die Empfehlung heißt</h2></div>
+
+    <div class="prop" style="border-color:rgba(79,191,139,0.35)">
+      <h3>Sprengradius auf 2 setzen <span class="eff hi">19/24 statt 3/24</span> <span class="eff">eine Zeile</span></h3>
+      <p class="why">index.html · impactAt · Kill-Explosion</p>
+      <p>Das ist <b>kein neues Feature, sondern eine Reparatur</b>: Die Wirkung steht seit v3.16.0 so im Regelwerk und ist nie eingetreten. Es braucht keine neue Grafik, keinen Shop-Eintrag und keine Protokoll-Änderung — die Explosion rechnet der Host, Gäste bekommen das Ergebnis ohnehin über das Grid.</p>
+      <p>Und es belohnt genau das Verhalten, das Spieler <b>ohnehin schon zeigen</b>, statt ihnen eine neue Taktik beibringen zu müssen.</p>
+    </div>
+
+    <div class="prop">
+      <h3>Der Bot muss die Kanonentaktik lernen <span class="eff">sonst spielt er schlechter als jeder Mensch</span></h3>
+      <p class="why">index.html · botShoot</p>
+      <p>Nach dem Fix ist Kanonenjagd die stärkste Linie — die heutige Bot-KI kennt sie nicht und tötet im Schnitt <b>0,0 Kanonen je Partie</b>. Sie würde gegen jeden Menschen, der die Taktik anwendet, systematisch verlieren. Die Zielauswahl inklusive Fokusfeuer liegt fertig vor (<span class="mono">aim: "cannon"</span>), sie ist bisher nur hinter dem Experiment-Schalter.</p>
+    </div>
+
+    <div class="warnbox">
+      <div class="l">Noch nicht übernommen</div>
+      <p>Nichts davon ist im Spiel aktiv. Sowohl der Sprengradius als auch die Zielstrategie laufen ausschließlich über <span class="mono">window.__balExp</span>; ohne diesen Schalter verhält sich das Spiel exakt wie bisher.</p>
+      <p>Zu bedenken vor einer Übernahme: Der Fix macht Kanonen <b>gleichzeitig wertvoller und verwundbarer</b>. Das Wiederaufbau-Paket (verdoppelter Sold ohne Kanone) fängt die Todesspirale zwar ab, wurde aber nie unter diesen Bedingungen gemessen. Und Panzermauern gewinnen an Wert, weil sie den Sprengring mit abdecken.</p>
+    </div>
+  </section>
+
+  <footer>
+    Rohdaten: 192 Partien Selbstspiel über 8 Zielstrategie- und Sprengradius-Varianten.
+    Diagnose-Hooks: <span class="mono">__aimDbg</span> (Ziel-Verteilung),
+    <span class="mono">__killDbg</span> (öffnet der Kill die Burg?),
+    <span class="mono">__lossDbg</span>, <span class="mono">__impactStats</span> — alle hinter
+    <span class="mono">window.__mmDebug = true</span>.<br>
+    <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/waffen.html">Waffen-Experimente</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/balancing.html">Balancing-Analyse</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/stats.html">Live-Telemetrie</a>
+  </footer>
+</div>
+
+<script>
+var C = 13;
+function fit(cv) {
+  var r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  var x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { x: x, w: r.width, h: r.height };
+}
+function wall(x, px, py, col) {
+  x.fillStyle = col; x.fillRect(px, py, C - 1.6, C - 1.6);
+  x.fillStyle = 'rgba(255,255,255,0.14)'; x.fillRect(px, py, C - 1.6, 2);
+  x.fillStyle = 'rgba(0,0,0,0.3)'; x.fillRect(px, py + C - 3.6, C - 1.6, 2);
+}
+function rubble(x, px, py) {
+  x.fillStyle = '#39424f'; x.fillRect(px + 1.5, py + 2.5, C - 5, C - 6);
+  x.fillStyle = '#252d38'; x.fillRect(px + 3.5, py + 4.5, 3.5, 3.5);
+}
+// Draufsicht wie im Spiel: eine Kanone (3x3) steckt im Mauerblock.
+// Der gestrichelte Rahmen ist der Sprengradius.
+function scene(x, w, h, radius, t) {
+  var cols = Math.round(w / C), rows = Math.round(h / C);
+  var kc = Math.round(cols / 2), kr = Math.round(rows / 2);
+  var p = (t % 150) / 150;
+  var blown = p > 0.45;
+  for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+    var dr = Math.abs(r - kr), dc = Math.abs(c - kc);
+    if (dr <= 1 && dc <= 1) continue;              // Kanonen-Grundriss
+    if (dr > 3 || dc > 5) continue;
+    if (blown && dr <= radius && dc <= radius) rubble(x, c * C, r * C);
+    else wall(x, c * C, r * C, '#c2453c');
+  }
+  var px = (kc - 1) * C, py = (kr - 1) * C, s = C * 3 - 1.6;
+  if (blown) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) rubble(x, (kc + a) * C, (kr + b) * C); }
+  else {
+    x.fillStyle = 'rgba(0,0,0,0.4)'; x.fillRect(px + 2, py + 3, s, s);
+    x.fillStyle = '#2b3444'; x.fillRect(px, py, s, s);
+    x.strokeStyle = '#c2453c'; x.lineWidth = 1.8;
+    x.beginPath(); x.arc(px + s / 2, py + s / 2, s * 0.32, 0, 7); x.stroke();
+    x.fillStyle = '#4a5464'; x.fillRect(px + s / 2 - 2, py + s / 2 - s * 0.46, 4, s * 0.4);
+  }
+  var rr = radius * C;
+  x.strokeStyle = radius === 1 ? 'rgba(226,86,77,0.9)' : 'rgba(79,191,139,0.95)';
+  x.setLineDash([5, 4]); x.lineWidth = 2;
+  x.strokeRect(kc * C - rr, kr * C - rr, rr * 2 + C - 1.6, rr * 2 + C - 1.6);
+  x.setLineDash([]);
+  if (p > 0.45 && p < 0.72) {
+    var q = (p - 0.45) / 0.27;
+    var g = x.createRadialGradient(kc * C + C / 2, kr * C + C / 2, 0, kc * C + C / 2, kr * C + C / 2, rr * 1.8);
+    g.addColorStop(0, 'rgba(255,240,180,' + (0.85 - q * 0.85).toFixed(2) + ')');
+    g.addColorStop(0.5, 'rgba(249,115,22,' + (0.5 - q * 0.5).toFixed(2) + ')');
+    g.addColorStop(1, 'rgba(239,68,68,0)');
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  }
+  x.font = '600 10px ui-monospace, Menlo, monospace';
+  x.fillStyle = radius === 1 ? 'rgba(226,86,77,0.95)' : 'rgba(79,191,139,0.95)';
+  x.fillText(radius === 1 ? 'trifft nur die Kanone — 0 Mauern' : 'erreicht den Mauerring', 8, h - 8);
+}
+var FX = { blast1: function (x, w, h, t) { scene(x, w, h, 1, t); },
+           blast2: function (x, w, h, t) { scene(x, w, h, 2, t); } };
+var cvs = [].slice.call(document.querySelectorAll('canvas[data-fx]'));
+var tick = 0;
+function frame() {
+  tick++;
+  cvs.forEach(function (cv) {
+    if (!cv._d) cv._d = fit(cv);
+    var d = cv._d;
+    d.x.fillStyle = '#0d1117'; d.x.fillRect(0, 0, d.w, d.h);
+    (FX[cv.dataset.fx] || function () {})(d.x, d.w, d.h, tick);
+  });
+  requestAnimationFrame(frame);
+}
+window.addEventListener('resize', function () { cvs.forEach(function (c) { c._d = null; }); });
+frame();
+</script>
+</body>
+</html>

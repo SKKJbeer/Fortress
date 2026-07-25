@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.50.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.51.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3817,3 +3817,76 @@ für alle Nutzer ändert.
 dem Bubblewrap-Keystore (Paketname + SHA-256-Fingerprint).
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.50.2`.
+
+---
+
+## v3.51.0 — Zielstrategie echter Spieler + ein Sprengradius, der nie gewirkt hat
+
+Playtest-Hinweis: **Reale Spieler gehen von Anfang an auf die KANONEN.** Die
+Test-KI tat das nie — `botShoot` beschoss immer zuerst die Mauern. Alle
+bisherigen Balancing-Zahlen (v3.47–v3.50) beruhen damit auf einer Strategie,
+die niemand spielt. Nachgebaut und über 192 Partien gemessen.
+
+**Neue gated Experimente:**
+- `aim: "cannon"` — zielt immer erst auf Kanonen, Mauern nur ohne Ziel.
+  `aim: "mixed"` wechselt salvenweise. `aimFocus` (Standard an) = Fokusfeuer
+  auf die Kanone mit den WENIGSTEN HP, so wie ein Mensch nachlegt.
+- `killBlast: N` — Radius der Kill-Explosion (Standard 1 = heutiges Verhalten).
+- Diagnosen `__aimDbg` (Zielverteilung) und `__killDbg` (öffnet der Kill die Burg?).
+
+### ⚠️ FEHLER: die Kill-Explosion hat noch nie eine Mauer getroffen
+
+SPEC v3.16.0 sagt: *„Zerstörte Kanonen reißen im 3×3 auch die MAUERN des
+Besitzers mit (Kill öffnet die Hülle; +1 Schrott je Mauer an den Schützen)."*
+
+Das passiert nicht. Eine Kanone belegt in `placeCannon` **selbst** ein
+3×3-Feld aus `CANNON_OF[player]`-Zellen. Die Explosion sprengt `cn.r ± 1` /
+`cn.c ± 1` — also exakt diesen Grundriss. Sie erreicht **keine einzige Mauer**,
+egal wie eng gebaut wird. Gemessen: **144 Kanonen-Kills, 0 zerstörte Mauern,
+0 geöffnete Burgen.** Auch die Bergungs-Prämie konnte deshalb nie anfallen.
+
+### Ergebnis (je 24 Partien, Rundenlimit 16)
+| Variante | entschieden | Median | Spanne | Mauern | Kan-Kills | Kills→offen |
+|---|---|---|---|---|---|---|
+| Mauern zuerst (KI heute) | 3/24 | 16 | 1–4 | 45,9 | 0,0 | – |
+| **Kanonen zuerst (wie Spieler)** | **0/24** | 16 | – | **0,0** | 6,0 | **0 % (0/144)** |
+| Abwechselnd Kanone/Mauer | 2/24 | 16 | 1–4 | 18,3 | 3,7 | 0 % (0/88) |
+| Nur der Fix (Blast 2, alte Mauer-KI) | 4/24 | 16 | 4–15 | 48,7 | 0,0 | – |
+| **Kanonen zuerst + Blast 2** | **19/24** | **10** | 9–14 | 31,6 | 4,5 | **43 %** |
+| Kanonen zuerst + Blast 2, ohne Fokusfeuer | 9/24 | 16 | 11–14 | – | – | – |
+| Abwechselnd + Blast 2 | 11/24 | 16 | 8–15 | 45,6 | 3,5 | 47 % |
+| Kanonen zuerst + Blast 3 | 18/24 | 10 | 5–15 | 92,0 | 3,8 | 84 % |
+
+**Kernbefund — weder der Fix noch die Taktik wirken für sich allein:**
+Der Fix mit der heutigen Mauer-KI bringt 4/24 (sie tötet nie eine Kanone).
+Die Spieler-Taktik mit dem heutigen Code bringt 0/24 (sie kann prinzipiell
+nicht gewinnen — die einzige Verlustbedingung ist die offene Burg). Erst
+**zusammen 19/24**. Und die eine Hälfte davon bringen reale Spieler von sich
+aus mit.
+
+**Fokusfeuer ist die halbe Miete:** dieselbe Taktik mit gleichmäßig verteiltem
+Schaden statt einer Kanone nach der anderen fällt auf 9/24 zurück (Median 16
+statt 10). Bei CANNON_HP=12 ist verteiltes Feuer verschenkt — guter Kandidat
+für einen Tutorial-Tipp.
+
+**Radius 3 wäre zu brachial:** 84 % öffnende Kills, Mauerschaden verdreifacht
+(92/Partie), 8 von 18 Partien fielen in Runde 5.
+
+**Offen:** Bei Blast 2 fielen 12 von 19 Partien exakt in Runde 9 — zwei
+identisch spielende Bots erreichen den Kipppunkt gleichzeitig, vermutlich ein
+Selbstspiel-Artefakt. Die gemischte Strategie streut mit 8–15 breiter und
+dürfte echten Partien näher liegen. Gegenprüfung an menschlichen Partien über
+die laufende Telemetrie.
+
+**Empfehlung:** `killBlast` auf 2 setzen — das ist keine neue Mechanik, sondern
+eine Reparatur der seit v3.16.0 dokumentierten Wirkung. Keine neue Grafik, kein
+Shop-Eintrag, keine Protokoll-Änderung (die Explosion rechnet der Host, Gäste
+bekommen das Grid). Zweitens muss der Bot die Kanonentaktik lernen, sonst
+spielt er systematisch schlechter als jeder Mensch. Zu bedenken: Kanonen werden
+gleichzeitig wertvoller und verwundbarer; das Wiederaufbau-Paket wurde unter
+diesen Bedingungen nie gemessen, und Panzermauern gewinnen an Wert.
+
+Report: `kanonentaktik.html`. Spielregeln weiterhin UNVERÄNDERT — alles läuft
+über `window.__balExp`.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.51.0`.
