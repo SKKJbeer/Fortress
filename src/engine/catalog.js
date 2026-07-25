@@ -62,11 +62,17 @@ export function matOf(p) {
   return { iron: m.iron || 0, silver: m.silver || 0, dragon: m.dragon || 0, star: m.star || 0 };
 }
 // Kanonen-Skins: Kuppel-/Kern-Farben; Spieler-Neonring bleibt (Team-Erkennung!)
+// style (v3.44.0): jeder Skin bekommt eine EIGENE Form + Signatur-Effekt statt
+// nur einer Umfärbung — sonst entsteht kein Sammel-Anreiz. Der Spieler-Neonring
+// bleibt in allen Varianten erhalten (Team-Erkennung!).
+//   crystal = Facetten-Kuppel     rune = rotierender Runenkranz (Hexer)
+//   scale   = Drachenschuppen     star = umlaufende Sterne
 export const CANNON_SKIN = {
-  cannon_crystal:  { dome: ["#cffafe", "#0e7490", "#083344"], core: "#a5f3fc" },
-  cannon_obsidian: { dome: ["#6d28d9", "#27216b", "#0c0a1d"], core: "#c4b5fd" },
-  cannon_dragon:   { dome: ["#dc2626", "#7f1d1d", "#1c0a0a"], core: "#fca5a5" },
-  cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", stars: true }
+  cannon_crystal:  { dome: ["#cffafe", "#0e7490", "#083344"], core: "#a5f3fc", style: "crystal", fx: "#67e8f9" },
+  cannon_obsidian: { dome: ["#6d28d9", "#27216b", "#0c0a1d"], core: "#c4b5fd", style: "rune",    fx: "#a78bfa" },
+  cannon_hexer:    { dome: ["#7e22ce", "#3b0764", "#100519"], core: "#f0abfc", style: "rune",    fx: "#e879f9", hexer: true },
+  cannon_dragon:   { dome: ["#dc2626", "#7f1d1d", "#1c0a0a"], core: "#fca5a5", style: "scale",   fx: "#fb923c" },
+  cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", style: "star",    fx: "#fde047", stars: true }
 };
 // Einschlag-Effekte: p = Partikel-Palette, ring = Explosions-Gradient (r,g,b)
 export const IMPACT_FX = {
@@ -87,6 +93,7 @@ export const RECIPES = [
   { id: "cannon_obsidian", cat: "cannon", cost: { iron: 25, silver: 8,  gold: 300 } },
   { id: "cannon_dragon",   cat: "cannon", cost: { silver: 10, dragon: 3, gold: 500 } },
   { id: "cannon_star",     cat: "cannon", cost: { dragon: 4, star: 2,   gold: 800 } },
+  { id: "cannon_hexer",    cat: "cannon", cost: { silver: 12, dragon: 5, star: 3, gold: 1200 } },
   { id: "impact_lava",  cat: "impact", cost: { iron: 15, silver: 4, gold: 150 } },
   { id: "impact_ice",   cat: "impact", cost: { iron: 15, silver: 4, gold: 150 } },
   { id: "impact_blitz", cat: "impact", cost: { iron: 10, dragon: 2, gold: 250 } },

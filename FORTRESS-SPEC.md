@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.43.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.44.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3499,3 +3499,27 @@ ansieht, auf dasselbe Licht-Niveau wie Mauern/Terrain gehoben.
 
 Gemessen: Frame-Zeichendauer median 0,4 ms / p95 0,6 / max 1,7 ms.
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.43.0`.
+
+### v3.44.0 — Kanonen-Skins mit eigener Identität + Hexerkanone
+Problem: Die Avatare sind gemalte PNG-Illustrationen (hohe Qualität), die
+Kanonen-Skins bestanden dagegen nur aus **drei Hex-Farben** — dieselbe Kuppel
+viermal umgefärbt. Dadurch entstand kein Sammel-/„Haben-wollen"-Anreiz.
+- **Signatur-FORM je Skin** (`style` in `CANNON_SKIN`), erkennbar schon im
+  Standbild: `crystal` = geschliffene Facetten + Prismenspitze, `rune` =
+  eingelassener Runenkranz mit 8 Glyphen, `scale` = überlappende
+  Drachenschuppen + glühende Rissader, `star` = Sternenfeld. Alles im
+  bestehenden Sprite-Bake → null Frame-Kosten.
+- **Signatur-ANIMATION je Skin** in `drawCannonFull`: rotierender Runenkranz,
+  kreisende Sterne auf Umlaufbahn, pulsierendes Hitzeflimmern, wanderndes
+  Prisma-Funkeln. Das ist der eigentliche Haben-wollen-Faktor — ein Standbild
+  kann man umfärben, Bewegung nicht. Bewusst billig (wenige Arcs/Punkte), da
+  bis zu ~24 Kanonen gleichzeitig auf dem Feld stehen können.
+- **Neu: Hexerkanone** (`cannon_hexer`) als Top-Stück — doppelter,
+  gegenläufiger Runenkreis, Kristallsplitter, magenta Glut. Rezept:
+  12 Silber + 5 Drachenstahl + 3 Sternenstaub + 1200 Gold (teuerstes Rezept).
+  i18n de/en ergänzt.
+- ⚠ Der Spieler-Neonring bleibt in ALLEN Varianten erhalten (Team-Erkennung).
+
+Gemessen: Frame-Zeichendauer median 0,4 ms / p95 0,6 / max 1,5 ms — trotz
+Pro-Frame-Animationen unverändert. Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.44.0`.

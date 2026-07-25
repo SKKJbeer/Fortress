@@ -503,6 +503,123 @@ export function cannonDomeSprite(player, skinId, skinDef) {
     x.beginPath();
     x.arc(cx, cy, R * 0.78, Math.PI * 0.75, Math.PI * 1.65);
     x.stroke();
+    // ── Signatur-Formen je Skin (v3.44.0) ────────────────────────────────
+    // Bisher unterschieden sich die Skins NUR in der Farbe — dieselbe Kuppel
+    // viermal umgefärbt erzeugt keinen Sammel-Anreiz. Jetzt bekommt jeder Stil
+    // eine eigene Geometrie, die schon im Standbild erkennbar ist.
+    const style = skinDef && skinDef.style;
+    const fxc = (skinDef && skinDef.fx) || n.lt;
+    if (style === "crystal") {
+      // Facetten-Kuppel: geschliffene Flächen mit hellen Graten
+      x.save();
+      x.beginPath();
+      x.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
+      x.clip();
+      for (let f = 0; f < 6; f++) {
+        const a0 = f / 6 * Math.PI * 2, a1 = (f + 1) / 6 * Math.PI * 2;
+        x.beginPath();
+        x.moveTo(cx, cy);
+        x.lineTo(cx + Math.cos(a0) * R, cy + Math.sin(a0) * R);
+        x.lineTo(cx + Math.cos(a1) * R, cy + Math.sin(a1) * R);
+        x.closePath();
+        x.fillStyle = f % 2 ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.18)";
+        x.fill();
+        x.strokeStyle = "rgba(255,255,255,0.30)";
+        x.lineWidth = 0.9;
+        x.beginPath();
+        x.moveTo(cx, cy);
+        x.lineTo(cx + Math.cos(a0) * R, cy + Math.sin(a0) * R);
+        x.stroke();
+      }
+      x.restore();
+      // Prismen-Spitze in der Mitte
+      x.fillStyle = "rgba(255,255,255,0.55)";
+      x.beginPath();
+      x.moveTo(cx, cy - R * 0.34);
+      x.lineTo(cx + R * 0.17, cy);
+      x.lineTo(cx, cy + R * 0.3);
+      x.lineTo(cx - R * 0.17, cy);
+      x.closePath();
+      x.fill();
+    } else if (style === "rune") {
+      // Hexer/Obsidian: eingelassener Runenkranz + Beschwörungskreis
+      x.strokeStyle = fxc;
+      x.lineWidth = 1.1;
+      x.globalAlpha = 0.75;
+      x.beginPath();
+      x.arc(cx, cy, R * 0.60, 0, Math.PI * 2);
+      x.stroke();
+      x.globalAlpha = 1;
+      for (let g = 0; g < 8; g++) {
+        const a = g / 8 * Math.PI * 2 - 0.2;
+        const gx = cx + Math.cos(a) * R * 0.60, gy = cy + Math.sin(a) * R * 0.60;
+        x.save();
+        x.translate(gx, gy);
+        x.rotate(a + Math.PI / 2);
+        x.strokeStyle = fxc;
+        x.lineWidth = 1.3;
+        x.beginPath();
+        // vier abwechselnde Rune-Glyphen
+        const gtype = g % 4;
+        if (gtype === 0) { x.moveTo(-1.7, -2.2); x.lineTo(1.7, -2.2); x.moveTo(0, -2.2); x.lineTo(0, 2.2); }
+        else if (gtype === 1) { x.moveTo(-1.7, -2.2); x.lineTo(1.7, 0); x.lineTo(-1.7, 2.2); }
+        else if (gtype === 2) { x.moveTo(-1.6, 2.2); x.lineTo(0, -2.2); x.lineTo(1.6, 2.2); x.moveTo(-0.9, 0.4); x.lineTo(0.9, 0.4); }
+        else { x.moveTo(-1.6, -2.2); x.lineTo(-1.6, 2.2); x.lineTo(1.6, 2.2); }
+        x.stroke();
+        x.restore();
+      }
+      // Hexer-Variante: zweiter, gegenläufiger Innenkreis + Kristallsplitter
+      if (skinDef.hexer) {
+        x.strokeStyle = "rgba(255,255,255,0.45)";
+        x.lineWidth = 0.8;
+        x.beginPath();
+        x.arc(cx, cy, R * 0.38, 0, Math.PI * 2);
+        x.stroke();
+        for (let sp = 0; sp < 3; sp++) {
+          const a = sp / 3 * Math.PI * 2 + 0.5;
+          x.fillStyle = fxc;
+          x.beginPath();
+          x.moveTo(cx + Math.cos(a) * R * 0.30, cy + Math.sin(a) * R * 0.30);
+          x.lineTo(cx + Math.cos(a + 0.35) * R * 0.5, cy + Math.sin(a + 0.35) * R * 0.5);
+          x.lineTo(cx + Math.cos(a - 0.35) * R * 0.5, cy + Math.sin(a - 0.35) * R * 0.5);
+          x.closePath();
+          x.fill();
+        }
+      }
+    } else if (style === "scale") {
+      // Drachenschuppen: überlappende Panzerschuppen mit glühenden Fugen
+      x.save();
+      x.beginPath();
+      x.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
+      x.clip();
+      for (let ring = 1; ring <= 3; ring++) {
+        const rr2 = R * (0.24 * ring);
+        const cnt = 5 + ring * 3;
+        for (let i = 0; i < cnt; i++) {
+          const a = i / cnt * Math.PI * 2 + ring * 0.4;
+          const sx2 = cx + Math.cos(a) * rr2, sy2 = cy + Math.sin(a) * rr2;
+          x.beginPath();
+          x.arc(sx2, sy2, R * 0.16, Math.PI, Math.PI * 2);
+          x.fillStyle = "rgba(0,0,0,0.30)";
+          x.fill();
+          x.strokeStyle = "rgba(251,146,60,0.42)";
+          x.lineWidth = 0.8;
+          x.stroke();
+        }
+      }
+      x.restore();
+      // glühende Rissader über die Kuppel
+      x.strokeStyle = fxc;
+      x.lineWidth = 1.5;
+      x.globalAlpha = 0.8;
+      x.beginPath();
+      x.moveTo(cx - R * 0.6, cy - R * 0.2);
+      x.lineTo(cx - R * 0.15, cy + R * 0.1);
+      x.lineTo(cx + R * 0.2, cy - R * 0.25);
+      x.lineTo(cx + R * 0.62, cy + R * 0.05);
+      x.stroke();
+      x.globalAlpha = 1;
+    }
     // Sternen-Skin: kleine helle Punkte auf der Kuppel (einmal beim Backen)
     if (skinDef && skinDef.stars) {
       x.fillStyle = "rgba(255,255,255,0.85)";
@@ -595,6 +712,77 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   // Kuppel: vorgerendertes Sprite
   const dome = cannonDomeSprite(player, skinId, skinDef);
   ctx.drawImage(dome, cx - dome.width / 2, cy - dome.height / 2);
+  // ── Signatur-Animation je Skin (v3.44.0) ────────────────────────────────
+  // Das ist der eigentliche „Haben-wollen"-Faktor: ein Standbild kann man
+  // umfärben, Bewegung nicht. Bewusst billig gehalten (wenige Arcs/Punkte),
+  // weil bis zu ~24 Kanonen gleichzeitig auf dem Feld stehen können.
+  if (skinDef && skinDef.style) {
+    const fxc = skinDef.fx || n.lt;
+    if (skinDef.style === "rune") {
+      // Runenkranz dreht sich langsam, Hexer-Variante gegenläufig zweifach
+      const rot = now / (skinDef.hexer ? 2600 : 4200);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      ctx.strokeStyle = fxc;
+      ctx.globalAlpha = 0.55 + 0.25 * Math.sin(now / 520);
+      ctx.lineWidth = 1.2;
+      for (let g = 0; g < 6; g++) {
+        const a = g / 6 * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, R * 0.95, a, a + 0.42);
+        ctx.stroke();
+      }
+      ctx.restore();
+      if (skinDef.hexer) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-rot * 1.6);
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 0.9;
+        for (let g = 0; g < 3; g++) {
+          const a = g / 3 * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, R * 1.12, a, a + 0.7);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    } else if (skinDef.style === "star") {
+      // drei Sterne auf Umlaufbahn
+      for (let o = 0; o < 3; o++) {
+        const a = now / 1900 + o / 3 * Math.PI * 2;
+        const ox2 = cx + Math.cos(a) * R * 1.05, oy2 = cy + Math.sin(a) * R * 1.05 * 0.55;
+        ctx.globalAlpha = 0.55 + 0.35 * Math.sin(now / 400 + o);
+        ctx.fillStyle = fxc;
+        ctx.beginPath();
+        ctx.arc(ox2, oy2, 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (skinDef.style === "scale") {
+      // Hitzeflimmern: pulsierender Glutring dicht an der Kuppel
+      ctx.globalAlpha = 0.20 + 0.16 * Math.sin(now / 430);
+      ctx.strokeStyle = fxc;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.86, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (skinDef.style === "crystal") {
+      // Prisma-Funkeln: kurzer Lichtblitz auf einer wandernden Facette
+      const fa = Math.floor(now / 700) % 6;
+      const a = fa / 6 * Math.PI * 2 + 0.5;
+      ctx.globalAlpha = 0.35 + 0.4 * Math.abs(Math.sin(now / 350));
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * R * 0.5, cy + Math.sin(a) * R * 0.5, 1.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
   // \u2014 Reload-/Ready-Ring (dynamisch, aber OHNE shadowBlur) \u2014
   if (reloadFrac < 1) {
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
