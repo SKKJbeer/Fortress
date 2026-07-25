@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.49.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.50.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3669,3 +3669,57 @@ sind für den ersten Mauerring knapp, 28–30 wären sicherer (gegenmessen).
 Report: `balancing.html`. Balancing selbst weiterhin NICHT geändert.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.49.0`.
+
+---
+
+## v3.50.0 — Neue Waffentypen als Experiment (297 Selbstspiel-Partien)
+
+Aus v3.49.0 blieb ein Verdacht offen: Nicht die Feuerkraft ist zu schwach,
+sondern die ZIELAUFLÖSUNG (49 % aller Einschläge landen auf Trümmern). Statt
+weiter an Zahlen zu drehen, wurden FÜNF völlig neue Wirkmechaniken gebaut und
+gegeneinander gespielt. **Keine davon ist im Spiel aktiv** — alles läuft
+ausschließlich über `window.__balExp` und ist ohne diesen Schalter toter Code.
+
+**Waffentypen** (`__balExp = {weapon, mix, …}`, optional zweiter Typ
+`{weapon2, mix2}` — `mix` = Anteil der Läufe je Salve, 1 = alle, 0.34 = jede 3.):
+| Typ | Wirkung |
+|---|---|
+| `laser` | Sofortiger Strahl statt Flugbahn; schlägt durch die ersten `laserPierce` GEGNER-Zellen auf der Linie. Eigene Strukturen werden kostenlos durchdrungen. |
+| `mortar` | Steilfeuer: fliegt über den Mauerring, richtet an Mauern NICHTS aus, macht `mortarDmg` (3) an Kanonen im Burghof. Streuung `mortarScatter`. |
+| `splash` | Reißt ein Kreuz (5 Zellen) aus der Mauer statt einer Zelle. |
+| `fire` | Getroffene Zelle + Nachbarn brennen `fireRounds` lang → unbebaubar (`burning`-Ref). |
+| `emp` | Kein HP-Schaden; die Kanone verstummt `empRounds` lang (`cn.emp`). |
+
+**Ergebnis (n=24 Bestätigungslauf):**
+| Variante | entschieden | Median Rd | Spanne | Kanonen-Kills |
+|---|---|---|---|---|
+| Basislinie (Mörser) | 1/24 | 16 | – | 0,0 |
+| Laser p2, jede 3. Kanone | 24/24 | 5 | 2–10 | 0,0 |
+| Arsenal: Laser p2 + Steilfeuer | 24/24 | 6 | 1–10 | 0,3 |
+| **Arsenal: Laser p1 + Steilfeuer** | **22/24** | **7** | **3–14** | **1,2** |
+
+**Kernbefund — Präzision schlägt Schaden:** Die Splash-Granate VERDOPPELT den
+Mauerschaden (51,1 → 97,2) und entscheidet trotzdem nur 2/12. Der Laser mit
+Durchschlag 1 macht pro Schuss GENAU SO VIEL Schaden wie der heutige Mörser
+(eine Zelle) und entscheidet 11/12. Einziger Unterschied: 0 % statt 49 %
+verpuffte Einschläge.
+
+**Drei Befunde gegen die eigene Erwartung:**
+1. *Erster Laser-Bau war ein Eigentor* — 7,7 statt ~20 zerstörter Mauern, weil
+   der Strahl INNERHALB der eigenen Burg startet und die eigenen Mauern das
+   Durchschlagsbudget aufbrauchten. Nach dem Fix: 12/12. Diagnose `__laserDbg`.
+2. *Brandsatz wirkt, ändert aber nichts* — nachgemessen: 547 markierte
+   Brandzellen, 1009 tatsächlich verhinderte Bauzüge in 12 Partien, Ergebnis
+   3/12. Das 44×68-Feld bietet zu viel Ausweichfläche. Diagnose `__fireDbg`.
+3. *Steilfeuer allein entscheidet 0/12* und verlängert die Patt sogar (Schaden
+   wandert von der Mauer weg). Es hebt aber die Kanonen-Kills von 0,0 auf 6,5 —
+   heute sterben faktisch NULL Kanonen. Support-Waffe, keine Hauptwaffe.
+
+**Offen vor einer Übernahme:** (1) alle Zahlen aus Bot-gegen-Bot — Menschen
+zielen schlechter, der Laser könnte für sie schwächer ausfallen; (2) neue Typen
+brauchen Shop-Preis, Kanonen-Modell, Icon und eine Protokoll-Erweiterung
+(`PROTO_VERSION`), weil der Waffentyp pro Lauf synchronisiert werden muss;
+(3) ein Laser hat keine sichtbare Kugel → eigene Darstellung nötig.
+Report: `waffen.html`. Balancing und Spielregeln weiterhin UNVERÄNDERT.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.50.0`.

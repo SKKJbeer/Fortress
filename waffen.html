@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FORTRESS · Waffen-Experimente</title>
+<style>
+<style>
+:root{
+  --bg:#0a0c10; --panel:#141821; --panel2:#10141c;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.14);
+  --ink:#f0f2f6; --muted:#98a2b3; --faint:#606a7b;
+  --acc:#5eb0ef; --accdim:#2b5f8a;
+  --bad:#e2564d; --warn:#e0a83a; --good:#4fbf8b;
+  --fm:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:1000px;margin:0 auto;padding:0 clamp(16px,4vw,36px)}
+.hero{padding:clamp(40px,9vh,90px) 0 clamp(28px,5vh,48px);border-bottom:1px solid var(--line)}
+.kick{display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:11px;
+  letter-spacing:0.2em;text-transform:uppercase;color:var(--acc);margin-bottom:18px}
+.kick::before{content:"";width:24px;height:1px;background:var(--acc)}
+h1{font-size:clamp(30px,5.6vw,54px);font-weight:800;letter-spacing:-0.025em;line-height:1.03;margin:0 0 16px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--acc)}
+.lede{font-size:clamp(15px,2vw,19px);color:var(--muted);max-width:62ch;margin:0}
+.meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:24px;font-family:var(--fm);font-size:12px;color:var(--faint)}
+.meta b{color:var(--muted);font-weight:500}
+section{padding:clamp(38px,7vh,72px) 0;border-bottom:1px solid var(--line)}
+.sh{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sn{font-family:var(--fm);font-size:12px;color:var(--acc)}
+h2{font-size:clamp(22px,3.5vw,34px);font-weight:800;letter-spacing:-0.02em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:15.5px;max-width:66ch;margin:12px 0 0}
+.sub b{color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:24px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.kpi .n{font-family:var(--fm);font-weight:800;font-size:clamp(23px,3.4vw,32px);line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35}
+.n.bad{color:var(--bad)} .n.warn{color:var(--warn)} .n.good{color:var(--good)} .n.acc{color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:18px}
+th{text-align:left;font-family:var(--fm);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;padding:0 12px 10px 0;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:11px 12px 11px 0;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+td b{color:var(--ink)} .tw{overflow-x:auto}
+.mono{font-family:var(--fm)}
+.find{display:grid;grid-template-columns:40px 1fr;gap:16px;padding:20px 0;border-bottom:1px solid var(--line)}
+.find:last-child{border-bottom:none}
+.fn{font-family:var(--fm);font-size:13px;color:var(--acc);padding-top:3px}
+.ft{font-size:clamp(16px,2.1vw,20px);font-weight:700;margin:0 0 7px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--fm);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.tag.crit{background:rgba(226,86,77,0.14);color:var(--bad);border:1px solid rgba(226,86,77,0.3)}
+.tag.med{background:rgba(224,168,58,0.13);color:var(--warn);border:1px solid rgba(224,168,58,0.28)}
+.tag.ok{background:rgba(79,191,139,0.13);color:var(--good);border:1px solid rgba(79,191,139,0.3)}
+.fb{font-size:15px;color:var(--muted);margin:0}
+.fb b{color:var(--ink)}
+.fb code{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+.prop{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;margin-top:16px}
+.prop h3{margin:0 0 4px;font-size:18px;font-weight:800;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.prop .why{font-size:13px;color:var(--faint);font-family:var(--fm);margin:0 0 12px}
+.prop p{margin:0 0 10px;font-size:14.5px;color:var(--muted)}
+.prop p:last-child{margin-bottom:0}
+.prop b{color:var(--ink)}
+.eff{display:inline-flex;gap:5px;align-items:center;font-family:var(--fm);font-size:10.5px;
+  padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.eff.hi{border-color:rgba(79,191,139,0.4);color:var(--good)}
+.warnbox{margin-top:22px;background:rgba(224,168,58,0.07);border:1px solid rgba(224,168,58,0.28);
+  border-radius:14px;padding:18px 22px}
+.warnbox .l{font-family:var(--fm);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--warn);margin-bottom:9px}
+.warnbox p{margin:0;font-size:14.5px;color:var(--muted)}
+.warnbox p+p{margin-top:9px}
+.warnbox b{color:var(--ink)}
+footer{padding:36px 0 60px;font-size:12.5px;color:var(--faint);line-height:1.7}
+footer a{color:var(--acc);text-decoration:none}
+
+.wpgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:24px}
+.wp{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:0 0 16px;overflow:hidden}
+.wp canvas{display:block;width:100%;height:150px;background:#0d1117;border-bottom:1px solid var(--line)}
+.wp .b{padding:14px 18px 0}
+.wp h3{margin:0 0 3px;font-size:16.5px;font-weight:800;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.wp .m{font-family:var(--fm);font-size:11px;color:var(--faint);margin:0 0 9px}
+.wp p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.5}
+.wp p b{color:var(--ink)}
+.bar{display:flex;align-items:center;gap:10px;margin:5px 0}
+.bar .lbl{font-size:12.5px;color:var(--muted);width:auto;flex:0 0 210px}
+.bar .tr{flex:1;height:9px;background:rgba(255,255,255,0.05);border-radius:5px;overflow:hidden}
+.bar .fi{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accdim),var(--acc))}
+.bar .fi.good{background:linear-gradient(90deg,#2c6b52,var(--good))}
+.bar .fi.bad{background:linear-gradient(90deg,#6d2f2b,var(--bad))}
+.bar .v{font-family:var(--fm);font-size:12px;color:var(--ink);width:66px;text-align:right;font-variant-numeric:tabular-nums}
+.dist{font-family:var(--fm);font-size:11.5px;color:var(--faint);letter-spacing:0.5px;margin:3px 0 14px 0}
+.dist b{color:var(--acc);font-weight:600}
+.spark{display:flex;gap:2px;align-items:flex-end;height:34px;margin:8px 0 2px}
+.spark i{flex:1;background:var(--accdim);border-radius:2px 2px 0 0;min-height:2px}
+.spark i.hi{background:var(--acc)}
+.axis{display:flex;justify-content:space-between;font-family:var(--fm);font-size:10px;color:var(--faint)}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">Waffen-Experimente · v3.50.0 · nicht im Spiel aktiv</span>
+    <h1>Fünf neue Kanonentypen.<br><em>297</em> Partien. Ein Gewinner.</h1>
+    <p class="lede">Die Balancing-Analyse hatte einen Verdacht hinterlassen: Es liegt nicht am Schaden, es liegt an der <b style="color:var(--ink)">Zielgenauigkeit</b> — 49 % aller Kugeln landen auf Trümmern. Statt an Zahlen zu drehen, wurden fünf völlig neue Wirkmechaniken gebaut und gegeneinander gespielt: Laser, Steilfeuer-Mörser, Splash-Granate, Brandsatz, Störsender.</p>
+    <div class="meta">
+      <span><b>Methode:</b> <span class="mono">__balExp</span> + <span class="mono">__botSelfPlay</span></span>
+      <span><b>Stichprobe:</b> 297 Partien, 19 Varianten</span>
+      <span><b>Bestätigung:</b> 4 Varianten &agrave; 24 Partien</span>
+      <span><b>Status:</b> alles gated, live unverändert</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sh"><span class="sn">01</span><h2>Die Ausgangslage</h2></div>
+    <p class="sub">Kontrolllauf mit der heutigen Mörser-Mechanik, 24 Partien, Rundenlimit 16. Die Offensive arbeitet — sie kommt nur nie zum Abschluss.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="n bad">1/24</div><div class="l">Partien enden regulär</div></div>
+      <div class="kpi"><div class="n bad">48 %</div><div class="l">aller Einschläge <b>verpuffen</b> auf Trümmern oder im Leeren</div></div>
+      <div class="kpi"><div class="n warn">51,7</div><div class="l">zerstörte Mauern je Partie — <b>und trotzdem</b> kein Ende</div></div>
+      <div class="kpi"><div class="n bad">0,0</div><div class="l">zerstörte Kanonen je Partie: Kanonen sind faktisch unsterblich</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">02</span><h2>Die fünf neuen Waffen</h2></div>
+    <p class="sub">Jede greift eine <b>andere</b> Ressource an: Mauer, Kanone, Wiederaufbau-Fläche, Feuerkraft. Keine davon ist eine Zahlenänderung — jede ist eine eigene Wirkmechanik.</p>
+
+    <div class="wpgrid">
+      <div class="wp"><canvas data-fx="laser"></canvas><div class="b">
+        <h3>Laser <span class="tag ok">Gewinner</span></h3>
+        <p class="m">weapon: laser · laserPierce 1–3</p>
+        <p>Kein Flugbahn-Einschlag, sondern ein <b>sofortiger Strahl</b>. Er läuft die Linie ab und schlägt durch die ersten N <b>Gegner</b>-Mauern. Eigene Mauern durchdringt er kostenlos — sonst verpufft er im eigenen Ring.</p>
+      </div></div>
+
+      <div class="wp"><canvas data-fx="mortar"></canvas><div class="b">
+        <h3>Steilfeuer-Mörser <span class="tag med">Support</span></h3>
+        <p class="m">weapon: mortar · mortarDmg 3 · Streuung 1,6</p>
+        <p>Die Granate fliegt <b>über</b> den Mauerring und detoniert erst im Burghof. An der Mauer richtet sie nichts aus — sie jagt <b>Kanonen</b>. Preis: deutliche Streuung.</p>
+      </div></div>
+
+      <div class="wp"><canvas data-fx="splash"></canvas><div class="b">
+        <h3>Splash-Granate <span class="tag crit">wirkungslos</span></h3>
+        <p class="m">weapon: splash</p>
+        <p>Reißt statt einer Zelle ein <b>Kreuz</b> aus der Mauer. Verdoppelt den Schaden fast exakt — und entscheidet trotzdem fast nichts.</p>
+      </div></div>
+
+      <div class="wp"><canvas data-fx="fire"></canvas><div class="b">
+        <h3>Brandsatz <span class="tag crit">wirkungslos</span></h3>
+        <p class="m">weapon: fire · fireRounds 3</p>
+        <p>Die getroffene Zelle und ihre Nachbarn <b>brennen</b> und sind drei Runden lang unbebaubar. Greift nicht die Mauer an, sondern die Wiederaufbau-Fläche.</p>
+      </div></div>
+
+      <div class="wp"><canvas data-fx="emp"></canvas><div class="b">
+        <h3>Störsender <span class="tag crit">wirkungslos</span></h3>
+        <p class="m">weapon: emp · empRounds 2</p>
+        <p>Kein HP-Schaden. Die getroffene Kanone <b>verstummt</b> für zwei Runden, blockiert aber weiter Platz und Schrott. Reine Feuerkraft-Verweigerung.</p>
+      </div></div>
+
+      <div class="wp"><canvas data-fx="arsenal"></canvas><div class="b">
+        <h3>Gemischtes Arsenal <span class="tag ok">Empfehlung</span></h3>
+        <p class="m">weapon + weapon2 · je jede 3. Kanone</p>
+        <p>Eine Salve mit <b>drei</b> Lauf-Typen: Laser gegen die Mauer, Steilfeuer gegen die Kanonen, Mörser wie bisher. Erst die Mischung erzeugt eine <b>Kurve</b> statt eines Schalters.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">03</span><h2>Was gemessen wurde</h2></div>
+    <p class="sub">Je 12 Partien, drei Bot-Stufen gleichverteilt, Rundenlimit 16. „Verpufft“ = Anteil der Einschläge auf Trümmern oder leerem Feld.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Variante</th><th>entschieden</th><th>Ø Runden</th><th>Mauern</th><th>Kanonen</th><th>Treffer/Schuss</th><th>verpufft</th></tr></thead>
+      <tbody>
+        <tr><td><b>Basislinie (Mörser heute)</b></td><td class="mono">0/12</td><td class="mono">16,0</td><td class="mono">51,1</td><td class="mono">0,0</td><td class="mono">0,49</td><td class="mono">49 %</td></tr>
+        <tr><td><b>Laser</b>, alle Kanonen, Durchschlag 3</td><td class="mono" style="color:var(--good)">12/12</td><td class="mono">4,0</td><td class="mono">37,8</td><td class="mono">0,1</td><td class="mono">2,67</td><td class="mono" style="color:var(--good)">0 %</td></tr>
+        <tr><td><b>Laser</b>, alle Kanonen, Durchschlag 1</td><td class="mono" style="color:var(--good)">11/12</td><td class="mono">7,8</td><td class="mono">36,3</td><td class="mono">0,0</td><td class="mono">0,97</td><td class="mono" style="color:var(--good)">0 %</td></tr>
+        <tr><td><b>Laser</b>, jede 3. Kanone, Durchschlag 2</td><td class="mono" style="color:var(--good)">12/12</td><td class="mono">6,6</td><td class="mono">39,9</td><td class="mono">0,0</td><td class="mono">1,14</td><td class="mono">14 %</td></tr>
+        <tr><td><b>Arsenal</b> (Laser p2 + Steilfeuer)</td><td class="mono" style="color:var(--good)">12/12</td><td class="mono">5,8</td><td class="mono">25,6</td><td class="mono">0,3</td><td class="mono">1,27</td><td class="mono" style="color:var(--good)">4 %</td></tr>
+        <tr><td><b>Arsenal</b> (Laser p1 + Steilfeuer)</td><td class="mono" style="color:var(--good)">11/12</td><td class="mono">8,3</td><td class="mono">28,5</td><td class="mono">0,7</td><td class="mono">0,89</td><td class="mono" style="color:var(--good)">6 %</td></tr>
+        <tr><td>Splash-Granate, alle Kanonen</td><td class="mono" style="color:var(--bad)">2/12</td><td class="mono">14,4</td><td class="mono" style="color:var(--warn)">97,2</td><td class="mono">0,0</td><td class="mono">1,05</td><td class="mono" style="color:var(--bad)">63 %</td></tr>
+        <tr><td>Brandsatz</td><td class="mono" style="color:var(--bad)">3/12</td><td class="mono">13,3</td><td class="mono">45,6</td><td class="mono">0,0</td><td class="mono">0,51</td><td class="mono" style="color:var(--bad)">47 %</td></tr>
+        <tr><td>Steilfeuer-Mörser, jede 3. Kanone</td><td class="mono" style="color:var(--bad)">0/12</td><td class="mono">16,0</td><td class="mono">38,0</td><td class="mono" style="color:var(--good)">6,5</td><td class="mono">0,78</td><td class="mono">17 %</td></tr>
+        <tr><td>Steilfeuer-Mörser, jede 2. Kanone</td><td class="mono" style="color:var(--bad)">1/12</td><td class="mono">15,1</td><td class="mono">23,2</td><td class="mono" style="color:var(--good)">8,2</td><td class="mono">0,84</td><td class="mono">9 %</td></tr>
+        <tr><td>Störsender</td><td class="mono" style="color:var(--bad)">0/12</td><td class="mono">16,0</td><td class="mono">34,8</td><td class="mono">0,0</td><td class="mono">0,81</td><td class="mono">15 %</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">04</span><h2>Befunde</h2></div>
+
+    <div class="find">
+      <span class="fn">01</span>
+      <div>
+        <h3 class="ft">Präzision schlägt Schaden — und zwar deutlich <span class="tag ok">bestätigt</span></h3>
+        <p class="fb">Die <b>Splash-Granate verdoppelt den Mauerschaden</b> (51,1 → 97,2 zerstörte Mauern) und entscheidet trotzdem nur 2 von 12 Partien. Der <b>Laser mit Durchschlag 1</b> macht pro Schuss <b>exakt so viel Schaden wie der heutige Mörser</b> — eine Zelle — und entscheidet 11 von 12. Der einzige Unterschied: Der Laser kann per Konstruktion nicht auf Trümmern landen (verpufft 0 % statt 49 %). Damit ist der Verdacht aus der Balancing-Analyse hart belegt: <b>Nicht die Feuerkraft ist zu schwach, sondern die Zielauflösung.</b></p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">02</span>
+      <div>
+        <h3 class="ft">Der erste Laser-Bau war ein Eigentor <span class="tag med">korrigiert</span></h3>
+        <p class="fb">Erste Messung: 7,7 zerstörte Mauern statt der ~20 der Basislinie — der Laser war <b>schlechter</b> als der Mörser. Grund: Der Strahl startet <b>innerhalb der eigenen Burg</b>, und die eigenen Mauern haben das Durchschlagsbudget aufgebraucht, bevor er den Gegner erreicht hat. Nachdem eigene Strukturen kostenlos durchdrungen werden, sprang dieselbe Variante auf 12/12 entschiedene Partien. Die Diagnose <span class="mono">__laserDbg</span> zeigt es direkt: pro Salve 60 eigene gegen 45 gegnerische Zellen auf der Linie.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">03</span>
+      <div>
+        <h3 class="ft">Flächen-Verweigerung wirkt am Brettformat vorbei <span class="tag crit">verworfen</span></h3>
+        <p class="fb">Der Brandsatz wurde nachgemessen, bevor er als wirkungslos abgeschrieben wurde: <b>547 Brandzellen markiert, 1009 Bauzüge tatsächlich verhindert</b> in 12 Partien. Die Mechanik greift also einwandfrei — und ändert das Ergebnis nicht (3/12 statt 0/12). Erklärung: Das 44×68-Feld bietet so viel Platz, dass eine blockierte Zelle einfach eine Zelle weiter ersetzt wird. Flächenverbot ist auf diesem Brett kein Druckmittel.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">04</span>
+      <div>
+        <h3 class="ft">Steilfeuer entscheidet nichts — und ist trotzdem der interessanteste Fund <span class="tag med">Support</span></h3>
+        <p class="fb">Allein eingesetzt: <b>0 von 12</b> Partien entschieden. Der Mörser kann die Burg nicht öffnen, und Öffnen ist die einzige Verlustbedingung. Er verschiebt sogar Schaden weg von der Mauer (51,1 → 38,0) und <b>verlängert</b> damit die Pattsituation. Aber: Er hebt die zerstörten Kanonen von <b>0,0 auf 6,5 je Partie</b>. Heute sind Kanonen faktisch unsterblich, weil alle auf Mauern schießen. Das Steilfeuer erzeugt die erste echte <b>Materialschlacht</b> — als Beimischung, nicht als Hauptwaffe.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">05</span>
+      <div>
+        <h3 class="ft">Reine Laser-Arsenale sind zu scharf <span class="tag med">dosieren</span></h3>
+        <p class="fb">Mit Durchschlag 3 auf allen Kanonen fallen Partien im Median in <b>Runde 4</b>, zweimal sogar in Runde 2 — das ist kein Spiel mehr, das ist ein Schalter. Die Dosierung entscheidet: nur <b>jede dritte</b> Kanone als Laser, Durchschlag 1–2. Deshalb wurde die Mechanik als <b>Mix</b> gebaut (<span class="mono">mix</span> = Anteil der Läufe je Salve), nicht als globaler Modus.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">05</span><h2>Bestätigungslauf, je 24 Partien</h2></div>
+    <p class="sub">Die drei aussichtsreichsten Varianten gegen einen frischen Kontrolllauf. Entscheidend ist nicht nur <b>ob</b> Partien enden, sondern <b>wie breit gestreut</b> — eine Waffe, die alles in Runde 3 beendet, ist genauso kaputt wie eine, die nie beendet.</p>
+
+    <div class="prop">
+      <h3>Basislinie <span class="eff">1/24 entschieden</span> <span class="eff">Ø 15,8 Runden</span></h3>
+      <p class="why">einzige entschiedene Partie: Runde 12</p>
+      <div class="spark" data-dist="" data-flat="1"></div>
+      <div class="axis"><span>Runde 1</span><span>Runde 16</span></div>
+    </div>
+
+    <div class="prop">
+      <h3>Laser p2, jede 3. Kanone <span class="eff hi">24/24 entschieden</span> <span class="eff">Median Runde 5</span></h3>
+      <p class="why">Verteilung: 2 2 2 3 3 3 4 4 4 4 4 4 5 5 5 6 6 6 7 7 8 8 8 10 — drei Partien fallen schon in Runde 2</p>
+      <div class="spark" data-dist="2,2,2,3,3,3,4,4,4,4,4,4,5,5,5,6,6,6,7,7,8,8,8,10"></div>
+      <div class="axis"><span>Runde 1</span><span>Runde 16</span></div>
+    </div>
+
+    <div class="prop">
+      <h3>Arsenal: Laser p2 + Steilfeuer <span class="eff hi">24/24 entschieden</span> <span class="eff">Median Runde 6</span></h3>
+      <p class="why">Verteilung: 1 2 2 3 5 5 5 5 6 6 6 6 6 7 7 7 7 7 7 8 9 9 10 10 — ein Ausreißer in Runde 1</p>
+      <div class="spark" data-dist="1,2,2,3,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,9,9,10,10"></div>
+      <div class="axis"><span>Runde 1</span><span>Runde 16</span></div>
+    </div>
+
+    <div class="prop" style="border-color:rgba(79,191,139,0.35)">
+      <h3>Arsenal: Laser p1 + Steilfeuer <span class="eff hi">22/24 entschieden</span> <span class="eff hi">Median Runde 7</span> <span class="tag ok">Empfehlung</span></h3>
+      <p class="why">Verteilung: 3 4 5 5 5 6 7 7 7 7 7 7 7 7 8 8 9 10 10 11 12 14 — kein Kurzschluss, breiteste Spanne</p>
+      <div class="spark" data-dist="3,4,5,5,5,6,7,7,7,7,7,7,7,7,8,8,9,10,10,11,12,14"></div>
+      <div class="axis"><span>Runde 1</span><span>Runde 16</span></div>
+      <p style="margin-top:14px">Diese Kombination ist die einzige, die alle drei Bedingungen erfüllt: Partien enden <b>fast immer</b> (92 %), sie enden <b>nicht zu früh</b> (frühestens Runde 3, Median 7) und sie enden <b>unterschiedlich</b> (Spanne 3–14, also echte Spannung statt Countdown). Zusätzlich bringt das Steilfeuer <b>1,2 zerstörte Kanonen je Partie</b> in ein Spiel, in dem heute exakt null Kanonen sterben.</p>
+    </div>
+
+    <div class="warnbox">
+      <div class="l">Nicht übernommen</div>
+      <p>Keine dieser Waffen ist im Spiel aktiv. Alles läuft ausschließlich über <span class="mono">window.__balExp</span> und ist ohne diesen Schalter toter Code — das normale Spiel, der Online-Modus und die Wertung sind unverändert.</p>
+      <p>Offene Punkte vor einer Übernahme: <b>(1)</b> Alle Zahlen stammen aus Bot-gegen-Bot-Partien; Menschen zielen anders, insbesondere schlechter — der Laser könnte für Menschen deutlich schwächer ausfallen. <b>(2)</b> Neue Waffentypen brauchen eine Ökonomie: Preis im Rüst-Shop, Kanonen-Modell, Icon, und für Online eine Protokoll-Erweiterung (<span class="mono">PROTO_VERSION</span>), weil der Waffentyp pro Lauf synchronisiert werden muss. <b>(3)</b> Ein Laser ohne Flugbahn hat keine sichtbare Kugel — er braucht eine eigene Darstellung, sonst wirkt der Treffer unmotiviert.</p>
+    </div>
+  </section>
+
+  <footer>
+    Rohdaten: 297 Partien Selbstspiel über 19 Waffen-Varianten, davon 96 im Bestätigungslauf (je 24).
+    Diagnose-Hooks: <span class="mono">__balExp</span>, <span class="mono">__impactStats</span>,
+    <span class="mono">__laserDbg</span>, <span class="mono">__fireDbg</span> — alle hinter
+    <span class="mono">window.__mmDebug = true</span>.<br>
+    <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/balancing.html">Balancing-Analyse</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/stats.html">Live-Telemetrie</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/review.html">Visual Review</a>
+  </footer>
+</div>
+
+<script>
+// Balken der Rundenverteilung (Runde 1..16)
+document.querySelectorAll('.spark').forEach(function (el) {
+  var d = (el.dataset.dist || '').split(',').filter(Boolean).map(Number);
+  var bins = new Array(16).fill(0);
+  d.forEach(function (x) { if (x >= 1 && x <= 16) bins[x - 1]++; });
+  if (el.dataset.flat) { bins = new Array(16).fill(0); bins[11] = 1; }
+  var max = Math.max.apply(null, bins) || 1;
+  el.innerHTML = bins.map(function (n) {
+    return '<i class="' + (n ? 'hi' : '') + '" style="height:' + Math.round(n / max * 100) + '%"></i>';
+  }).join('');
+});
+
+// Kleine Draufsicht-Illustrationen im Look des Spiels (kein Emoji, keine Screenshots).
+var C = 11;   // Zellgroesse der Miniatur
+function fit(cv) {
+  var r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  var x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { x: x, w: r.width, h: r.height };
+}
+function wall(x, px, py, col) {
+  x.fillStyle = col; x.fillRect(px, py, C - 1.4, C - 1.4);
+  x.fillStyle = 'rgba(255,255,255,0.13)'; x.fillRect(px, py, C - 1.4, 2);
+  x.fillStyle = 'rgba(0,0,0,0.28)'; x.fillRect(px, py + C - 3.4, C - 1.4, 2);
+}
+function rubble(x, px, py) {
+  x.fillStyle = '#3a4150'; x.fillRect(px + 1, py + 2, C - 4, C - 5);
+  x.fillStyle = '#2a3040'; x.fillRect(px + 3, py + 4, 3, 3);
+}
+function turret(x, cx, cy, col, ang) {
+  x.save(); x.translate(cx, cy);
+  x.fillStyle = 'rgba(0,0,0,0.35)'; x.beginPath(); x.arc(1.5, 2, 8, 0, 7); x.fill();
+  x.fillStyle = '#2b3444'; x.beginPath(); x.arc(0, 0, 8, 0, 7); x.fill();
+  x.strokeStyle = col; x.lineWidth = 1.6; x.beginPath(); x.arc(0, 0, 8, 0, 7); x.stroke();
+  x.rotate(ang); x.fillStyle = '#4a5464'; x.fillRect(-1.8, -14, 3.6, 12);
+  x.fillStyle = col; x.fillRect(-2.4, -15.5, 4.8, 2.5);
+  x.restore();
+}
+function ring(x, w, h, col, gaps) {
+  var cols = Math.round(w / C), rows = Math.round(h / C);
+  var r0 = Math.round(rows * 0.30), r1 = rows - 3, c0 = 3, c1 = cols - 4;
+  for (var c = c0; c <= c1; c++) {
+    if (gaps.indexOf('t' + c) < 0) wall(x, c * C, r0 * C, col);
+  }
+  for (var r = r0; r <= r1; r++) { wall(x, c0 * C, r * C, col); wall(x, c1 * C, r * C, col); }
+  return { r0: r0, c0: c0, c1: c1, rows: rows, cols: cols };
+}
+var FX = {
+  laser: function (x, w, h, t) {
+    var g = ring(x, w, h, '#c2453c', []);
+    var sy = h - 16, sx = 20;
+    var ty = g.r0 * C + 5, tx = w * 0.62;
+    var p = (t % 100) / 100;
+    x.save();
+    var grd = x.createLinearGradient(sx, sy, tx, ty);
+    grd.addColorStop(0, 'rgba(94,176,239,0)'); grd.addColorStop(0.25, 'rgba(94,176,239,0.85)');
+    grd.addColorStop(1, 'rgba(255,255,255,0.95)');
+    x.strokeStyle = grd; x.lineWidth = 2 + Math.sin(p * 6.28) * 0.9;
+    x.beginPath(); x.moveTo(sx, sy); x.lineTo(tx, ty); x.stroke();
+    x.strokeStyle = 'rgba(94,176,239,0.18)'; x.lineWidth = 7;
+    x.beginPath(); x.moveTo(sx, sy); x.lineTo(tx, ty); x.stroke();
+    x.restore();
+    // durchschlagene Zellen als Truemmer
+    var cc = Math.round(tx / C);
+    rubble(x, cc * C, g.r0 * C); rubble(x, (cc + 1) * C, g.r0 * C);
+    turret(x, sx, sy, '#5eb0ef', Math.atan2(ty - sy, tx - sx) + 1.5708);
+  },
+  mortar: function (x, w, h, t) {
+    var g = ring(x, w, h, '#c2453c', []);
+    var sx = 20, sy = h - 16, tx = w * 0.66, ty = g.r0 * C + 34;
+    var p = (t % 140) / 140;
+    x.strokeStyle = 'rgba(224,168,58,0.35)'; x.lineWidth = 1.2; x.setLineDash([3, 4]);
+    x.beginPath();
+    for (var i = 0; i <= 24; i++) {
+      var q = i / 24, ax = sx + (tx - sx) * q, ay = sy + (ty - sy) * q - Math.sin(q * Math.PI) * 46;
+      i ? x.lineTo(ax, ay) : x.moveTo(ax, ay);
+    }
+    x.stroke(); x.setLineDash([]);
+    var bx = sx + (tx - sx) * p, by = sy + (ty - sy) * p - Math.sin(p * Math.PI) * 46;
+    x.fillStyle = '#e0a83a'; x.beginPath(); x.arc(bx, by, 3.2, 0, 7); x.fill();
+    turret(x, tx, ty, '#c2453c', 0.4);   // Zielkanone im Burghof
+    turret(x, sx, sy, '#5eb0ef', Math.atan2(ty - sy, tx - sx) + 1.5708);
+  },
+  splash: function (x, w, h, t) {
+    var g = ring(x, w, h, '#c2453c', []);
+    var cc = Math.round(w * 0.55 / C), r = g.r0;
+    [[0,0],[-1,0],[1,0],[0,-1],[0,1]].forEach(function (d) { rubble(x, (cc + d[0]) * C, (r + d[1]) * C); });
+    var p = (t % 90) / 90;
+    x.strokeStyle = 'rgba(226,86,77,' + (0.75 - p * 0.7).toFixed(2) + ')'; x.lineWidth = 2;
+    x.beginPath(); x.arc(cc * C + C / 2, r * C + C / 2, 6 + p * 22, 0, 7); x.stroke();
+    turret(x, 20, h - 16, '#5eb0ef', 0.6);
+  },
+  fire: function (x, w, h, t) {
+    var g = ring(x, w, h, '#c2453c', []);
+    var cc = Math.round(w * 0.5 / C), r = g.r0;
+    for (var d = -1; d <= 1; d++) rubble(x, (cc + d) * C, r * C);
+    for (var i = 0; i < 14; i++) {
+      var q = (t * 0.9 + i * 37) % 100 / 100;
+      var fx2 = (cc - 1 + (i % 3)) * C + 3 + Math.sin((t + i * 20) * 0.05) * 2;
+      var fy = r * C + C - q * 26;
+      x.fillStyle = ['rgba(255,236,150,', 'rgba(240,150,60,', 'rgba(226,86,77,'][i % 3] + (0.75 - q * 0.75).toFixed(2) + ')';
+      x.beginPath(); x.arc(fx2, fy, 2.6 - q * 1.8, 0, 7); x.fill();
+    }
+    x.strokeStyle = 'rgba(224,168,58,0.5)'; x.setLineDash([2, 3]); x.lineWidth = 1;
+    x.strokeRect((cc - 1) * C, (r - 1) * C, C * 3, C * 3); x.setLineDash([]);
+    turret(x, 20, h - 16, '#5eb0ef', 0.6);
+  },
+  emp: function (x, w, h, t) {
+    ring(x, w, h, '#c2453c', []);
+    var cx = w * 0.62, cy = h * 0.62;
+    turret(x, cx, cy, '#6b7280', 0.9);
+    for (var i = 0; i < 3; i++) {
+      var p = ((t * 1.4 + i * 33) % 100) / 100;
+      x.strokeStyle = 'rgba(167,139,250,' + (0.65 - p * 0.65).toFixed(2) + ')'; x.lineWidth = 1.6;
+      x.beginPath(); x.arc(cx, cy, 9 + p * 26, 0, 7); x.stroke();
+    }
+    x.strokeStyle = 'rgba(167,139,250,0.9)'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(cx - 6, cy - 6); x.lineTo(cx + 6, cy + 6); x.stroke();
+    turret(x, 20, h - 16, '#5eb0ef', 0.7);
+  },
+  arsenal: function (x, w, h, t) {
+    var g = ring(x, w, h, '#c2453c', []);
+    var p = (t % 120) / 120;
+    // Laser
+    var sx1 = 16, sy1 = h - 16, tx1 = w * 0.5, ty1 = g.r0 * C + 5;
+    x.strokeStyle = 'rgba(94,176,239,' + (0.5 + Math.sin(p * 6.28) * 0.4).toFixed(2) + ')'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(sx1, sy1); x.lineTo(tx1, ty1); x.stroke();
+    rubble(x, Math.round(tx1 / C) * C, g.r0 * C);
+    // Steilfeuer
+    var sx2 = 40, sy2 = h - 16, tx2 = w * 0.7, ty2 = g.r0 * C + 34;
+    var bx = sx2 + (tx2 - sx2) * p, by = sy2 + (ty2 - sy2) * p - Math.sin(p * Math.PI) * 40;
+    x.fillStyle = '#e0a83a'; x.beginPath(); x.arc(bx, by, 3, 0, 7); x.fill();
+    turret(x, tx2, ty2, '#c2453c', 0.4);
+    // normaler Moerser
+    var sx3 = 64, sy3 = h - 16, tx3 = w * 0.34, ty3 = g.r0 * C + 5;
+    var p3 = ((t + 40) % 120) / 120;
+    var b3x = sx3 + (tx3 - sx3) * p3, b3y = sy3 + (ty3 - sy3) * p3 - Math.sin(p3 * Math.PI) * 40;
+    x.fillStyle = '#94a3b8'; x.beginPath(); x.arc(b3x, b3y, 2.6, 0, 7); x.fill();
+    turret(x, sx1, sy1, '#5eb0ef', 0.75);
+    turret(x, sx2, sy2, '#5eb0ef', 0.55);
+    turret(x, sx3, sy3, '#5eb0ef', 0.95);
+  }
+};
+var cvs = [].slice.call(document.querySelectorAll('canvas[data-fx]'));
+var tick = 0;
+function frame() {
+  tick++;
+  cvs.forEach(function (cv) {
+    if (!cv._d) cv._d = fit(cv);
+    var d = cv._d;
+    d.x.clearRect(0, 0, d.w, d.h);
+    d.x.fillStyle = '#0d1117'; d.x.fillRect(0, 0, d.w, d.h);
+    (FX[cv.dataset.fx] || function () {})(d.x, d.w, d.h, tick);
+  });
+  requestAnimationFrame(frame);
+}
+window.addEventListener('resize', function () { cvs.forEach(function (c) { c._d = null; }); });
+frame();
+</script>
+</body>
+</html>

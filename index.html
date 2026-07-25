@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.49.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.50.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2147,6 +2147,7 @@ window.FortressApp = function Fortress() {
   //   faecher:  Jede Kanone einer Salve zielt auf eine ANDERE Zelle.
   function balExp() { return (typeof window !== "undefined" && window.__balExp) || null; }
   const placedThisPhase = useRef({});
+  const burning = useRef({});     // "r_c" -> Runde, bis zu der die Zelle brennt
   const scarCount = useRef({});   // "r_c" -> wie oft zerstoert (nur bei narben)
   const scars = useRef({});       // "r_c" -> true = dauerhaft unbebaubar
 
@@ -4119,6 +4120,10 @@ window.FortressApp = function Fortress() {
     phase_r.current = "build";
     setPhase("build");
     placedThisPhase.current = {};   // Bauteil-Limit je Bauphase zuruecksetzen
+    {  // abgebrannte Zellen freigeben
+      const bs = burning.current, rn = roundRefVal.current;
+      for (const k in bs) if (bs[k] <= rn) delete bs[k];
+    }
     {
       const X = balExp();
       const bt = (X && X.druck)
@@ -4255,6 +4260,10 @@ window.FortressApp = function Fortress() {
     } else {
       ready = closedCannons(g, player, cannons.current[player]);
     }
+    // STOERSENDER (Experiment): getroffene Kanonen sind fuer X Runden
+    // lahmgelegt statt zerstoert — sie blockieren weiter Platz und Schrott.
+    // (c.emp ist ohne das Experiment nie gesetzt.)
+    ready = ready.filter((c) => !(c.emp > roundRefVal.current));
     if (ready.length === 0) {
       if (!online.current || player === myRole.current) showWarn(t('warnNoCannonReady'));
       return false;
@@ -4262,12 +4271,99 @@ window.FortressApp = function Fortress() {
     lastShot.current[player] = now;
     SFX.shoot();
     msOf(player).shots += ready.length; // Match-Statistik (v3.21.0): eine Kugel je schussbereiter Kanone
+    // ── LASER (Experiment v3.50.0) ────────────────────────────────────────
+    // Voellig andere Wirkmechanik als der Moerser: keine Flugbahn, kein
+    // Aufschlagpunkt — ein SOFORTIGER Strahl vom Rohr zum Ziel, der eine
+    // Schneise durch die ERSTEN N Mauern auf der Linie schlaegt. Damit trifft
+    // er systematisch mehrere Zellen und kann per Definition nicht in einer
+    // bereits geschlagenen Bresche verpuffen (Trummer-Problem entfaellt).
+    // Waffen-Mix (v3.50.0): `mix` = Anteil der Kanonen einer Salve, die den
+    // Sondertyp tragen (1 = alle, 0.33 = jede dritte). Damit laesst sich ein
+    // GEMISCHTES Arsenal messen statt eines Alles-oder-nichts-Modus.
+    // Zwei Sondertypen sind kombinierbar (weapon/mix + weapon2/mix2) — damit
+    // laesst sich ein echtes gemischtes Arsenal messen, z. B. 1/3 Laser +
+    // 1/3 Steilfeuer + 1/3 normaler Moerser.
+    const XMIX = balExp() || {};
+    const evOf = (m) => Math.max(1, Math.round(1 / (m == null ? 1 : m)));
+    const wpEvery = XMIX.weapon ? evOf(XMIX.mix) : 0;
+    const wpEvery2 = XMIX.weapon2 ? evOf(XMIX.mix2) : 0;
+    const wpAt = (i) => {
+      if (wpEvery2 && i % wpEvery2 === 1) return XMIX.weapon2;
+      if (wpEvery && i % wpEvery === 0) return XMIX.weapon;
+      return null;
+    };
+    {
+      const XL = balExp();
+      if (XL && (XL.weapon === "laser" || XL.weapon2 === "laser")) {
+        const pierce = XL.laserPierce || 3;
+        // eslint-disable-next-line no-unused-vars
+        // Der Strahl startet INNERHALB der eigenen Burg — die eigenen Mauern
+        // duerfen das Durchschlagsbudget deshalb nicht aufbrauchen (sonst
+        // verpufft der Laser im eigenen Mauerring). Nur GEGNER-Strukturen
+        // zaehlen als Durchschlag.
+        const enemyVals = new Set();
+        for (const p2 of playersList()) {
+          if (p2 === player) continue;
+          enemyVals.add(WALL_OF[p2]); enemyVals.add(CANNON_OF[p2]); enemyVals.add(CASTLE_OF[p2]);
+        }
+        const dbg = typeof window !== "undefined" && window.__mmDebug
+          ? (window.__laserDbg = window.__laserDbg || { beams: 0, seg: 0, own: 0, enemy: 0, exhausted: 0 }) : null;
+        for (let li = 0; li < ready.length; li++) {
+          if (wpAt(li) !== "laser") continue;   // diese Kanone ist ein normaler Moerser
+          const cn = ready[li];
+          const sx0 = cn.c * CELL + CELL / 2, sy0 = cn.r * CELL + CELL / 2;
+          const dx0 = targetX - sx0, dy0 = targetY - sy0;
+          const len = Math.hypot(dx0, dy0) || 1;
+          const ux = dx0 / len, uy = dy0 / len;
+          let done = 0, lastKey = "";
+          if (dbg) dbg.beams++;
+          for (let step = CELL; step <= len + CELL * 6 && done < pierce; step += CELL * 0.5) {
+            const px2 = sx0 + ux * step, py2 = sy0 + uy * step;
+            const rr5 = Math.floor(py2 / CELL), cc5 = Math.floor(px2 / CELL);
+            if (rr5 < 0 || rr5 >= ROWS || cc5 < 0 || cc5 >= COLS) break;
+            const k5 = rr5 + "_" + cc5;
+            if (k5 === lastKey) continue;
+            lastKey = k5;
+            if (dbg) dbg.seg++;
+            const v5 = grid.current[rr5][cc5];
+            if (v5 === WALL_OF[player] || v5 === CANNON_OF[player] || v5 === CASTLE_OF[player]) {
+              if (dbg) dbg.own++;
+              continue;   // eigene Struktur: Strahl geht hindurch, kostet nichts
+            }
+            if (!enemyVals.has(v5)) continue;   // leer, Truemmer, Terrain
+            if (dbg) dbg.enemy++;
+            impactAt({ tx: px2, ty: py2, player });   // gleiche Schadensaufloesung
+            done++;
+          }
+          if (dbg && done >= pierce) dbg.exhausted++;
+        }
+        if (XL.weapon === "laser" && wpEvery === 1) return true;   // reines Laser-Arsenal → keine Kugeln
+      }
+    }
     ready.forEach((cn, index) => {
+      const wp = wpAt(index);
+      if (wp === "laser") return;   // wurde oben schon als Strahl abgehandelt
       const sx = cn.c * CELL + CELL / 2;
       const sy = cn.r * CELL + CELL / 2;
       let tx = targetX;
       let ty = targetY;
-      const XF = balExp();
+      if (wp === "mortar" || wp === "emp") {
+        // Steilfeuer/Stoersender ueberfliegen den Mauerring und zielen auf eine
+        // Kanone im Burghof. Preis dafuer: deutliche Streuung.
+        const E2 = playersList().filter((p2) => p2 !== player && !eliminated.current[p2]);
+        let cand = [];
+        for (const e2 of E2) cand = cand.concat((cannons.current[e2] || []).filter((c2) => c2.hp > 0
+          && !(wp === "emp" && c2.emp > roundRefVal.current)));
+        if (!cand.length) return;   // kein Hofziel → dieser Lauf feuert nicht
+        const pick2 = cand[(botAimSeq.current + index) % cand.length];
+        const sc2 = (XMIX.mortarScatter || 1.6) * CELL;
+        tx = pick2.c * CELL + CELL / 2 + (Math.random() - 0.5) * 2 * sc2;
+        ty = pick2.r * CELL + CELL / 2 + (Math.random() - 0.5) * 2 * sc2;
+        tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
+        ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
+      }
+      const arc = (wp === "mortar" || wp === "emp");   // eigenes Ziel, keine Salven-Streuung
+      const XF = arc ? null : balExp();
       if (XF && XF.faecher && index > 0) {
         // Salven-Faecher: die Kanonen verteilen sich entlang der Mauerlinie,
         // statt alle in dieselbe frisch geschlagene Bresche zu feuern.
@@ -4277,7 +4373,7 @@ window.FortressApp = function Fortress() {
         tx += side * rank * step;
         tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
         ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
-      } else if (index > 0) {
+      } else if (index > 0 && !arc) {
         const scatter = Math.min(index * 0.3, 1) * CELL;
         const scatterAngle = Math.random() * Math.PI * 2;
         tx += Math.cos(scatterAngle) * scatter;
@@ -4298,6 +4394,7 @@ window.FortressApp = function Fortress() {
         player,
         alive: true,
         cannonIndex: index,
+        wp,                 // Waffentyp dieses Laufs (Experiment, sonst null)
         trail: []
       });
       const angle = Math.atan2(ty - sy, tx - sx);
@@ -4401,7 +4498,14 @@ window.FortressApp = function Fortress() {
       const enemyCannon = CANNON_OF[ep];
       const cn = cannons.current[ep].find((c) => Math.abs(hitR - c.r) <= 1 && Math.abs(hitC - c.c) <= 1);
       if (cn) {
-        cn.hp -= 1;
+        const XC = balExp() || {};
+        if (ball.wp === "emp") {
+          // Kein HP-Schaden: die Kanone verstummt fuer X Runden.
+          cn.emp = roundRefVal.current + (XC.empRounds || 2);
+          if (ball.player !== ep) msOf(ball.player).hits += 1;
+          return;
+        }
+        cn.hp -= (ball.wp === "mortar") ? (XC.mortarDmg || 3) : 1;
         if (ball.player !== ep) msOf(ball.player).hits += 1; // Wirkungstreffer (Kanonen-Schaden)
         if (cn.hp <= 0) {
           // Kill-Belohnung (v3.16.0): Schrott für den Schützen
@@ -4472,6 +4576,11 @@ window.FortressApp = function Fortress() {
       return;
     }
     if (kind === "castle") return;
+    {
+      // STEILFEUER-MOERSER (Experiment): die Granate fliegt UEBER den Mauerring
+      // und detoniert erst im Burghof — an der Mauer richtet sie nichts aus.
+      if (ball.wp === "mortar" || ball.wp === "emp") return;
+    }
     const enemyWall = WALL_OF[ep];
     const castleClosedBefore = isCastleClosed(g, ep, castles.current[ep]);
     const newG = g.map((row) => [...row]);
@@ -4487,6 +4596,31 @@ window.FortressApp = function Fortress() {
         newG[hitR][hitC] = RUBBLE;
         wallDestroyed = true;
         {
+          if (ball.wp === "splash") {
+            // SPLASH-MOERSER: reisst ein Kreuz aus der Mauer statt einer Zelle.
+            for (const [nr3, nc3] of [[hitR-1,hitC],[hitR+1,hitC],[hitR,hitC-1],[hitR,hitC+1]]) {
+              if (nr3 < 0 || nr3 >= ROWS || nc3 < 0 || nc3 >= COLS) continue;
+              if (newG[nr3][nc3] !== WALL_OF[ep]) continue;
+              newG[nr3][nc3] = RUBBLE;
+              delete wallHp.current[nr3 + "_" + nc3];
+              if (ball.player !== ep) { msOf(ball.player).walls += 1; msOf(ball.player).hits += 1; }
+            }
+          }
+          if (ball.wp === "fire") {
+            // BRANDSATZ: die Zelle und ihre Nachbarn brennen und sind fuer
+            // X Runden unbebaubar. Greift die Wiederaufbau-Kapazitaet direkt an,
+            // statt mehr Schaden zu machen.
+            const until = roundRefVal.current + ((balExp() || {}).fireRounds || 3);
+            burning.current[hitR + "_" + hitC] = until;
+            if (typeof window !== "undefined" && window.__mmDebug) {
+              const fd = window.__fireDbg = window.__fireDbg || { marked: 0, blocked: 0 };
+              fd.marked++;
+            }
+            for (const [nr4, nc4] of [[hitR-1,hitC],[hitR+1,hitC],[hitR,hitC-1],[hitR,hitC+1]]) {
+              if (nr4 < 0 || nr4 >= ROWS || nc4 < 0 || nc4 >= COLS) continue;
+              if (newG[nr4][nc4] === EMPTY || newG[nr4][nc4] === RUBBLE) burning.current[nr4 + "_" + nc4] = until;
+            }
+          }
           const X = balExp();
           if (X && X.narben) {
             const k2 = hitR + "_" + hitC;
@@ -4558,6 +4692,13 @@ window.FortressApp = function Fortress() {
       if (g[r][c] !== EMPTY) return;
       if (!isBuildable(ter, r, c, player)) return;
       if (XP && XP.narben && scars.current[r + "_" + c]) return;  // dauerhafte Narbe
+      if (burning.current[r + "_" + c] > roundRefVal.current) {   // brennt noch
+        if (typeof window !== "undefined" && window.__mmDebug) {
+          const fd = window.__fireDbg = window.__fireDbg || { marked: 0, blocked: 0 };
+          fd.blocked++;
+        }
+        return;
+      }
     }
     placedThisPhase.current[player] = (placedThisPhase.current[player] || 0) + 1;
     const newG = g.map((row) => [...row]);
@@ -6742,7 +6883,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.49.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.50.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
