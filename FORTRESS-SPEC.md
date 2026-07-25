@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.50.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.50.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3723,3 +3723,40 @@ brauchen Shop-Preis, Kanonen-Modell, Icon und eine Protokoll-Erweiterung
 Report: `waffen.html`. Balancing und Spielregeln weiterhin UNVERÄNDERT.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.50.0`.
+
+---
+
+## v3.50.1 — Verlust-Diagnose: die v3.49.0-Empfehlung wird zurückgezogen
+
+Neuer gated Hook `__lossDbg`: misst im Moment der Elimination, ob der Verlierer
+sein Bauteil-Kontingent aufgebraucht hatte oder noch Teile übrig hatte. Damit
+wird prüfbar, WARUM eine Variante Partien entscheidet — nicht nur DASS sie es tut.
+
+| Variante (n=24) | entschieden | Median | Nachschub leer | hatte noch Teile | Teile in der Verlust-Bauphase |
+|---|---|---|---|---|---|
+| Nachschub 24→6 + Fächer | 22/24 | Rd 8 | **24 von 25** | 1 | Median 6 |
+| Nur Fächer (kein Limit) | 7/24 | Rd 16 | – | 8 von 8 | Median 19 |
+| Arsenal: Laser p1 + Steilfeuer | 22/24 | Rd 7 | – | **23 von 23** | **Median 50** |
+
+**Befund:** Beide Sieger erreichen dieselbe Entscheidungsrate über völlig
+verschiedene Mechanismen. Die Nachschub-Variante gewinnt über eine
+RESSOURCEN-UHR: 24 von 25 Niederlagen sind exakt aufgebrauchte Kontingente
+(22/22, 14/14, 8/8, 6/6). Diese Uhr tickt nur für jemanden, der das Kontingent
+ausschöpfen WILL — der Bot platziert bis zu 22 Teile je Bauphase, ein Mensch in
+25 s etwa 5–10. Die Regel bremst also den Bot hart und berührt einen Menschen
+bis ca. Runde 9 gar nicht. Die gemessenen 92 % übertragen sich NICHT auf echte
+Partien.
+
+Das Arsenal entscheidet dagegen OHNE jedes Limit: alle 23 Niederlagen passieren,
+obwohl der Verlierer weiterbauen durfte — im Median hatte er 50 Teile in der
+Verlust-Bauphase platziert. Der Laser öffnet schneller, als sich schließen lässt.
+Das ist unabhängig von der Platziergeschwindigkeit und überträgt sich auf
+menschliche Partien.
+
+**Konsequenz:** Die Empfehlung „schrumpfender Nachschub + Fächer" aus v3.49.0
+wird ZURÜCKGEZOGEN. Der Weg nach vorn ist die Zielauflösung (Waffen), nicht die
+Deckelung der Baukapazität. Auch die Gegenmessung 28/30 Startteile fiel damit
+hinfällig (28→6: 24/24 aber 7 Partien in Runde ≤2; 30→6: 21/24, Median 11).
+
+Report: `waffen.html` Abschnitt 06. Spielregeln weiterhin UNVERÄNDERT.
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.50.1`.

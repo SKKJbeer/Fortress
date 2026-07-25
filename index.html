@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.50.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.50.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4058,6 +4058,24 @@ window.FortressApp = function Fortress() {
       if (open && tutorialMode.current && p === 1) { showWarn(t('tutorialCastleOpen')); return false; }
       return open;
     });
+    // Verlust-Diagnose (gated, v3.50.1): WARUM ist die Burg offen geblieben —
+    // war der Nachschub aufgebraucht (Regel griff) oder hatte der Spieler noch
+    // Teile uebrig und hat die Luecke schlicht nicht geschlossen (KI-Schwaeche)?
+    if (typeof window !== "undefined" && window.__mmDebug && newlyOut.length) {
+      const XD = balExp() || {};
+      const lim = XD.limitStart
+        ? Math.max(XD.limitMin || 5, XD.limitStart - (roundRefVal.current - 1) * (XD.limitStep || 1))
+        : (XD.limit || null);
+      const ld = window.__lossDbg = window.__lossDbg || { total: 0, ausTeilen: 0, trotzTeilen: 0, ohneLimit: 0, det: [] };
+      for (const p of newlyOut) {
+        ld.total++;
+        const used = placedThisPhase.current[p] || 0;
+        if (lim === null) ld.ohneLimit++;
+        else if (used >= lim) ld.ausTeilen++;
+        else ld.trotzTeilen++;
+        if (ld.det.length < 20) ld.det.push({ r: roundRefVal.current, p, used, lim });
+      }
+    }
     for (const p of newlyOut) eliminated.current[p] = true;
     const stillIn = players.filter((p) => !eliminated.current[p]);
     if (stillIn.length <= 1) {
@@ -6883,7 +6901,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.50.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.50.1")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

@@ -105,12 +105,12 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="wrap">
 
   <header class="hero">
-    <span class="kick">Waffen-Experimente · v3.50.0 · nicht im Spiel aktiv</span>
+    <span class="kick">Waffen-Experimente · v3.50.1 · nicht im Spiel aktiv</span>
     <h1>Fünf neue Kanonentypen.<br><em>297</em> Partien. Ein Gewinner.</h1>
     <p class="lede">Die Balancing-Analyse hatte einen Verdacht hinterlassen: Es liegt nicht am Schaden, es liegt an der <b style="color:var(--ink)">Zielgenauigkeit</b> — 49 % aller Kugeln landen auf Trümmern. Statt an Zahlen zu drehen, wurden fünf völlig neue Wirkmechaniken gebaut und gegeneinander gespielt: Laser, Steilfeuer-Mörser, Splash-Granate, Brandsatz, Störsender.</p>
     <div class="meta">
       <span><b>Methode:</b> <span class="mono">__balExp</span> + <span class="mono">__botSelfPlay</span></span>
-      <span><b>Stichprobe:</b> 297 Partien, 19 Varianten</span>
+      <span><b>Stichprobe:</b> 417 Partien, 24 Varianten</span>
       <span><b>Bestätigung:</b> 4 Varianten &agrave; 24 Partien</span>
       <span><b>Status:</b> alles gated, live unverändert</span>
     </div>
@@ -275,10 +275,38 @@ footer a{color:var(--acc);text-decoration:none}
     </div>
   </section>
 
+  <section>
+    <div class="sh"><span class="sn">06</span><h2>Nachgemessen: <em style="font-style:normal;color:var(--acc)">warum</em> verliert der Verlierer?</h2></div>
+    <p class="sub">Der Balancing-Sieger aus v3.49.0 (schrumpfender Nachschub + Salven-Fächer) und der Waffen-Sieger erreichen fast dieselbe Entscheidungsrate. Die Frage ist, ob sie das auf dieselbe Weise tun. Dafür wurde im Moment der Elimination gemessen, ob der Verlierer noch Bauteile übrig hatte.</p>
+
+    <div class="tw"><table>
+      <thead><tr><th>Variante</th><th>entschieden</th><th>Median</th><th>Nachschub war leer</th><th>hatte noch Teile</th><th>Teile in der letzten Bauphase</th></tr></thead>
+      <tbody>
+        <tr><td><b>Nachschub 24→6 + Fächer</b></td><td class="mono">22/24</td><td class="mono">Rd 8</td><td class="mono" style="color:var(--warn)">24 von 25</td><td class="mono">1</td><td class="mono">Median 6</td></tr>
+        <tr><td>Nur Fächer, kein Limit</td><td class="mono">7/24</td><td class="mono">Rd 16</td><td class="mono">–</td><td class="mono">8 von 8</td><td class="mono">Median 19</td></tr>
+        <tr><td><b>Arsenal: Laser p1 + Steilfeuer</b></td><td class="mono" style="color:var(--good)">22/24</td><td class="mono">Rd 7</td><td class="mono">–</td><td class="mono" style="color:var(--good)">23 von 23</td><td class="mono" style="color:var(--good)">Median 50</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="find" style="margin-top:10px">
+      <span class="fn">06</span>
+      <div>
+        <h3 class="ft">Gleiche Zahl, völlig anderer Mechanismus <span class="tag crit">Empfehlung gedreht</span></h3>
+        <p class="fb">Bei der Nachschub-Variante gehen <b>24 von 25 Niederlagen</b> darauf zurück, dass das Bauteil-Kontingent exakt aufgebraucht war (22/22, 14/14, 8/8, 6/6). Das ist keine Schlacht, das ist eine <b>Ressourcen-Uhr</b>. Und sie tickt nur für jemanden, der das Kontingent überhaupt ausschöpfen will: Der Bot platziert bis zu <b>22 Teile in einer einzigen Bauphase</b>, ein Mensch schafft in 25 Sekunden vielleicht fünf bis zehn. Die Regel würde den Bot also hart bremsen und einen Menschen bis etwa Runde 9 überhaupt nicht berühren — die gemessenen 92 % übertragen sich <b>nicht</b> auf echte Spieler.</p>
+        <p class="fb" style="margin-top:10px">Beim Arsenal ist es umgekehrt: <b>kein Limit aktiv</b>, alle 23 Niederlagen passieren, obwohl der Verlierer weiterbauen durfte — im Median hatte er in der Verlust-Bauphase <b>50 Teile</b> platziert und die Burg trotzdem nicht dichtbekommen. Der Laser öffnet schneller, als sich schließen lässt. Das ist ein echtes Schuss-Duell und <b>unabhängig davon, wie schnell jemand Teile setzen kann</b> — es überträgt sich auf menschliche Partien.</p>
+      </div>
+    </div>
+
+    <div class="warnbox">
+      <div class="l">Konsequenz</div>
+      <p>Die Empfehlung aus v3.49.0 (schrumpfender Nachschub) wird damit <b>zurückgezogen</b>. Sie misst hauptsächlich, wie schnell ein Bot Steine setzt. Der Weg nach vorn ist der Waffen-Weg: die Zielauflösung reparieren, nicht die Baukapazität deckeln.</p>
+    </div>
+  </section>
+
   <footer>
-    Rohdaten: 297 Partien Selbstspiel über 19 Waffen-Varianten, davon 96 im Bestätigungslauf (je 24).
+    Rohdaten: 417 Partien Selbstspiel über 24 Varianten, davon 168 in Bestätigungsläufen (je 24).
     Diagnose-Hooks: <span class="mono">__balExp</span>, <span class="mono">__impactStats</span>,
-    <span class="mono">__laserDbg</span>, <span class="mono">__fireDbg</span> — alle hinter
+    <span class="mono">__laserDbg</span>, <span class="mono">__fireDbg</span>, <span class="mono">__lossDbg</span> — alle hinter
     <span class="mono">window.__mmDebug = true</span>.<br>
     <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> ·
     <a href="https://skkjbeer.github.io/Fortress/balancing.html">Balancing-Analyse</a> ·
