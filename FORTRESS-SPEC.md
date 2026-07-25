@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.42.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.43.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3469,3 +3469,33 @@ Zweiter und dritter Block aus dem Design-Review (`review.html`).
 Gemessen: Frame-Zeichendauer median 0,5 ms / p95 0,8 ms / max 4,5 ms (Budget
 16,7 ms bei 60 fps). Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.42.0`.
+
+### v3.43.0 — AAA: Burg, Kanonen und Shop-Gegenstände
+Vierter Block der Grafik-Offensive — die Objekte, die der Spieler am längsten
+ansieht, auf dasselbe Licht-Niveau wie Mauern/Terrain gehoben.
+- **Burg als gebackenes Sprite** (`castleSprite`): Sie wurde bisher PRO FRAME
+  mit mehreren Gradients gezeichnet — Detail war dadurch teuer. Jetzt einmal pro
+  Spieler gebacken, im Frame nur noch geblittet. Dadurch praktisch gratis:
+  versetztes Mauerwerk (Steinlagen mit Fugen), vier runde Ecktürme mit
+  Zinnenkranz und farbigem Innenlicht, Torbogen mit beleuchteter Laibung,
+  Innenhof mit warmem Eigenlicht, Wappenscheibe, Steinkorn, AO und helle Fase
+  oben/links. Nebeneffekt: Frame-Zeichendauer sank von 0,5 auf 0,4 ms median.
+  ⚠ Ecktürme zuerst als Vollring in Spielerfarbe gebaut → lasen sich wie
+  „Knöpfe"; ersetzt durch einzelne Merlons + dunkle Turmöffnung.
+- **Kanonen**: Panzerplatten-Fugen, Nieten mit Eigenlicht statt flacher Punkte,
+  Ambient Occlusion zur lichtabgewandten Seite, Rim-Light auf der Lichtseite,
+  Verstärkungsbänder und obere Lichtkante am Rohr. Alles im bestehenden
+  Sprite-Bake (`cannonDomeSprite`/`cannonBarrelSprite`) → null Frame-Kosten.
+- **Shop-Gegenstände**: aus flachen Farbscheiben wurden geschmiedete Plaketten —
+  Metallfassung, Innenschein in Item-Farbe, Glanzsichel oben links (globale
+  Lichtrichtung), Tiefenschatten, Icon mit eigenem Schlagschatten.
+- **Fluss-Ufer-Lesbarkeit (Regression gefangen)**: Die Tiefen-Einfärbung aus
+  v3.42.0 ließ Ufer-Zellen bis auf den dunkelsten Ton abfallen — der
+  Terrain-Flip-Regressionstest (v3.30.2) schlug an, weil Ufer farblich zu nah am
+  Land lagen. Das ist exakt die Bug-Klasse v3.30.1 („Spieler hält den Fluss für
+  bebaubar"). Fix: Untergrenze 0.30 im Farbmix, Kern-Schwelle 0.5→0.34. Der
+  Kruste→Kern-Verlauf bleibt, startet nur heller. Test danach 66/66 bei
+  Kontrast 140.
+
+Gemessen: Frame-Zeichendauer median 0,4 ms / p95 0,6 / max 1,7 ms.
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.43.0`.

@@ -144,75 +144,214 @@ export function ballSprite(player) {
   }
   return BALL_SPRITES[player];
 }
-export function drawCastle(ctx, cx, cy, player, open, now) {
+// Burg-Sprite (v3.43.0, AAA): frueher wurde die Burg PRO FRAME mit mehreren
+// Gradients gezeichnet - Detail war dadurch teuer. Jetzt EINMAL pro Spieler in
+// ein Sprite gebacken, im Frame nur noch geblittet. Dadurch ist reichhaltige
+// Architektur (Mauerwerk, Ecktuerme, Torbogen, Fase, AO) praktisch gratis.
+// Licht global von OBEN LINKS - konsistent mit SHADOW_DX/DY und drawWall.
+const CASTLE_PAD = 16;
+export function castleSprite(player) {
+  if (!SPR.castle) SPR.castle = {};
+  if (SPR.castle[player]) return SPR.castle[player];
   const S = CELL * 1.5;
+  const D = Math.ceil(S * 2 + CASTLE_PAD * 2);
+  const c = mkSpriteCanvas(D, D);
+  const x = c.getContext("2d");
+  const cx = D / 2, cy = D / 2;
   const roof = ROOF_OF[player] || "#2563eb";
   const lt = { 1: "#93c5fd", 2: "#fca5a5", 3: "#6ee7b7" }[player] || "#93c5fd";
   const glow = { 1: "rgba(59,130,246,", 2: "rgba(239,68,68,", 3: "rgba(16,185,129," }[player] || "rgba(59,130,246,";
-  // Schatten
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  roundRectPath(ctx, cx - S + 3, cy - S + 5, S * 2, S * 2, 4);
-  ctx.fill();
-  // Keep-K\u00F6rper (dunkler Metall-Stein)
-  const bg = ctx.createLinearGradient(cx, cy - S, cx, cy + S);
-  bg.addColorStop(0, "#3b4556");
-  bg.addColorStop(0.5, "#252d3a");
-  bg.addColorStop(1, "#141a25");
-  ctx.fillStyle = bg;
-  roundRectPath(ctx, cx - S, cy - S, S * 2, S * 2, 4);
-  ctx.fill();
-  // Zinnen mit Neon-Oberkante
-  for (let i = 0; i < 5; i++) {
-    const mx = cx - S + i * (S * 2 / 5);
-    ctx.fillStyle = "#2a323f";
-    ctx.fillRect(mx + 1, cy - S - 5, S * 2 / 5 - 3, 6);
-    ctx.fillStyle = roof;
-    ctx.fillRect(mx + 1, cy - S - 5, S * 2 / 5 - 3, 1.6);
+  const hash = (i) => Math.abs(Math.sin(i * 12.9898 + player * 7.13) * 43758.5453) % 1;
+  // 1) Schlagschatten (weich, entlang der Lichtachse)
+  x.save();
+  x.globalAlpha = 0.55;
+  x.fillStyle = "#000";
+  if (typeof x.filter === "string") x.filter = "blur(4px)";
+  roundRectPath(x, cx - S + 4, cy - S + 5, S * 2, S * 2, 5);
+  x.fill();
+  x.filter = "none";
+  x.restore();
+  // 2) Keep-Koerper - Verlauf diagonal entlang der Lichtachse
+  const bg = x.createLinearGradient(cx - S, cy - S, cx + S * 0.7, cy + S);
+  bg.addColorStop(0, "#69788f");
+  bg.addColorStop(0.45, "#3c4759");
+  bg.addColorStop(1, "#1b2230");
+  x.fillStyle = bg;
+  roundRectPath(x, cx - S, cy - S, S * 2, S * 2, 4);
+  x.fill();
+  // 3) Mauerwerk - versetzte Steinlagen, gibt der Flaeche Materialitaet
+  x.save();
+  roundRectPath(x, cx - S, cy - S, S * 2, S * 2, 4);
+  x.clip();
+  const courseH = S * 0.34;
+  for (let row = 0; row * courseH < S * 2; row++) {
+    const yy = cy - S + row * courseH;
+    x.strokeStyle = "rgba(0,0,0,0.34)";
+    x.lineWidth = 1;
+    x.beginPath();
+    x.moveTo(cx - S, yy);
+    x.lineTo(cx + S, yy);
+    x.stroke();
+    x.strokeStyle = "rgba(255,255,255,0.07)";
+    x.beginPath();
+    x.moveTo(cx - S, yy + 1);
+    x.lineTo(cx + S, yy + 1);
+    x.stroke();
+    const off = row % 2 ? courseH * 0.9 : 0;
+    for (let vx = cx - S + off; vx < cx + S; vx += courseH * 1.8) {
+      x.strokeStyle = "rgba(0,0,0,0.26)";
+      x.beginPath();
+      x.moveTo(vx, yy);
+      x.lineTo(vx, yy + courseH);
+      x.stroke();
+    }
   }
-  // Seitent\u00FCrme + Neon-D\u00E4cher
-  for (const sx of [-1, 1]) {
-    const tx = cx + sx * S - (sx < 0 ? 0 : 6);
-    const tg = ctx.createLinearGradient(tx, cy - S, tx, cy + S);
-    tg.addColorStop(0, "#454f61");
-    tg.addColorStop(1, "#161d29");
-    ctx.fillStyle = tg;
-    ctx.fillRect(tx, cy - S - 2, 6, S * 2 + 2);
-    ctx.fillStyle = roof;
-    ctx.beginPath();
-    ctx.moveTo(cx + sx * S - (sx < 0 ? -3 : 3), cy - S - 11);
-    ctx.lineTo(cx + sx * S - (sx < 0 ? 0 : 6), cy - S - 2);
-    ctx.lineTo(cx + sx * S - (sx < 0 ? -6 : 0), cy - S - 2);
-    ctx.closePath();
-    ctx.fill();
+  // 4) Ambient Occlusion zur lichtabgewandten Seite
+  const ao = x.createLinearGradient(cx - S * 0.2, cy - S * 0.2, cx + S, cy + S);
+  ao.addColorStop(0, "rgba(0,0,0,0)");
+  ao.addColorStop(1, "rgba(0,0,0,0.38)");
+  x.fillStyle = ao;
+  x.fillRect(cx - S, cy - S, S * 2, S * 2);
+  x.restore();
+  // 5) Zinnenkranz oben - mit Lichtkante und eigenem Schatten auf den Koerper
+  const nM = 5, mW = (S * 2) / nM;
+  for (let i = 0; i < nM; i++) {
+    const mx = cx - S + i * mW;
+    x.fillStyle = "rgba(0,0,0,0.4)";
+    x.fillRect(mx + 2.4, cy - S - 4, mW - 3, 6);
+    const mg = x.createLinearGradient(mx, cy - S - 6, mx, cy - S + 1);
+    mg.addColorStop(0, "#5c6880");
+    mg.addColorStop(1, "#232b38");
+    x.fillStyle = mg;
+    x.fillRect(mx + 1, cy - S - 6, mW - 3, 7);
+    x.fillStyle = roof;
+    x.fillRect(mx + 1, cy - S - 6, mW - 3, 1.5);
+    x.fillStyle = "rgba(255,255,255,0.30)";
+    x.fillRect(mx + 1, cy - S - 4.5, 1, 5);
   }
-  // Tor mit Neon-Bogen
-  ctx.fillStyle = "#0c1118";
-  roundRectPath(ctx, cx - 5, cy + 1, 10, S - 1, 3);
-  ctx.fill();
-  ctx.strokeStyle = glow + "0.6)";
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-  // (Fahnenmast + Wimpel entfernt, v3.15.4 — verdeckten die Mauern darüber)
-  // leuchtender Wappen-Kern — Glow als Radial-Verlauf statt shadowBlur (v3.15.5)
-  const crestGlow = ctx.createRadialGradient(cx, cy - S * 0.35, CELL * 0.15, cx, cy - S * 0.35, CELL * 0.82);
-  crestGlow.addColorStop(0, glow + "0.26)");
+  // 6) Ecktuerme - vier runde Bastionen mit Kegeldach in Spielerfarbe
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const tx = cx + sx * S, ty = cy + sy * S, tr = S * 0.34;
+    x.fillStyle = "rgba(0,0,0,0.5)";
+    x.beginPath();
+    x.arc(tx + 2, ty + 2.5, tr, 0, Math.PI * 2);
+    x.fill();
+    const tg = x.createRadialGradient(tx - tr * 0.4, ty - tr * 0.45, 0.5, tx, ty, tr);
+    tg.addColorStop(0, "#6b7890");
+    tg.addColorStop(0.55, "#38414f");
+    tg.addColorStop(1, "#141a24");
+    x.fillStyle = tg;
+    x.beginPath();
+    x.arc(tx, ty, tr, 0, Math.PI * 2);
+    x.fill();
+    // Zinnenkranz statt Vollring: der durchgehende Farbring ließ den Turm wie
+    // einen Knopf wirken. Einzelne Merlons lesen sich als Turmkrone von oben.
+    for (let mi = 0; mi < 7; mi++) {
+      const ma = mi / 7 * Math.PI * 2 + 0.3;
+      const mrx = tx + Math.cos(ma) * tr * 0.74, mry = ty + Math.sin(ma) * tr * 0.74;
+      x.fillStyle = "rgba(0,0,0,0.45)";
+      x.beginPath();
+      x.arc(mrx + 0.5, mry + 0.6, tr * 0.20, 0, Math.PI * 2);
+      x.fill();
+      // Lichtseite (oben links) heller als Schattenseite
+      const litT = (Math.cos(ma) < 0.15 && Math.sin(ma) < 0.15) ? 1 : 0;
+      x.fillStyle = litT ? "#7c8aa4" : "#3c4657";
+      x.beginPath();
+      x.arc(mrx, mry, tr * 0.19, 0, Math.PI * 2);
+      x.fill();
+    }
+    // Dunkle Turmöffnung mit farbigem Innenlicht (Team-Erkennung bleibt)
+    x.fillStyle = "#0d1119";
+    x.beginPath();
+    x.arc(tx, ty, tr * 0.42, 0, Math.PI * 2);
+    x.fill();
+    const tglow = x.createRadialGradient(tx, ty, 0.5, tx, ty, tr * 0.42);
+    tglow.addColorStop(0, roof);
+    tglow.addColorStop(1, glow + "0)");
+    x.fillStyle = tglow;
+    x.beginPath();
+    x.arc(tx, ty, tr * 0.42, 0, Math.PI * 2);
+    x.fill();
+    // Rim-Light auf der Lichtseite des Turms
+    x.strokeStyle = "rgba(255,255,255,0.34)";
+    x.lineWidth = 1.3;
+    x.beginPath();
+    x.arc(tx, ty, tr - 0.7, Math.PI * 0.8, Math.PI * 1.7);
+    x.stroke();
+  }
+  // 7) Innenhof - dunkle Vertiefung mit warmem Eigenlicht (bewohnt wirken)
+  const yardR = S * 0.62;
+  const yg = x.createRadialGradient(cx, cy - S * 0.1, 1, cx, cy - S * 0.1, yardR);
+  yg.addColorStop(0, glow + "0.30)");
+  yg.addColorStop(0.6, "rgba(12,17,24,0.55)");
+  yg.addColorStop(1, "rgba(8,11,16,0.75)");
+  x.fillStyle = yg;
+  roundRectPath(x, cx - yardR, cy - S * 0.72, yardR * 2, yardR * 1.5, 5);
+  x.fill();
+  // 8) Torbogen unten - Tiefe durch dunklen Kern + beleuchtete Laibung
+  x.fillStyle = "#080c12";
+  roundRectPath(x, cx - 6, cy + S * 0.18, 12, S * 0.82, 5);
+  x.fill();
+  x.strokeStyle = glow + "0.65)";
+  x.lineWidth = 1.3;
+  x.stroke();
+  x.fillStyle = "rgba(255,255,255,0.18)";
+  roundRectPath(x, cx - 6, cy + S * 0.18, 3, S * 0.82, 3);
+  x.fill();
+  // 9) Wappen-Scheibe mit Glow
+  const crestY = cy - S * 0.36;
+  const crestGlow = x.createRadialGradient(cx, crestY, CELL * 0.15, cx, crestY, CELL * 0.9);
+  crestGlow.addColorStop(0, glow + "0.34)");
   crestGlow.addColorStop(1, glow + "0)");
-  ctx.fillStyle = crestGlow;
-  ctx.beginPath();
-  ctx.arc(cx, cy - S * 0.35, CELL * 0.82, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = lt;
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.arc(cx, cy - S * 0.35, CELL * 0.62, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,0.95)";
-  ctx.font = `${CELL * 0.7}px serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(FLAG_OF[player] || "\u2654", cx, cy - S * 0.35);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
+  x.fillStyle = crestGlow;
+  x.beginPath();
+  x.arc(cx, crestY, CELL * 0.9, 0, Math.PI * 2);
+  x.fill();
+  const disc = x.createRadialGradient(cx - 2, crestY - 2, 0.5, cx, crestY, CELL * 0.62);
+  disc.addColorStop(0, "#39424f");
+  disc.addColorStop(1, "#151b25");
+  x.fillStyle = disc;
+  x.beginPath();
+  x.arc(cx, crestY, CELL * 0.62, 0, Math.PI * 2);
+  x.fill();
+  x.strokeStyle = lt;
+  x.lineWidth = 1.5;
+  x.beginPath();
+  x.arc(cx, crestY, CELL * 0.62, 0, Math.PI * 2);
+  x.stroke();
+  x.fillStyle = "rgba(255,255,255,0.96)";
+  x.font = `${CELL * 0.7}px serif`;
+  x.textAlign = "center";
+  x.textBaseline = "middle";
+  x.fillText(FLAG_OF[player] || "♔", cx, crestY);
+  x.textAlign = "left";
+  x.textBaseline = "alphabetic";
+  // 10) Steinkorn + helle Fase oben/links (Licht) als Abschluss
+  x.save();
+  roundRectPath(x, cx - S, cy - S, S * 2, S * 2, 4);
+  x.clip();
+  for (let i = 0; i < 26; i++) {
+    x.fillStyle = hash(i) > 0.5 ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.14)";
+    x.beginPath();
+    x.arc(cx - S + hash(i + 3) * S * 2, cy - S + hash(i + 60) * S * 2, 0.6 + hash(i + 9) * 1.3, 0, Math.PI * 2);
+    x.fill();
+  }
+  x.restore();
+  x.strokeStyle = "rgba(255,255,255,0.34)";
+  x.lineWidth = 1.4;
+  x.beginPath();
+  x.moveTo(cx - S + 1, cy + S - 4);
+  x.lineTo(cx - S + 1, cy - S + 3);
+  x.lineTo(cx - S + 4, cy - S + 1);
+  x.lineTo(cx + S - 4, cy - S + 1);
+  x.stroke();
+  SPR.castle[player] = c;
+  return c;
+}
+export function drawCastle(ctx, cx, cy, player, open, now) {
+  const S = CELL * 1.5;
+  const spr = castleSprite(player);
+  ctx.drawImage(spr, cx - spr.width / 2, cy - spr.height / 2);
   if (open) {
     const a = 0.4 + 0.3 * Math.sin(now / 180);
     ctx.strokeStyle = `rgba(239,68,68,${a})`;
@@ -321,13 +460,49 @@ export function cannonDomeSprite(player, skinId, skinDef) {
     x.beginPath();
     x.arc(cx, cy, R * 0.8, 0, Math.PI * 2);
     x.stroke();
-    x.fillStyle = "rgba(0,0,0,0.45)";
+    // Panzerplatten-Fugen (v3.43.0): Segmentlinien geben der Kuppel Bauform
+    x.save();
+    x.beginPath();
+    x.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
+    x.clip();
+    x.strokeStyle = "rgba(0,0,0,0.38)";
+    x.lineWidth = 1.1;
+    for (let i = 0; i < 4; i++) {
+      const a = i / 4 * Math.PI;
+      x.beginPath();
+      x.moveTo(cx - Math.cos(a) * R, cy - Math.sin(a) * R);
+      x.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+      x.stroke();
+    }
+    // Ambient Occlusion zur lichtabgewandten Seite (unten rechts)
+    const dao = x.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R * 0.85);
+    dao.addColorStop(0, "rgba(0,0,0,0)");
+    dao.addColorStop(1, "rgba(0,0,0,0.5)");
+    x.fillStyle = dao;
+    x.fillRect(cx - R, cy - R, R * 2, R * 2);
+    x.restore();
+    // Nieten mit Eigenlicht statt flacher schwarzer Punkte
     for (let i = 0; i < 6; i++) {
       const a = i / 6 * Math.PI * 2;
+      const bx = cx + Math.cos(a) * R * 0.58, by = cy + Math.sin(a) * R * 0.58;
+      x.fillStyle = "rgba(0,0,0,0.5)";
       x.beginPath();
-      x.arc(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58, 1.5, 0, Math.PI * 2);
+      x.arc(bx + 0.5, by + 0.6, 1.8, 0, Math.PI * 2);
+      x.fill();
+      const rg = x.createRadialGradient(bx - 0.6, by - 0.7, 0.2, bx, by, 1.9);
+      rg.addColorStop(0, "rgba(215,225,240,0.95)");
+      rg.addColorStop(1, "rgba(90,100,118,0.9)");
+      x.fillStyle = rg;
+      x.beginPath();
+      x.arc(bx, by, 1.6, 0, Math.PI * 2);
       x.fill();
     }
+    // Rim-Light auf der Lichtseite - trennt die Kuppel vom Untergrund
+    x.strokeStyle = "rgba(255,255,255,0.42)";
+    x.lineWidth = 1.6;
+    x.beginPath();
+    x.arc(cx, cy, R * 0.78, Math.PI * 0.75, Math.PI * 1.65);
+    x.stroke();
     // Sternen-Skin: kleine helle Punkte auf der Kuppel (einmal beim Backen)
     if (skinDef && skinDef.stars) {
       x.fillStyle = "rgba(255,255,255,0.85)";
@@ -376,6 +551,19 @@ export function cannonBarrelSprite(player, skinId, skinDef) {
     x.fillStyle = bG;
     roundRectPath(x, ox - CELL * 0.2, oy - barrelW / 2, barrelLen, barrelW, 4);
     x.fill();
+    // Obere Lichtkante entlang des Laufs (Licht von oben)
+    x.fillStyle = "rgba(255,255,255,0.34)";
+    roundRectPath(x, ox - CELL * 0.15, oy - barrelW / 2 + 0.8, barrelLen - CELL * 0.1, 1.5, 1);
+    x.fill();
+    // Verstaerkungsbaender (v3.43.0): machen aus dem Rohr ein gebautes Teil
+    for (let b = 0; b < 3; b++) {
+      const bxp = ox + CELL * 0.25 + b * (barrelLen * 0.27);
+      x.fillStyle = "rgba(0,0,0,0.42)";
+      x.fillRect(bxp, oy - barrelW / 2 - 0.6, 2.4, barrelW + 1.2);
+      x.fillStyle = "rgba(190,202,220,0.5)";
+      x.fillRect(bxp, oy - barrelW / 2 - 0.6, 0.9, barrelW + 1.2);
+    }
+    // Energie-Ader in Spielerfarbe
     x.fillStyle = n.ac;
     x.fillRect(ox + CELL * 0.2, oy - 1, barrelLen - CELL * 0.55, 1.3);
     x.shadowColor = n.ac;
