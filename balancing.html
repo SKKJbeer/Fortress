@@ -80,7 +80,7 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="wrap">
 
   <header class="hero">
-    <span class="kick">Balancing-Analyse · v3.47.0</span>
+    <span class="kick">Balancing-Analyse · v3.49.0</span>
     <h1>114 Partien KI gegen KI.<br><em>94 %</em> enden nie.</h1>
     <p class="lede">Die KI hat gegen sich selbst gespielt — drei Schwierigkeitsstufen, Schnappschüsse in jeder Rüstphase, plus Messung jedes einzelnen Einschlags. Das Ergebnis ist kein Feinschliff-Problem: <b style="color:var(--ink)">Die Offensive funktioniert einwandfrei — und trotzdem entscheidet sich fast nichts.</b></p>
     <div class="meta">
@@ -196,8 +196,51 @@ footer a{color:var(--acc);text-decoration:none}
     </div>
   </section>
 
+
+  <section>
+    <div class="sh"><span class="sn">04</span><h2>Experimente — gemessen statt behauptet</h2></div>
+    <p class="sub">Statt Vorschläge zu formulieren, habe ich neun Regelvarianten <b>ins Spiel eingebaut</b> (gated) und jede gegen sich selbst spielen lassen. Ergebnis: <b>Meine ursprüngliche Empfehlung war falsch.</b></p>
+
+    <div class="tw"><table>
+      <thead><tr><th>Variante</th><th>entschieden</th><th>Ø Runden</th><th>Mauern</th><th>Treffer</th><th>Bewertung</th></tr></thead>
+      <tbody>
+        <tr><td><b>Basislinie (heute)</b></td><td>4/12</td><td>13,0</td><td>20,0</td><td>49 %</td><td>—</td></tr>
+        <tr><td>Narben (2× zerstört = tot)</td><td>1/12</td><td>14,8</td><td>23,3</td><td>48 %</td><td>kein Effekt</td></tr>
+        <tr><td>Bruchstellen (Kaskade)</td><td>2/12</td><td>14,6</td><td>21,6</td><td>46 %</td><td>kein Effekt</td></tr>
+        <tr><td>Belagerungsdruck (Bauzeit)</td><td>3/12</td><td>13,8</td><td>22,3</td><td>51 %</td><td>kein Effekt*</td></tr>
+        <tr><td><b>Salven-Fächer</b></td><td>2/12</td><td>15,5</td><td><b>44,6</b></td><td><b>83 %</b></td><td>Schaden ×2 — aber kein Ende</td></tr>
+        <tr><td>Bauteil-Limit 4 (starr)</td><td>12/12</td><td><b>1,5</b></td><td>1,8</td><td>58 %</td><td>zerstört die Eröffnung</td></tr>
+        <tr><td>Nachschub 24→6</td><td>7/12</td><td>9,9</td><td>15,1</td><td>49 %</td><td>wirkt</td></tr>
+        <tr style="background:rgba(79,191,139,0.07)"><td><b>Nachschub + Fächer</b></td><td><b>12/12</b></td><td><b>7,8</b></td><td>20,8</td><td><b>88 %</b></td><td><b>Gewinner</b></td></tr>
+      </tbody>
+    </table></div>
+    <p class="sub" style="font-size:13.5px;margin-top:12px">* Bauzeit-Druck trifft einen Bot kaum — er platziert sofort. Für <b>Menschen</b> dürfte die Wirkung größer sein, als diese Messung zeigt.</p>
+
+    <div class="kpis" style="margin-top:26px">
+      <div class="kpi"><div class="n bad">8 %</div><div class="l">Basislinie: entschiedene Partien <span class="mono">(2/24)</span></div></div>
+      <div class="kpi"><div class="n good">96 %</div><div class="l">Nachschub + Fächer <span class="mono">(23/24)</span></div></div>
+      <div class="kpi"><div class="n acc">15,3 → 7,6</div><div class="l">Ø Runden je Partie</div></div>
+      <div class="kpi"><div class="n acc">49 → 84 %</div><div class="l">Trefferquote</div></div>
+    </div>
+
+    <div class="prop" style="margin-top:26px">
+      <h3>Empfehlung nach Messung <span class="eff hi">bestätigt bei n=24</span></h3>
+      <p class="why">Nachschub 24→6 (−2 je Runde) + Salven-Fächer</p>
+      <p><b>Schrumpfender Nachschub:</b> In Runde 1 stehen 24 Bauteile bereit, danach 2 weniger je Runde, Untergrenze 6. Die Eröffnung bleibt unangetastet, aber ab etwa Runde 8 lässt sich nicht mehr jede Bresche schließen — <b>Verteidigung bekommt endlich einen Preis</b>. Wichtig: Diese Grenze trifft Bot und Mensch gleichermaßen; reiner Zeitdruck trifft nur Menschen.</p>
+      <p><b>Salven-Fächer:</b> Die Kanonen verteilen sich über die Mauerlinie, statt alle in dieselbe Bresche zu feuern. Das behebt die 40–51 % Trümmer-Fehlschüsse und hebt die Trefferquote auf 84 %.</p>
+      <p><b>Gemessene Wirkung:</b> Entscheidungsrate 8 % → 96 %, Matchlänge 15,3 → 7,6 Runden (≈ 8 Minuten statt endlos), Kampfintensität bleibt erhalten (18,6 statt 24,2 zerstörte Mauern). Die Entscheidungsrunden streuen von 2 bis 13 — kein künstliches Abwürgen.</p>
+      <p><b>Offener Punkt:</b> Drei Partien endeten bereits in Runde 2. Das deutet darauf hin, dass 24 Startteile für den ersten Mauerring knapp sind — <b>28–30 wären sicherer</b> und sollten vor einer Übernahme gegengemessen werden.</p>
+    </div>
+
+    <div class="warnbox">
+      <div class="l">Was diese Messung über meine erste Empfehlung sagt</div>
+      <p>Ich hatte „Belagerungsdruck" (schrumpfende Bauzeit) als <b>den Kernfix</b> bezeichnet. Die Messung zeigt: <b>3/12 statt 4/12</b> — also kein Effekt. Der Grund ist ein Denkfehler in meiner Analyse: Zeitdruck begrenzt <b>Menschen</b>, aber nicht einen Bot, der sofort platziert. Erst die Begrenzung der <b>Kapazität</b> (Bauteile) wirkt auf beide.</p>
+      <p>Ebenso: Der Salven-Fächer verdoppelt den Schaden — und beendet <b>allein</b> trotzdem keine Partie mehr. Erst die Kombination aus mehr Durchschlag <i>und</i> knapperem Nachschub kippt das Spiel.</p>
+    </div>
+  </section>
+
   <footer>
-    Rohdaten: 96 + 18 Partien (<span class="mono">__botSelfPlay</span>, Snapshot je Rüstphase) + 357 Einschlagsmessungen über
+    Rohdaten: 96 + 18 Partien Analyse, 156 Partien Experimente, (<span class="mono">__botSelfPlay</span>, Snapshot je Rüstphase) + 357 Einschlagsmessungen über
     <span class="mono">__impactStats</span>. Auswertung reproduzierbar über die Diagnose-Hooks im Spiel
     (<span class="mono">window.__mmDebug = true</span>).<br>
     <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> ·

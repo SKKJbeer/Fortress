@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.48.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.49.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2135,6 +2135,21 @@ window.FortressApp = function Fortress() {
     if (screen === "result") harvestDailyTasks((resultInfo || {}).winner);
     else tasksHarvested.current = false; // nächste Runde/Spiel darf wieder ernten
   }, [screen, resultInfo]);
+  // ── Balancing-Experimente (v3.49.0, gated) ──────────────────────────────
+  // Regelvarianten fuer die Selbstspiel-Analyse. NUR aktiv, wenn window.__balExp
+  // gesetzt ist — im normalen Spiel existiert keine dieser Regeln. So lassen
+  // sich Ideen messen, BEVOR eine davon ins Spiel wandert.
+  //   narben:   Eine Zelle, die 2x zerstoert wurde, wird zur dauerhaften Narbe
+  //             und ist nicht mehr bebaubar. Die Front frisst sich nach innen.
+  //   bruch:    Ein Treffer reisst Nachbarmauern an; angerissene fallen beim
+  //             naechsten Treffer sofort. Schaden kaskadiert.
+  //   druck:    Bauzeit schrumpft je Runde (Untergrenze 12s).
+  //   faecher:  Jede Kanone einer Salve zielt auf eine ANDERE Zelle.
+  function balExp() { return (typeof window !== "undefined" && window.__balExp) || null; }
+  const placedThisPhase = useRef({});
+  const scarCount = useRef({});   // "r_c" -> wie oft zerstoert (nur bei narben)
+  const scars = useRef({});       // "r_c" -> true = dauerhaft unbebaubar
+
   // ── Match-Telemetrie (v3.47.0) ──────────────────────────────────────────
   // Schreibt eine ANONYME Match-Zusammenfassung nach Firebase, damit sich
   // Spielverhalten und Balancing über viele echte Partien auswerten lassen
@@ -3249,6 +3264,7 @@ window.FortressApp = function Fortress() {
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
     telemetrySent.current = false;
+    scarCount.current = {}; scars.current = {};
     // KEIN onDisconnect-Auto-Löschen des Spielknotens mehr (v3.14.10):
     // Mobile Browser trennen die Firebase-Verbindung schon beim kurzen App-Wechsel
     // (z.B. Code per WhatsApp teilen) → der Server löschte das Spiel, der Gast fand
@@ -3322,6 +3338,7 @@ window.FortressApp = function Fortress() {
     // ⚠ ELO-Fix (v3.30.3): Gast-Eintrittspfad — siehe mmJoinMatchedGame.
     statRecorded.current = false;
     telemetrySent.current = false;
+    scarCount.current = {}; scars.current = {};
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -3457,6 +3474,7 @@ window.FortressApp = function Fortress() {
     // Stats noch ELO. Muss in JEDEM Gast-Eintrittspfad stehen.
     statRecorded.current = false;
     telemetrySent.current = false;
+    scarCount.current = {}; scars.current = {};
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -3486,6 +3504,7 @@ window.FortressApp = function Fortress() {
     hostSessionRef.current = SESSION_ID;
     statRecorded.current = false;
     telemetrySent.current = false;
+    scarCount.current = {}; scars.current = {};
     setMpCode(code);
     setMpScreen("waiting");
     startPolling(code, 1);
@@ -3838,6 +3857,7 @@ window.FortressApp = function Fortress() {
     lastSeenPhase.current = null;
     statRecorded.current = false;
     telemetrySent.current = false;
+    scarCount.current = {}; scars.current = {};
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
@@ -4098,8 +4118,15 @@ window.FortressApp = function Fortress() {
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     phase_r.current = "build";
     setPhase("build");
-    timerVal.current = BUILD_TIME;
-    setTimer(BUILD_TIME);
+    placedThisPhase.current = {};   // Bauteil-Limit je Bauphase zuruecksetzen
+    {
+      const X = balExp();
+      const bt = (X && X.druck)
+        ? Math.max(X.druckMin || 12, BUILD_TIME - (roundRefVal.current - 1) * (X.druckStep || 1))
+        : BUILD_TIME;
+      timerVal.current = bt;
+      setTimer(bt);
+    }
     pieces.current = players.reduce((o, p) => (o[p] = { cells: randomShape(), ghostR: null, ghostC: null }, o), {});
     warnedOpen.current = mk(false);
     activeBuild.current = mk(null);
@@ -4240,7 +4267,17 @@ window.FortressApp = function Fortress() {
       const sy = cn.r * CELL + CELL / 2;
       let tx = targetX;
       let ty = targetY;
-      if (index > 0) {
+      const XF = balExp();
+      if (XF && XF.faecher && index > 0) {
+        // Salven-Faecher: die Kanonen verteilen sich entlang der Mauerlinie,
+        // statt alle in dieselbe frisch geschlagene Bresche zu feuern.
+        const step = (XF.faecherSpan || 2) * CELL;
+        const side = index % 2 === 1 ? 1 : -1;
+        const rank = Math.ceil(index / 2);
+        tx += side * rank * step;
+        tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
+        ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
+      } else if (index > 0) {
         const scatter = Math.min(index * 0.3, 1) * CELL;
         const scatterAngle = Math.random() * Math.PI * 2;
         tx += Math.cos(scatterAngle) * scatter;
@@ -4449,6 +4486,25 @@ window.FortressApp = function Fortress() {
         delete wallHp.current[wkey];
         newG[hitR][hitC] = RUBBLE;
         wallDestroyed = true;
+        {
+          const X = balExp();
+          if (X && X.narben) {
+            const k2 = hitR + "_" + hitC;
+            scarCount.current[k2] = (scarCount.current[k2] || 0) + 1;
+            if (scarCount.current[k2] >= (X.narbenAb || 2)) scars.current[k2] = true;
+          }
+          if (X && X.bruch) {
+            // Nachbarmauern des GETROFFENEN Spielers anreissen (wallHp-Riss)
+            const nb2 = [[hitR-1,hitC],[hitR+1,hitC],[hitR,hitC-1],[hitR,hitC+1]];
+            for (const [nr2, nc2] of nb2) {
+              if (nr2 < 0 || nr2 >= ROWS || nc2 < 0 || nc2 >= COLS) continue;
+              if (newG[nr2][nc2] !== WALL_OF[ep]) continue;
+              const nk = nr2 + "_" + nc2;
+              if (wallHp.current[nk]) { newG[nr2][nc2] = RUBBLE; delete wallHp.current[nk]; }
+              else wallHp.current[nk] = 1;   // angerissen
+            }
+          }
+        }
         if (ball.player !== ep) {
           scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
           addScrapPop(hitC * CELL + CELL / 2, hitR * CELL, SCRAP_WALL, ball.player);
@@ -4483,11 +4539,27 @@ window.FortressApp = function Fortress() {
     const offR = gr - Math.floor(Math.max(...cells.map(([r]) => r)) / 2);
     const offC = gc - Math.floor(Math.max(...cells.map(([, c]) => c)) / 2);
     const abs = cells.map(([r, c]) => [r + offR, c + offC]);
+    const XP = balExp();
+    if (XP && (XP.limit || XP.limitStart)) {
+      // Bauteil-Limit je Bauphase: begrenzt die Wiederaufbau-KAPAZITAET statt
+      // der Zeit. Zeitdruck trifft nur Menschen - ein Bot platziert sofort.
+      // WICHTIG (Messung v3.49.0): Ein STARRES Limit zerstoert die Eroeffnung -
+      // mit 4 Teilen laesst sich die Burg nicht einmal initial versiegeln,
+      // Partien endeten nach 1,5 Runden. Daher schrumpfender Nachschub:
+      // anfangs grosszuegig, mit jeder Runde knapper.
+      const lim = XP.limitStart
+        ? Math.max(XP.limitMin || 5, XP.limitStart - (roundRefVal.current - 1) * (XP.limitStep || 1))
+        : XP.limit;
+      const used = placedThisPhase.current[player] || 0;
+      if (used >= lim) return;
+    }
     for (const [r, c] of abs) {
       if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
       if (g[r][c] !== EMPTY) return;
       if (!isBuildable(ter, r, c, player)) return;
+      if (XP && XP.narben && scars.current[r + "_" + c]) return;  // dauerhafte Narbe
     }
+    placedThisPhase.current[player] = (placedThisPhase.current[player] || 0) + 1;
     const newG = g.map((row) => [...row]);
     const mark = WALL_OF[player];
     for (const [r, c] of abs) newG[r][c] = mark;
@@ -6670,7 +6742,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.48.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.49.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

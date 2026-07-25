@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.48.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.49.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3636,3 +3636,36 @@ Salven-Fächer, Belagerungsdruck (schrumpfende Bauzeit), Überladung als
 Schrott-Senke, Reparatur in die `standard`-Kauflogik. Details im Report.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.48.0`.
+
+### v3.49.0 — Balancing-Experimente: 9 Regelvarianten gemessen
+Statt Vorschläge zu behaupten, wurden neun Regelvarianten als **gated
+Experimente** (`window.__balExp`) ins Spiel gebaut und je 12–24 Partien im
+Selbstspiel gemessen. Im normalen Spiel ist KEINE davon aktiv.
+Varianten: `narben` (2× zerstörte Zelle wird dauerhaft unbebaubar),
+`bruch` (Treffer reißt Nachbarmauern an, Kaskade), `druck` (Bauzeit schrumpft),
+`faecher` (jede Kanone einer Salve zielt auf eine andere Zelle),
+`limit` (starres Bauteil-Limit), `limitStart/limitStep/limitMin`
+(schrumpfender Nachschub).
+
+**Ergebnis (n=24 bestätigt):**
+| Variante | entschieden | Ø Runden | Mauern | Treffer |
+|---|---|---|---|---|
+| Basislinie | 2/24 (8 %) | 15,3 | 24,2 | 49 % |
+| Nachschub 24→6 + Fächer | **23/24 (96 %)** | **7,6** | 18,6 | **84 %** |
+
+**Zwei eigene Fehlannahmen widerlegt:**
+1. „Belagerungsdruck (Bauzeit) ist DER Kernfix" — gemessen 3/12 statt 4/12,
+   also kein Effekt. Grund: Zeitdruck begrenzt Menschen, aber keinen Bot, der
+   sofort platziert. Erst die Begrenzung der KAPAZITÄT wirkt auf beide.
+2. „Mehr Durchschlag beendet Partien" — der Salven-Fächer verdoppelt den
+   Schaden (20,0 → 44,6 Mauern, Treffer 49 → 83 %), beendet allein aber KEINE
+   Partie mehr (2/12). Erst Durchschlag + knapper Nachschub kippt das Spiel.
+3. Ein STARRES Bauteil-Limit (4/Runde) zerstört die Eröffnung — Partien endeten
+   nach 1,5 Runden, weil die Burg nicht einmal initial versiegelbar ist.
+   Daher schrumpfender statt fester Nachschub.
+
+Offen vor einer Übernahme: 3 Partien endeten bereits in Runde 2 — 24 Startteile
+sind für den ersten Mauerring knapp, 28–30 wären sicherer (gegenmessen).
+Report: `balancing.html`. Balancing selbst weiterhin NICHT geändert.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.49.0`.
