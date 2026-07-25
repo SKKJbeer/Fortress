@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.44.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.45.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3523,3 +3523,30 @@ viermal umgefärbt. Dadurch entstand kein Sammel-/„Haben-wollen"-Anreiz.
 Gemessen: Frame-Zeichendauer median 0,4 ms / p95 0,6 / max 1,5 ms — trotz
 Pro-Frame-Animationen unverändert. Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.44.0`.
+
+### v3.45.0 — Geschütz-Redesign + kaufbare Modelle im Gold-Shop
+Die Kanone war strukturell „Kreis + Stab" — das las sich als Platzhalter,
+egal wie fein die Farben waren. Jetzt echtes Artillerie-Layout in Draufsicht.
+- **Neuer Aufbau** (`cannonBaseSprite` + `cannonTurretSprite`):
+  FEST = achteckige Panzerplatte mit Verankerungsbolzen, Lichtkante und
+  gezahntem Turmring (dreht NICHT mit). ROTIEREND = Turmgehäuse mit geneigter
+  Panzerung, Luke, Lüftungsschlitzen, zwei Rücklaufzylindern, verjüngtem Rohr
+  mit Verstärkungsbändern und **Mündungsbremse** mit seitlichen Austritts-
+  schlitzen. Dass nur der Turm dreht (nicht die Bodenplatte) ist der eigentliche
+  Glaubwürdigkeitsgewinn. Beides gebacken → im Frame zwei `drawImage`.
+- **Kaufbare Modelle im Gold-Shop** (neue Kategorie `cannon`): Bronzegeschütz
+  250 G, Stahlgeschütz 450 G, Königsgeschütz 700 G. Vorschau zeichnet das
+  ECHTE Modell in ein Mini-Canvas statt eines Farbpunkts. Die Schmiede-Skins
+  (Kristall/Obsidian/Hexer/Drache/Stern) bleiben die Crafting-Stufe darüber —
+  nur sie haben Signatur-Animationen.
+- **Regressionstest repariert (wichtig)**: Der Terrain-Flip-Test (v3.30.2)
+  leitete seine Wasser-Referenzfarbe aus dem GERENDERTEN Bild ab. Das ist
+  wertlos — zeichnet der Code den Fluss falsch, wandert die Referenz mit.
+  Nachgewiesen: ein absichtlich gespiegelter Fluss BESTAND die Prüfung.
+  Jetzt absolute Referenz aus den Themenfarben (neuer gated Hook
+  `__waterTheme`). Gegenprobe: korrekt = 92/92, gespiegelt = 2/86 (schlägt an).
+- Shop-Test-Selektor auf die Trail-Sektion eingegrenzt (durch die neue
+  Geschütz-Kategorie gab es mehrere „Standard"-Buttons).
+
+Gemessen: Frame-Zeichendauer median 0,3 ms / p95 0,4 / max 2,1 ms.
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.45.0`.

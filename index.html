@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.44.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.45.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -1877,6 +1877,16 @@ window.FortressApp = function Fortress() {
       const out = [];
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (ter[r][c] === 3) out.push([r, c]);
       return out;
+    });
+    // Absolute Wasser-Referenzfarben des aktuellen Welt-Themas (v3.45.0).
+    // Nötig für den Terrain-Flip-Regressionstest: Eine aus dem GERENDERTEN Bild
+    // abgeleitete Referenz wandert bei einem Zeichenfehler mit und kann den Bug
+    // deshalb nicht fangen — bewiesen durch einen absichtlich gespiegelten Fluss,
+    // den die frühere Prüfung durchwinkte. Diese Werte kommen aus dem Thema,
+    // sind also unabhängig davon, WO gezeichnet wurde.
+    window.__waterTheme = gated(() => {
+      const WT = worldThemeOf((terrain.current && terrain.current.seed) || terrainSeed.current || 0);
+      return { water: WT.water.slice(), bank: WT.bank, edge: WT.waterEdge, name: WT.name };
     });
     window.__castleClosed = gated((p) => {
       const g = grid.current, ct = castles.current[p];
@@ -6585,7 +6595,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.44.0")), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.45.0")), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -6838,7 +6848,7 @@ window.FortressApp = function Fortress() {
   profile && (() => {
     const h = React.createElement;
     const cos = cosOf(profile);
-    const CATS = [["trail", t("cosSectionTrail")], ["frame", t("cosSectionFrame")], ["win", t("cosSectionWin")]];
+    const CATS = [["cannon", t("cosSectionCannon")], ["trail", t("cosSectionTrail")], ["frame", t("cosSectionFrame")], ["win", t("cosSectionWin")]];
     const invPreview = (cat, it) => {
       if (cat === "trail") return h("div", { style: {
         width: 22, height: 22, borderRadius: "50%",
@@ -7066,6 +7076,28 @@ window.FortressApp = function Fortress() {
     const cos = cosOf(profile);
     const gold = typeof (profile && profile.gold) === "number" ? profile.gold : 100;
     const preview = (cat, it) => {
+      // Kanonen-Vorschau (v3.45.0): zeichnet das ECHTE Modell in ein Mini-Canvas,
+      // damit im Shop sichtbar ist, was man bekommt — statt eines Farbpunkts.
+      if (cat === "cannon") return h("canvas", {
+        width: 76, height: 76,
+        style: { width: 38, height: 38, display: "block" },
+        ref: (el) => {
+          if (!el || el.__drawn === it.id) return;
+          el.__drawn = it.id;
+          const c2 = el.getContext("2d");
+          c2.clearRect(0, 0, 76, 76);
+          c2.save();
+          c2.translate(38, 38);
+          c2.scale(0.78, 0.78);
+          c2.translate(-38, -38);
+          try {
+            drawCannonFull(c2, 38, 38, -0.6, 1, 1, 3000,
+              it.id === "cannon_standard" ? null : it.id,
+              it.id === "cannon_standard" ? null : CANNON_SKIN[it.id]);
+          } catch (e) {}
+          c2.restore();
+        }
+      });
       if (cat === "trail") return h("div", { style: {
         width: 26, height: 26, borderRadius: "50%",
         background: TRAIL_COLOR[it.id] || "#93a4bd",
@@ -7137,6 +7169,7 @@ window.FortressApp = function Fortress() {
           } }, h("span", { style: { fontSize: 13, fontWeight: 900, color: "#3b2606" } }, gold + " G"))
         ),
         h("div", { style: { fontSize: 11.5, color: "#64748b", marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
+        section("cannon", t("cosSectionCannon")),
         section("trail", t("cosSectionTrail")),
         section("frame", t("cosSectionFrame")),
         section("win", t("cosSectionWin")),

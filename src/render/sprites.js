@@ -693,6 +693,229 @@ export function cannonBarrelSprite(player, skinId, skinDef) {
   }
   return SPR.barrel[key];
 }
+// ── Geschütz-Neubau (v3.45.0) ───────────────────────────────────────────────
+// Vorher: statische Kuppel + dünner Stab = las sich als Platzhalter.
+// Jetzt echtes Artillerie-Layout in Draufsicht:
+//   FEST     Basisplatte (Panzerung, Bolzen) + Turmring
+//   ROTIEREND Turmgehäuse + Rohr + zwei Rücklaufzylinder + Mündungsbremse
+// Beides wird gebacken; im Frame nur zwei drawImage (eins davon rotiert).
+export function cannonBaseSprite(player, skinId, skinDef) {
+  if (!SPR.base) SPR.base = {};
+  const key = player + (skinId ? "|" + skinId : "");
+  if (SPR.base[key]) return SPR.base[key];
+  const R = CELL * 1.6;
+  const D = Math.ceil(R * 2.3);
+  const c = mkSpriteCanvas(D, D);
+  const x = c.getContext("2d");
+  const n = CANNON_NEON[player] || CANNON_NEON[1];
+  const cx = D / 2, cy = D / 2;
+  const cols = skinDef ? skinDef.dome : ["#5a6477", "#2c333f", "#10141d"];
+  // Achteckige Panzerplatte
+  const plateR = R * 1.0;
+  x.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+    const px = cx + Math.cos(a) * plateR, py = cy + Math.sin(a) * plateR;
+    if (i === 0) x.moveTo(px, py); else x.lineTo(px, py);
+  }
+  x.closePath();
+  const pg = x.createLinearGradient(cx - plateR, cy - plateR, cx + plateR * 0.6, cy + plateR);
+  pg.addColorStop(0, "#6b7689");
+  pg.addColorStop(0.45, "#333c4a");
+  pg.addColorStop(1, "#11151d");
+  x.fillStyle = pg;
+  x.fill();
+  x.strokeStyle = "rgba(0,0,0,0.55)";
+  x.lineWidth = 1.4;
+  x.stroke();
+  // Lichtkante oben links auf der Platte
+  x.strokeStyle = "rgba(255,255,255,0.30)";
+  x.lineWidth = 1.2;
+  x.beginPath();
+  x.arc(cx, cy, plateR * 0.94, Math.PI * 0.78, Math.PI * 1.62);
+  x.stroke();
+  // Verankerungsbolzen an den Plattenecken
+  for (let i = 0; i < 8; i += 2) {
+    const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+    const bx = cx + Math.cos(a) * plateR * 0.78, by = cy + Math.sin(a) * plateR * 0.78;
+    x.fillStyle = "rgba(0,0,0,0.5)";
+    x.beginPath();
+    x.arc(bx + 0.5, by + 0.6, 2.0, 0, Math.PI * 2);
+    x.fill();
+    const bg2 = x.createRadialGradient(bx - 0.7, by - 0.8, 0.2, bx, by, 2.1);
+    bg2.addColorStop(0, "rgba(220,230,245,0.95)");
+    bg2.addColorStop(1, "rgba(95,105,124,0.9)");
+    x.fillStyle = bg2;
+    x.beginPath();
+    x.arc(bx, by, 1.8, 0, Math.PI * 2);
+    x.fill();
+  }
+  // Turmring (Laufkranz) mit Zahnung
+  x.strokeStyle = "rgba(10,14,20,0.85)";
+  x.lineWidth = 3.4;
+  x.beginPath();
+  x.arc(cx, cy, R * 0.72, 0, Math.PI * 2);
+  x.stroke();
+  x.strokeStyle = "rgba(150,164,186,0.55)";
+  x.lineWidth = 1;
+  x.beginPath();
+  x.arc(cx, cy, R * 0.72, 0, Math.PI * 2);
+  x.stroke();
+  for (let i = 0; i < 20; i++) {
+    const a = i / 20 * Math.PI * 2;
+    x.strokeStyle = "rgba(10,14,20,0.7)";
+    x.lineWidth = 1.1;
+    x.beginPath();
+    x.moveTo(cx + Math.cos(a) * R * 0.66, cy + Math.sin(a) * R * 0.66);
+    x.lineTo(cx + Math.cos(a) * R * 0.78, cy + Math.sin(a) * R * 0.78);
+    x.stroke();
+  }
+  // dunkle Grube in der Mitte (Turm sitzt darauf)
+  x.fillStyle = "rgba(6,9,14,0.9)";
+  x.beginPath();
+  x.arc(cx, cy, R * 0.6, 0, Math.PI * 2);
+  x.fill();
+  SPR.base[key] = c;
+  return c;
+}
+// Rotierender Teil: Turmgehäuse + Rohr, gezeichnet nach RECHTS (0°).
+export function cannonTurretSprite(player, skinId, skinDef) {
+  if (!SPR.turret) SPR.turret = {};
+  const key = player + (skinId ? "|" + skinId : "");
+  if (SPR.turret[key]) return SPR.turret[key];
+  const R = CELL * 1.6;
+  const barrelLen = CELL * 2.9, barrelW = 8.5;
+  const PAD = 12;
+  const W2 = Math.ceil(R * 0.95 + barrelLen + PAD * 2);
+  const H2 = Math.ceil(R * 1.5 + PAD * 2);
+  const c = mkSpriteCanvas(W2, H2);
+  const x = c.getContext("2d");
+  const n = CANNON_NEON[player] || CANNON_NEON[1];
+  const ox = PAD + R * 0.62, oy = H2 / 2;   // Drehzentrum
+  const cols = skinDef ? skinDef.dome : ["#7c8798", "#39424f", "#141922"];
+  const core = skinDef ? skinDef.core : n.lt;
+  // Schlagschatten des ganzen Turms
+  x.save();
+  x.globalAlpha = 0.5;
+  x.fillStyle = "#000";
+  if (typeof x.filter === "string") x.filter = "blur(3px)";
+  roundRectPath(x, ox - R * 0.55 + 2, oy - R * 0.5 + 3, R * 1.1 + barrelLen * 0.5, R, 7);
+  x.fill();
+  x.filter = "none";
+  x.restore();
+  // Rücklaufzylinder (zwei schlanke Rohre neben dem Hauptrohr)
+  for (const sgn of [-1, 1]) {
+    const ry = oy + sgn * (barrelW * 0.62);
+    x.fillStyle = "rgba(0,0,0,0.45)";
+    roundRectPath(x, ox + R * 0.1, ry - 2.1 + 0.8, barrelLen * 0.62, 4.2, 2);
+    x.fill();
+    const cg = x.createLinearGradient(0, ry - 2.1, 0, ry + 2.1);
+    cg.addColorStop(0, "#98a4b6");
+    cg.addColorStop(1, "#2b323e");
+    x.fillStyle = cg;
+    roundRectPath(x, ox + R * 0.1, ry - 2.1, barrelLen * 0.62, 4.2, 2);
+    x.fill();
+  }
+  // Hauptrohr — zur Mündung hin leicht verjüngt
+  const bx0 = ox + R * 0.15, bx1 = ox + R * 0.15 + barrelLen;
+  const bg = x.createLinearGradient(0, oy - barrelW / 2, 0, oy + barrelW / 2);
+  bg.addColorStop(0, cols[0]);
+  bg.addColorStop(0.42, cols[1]);
+  bg.addColorStop(1, cols[2]);
+  x.fillStyle = bg;
+  x.beginPath();
+  x.moveTo(bx0, oy - barrelW / 2);
+  x.lineTo(bx1 - 6, oy - barrelW * 0.40);
+  x.lineTo(bx1 - 6, oy + barrelW * 0.40);
+  x.lineTo(bx0, oy + barrelW / 2);
+  x.closePath();
+  x.fill();
+  x.fillStyle = "rgba(255,255,255,0.32)";
+  x.fillRect(bx0, oy - barrelW / 2 + 0.8, barrelLen - 8, 1.4);
+  // Verstärkungsbänder
+  for (let b = 0; b < 3; b++) {
+    const bxp = bx0 + 5 + b * (barrelLen * 0.25);
+    x.fillStyle = "rgba(0,0,0,0.45)";
+    x.fillRect(bxp, oy - barrelW / 2 - 0.9, 2.6, barrelW + 1.8);
+    x.fillStyle = "rgba(196,208,226,0.55)";
+    x.fillRect(bxp, oy - barrelW / 2 - 0.9, 1, barrelW + 1.8);
+  }
+  // Mündungsbremse — verdickter Kopf mit seitlichen Austrittsschlitzen
+  const mbx = bx1 - 7, mbW = 9, mbH = barrelW + 4.5;
+  x.fillStyle = "rgba(0,0,0,0.5)";
+  roundRectPath(x, mbx + 1, oy - mbH / 2 + 1.5, mbW, mbH, 2.5);
+  x.fill();
+  const mg = x.createLinearGradient(0, oy - mbH / 2, 0, oy + mbH / 2);
+  mg.addColorStop(0, "#a7b3c6");
+  mg.addColorStop(0.45, "#4a5464");
+  mg.addColorStop(1, "#171d27");
+  x.fillStyle = mg;
+  roundRectPath(x, mbx, oy - mbH / 2, mbW, mbH, 2.5);
+  x.fill();
+  x.fillStyle = "rgba(8,11,16,0.9)";
+  x.fillRect(mbx + 2.2, oy - mbH / 2 + 1.2, 1.8, 2.6);
+  x.fillRect(mbx + 2.2, oy + mbH / 2 - 3.8, 1.8, 2.6);
+  // Mündungsöffnung mit Kernglühen
+  x.fillStyle = "#06090e";
+  x.beginPath();
+  x.ellipse(mbx + mbW - 1.4, oy, 1.7, barrelW * 0.34, 0, 0, Math.PI * 2);
+  x.fill();
+  x.fillStyle = core;
+  x.globalAlpha = 0.85;
+  x.beginPath();
+  x.ellipse(mbx + mbW - 1.4, oy, 0.9, barrelW * 0.2, 0, 0, Math.PI * 2);
+  x.fill();
+  x.globalAlpha = 1;
+  // Turmgehäuse — geneigte Panzerung über dem Drehzentrum
+  const hg = x.createLinearGradient(ox - R * 0.6, oy - R * 0.6, ox + R * 0.5, oy + R * 0.6);
+  hg.addColorStop(0, cols[0]);
+  hg.addColorStop(0.5, cols[1]);
+  hg.addColorStop(1, cols[2]);
+  x.fillStyle = hg;
+  x.beginPath();
+  x.moveTo(ox - R * 0.58, oy - R * 0.30);
+  x.lineTo(ox + R * 0.26, oy - R * 0.46);
+  x.lineTo(ox + R * 0.60, oy - R * 0.22);
+  x.lineTo(ox + R * 0.60, oy + R * 0.22);
+  x.lineTo(ox + R * 0.26, oy + R * 0.46);
+  x.lineTo(ox - R * 0.58, oy + R * 0.30);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = "rgba(0,0,0,0.6)";
+  x.lineWidth = 1.3;
+  x.stroke();
+  // Lichtkante auf der oberen Gehäusehälfte
+  x.strokeStyle = "rgba(255,255,255,0.40)";
+  x.lineWidth = 1.3;
+  x.beginPath();
+  x.moveTo(ox - R * 0.56, oy - R * 0.29);
+  x.lineTo(ox + R * 0.26, oy - R * 0.45);
+  x.lineTo(ox + R * 0.58, oy - R * 0.22);
+  x.stroke();
+  // Luke + Lüftungsschlitze + Team-Kern
+  x.fillStyle = "rgba(10,14,20,0.75)";
+  roundRectPath(x, ox - R * 0.40, oy - R * 0.17, R * 0.34, R * 0.34, 3);
+  x.fill();
+  x.strokeStyle = "rgba(255,255,255,0.16)";
+  x.lineWidth = 0.8;
+  x.stroke();
+  for (let v = 0; v < 3; v++) {
+    x.fillStyle = "rgba(6,9,14,0.8)";
+    x.fillRect(ox + R * 0.02, oy - R * 0.26 + v * 5.2, R * 0.30, 2.4);
+    x.fillStyle = "rgba(255,255,255,0.13)";
+    x.fillRect(ox + R * 0.02, oy - R * 0.26 + v * 5.2, R * 0.30, 0.8);
+  }
+  const cg2 = x.createRadialGradient(ox, oy, 0.4, ox, oy, R * 0.2);
+  cg2.addColorStop(0, core);
+  cg2.addColorStop(1, n.glow + "0)");
+  x.fillStyle = cg2;
+  x.beginPath();
+  x.arc(ox, oy, R * 0.2, 0, Math.PI * 2);
+  x.fill();
+  SPR.turret[key] = { canvas: c, ox, oy };
+  return SPR.turret[key];
+}
+
 export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, skinId, skinDef) {
   const R = CELL * 1.6;
   const n = CANNON_NEON[player] || CANNON_NEON[1];
@@ -702,16 +925,24 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   ctx.beginPath();
   ctx.ellipse(cx + 2, cy + 5, R * 0.95, R * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Rohr: vorgerendertes Sprite, nur rotiert geblittet
-  const bar = cannonBarrelSprite(player, skinId, skinDef);
+  // FESTER Unterbau: Panzerplatte + Turmring (dreht NICHT mit — das ist der
+  // Kern des Redesigns v3.45.0; vorher rotierte nur ein Stab an einer Kuppel)
+  const base = cannonBaseSprite(player, skinId, skinDef);
+  ctx.drawImage(base, cx - base.width / 2, cy - base.height / 2);
+  // ROTIERENDER Turm: Gehäuse + Rohr + Rücklaufzylinder + Mündungsbremse
+  const tur = cannonTurretSprite(player, skinId, skinDef);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
-  ctx.drawImage(bar, -BARREL_PAD - CELL * 0.2, -bar.height / 2);
+  ctx.drawImage(tur.canvas, -tur.ox, -tur.oy);
   ctx.restore();
-  // Kuppel: vorgerendertes Sprite
+  // Kuppel-Sprite liefert weiterhin die Skin-Signatur (Facetten/Runen/Schuppen)
+  // als Aufsatz auf dem Turmdach — kleiner skaliert, damit der Turm dominiert.
   const dome = cannonDomeSprite(player, skinId, skinDef);
-  ctx.drawImage(dome, cx - dome.width / 2, cy - dome.height / 2);
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  ctx.drawImage(dome, cx - dome.width * 0.31, cy - dome.height * 0.31, dome.width * 0.62, dome.height * 0.62);
+  ctx.restore();
   // ── Signatur-Animation je Skin (v3.44.0) ────────────────────────────────
   // Das ist der eigentliche „Haben-wollen"-Faktor: ein Standbild kann man
   // umfärben, Bewegung nicht. Bewusst billig gehalten (wenige Arcs/Punkte),

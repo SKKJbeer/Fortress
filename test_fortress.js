@@ -2455,8 +2455,15 @@ async function suiteGoldShop(browser) {
     afterBuy.owned.includes('trail_ember') ? ok('Gold-Shop: Artikel in owned[] ✓') : fail('Gold-Shop: owned fehlt');
     afterBuy.trail === 'trail_ember' ? ok('Gold-Shop: Artikel direkt angelegt ✓') : fail(`Gold-Shop: equipped falsch (${afterBuy.trail})`);
     // ── Umrüsten auf Standard (gratis, kein Gold-Abzug) ──
+    // Selektor auf die TRAIL-Sektion eingegrenzt (v3.45.0): seit der Gold-Shop
+    // auch eine Geschütz-Kategorie hat, gibt es mehrere "Standard"-Buttons —
+    // ein globales Suchen traf die erste (Geschütz) statt der gemeinten (Trail).
     await page.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find(x => /Standard|Default/.test(x.textContent || ''));
+      const labels = [...document.querySelectorAll('div')]
+        .filter(d => /^(KUGEL-TRAILS|BALL TRAILS)$/i.test((d.textContent || '').trim()));
+      const sec = labels.length ? labels[labels.length - 1].parentElement : null;
+      const scope = sec || document;
+      const b = [...scope.querySelectorAll('button')].find(x => /Standard|Default/.test(x.textContent || ''));
       b && b.click();
     });
     await page.waitForTimeout(300);
@@ -2828,6 +2835,8 @@ async function suiteBot(browser) {
       const fp = await page.evaluate(() => {
         const cells = window.__waterCells && window.__waterCells();
         if (!cells || !cells.length) return null;
+        const wt = window.__waterTheme && window.__waterTheme();
+        if (!wt) return null;
         const cv = document.querySelector('canvas');
         const img = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
         const W = cv.width, H = cv.height, CELL = 14;
@@ -2843,9 +2852,25 @@ async function suiteBot(browser) {
         lr = lr.map(v => v / land.length);
         const isWater = new Set(cells.map(([r,c]) => r + '_' + c));
         const edge = cells.filter(([r,c]) => !isWater.has((67 - r) + '_' + c));
+        // ABSOLUTE Referenz aus dem Welt-Thema (v3.45.0).
+        // ⚠ Frühere Fassungen leiteten die Wasser-Referenzfarbe aus dem
+        // GERENDERTEN Bild ab (Mittel über alle Wasserzell-Positionen). Das ist
+        // wertlos: zeichnet der Code den Fluss an der falschen Stelle, wandert
+        // die Referenz mit und der Test winkt den Bug durch — nachgewiesen mit
+        // einem absichtlich gespiegelten Fluss, den die Prüfung bestand.
+        // Jetzt: Themenfarben (Kruste/Körper/Kern) als feste Sollwerte. Der
+        // Fluss hat seit v3.42.0 einen Verlauf, daher gilt die NÄCHSTE der
+        // Themenfarben. Land-Referenz stammt aus echten Landzellen.
+        const hex2rgb = (h) => { const t = h.replace('#',''); return [parseInt(t.slice(0,2),16), parseInt(t.slice(2,4),16), parseInt(t.slice(4,6),16)]; };
+        const waterRefs = [wt.bank, wt.water[0], wt.water[1]].filter(v => typeof v === 'string' && v[0] === '#').map(hex2rgb);
+        if (!waterRefs.length) return null;
+        const dWater = (p) => Math.min.apply(null, waterRefs.map(w => dist(p, w)));
         let good = 0;
-        for (const [r,c] of edge) { const p = px(c*CELL+CELL/2, flipY(r)); if (dist(p, wr) < dist(p, lr)) good++; }
-        return { edgeN: edge.length, good, contrast: Math.round(dist(wr, lr)) };
+        for (const [r,c] of edge) {
+          const p = px(c*CELL+CELL/2, flipY(r));
+          if (dWater(p) < dist(p, lr)) good++;
+        }
+        return { edgeN: edge.length, good, contrast: Math.round(dist(wr, lr)), world: wt.name };
       });
       if (!fp) fail('Terrain-Flip: Wasserzellen nicht lesbar');
       else if (fp.edgeN === 0) ok('Terrain-Flip: Karte symmetrisch (kein Kanten-Check nötig) ✓');

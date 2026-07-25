@@ -18,6 +18,12 @@ export const COSMETICS = {
     { id: "frame_gold", price: 500 },
     { id: "frame_dragon", price: 800 }
   ],
+  cannon: [
+    { id: "cannon_standard", price: 0 },
+    { id: "cannon_bronze", price: 250 },
+    { id: "cannon_steel", price: 450 },
+    { id: "cannon_royal", price: 700 }
+  ],
   win: [
     { id: "win_confetti", price: 0 },
     { id: "win_fireworks", price: 200 },
@@ -72,7 +78,12 @@ export const CANNON_SKIN = {
   cannon_obsidian: { dome: ["#6d28d9", "#27216b", "#0c0a1d"], core: "#c4b5fd", style: "rune",    fx: "#a78bfa" },
   cannon_hexer:    { dome: ["#7e22ce", "#3b0764", "#100519"], core: "#f0abfc", style: "rune",    fx: "#e879f9", hexer: true },
   cannon_dragon:   { dome: ["#dc2626", "#7f1d1d", "#1c0a0a"], core: "#fca5a5", style: "scale",   fx: "#fb923c" },
-  cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", style: "star",    fx: "#fde047", stars: true }
+  cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", style: "star",    fx: "#fde047", stars: true },
+  // Gold-Shop-Modelle (v3.45.0): kaufbar statt schmiedbar. Eigene Panzerung,
+  // bewusst OHNE Signatur-Animation — die bleibt der Schmiede-Stufe vorbehalten.
+  cannon_bronze:   { dome: ["#e6b877", "#a06a2c", "#3c2410"], core: "#fde68a" },
+  cannon_steel:    { dome: ["#dbe3ee", "#69748a", "#1b2029"], core: "#e2e8f0" },
+  cannon_royal:    { dome: ["#fef3c7", "#c79a2e", "#4a3410"], core: "#fff7d6", style: "crystal", fx: "#fde68a" }
 };
 // Einschlag-Effekte: p = Partikel-Palette, ring = Explosions-Gradient (r,g,b)
 export const IMPACT_FX = {
