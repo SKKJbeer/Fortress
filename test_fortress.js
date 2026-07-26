@@ -2956,7 +2956,10 @@ async function suiteBot(browser) {
         }
         const t = document.body.innerText;
         if (!/Beute|Spoils/i.test(t)) return null;
-        const cards = [...document.querySelectorAll('button')].filter(b => /Kanone|Bezwinger|Schnellladen|Panzermauern|Reparatur|Cannon|Slayer|reload|Armored|Repair/i.test(b.textContent));
+        // "Panzer"/"Armor" statt der vollen Labels: die Karte hiess bis v3.68.0
+        // "Panzermauern"/"Armored walls" und wurde in v3.69.0 gekuerzt, weil der
+        // lange Name in der Kachel abgeschnitten wurde ("Panzerma...").
+        const cards = [...document.querySelectorAll('button')].filter(b => /Kanone|Bezwinger|Schnellladen|Panzer|Reparatur|Cannon|Slayer|reload|Armor|Repair/i.test(b.textContent));
         if (cards.length < 4) return null;
         return {
           cards: cards.length,

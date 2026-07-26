@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.68.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.69.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4684,3 +4684,58 @@ und Chromiums `innerText` liefert den **transformierten** Text — Prüfungen da
 müssen case-insensitiv sein.
 
 Tests grün (Unit 39/39, E2E 311/311). SW-Cache `fortress-v3.68.0`.
+
+---
+
+## v3.69.0 — Design-Review: der schwarze Balken, die abgeschnittenen Namen
+
+Review an echten Frames aus dem laufenden Spiel (16 Screens, Bot-Selbstspiel,
+390×844 @2x), nicht an Mockups. Drei Befunde, alle behoben.
+
+### 1. Ein Viertel des Bildschirms war schwarz
+
+Das Brett ist **breiten**-begrenzt: Raster 44×68 (Seitenverhältnis 0,647) ist
+relativ breiter als die nutzbare Fläche eines Hochkant-Telefons (0,53). Auf
+390×844 skaliert `fit` also auf 388×600 — und ließ rund **126 px** ungenutzt.
+In der Bauphase stand dort ein dünner Streifen mit einem 24-px-Punktmuster, in
+der **Schussphase gar nichts**.
+
+Ursache im Code: `fit()` maß die **Isthöhe** der Unterleiste und rechnete sie in
+`chrome` ein. Damit konnte die Leiste nie wachsen, ohne das Brett zu
+verkleinern — eine Rückkopplung, die den Balken zementierte. Jetzt reserviert
+`fit` nur eine **Mindesthöhe** (`BAR_MIN = 52`) und gibt die komplette Resthöhe
+als `viewSize.bar` an die Leiste weiter (gedeckelt bei 150 px). Das Brett bleibt
+exakt gleich groß.
+
+| Phase | vorher | jetzt |
+|---|---|---|
+| Bauen | 24-px-Punktmuster, kein Hinweis aufs Drehen | großes Teil mit Glanzkante + „DREHEN"-Affordanz |
+| Schießen | schwarz | „**2 / 3** FEUERBEREIT · 1 stumm" |
+
+Die Schussphasen-Anzeige beziffert zum ersten Mal die Kernregel *„nur rundum
+eingemauerte Kanonen feuern"* — vorher merkte man nur, dass weniger Kugeln kamen
+als erwartet. Nebenbei ersetzen `piecePanel()`/`readyPanel()` drei fast
+identische, per Copy-Paste gepflegte Blöcke.
+
+### 2. Spielernamen wurden auf zwei Zeichen gekürzt
+
+Im HUD standen Avatar, Name, Punkte und Beute in **einer** Reihe. Der Beute-Chip
+hatte keine feste Breite — je mehr Beute, desto schmaler der Name: aus „ARIN"
+wurde „ARI…", bei 590 Beute „AR…", beim Bot „Ka…". Name und Beute sind jetzt
+**gestapelt**, der Name bekommt die volle Chipbreite; der Chip hat feste
+Mindestbreite und Tabellenziffern, damit die Breite nicht mit der Ziffernzahl
+springt. Punktestand 19 → 17 px, Mittelblock 30 % → 24 %.
+Ergebnis: „Zugbrücken-Zacharias" ist lesbar statt „Zug…".
+
+### 3. „Panzerma…"
+
+`shopArmor` „Panzermauern"/„Armored walls" passte nicht in die Shop-Kachel →
+„Panzerung"/„Armor". Der Untertitel „2 Treffer" trägt die Bedeutung ohnehin.
+
+### Test
+
+Der Prüf-Filter des Premium-Shops matchte auf das volle Label `Panzermauern`
+und fand nach der Umbenennung nur noch 4 von 5 Karten — jetzt auf `Panzer`/
+`Armor`. (Der Fehlschlag war korrekt: der Test hat die Umbenennung gemeldet.)
+
+Tests grün (Unit 39/39, E2E 312/312). SW-Cache `fortress-v3.69.0`.
