@@ -106,9 +106,9 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="wrap">
 
   <header class="hero">
-    <span class="kick">Gesamtübersicht · Stand v3.56.0</span>
+    <span class="kick">Gesamtübersicht · Stand v3.57.1 · Stufe 1 ist live</span>
     <h1><em>2146</em> Partien KI gegen KI.<br>Was wir jetzt wissen — und was zu tun ist.</h1>
-    <p class="lede">Acht Studien, alle Ergebnisse gemessen statt behauptet. Diese Seite fasst zusammen, was in den Einzelreports steht, und leitet daraus einen Umsetzungsplan in vier Stufen ab. <b style="color:var(--ink)">Im Spiel selbst ist bis heute nichts davon aktiv</b> — alle Experimente laufen hinter <span class="mono" style="font-family:var(--fm)">window.__balExp</span>.</p>
+    <p class="lede">Acht Studien, alle Ergebnisse gemessen statt behauptet. Diese Seite fasst zusammen, was in den Einzelreports steht, und leitet daraus einen Umsetzungsplan in vier Stufen ab. <b style="color:var(--ink)">Stufe 1 ist seit v3.57.1 im Spiel</b> — reparierte Kanonen-Explosion und zwei Kanonenarten mit Salven-Schalter. Alles Übrige läuft weiterhin nur hinter <span class="mono" style="font-family:var(--fm)">window.__balExp</span>.</p>
   </header>
 
   <section>
@@ -394,15 +394,15 @@ footer a{color:var(--acc);text-decoration:none}
     <div class="road">
 
       <div class="ph p1">
-        <div class="hd"><span class="num">Stufe 1</span><h3>Reparatur</h3><span class="tag ok">klein · kein Risiko</span></div>
-        <p class="meta2">1 Version · keine neue Grafik · keine Protokoll-Änderung · ~1 Arbeitssitzung</p>
+        <div class="hd"><span class="num">Stufe 1</span><h3>Reparatur</h3><span class="tag ok">seit v3.57.1 live</span></div>
+        <p class="meta2">umgesetzt · keine neue Grafik nötig · 1 Arbeitssitzung</p>
         <ul>
-          <li><b>Sprengradius der Kanonen-Explosion auf 2</b> — repariert die seit v3.16.0 dokumentierte Wirkung „Kill öffnet die Hülle".</li>
-          <li><b>Bot lernt die Kanonen-Taktik</b> inklusive Fokusfeuer — sonst spielt er nach dem Fix systematisch schlechter als jeder Mensch (heute 0,0 Kills je Partie).</li>
-          <li><b>Tutorial-Tipp Fokusfeuer</b> — eine Kanone nach der anderen statt Schaden verteilen. Macht in der Messung den Unterschied 19/24 zu 9/24.</li>
+          <li><b>Sprengradius der Kanonen-Explosion auf 2</b> — repariert die seit v3.16.0 dokumentierte Wirkung „Kill öffnet die Hülle". Vorher: 144 Kills, 0 geöffnete Burgen.</li>
+          <li><b>Zwei Kanonenarten mit Salven-Schalter</b> — Mauerbrecher gegen Mauern, Kanonen-Bezwinger gegen Kanonen. Je Salve feuert nur eine Art. Ersetzt die zuvor geplante Fächer-Wahl: Die Salvenform folgt jetzt automatisch der Kanonenart (fächern gegen Mauern, bündeln gegen Kanonen).</li>
+          <li><b>Bot lernt die Kanonentaktik</b> inklusive Fokusfeuer und kauft selbst Bezwinger — vorher tötete er 0,0 Kanonen je Partie.</li>
         </ul>
-        <p class="out">Erwartung: <b>3/24 → 16–19/24</b> entschiedene Partien. Die Taktik, die deine Spieler ohnehin fahren, funktioniert endlich.</p>
-        <p class="risk">Risiko: Kanonen werden gleichzeitig wertvoller und verwundbarer. Das Wiederaufbau-Paket fängt die Todesspirale ab, wurde unter diesen Bedingungen aber nie gemessen — genau dafür ist die Telemetrie da.</p>
+        <p class="out">Gemessen: <b>3/24 → 19/32</b> entschiedene Partien, bei mehr Mauerschaden und gleicher Kill-Rate.</p>
+        <p class="risk">Noch offen aus dieser Stufe: der Tutorial-Tipp zum Fokusfeuer. Zu beobachten: Kanonen sind jetzt gleichzeitig wertvoller und verwundbarer — ob das Wiederaufbau-Paket die Todesspirale weiter abfängt, zeigt erst die Telemetrie echter Partien.</p>
       </div>
 
       <div class="ph p2">
