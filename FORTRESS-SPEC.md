@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.57.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.58.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4235,3 +4235,46 @@ Kosten: keine. Es ist dieselbe Zeichenarbeit, nur später im Frame. Die
 Perf-Regeln bleiben unberührt (keine Gradients/shadowBlur pro Objekt).
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.57.1`.
+
+---
+
+## v3.58.0 — Salven-Schalter: oben rechts, mit Umrüstzeit
+
+Drei Playtest-Rückmeldungen zum Schalter aus v3.57.0:
+
+**1. Position oben rechts.** Der Schalter saß unten rechts in der Daumen-Zone —
+zu nah am Reflex. Er sitzt jetzt oben rechts unter dem HUD
+(`top: env(safe-area-inset-top) + 58px`), außerhalb der Zieh-Geste.
+
+**2. Der Wechsel kostet Zeit** (`SALVO_LOCK_MS = 2600`). Nach einem Wechsel
+müssen die Rohre umgerüstet werden — solange feuert NIEMAND (`fireMortar`
+blockt, Hinweis `warnSalvoLock`). Ohne diese Kosten wäre der Schalter gratis
+und man würde in derselben Runde einfach beides machen; genau das soll die
+Wahl ja verhindern. Sichtbar über einen Countdown („Umrüsten… 2,2 s") und
+einen Fortschrittsbalken; beide Knöpfe sind währenddessen gesperrt.
+Zum Vergleich: Die Nachladezeit beträgt 2500 ms, ein Wechsel kostet also
+ungefähr einen Schuss.
+
+**3. Der Zieler zeigt nur die relevanten Kanonen.** Die gestrichelten
+Schusslinien gingen bisher von ALLEN feuerbereiten Kanonen aus — auch von
+denen, die nach dem Wechsel gar nicht schießen. Jetzt filtert der Zieler auf
+die gewählte Art. Ein Zieler, der Feuer aus Rohren verspricht, die schweigen,
+ist schlimmer als keiner.
+
+**Host-autoritativ:** Der Gast zahlt dieselbe Umrüstzeit — die `salvo`-Aktion
+wird beim Host nur angenommen, wenn dessen Sperre abgelaufen ist. Sonst könnte
+ein Gast beliebig oft gratis wechseln.
+
+**Bot-Regression gefunden und behoben:** Der erste Entwurf ließ den Bot je
+SALVE wechseln. Mit der Sperre verhungerte er dabei — 4 statt ~40 Schuss je
+Partie, und die E2E-Prüfungen „Bot platziert keine Kanonen" und „Bau-KI dichtet
+nicht" schlugen fehl. Jetzt entscheidet der Bot **einmal je Runde**
+(`botWaehleModus`), so wie ein Mensch, und zahlt dieselbe Umrüstzeit.
+
+**Messhinweis:** Das Selbstspiel-Harness staucht die Schussphase auf ~1,2 s
+echte Zeit; die Umrüstzeit von 2,6 s dominiert dort alles. Ergebnisse aus dem
+Zeitraffer sind für diese Mechanik **nicht mehr aussagekräftig**. Gegengeprüft
+wurde deshalb in ECHTER Zeit: bis Runde 3 waren es 76 Schüsse, 82 zerstörte
+Mauern, 2 Kanonen-Kills, Arsenal 4/4 — die Partie fiel vor Runde 5.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.58.0`.

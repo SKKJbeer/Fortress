@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.57.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.58.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -178,6 +178,7 @@
 import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
 const SHOP_SLAYER = SHOP.slayer.price;
+const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
@@ -3140,7 +3141,16 @@ window.FortressApp = function Fortress() {
     if (a.type === "place" && ph === "build") placePiece(p, a.r, a.c);
     else if (a.type === "cannon" && (ph === "setup" || ph === "cannon")) placeCannon(p, a.r, a.c);
     else if (a.type === "buy" && ph === "cannon") buyUpgrade(p, a.item);
-    else if (a.type === "salvo") salvenModus.current[p] = a.m === "slayer" ? "slayer" : "std";
+    else if (a.type === "salvo") {
+      // Host-autoritativ: der Gast zahlt dieselbe Umruestzeit. Ohne das koennte
+      // ein Gast beliebig oft gratis wechseln.
+      const neu = a.m === "slayer" ? "slayer" : "std";
+      if (salvenModus.current[p] !== neu
+          && performance.now() - (salvoSwitchAt.current[p] || -99999) >= SALVO_LOCK_MS) {
+        salvenModus.current[p] = neu;
+        salvoSwitchAt.current[p] = performance.now();
+      }
+    }
     else if (a.type === "ready" && ph === "cannon") setArmoryReady(p);
     else if (a.type === "fire" && ph === "shoot") fireMortar(p, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[p] = a.angle;
@@ -4318,6 +4328,10 @@ window.FortressApp = function Fortress() {
     if (shootSettling.current) return false;
     const now = performance.now();
     if (now - lastShot.current[player] < reloadMsOf(player)) return false;
+    if (now - (salvoSwitchAt.current[player] || -99999) < SALVO_LOCK_MS) {
+      if (!online.current || player === myRole.current) showWarn(t('warnSalvoLock'));
+      return false;
+    }
     const g = grid.current;
     let ready;
     if (phase_r.current === "shoot" && frozenReady.current[player]) {
@@ -5331,6 +5345,18 @@ window.FortressApp = function Fortress() {
       if (botFillNear(g, ter, B, oc, cn, 2)) return;
     }
   }
+  // Der Bot entscheidet EINMAL JE RUNDE, welche Kanonenart feuert — so wie ein
+  // Mensch es tut. Ein Wechsel je Salve waere weder realistisch noch spielbar:
+  // er zahlte dann permanent die Umruestzeit und kaeme kaum noch zum Schuss
+  // (gemessen: 4 statt ~40 Schuss je Partie).
+  const botModusRunde = useRef({ 1: -1, 2: -1, 3: -1 });
+  function botWaehleModus(B, art) {
+    if (botModusRunde.current[B] === roundRefVal.current) return;   // schon entschieden
+    botModusRunde.current[B] = roundRefVal.current;
+    if ((salvenModus.current[B] || "std") === art) return;
+    salvenModus.current[B] = art;
+    salvoSwitchAt.current[B] = performance.now();   // zahlt dieselbe Umruestzeit
+  }
   function botShoot(g, B) {
     // Tutorial: der Bot schießt EIN Loch in die noch geschlossene Spielerburg (authentisch);
     // sobald sie offen ist, bleibt er passiv → der Spieler muss die Lücke selbst schließen.
@@ -5368,8 +5394,12 @@ window.FortressApp = function Fortress() {
       const hatSlayer = (cannons.current[B] || []).some((c) => c.kt === "slayer" && c.hp > 0);
       const perP = XA["aimP" + B];
       const modus = perP || XA.aim || (hatSlayer ? "mixed" : "wall");
+      // Seit v3.58.0 kostet jeder Wechsel Umruestzeit. Der Bot bleibt deshalb
+      // DREI Salven bei einer Art, statt jede Salve zu wechseln — sonst zahlt
+      // er permanent die Sperre und feuert kaum noch.
+      // Bei gemischter Spielweise entscheidet die RUNDE, nicht die Salve.
       const wantCannon = modus === "cannon"
-        || (modus === "mixed" && botAimSeq.current % 2 === 0);
+        || (modus === "mixed" && roundRefVal.current % 2 === 0);
       if (wantCannon && !tutorialMode.current) {
         const cann = (cannons.current[E] || []).filter((cn) => cn.hp > 0);
         if (cann.length) {
@@ -5383,9 +5413,10 @@ window.FortressApp = function Fortress() {
               || (Math.hypot(x.c*CELL - src.x, x.r*CELL - src.y)
                 - Math.hypot(y.c*CELL - src.x, y.r*CELL - src.y)))[0];
           }
+          botWaehleModus(B, "slayer");
+          if ((salvenModus.current[B] || "std") !== "slayer") return;   // diese Runde Mauern
           botAimSeq.current++;
           lastAimWall.current[B] = false;   // Kanonenziel -> buendeln
-          salvenModus.current[B] = "slayer";   // Kanonenjagd -> Bezwinger feuern
           const jitC = botLvl().spread * 0.35;
           if (typeof window !== "undefined" && window.__mmDebug) {
             const ad = window.__aimDbg = window.__aimDbg || { cannon: 0, wall: 0 };
@@ -5397,8 +5428,9 @@ window.FortressApp = function Fortress() {
           return;
         }
       }
+      botWaehleModus(B, "std");
+      if ((salvenModus.current[B] || "std") !== "std") return;   // diese Runde Kanonen
       lastAimWall.current[B] = true;    // Mauerziel -> faechern
-      salvenModus.current[B] = "std";   // Mauerangriff -> Mauerbrecher feuern
       if (typeof window !== "undefined" && window.__mmDebug) {
         const ad = window.__aimDbg = window.__aimDbg || { cannon: 0, wall: 0 };
         ad.wall++;
@@ -5459,6 +5491,11 @@ window.FortressApp = function Fortress() {
   // die Kanonenjagd zum ersten Mal etwas: den Mauerschaden derselben Runde.
   const cannonTypeQueue = useRef({ 1: [], 2: [], 3: [] });   // Typ der naechsten Platzierung
   const salvenModus = useRef({ 1: "std", 2: "std", 3: "std" }); // gewaehlte Art
+  // Umruest-Sperre (v3.58.0): Nach einem Wechsel muessen die Rohre neu
+  // ausgerichtet werden — solange feuert NIEMAND. Ohne diese Kosten waere der
+  // Schalter gratis und man wuerde einfach beides in derselben Runde machen;
+  // genau das soll die Wahl ja verhindern.
+  const salvoSwitchAt = useRef({ 1: -99999, 2: -99999, 3: -99999 });
   const lastAimWall = useRef({ 1: false, 2: false, 3: false });
   const botAimSeq = useRef(0); // rotiert die Zielmauer, damit das Feuer nicht auf einer Stelle klebt
   function botActFor(B) {
@@ -6619,7 +6656,10 @@ window.FortressApp = function Fortress() {
           if (tgt) {
             const { tx, ty } = tgt;
             const pulse2 = 1 + 0.15 * Math.sin(now / 150);
-            const readyCannons = list.filter((cn) => isReady(cn));
+            // Nur die Kanonen der gewaehlten Art zeigen ihre Schusslinie — sonst
+            // verspricht der Zieler Feuer aus Rohren, die gar nicht schiessen.
+            const aktiveArt = salvenModus.current[player] || "std";
+            const readyCannons = list.filter((cn) => isReady(cn) && (cn.kt || "std") === aktiveArt);
             ctx.strokeStyle = col + "0.45)";
             ctx.lineWidth = 1.5;
             ctx.setLineDash([4, 7]);
@@ -7226,7 +7266,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.57.1"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.58.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -9112,10 +9152,10 @@ window.FortressApp = function Fortress() {
       )
     );
   })(),
-  // ── Salven-Schalter (v3.57.0): welche Kanonenart feuert? ──────────────
-  // Mauerbrecher reissen Mauern, Bezwinger toeten nur Kanonen. Je Salve
-  // feuert NUR die gewaehlte Art — deshalb muss die Wahl sichtbar sein und
-  // zeigen, wie viele Rohre sie ueberhaupt bereitstellt.
+  // ── Salven-Schalter (v3.58.0): welche Kanonenart feuert? ──────────────
+  // Oben rechts, ausserhalb der Daumen-Zone: ein Wechsel soll eine bewusste
+  // Entscheidung sein, kein Reflex. Er kostet Umruestzeit — solange feuert
+  // NIEMAND, und das zeigt ein Fortschrittsring am Knopf.
   phase === "shoot" && (() => {
     const meS = online.current ? myRole.current : (botMode.current ? 1 : null);
     if (!meS) return null;
@@ -9124,19 +9164,30 @@ window.FortressApp = function Fortress() {
     const frozen = new Set(frozenReady.current[meS] || []);
     const zaehl = (art) => mine.filter((c) => (c.kt || "std") === art && frozen.has(c.id)).length;
     const modus = salvenModus.current[meS] || "std";
+    const restMs = Math.max(0, SALVO_LOCK_MS - (performance.now() - (salvoSwitchAt.current[meS] || -99999)));
+    const gesperrt = restMs > 0;
     const knopf = (art, icon, label) => {
       const aktiv = modus === art, n = zaehl(art);
       return /* @__PURE__ */ React.createElement("button", {
         key: art,
+        disabled: gesperrt || aktiv,
         onClick: () => {
+          if (gesperrt || salvenModus.current[meS] === art) return;
           salvenModus.current[meS] = art;
+          salvoSwitchAt.current[meS] = performance.now();
           if (online.current && myRole.current !== 1) sendAction({ type: "salvo", m: art });
-          SFX.place && SFX.place();
+          SFX.buy && SFX.buy();
           setUiTick((t2) => t2 + 1);
+          // Countdown weiterlaufen lassen — die UI rendert sonst nur beim
+          // naechsten Timer-Tick und der Balken stuende still.
+          const iv = setInterval(() => setUiTick((t2) => t2 + 1), 100);
+          setTimeout(() => { clearInterval(iv); setUiTick((t2) => t2 + 1); }, SALVO_LOCK_MS + 120);
         },
         "aria-label": label,
         style: {
-          display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
+          position: "relative", overflow: "hidden",
+          display: "flex", alignItems: "center", gap: 6,
+          cursor: gesperrt || aktiv ? "default" : "pointer",
           padding: "7px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 800,
           border: "1px solid " + (aktiv ? "rgba(96,165,250,0.85)" : "rgba(255,255,255,0.14)"),
           background: aktiv
@@ -9144,22 +9195,33 @@ window.FortressApp = function Fortress() {
             : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
           color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b"),
           boxShadow: aktiv ? "0 4px 16px rgba(37,99,235,0.45)" : "0 3px 12px rgba(0,0,0,0.45)",
-          opacity: n ? 1 : 0.55
+          opacity: gesperrt && !aktiv ? 0.4 : (n ? 1 : 0.6)
         }
-      }, React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b") }),
-         label, /* @__PURE__ */ React.createElement("span", {
-           style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
+      },
+        React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b") }),
+        label,
+        /* @__PURE__ */ React.createElement("span", {
+          style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
     };
     return /* @__PURE__ */ React.createElement("div", { key: "salvo", style: {
-      position: "fixed", right: 8, bottom: "calc(env(safe-area-inset-bottom, 0px) + 118px)",
+      position: "fixed", right: 8, top: "calc(env(safe-area-inset-top, 0px) + 58px)",
       zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5
     } },
       /* @__PURE__ */ React.createElement("span", { style: {
-        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", color: "#64748b",
-        textTransform: "uppercase", paddingRight: 4
-      } }, t("salvoHint")),
+        fontSize: 9.5, fontWeight: 800, letterSpacing: "0.08em",
+        color: gesperrt ? "#fbbf24" : "#64748b",
+        textTransform: "uppercase", paddingRight: 4,
+        textShadow: "0 1px 3px rgba(0,0,0,0.8)"
+      } }, gesperrt ? t("salvoLock") + " " + (restMs / 1000).toFixed(1) + "s" : t("salvoHint")),
       knopf("std", "bricks", t("salvoWalls")),
-      knopf("slayer", "crosshair", t("salvoSlayer"))
+      knopf("slayer", "crosshair", t("salvoSlayer")),
+      // Umruest-Balken: macht die Wartezeit sichtbar, statt sie nur zu spueren
+      gesperrt && /* @__PURE__ */ React.createElement("div", { style: {
+        width: 110, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.10)", overflow: "hidden"
+      } }, /* @__PURE__ */ React.createElement("div", { style: {
+        height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#f59e0b,#fbbf24)",
+        width: (100 - restMs / SALVO_LOCK_MS * 100).toFixed(1) + "%"
+      } }))
     );
   })(),
   // ── Emotes (v3.25.0): Button + Leiste (nur online) ──
