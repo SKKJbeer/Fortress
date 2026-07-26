@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.57.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.57.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -6591,6 +6591,7 @@ window.FortressApp = function Fortress() {
         ctx.textAlign = "left";
       }
     }
+    const zielOverlays = [];   // Zielhilfen: erst NACH allen Kanonen zeichnen
     for (const player of players) {
       const angle = cannonAngle.current[player];
       const outsideMap = fc.cannonOutside[player];
@@ -6598,10 +6599,15 @@ window.FortressApp = function Fortress() {
       const anchor = slingAnchor(player);
       const frozen = frozenReady.current[player] || [];
       const isReady = (cn) => cn.hp > 0 && (phase_r.current === "shoot" ? frozen.includes(cn.id) : isCannonClosed(outsideMap, cn));
+      // Z-ORDER (v3.57.1): Der Zieler wurde bisher MITTEN in der Spielerschleife
+      // gezeichnet — die Kanonen des jeweils naechsten Spielers malten dann
+      // darueber, sodass das Fadenkreuz hinter Kanonen verschwand. Er wandert
+      // deshalb in eine aufgeschobene Liste und wird nach ALLEN Kanonen
+      // gezeichnet. Zielhilfen gehoeren immer ganz nach vorn.
       if (phase_r.current === "shoot" && activeDrag.current[player] !== null) {
         const pid = activeDrag.current[player];
         const pt = pointers.current.get(pid);
-        if (pt) {
+        if (pt) zielOverlays.push(() => {
           const tgt = slingTarget(player, pt.x, pt.y);
           const col = ACCENT_RGB[player] || ACCENT_RGB[1];
           ctx.strokeStyle = col + "0.35)";
@@ -6660,7 +6666,7 @@ window.FortressApp = function Fortress() {
             ctx.fillText("weiter ziehen\u2026", anchor.x, anchor.y < H / 2 ? anchor.y + CELL * 3.6 : anchor.y - CELL * 3.2);
             ctx.textAlign = "left";
           }
-        }
+        });
       }
       // Schmiede-Kanonen-Skin (v3.33.0): EIN Lookup pro Spieler, dann pro
       // Kanone nur das (skin-gecachte) Sprite blitten — keine neuen Frame-Kosten.
@@ -6699,6 +6705,9 @@ window.FortressApp = function Fortress() {
         }
       }
     }
+    // Zielhilfen zuletzt: Fadenkreuz und Schusslinien liegen damit ueber ALLEN
+    // Kanonen — auch ueber denen des Gegners und den neuen Bezwinger-Aufsaetzen.
+    for (const zeichne of zielOverlays) zeichne();
     for (const ball of balls.current) {
       const p2 = ball.prog;
       const bx = ball.sx + (ball.tx - ball.sx) * p2;
@@ -7217,7 +7226,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.57.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.57.1"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.57.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.57.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4216,3 +4216,22 @@ schießt jetzt Bezwinger-Kugeln (`Math.ceil(CANNON_HP / SLAYER_DMG)` Treffer).
 Shop-Prüfungen von 4 auf 5 Karten. Tests grün (Unit 39/39, E2E 309/309).
 
 SW-Cache `fortress-v3.57.0`.
+
+---
+
+## v3.57.1 — Zieler liegt wieder ganz vorn (Z-Order-Fix)
+
+Playtest-Fund: Der Zieler (Fadenkreuz + Schusslinien) verschwand hinter
+Kanonen. Ursache: Er wurde MITTEN in der Spielerschleife des Render-Loops
+gezeichnet — die Kanonen des jeweils NÄCHSTEN Spielers malten anschließend
+darüber. Mit den neuen Bezwinger-Aufsätzen fiel das nur stärker auf; der
+Fehler bestand schon vorher.
+
+Fix: Die Zielhilfen wandern in eine aufgeschobene Liste (`zielOverlays`) und
+werden erst gezeichnet, wenn ALLE Spieler und ALLE Kanonen durch sind.
+Zielhilfen gehören immer ganz nach vorn — sonst zielt man blind.
+
+Kosten: keine. Es ist dieselbe Zeichenarbeit, nur später im Frame. Die
+Perf-Regeln bleiben unberührt (keine Gradients/shadowBlur pro Objekt).
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.57.1`.
