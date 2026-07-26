@@ -13,6 +13,9 @@ export const ICON_PATHS = {
   // Salven-Schalter (v3.57.0): Fadenkreuz = Bezwinger (Fokusfeuer auf eine
   // Kanone), Ziegelwand = Mauerbrecher (breite Bresche).
   crosshair:   ["M12 2v4", "M12 18v4", "M2 12h4", "M18 12h4", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"],
+  // Beute (v3.65.0): geschliffener Edelstein. Klar unterscheidbar von den
+  // Gold-Muenzen der Meta-Waehrung — im Match zaehlt Beute, im Menue Gold.
+  gem:         ["M6 3h12l4 6-10 12L2 9Z", "M2 9h20", "M12 3 8 9l4 12 4-12-4-6"],
   bricks:      ["M3 6h18", "M3 12h18", "M3 18h18", "M8 6v6", "M16 6v6", "M12 12v6"],
   key:         ["m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4", "m21 2-9.6 9.6", "M13 15.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0Z"],
   arrowLeft:   ["m12 19-7-7 7-7", "M19 12H5"],

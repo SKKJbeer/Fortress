@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.64.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.65.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4512,3 +4512,48 @@ lesbar.
   Sprite-Cache — deshalb bewusst ausgelassen.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.64.0`.
+
+---
+
+## v3.65.0 — Aus „Schrott" wird „Beute": Name, Beträge, Symbol
+
+Drei Kritikpunkte am In-Match-Geld auf einmal: der Name passte nicht ins
+Belagerungs-Thema, die Beträge wirkten kleinlich, und das Symbol war ein
+Zahnrad.
+
+**1. Umbenannt: Schrott → Beute** (englisch: Scrap → Spoils). „Schrott" ist ein
+modernes Wort in einem Burgenspiel. „Beute" trägt beide Einnahmequellen —
+Zerstörung UND Überleben — und ist klar von der Meta-Währung **Gold**
+unterscheidbar: im Match zählt Beute, im Menü Gold.
+
+**2. Alle Beträge × 10.** Die Balance ist **identisch** — es ist eine reine
+Skalierung. Nur das Zahlenbild ist substanzieller:
+| | vorher | jetzt |
+|---|---|---|
+| Startkapital | 15 | **150** |
+| Mauer zerstört | 2 | **20** |
+| Kanone zerstört | 18 | **180** |
+| Überlebens-Sold | 6 | **60** |
+| Wiederaufbau-Sold | 12 | **120** |
+| Kanone | 20 + 8 | **200 + 80** |
+| Bezwinger | 25 | **250** |
+| Schnellladen | 25 / 50 | **250 / 500** |
+| Panzermauern | 45 | **450** |
+| Reparatur | 15 + 5 | **150 + 50** |
+
+**3. Neues Symbol.** Die Glyphe `⚙` ist ersatzlos entfallen. Im UI steht jetzt
+das neue SVG-Icon `gem` (geschliffener Edelstein) in `src/ui/icons.js`, im
+Canvas eine gezeichnete Edelstein-Raute mit Glanzfacette hinter dem
+„+N"-Popup. Ein Zahnrad passte weder zum Thema noch zum neuen Look; ein
+Edelstein ist außerdem klar von den Gold-Münzen im Menü zu unterscheiden.
+
+Betroffen: `economy.js` (Beträge), `i18n.js` (beide Sprachen inkl. aller
+Zahlen in Shop-Infotexten und Queue-Tipps), `icons.js` (neues `gem`),
+`index.html` (HUD-Badges, Shop-Kopf, Preis-Pillen, Canvas-Popups),
+`CLAUDE.md` (Glyphen-Regel).
+
+**Tests angepasst:** Sieben Prüfungen erkannten Shop-Karten am `⚙`-Zeichen und
+zwei kodierten die alten Beträge (Basispreis 20, Startkapital 15). Sie prüfen
+jetzt auf Kartennamen bzw. die neuen Werte.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.65.0`.

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.64.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.65.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -734,7 +734,7 @@ const PHASE_BANNERS = {
   setup:  { title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
   build:  { title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
   shoot:  { title: "FEUER FREI!", sub: "Zieh von deiner Burg weg zum Zielen",  color: "#f87171", bg: "rgba(60,4,4,0.95)",   glow: "rgba(239,68,68,0.5)"   },
-  cannon: { title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Schrott gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
+  cannon: { title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Beute gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
 };
 // ── Game Event Bus ─────────────────────────────────────────────
 const createEventBus = () => {
@@ -2688,7 +2688,7 @@ window.FortressApp = function Fortress() {
   // Kauf-Pop pro Karte (v3.17.0): Zähler erhöht → React-key ändert → Karte
   // remountet → shopBuyPop-Animation spielt erneut. Nur Optik.
   const shopBuyAnim = useRef({});
-  // „+N ⚙"-Popups (v3.16.3): am TREFFERORT in Spielerfarbe, wie explosions
+  // „+N Beute"-Popups (v3.16.3): am TREFFERORT in Spielerfarbe, wie explosions
   // über den State synchronisiert (Gäste sehen sie dadurch identisch).
   const scrapPops = useRef([]);
   // Reparatur-Highlight (v3.32.0): reparierte Zellen kurz grün markieren —
@@ -6821,7 +6821,7 @@ window.FortressApp = function Fortress() {
       }
     }
     ctx.globalAlpha = 1;
-    // „+N ⚙"-Popups (v3.16.3): am Trefferort, Spielerfarbe, steigen bildschirm-
+    // „+N Beute"-Popups (v3.16.3): am Trefferort, Spielerfarbe, steigen bildschirm-
     // aufwärts (flip-bewusst); frame-basiert und via State synchronisiert.
     if (scrapPops.current.length) {
       const POP_HEX = { 1: "#93c5fd", 2: "#fca5a5", 3: "#6ee7b7" };
@@ -6832,9 +6832,25 @@ window.FortressApp = function Fortress() {
         const rise = f.frame * 0.55 * (p1Flipped ? 1 : -1);
         ctx.globalAlpha = Math.max(0, Math.min(1, fa * 1.6));
         ctx.fillStyle = "#0a0d14";
-        ctx.fillText("+" + f.amt + " \u2699", f.x + 1, f.y + rise + 1);
+        ctx.fillText("+" + f.amt, f.x + 1, f.y + rise + 1);
         ctx.fillStyle = POP_HEX[f.player] || "#fbbf24";
-        ctx.fillText("+" + f.amt + " \u2699", f.x, f.y + rise);
+        ctx.fillText("+" + f.amt, f.x, f.y + rise);
+        // Kleiner Edelstein hinter der Zahl — im Canvas gezeichnet statt als
+        // Glyphe, damit er zum Icon im HUD passt.
+        {
+          const bw = ctx.measureText("+" + f.amt).width;
+          const gx = f.x + bw / 2 + 6, gy = f.y + rise - 3.5, gs = 4.2;
+          ctx.beginPath();
+          ctx.moveTo(gx, gy - gs); ctx.lineTo(gx + gs * 0.78, gy);
+          ctx.lineTo(gx, gy + gs); ctx.lineTo(gx - gs * 0.78, gy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.beginPath();
+          ctx.moveTo(gx, gy - gs); ctx.lineTo(gx + gs * 0.36, gy - gs * 0.15);
+          ctx.lineTo(gx, gy + gs * 0.1); ctx.closePath();
+          ctx.fill();
+        }
         f.frame++;
       }
       ctx.globalAlpha = 1;
@@ -7065,12 +7081,12 @@ window.FortressApp = function Fortress() {
     setScreen("game");
     showPhaseBanner("setup", startTimer);
   }
-  // Ökonomie eines NEUEN Spiels zurücksetzen (v3.19.1): ⚙15 Startkapital,
+  // Ökonomie eines NEUEN Spiels zurücksetzen (v3.19.1): 150 Beute Startkapital,
   // keine Upgrades, keine angeknacksten Mauern. MUSS bei jedem Spielstart laufen
   // — auch online (sonst schleppt das nächste Spiel den Schrott des vorigen mit,
   // Startwert war dadurch bei jedem Online-Spiel anders).
   function resetEconomy() {
-    scrap.current = { 1: 15, 2: 15, 3: 15 };
+    scrap.current = { 1: 150, 2: 150, 3: 150 };
     upgrades.current = { 1: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 2: { reload: 0, armor: 0, repair: 0, cbought: 0 }, 3: { reload: 0, armor: 0, repair: 0, cbought: 0 } };
     wallHp.current = {};
     matchStats.current = { 1: msZero(), 2: msZero(), 3: msZero() };
@@ -7079,7 +7095,7 @@ window.FortressApp = function Fortress() {
     initGrid();
     setRound(1);
     roundRefVal.current = 1;
-    // Neues Spiel: Ökonomie zurücksetzen — mit ⚙15 Startkapital (v3.16.4),
+    // Neues Spiel: Ökonomie zurücksetzen — mit 150 Beute Startkapital (v3.16.4),
     // damit schon in der ersten Rüstphase eine echte Kaufentscheidung möglich ist.
     resetEconomy();
     beginSetup();
@@ -7286,7 +7302,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.64.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.65.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -8866,7 +8882,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", marginLeft: 2 } }, "\u2699" + (scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1]), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", marginLeft: 2, display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "30%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
     boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
     borderRadius: 6,
     padding: "1px 6px",
@@ -8894,7 +8910,7 @@ window.FortressApp = function Fortress() {
     backdropFilter: "blur(12px)",
     boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", marginRight: 2 } }, "\u2699" + (scrap.current[2] || 0)), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", marginRight: 2, display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[2] || 0)), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 19, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: viewSize.w, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
     border: "1px solid rgba(16,185,129,0.45)",
     borderRadius: 14,    padding: "2px 10px",    display: "flex",
@@ -9005,7 +9021,8 @@ window.FortressApp = function Fortress() {
                 boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -2px 4px rgba(180,83,9,0.4)",
                 animation: "shopCoinPulse 0.42s ease both"
               } },
-                h("span", { style: { fontSize: 14, fontWeight: 900, color: "#3b2606", textShadow: "0 1px 0 rgba(255,255,255,0.4)" } }, "⚙ " + have)
+                h("span", { style: { fontSize: 14, fontWeight: 900, color: "#3b2606", textShadow: "0 1px 0 rgba(255,255,255,0.4)", display: "inline-flex", alignItems: "center", gap: 3 } },
+                  React.createElement(Icon, { name: "gem", size: 12, color: "#3b2606" }), String(have))
               )
             )
           ),
@@ -9065,7 +9082,7 @@ window.FortressApp = function Fortress() {
                       background: afford ? "linear-gradient(180deg, rgba(0,0,0,0.48), rgba(0,0,0,0.74))" : "rgba(0,0,0,0.42)",
                       border: "1px solid rgba(255,255,255,0.08)"
                     } },
-                      h("span", { style: { fontSize: 10 } }, "⚙"),
+                      React.createElement(Icon, { name: "gem", size: 10 }),
                       h("span", { style: { fontSize: 11.5, fontWeight: 900, color: afford ? "#fcd34d" : "#64748b" } }, it.price)
                     )
               );
@@ -9141,7 +9158,8 @@ window.FortressApp = function Fortress() {
         h("div", { style: { display: "flex", flexDirection: "column", gap: 3, marginBottom: 14, padding: "8px 10px", borderRadius: 12, background: "rgba(245,158,11,0.09)", border: "1px solid rgba(245,158,11,0.22)" } },
           earn.map((e, i) => h("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5, color: "#e2e8f0" } },
             h("span", null, e.l),
-            h("span", { style: { fontWeight: 900, color: "#fcd34d" } }, "⚙ " + e.v)
+            h("span", { style: { fontWeight: 900, color: "#fcd34d", display: "inline-flex", alignItems: "center", gap: 3 } },
+              React.createElement(Icon, { name: "gem", size: 11, color: "#fcd34d" }), String(e.v))
           )),
           // Wiederaufbau-Paket (v3.30.0): Comeback-Regel transparent machen
           h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.35, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(245,158,11,0.18)" } }, t("shopInfoEarnRebuild"))

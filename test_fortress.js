@@ -1221,9 +1221,9 @@ async function suiteMatchmaking(browser, fbPort) {
         const s2 = window.__readScrap ? window.__readScrap(2) : null;
         return { s1, s2 };
       });
-      (scrapReset.s1 === 15 && scrapReset.s2 === 15)
-        ? ok('Online-Neustart: Schrott auf 15 zurückgesetzt (2. Spiel) ✓')
-        : fail(`Online-Neustart: Schrott nicht 15 (P1=${scrapReset.s1} P2=${scrapReset.s2})`);
+      (scrapReset.s1 === 150 && scrapReset.s2 === 150)
+        ? ok('Online-Neustart: Beute auf 150 zurückgesetzt (2. Spiel) ✓')
+        : fail(`Online-Neustart: Beute nicht 150 (P1=${scrapReset.s1} P2=${scrapReset.s2})`);
     }
 
     // ── ELO-Regression (v3.30.3): auch das 2. Spiel als GAST muss verbuchen ──
@@ -2673,7 +2673,7 @@ async function suiteCannonKill(browser) {
     if (!aid) { fail('Wiederaufbau: 0-Kanonen-Zustand nicht erreicht'); }
     else {
       (aid.info && aid.info.active) ? ok('Wiederaufbau: Status aktiv bei 0 Kanonen ✓') : fail(`Wiederaufbau: Status inaktiv (${JSON.stringify(aid.info)})`);
-      (aid.info && aid.info.price === 20) ? ok('Wiederaufbau: Kanone zum Basispreis 20 ✓') : fail(`Wiederaufbau: Preis ${aid.info && aid.info.price} statt 20`);
+      (aid.info && aid.info.price === 200) ? ok('Wiederaufbau: Kanone zum Basispreis 200 ✓') : fail(`Wiederaufbau: Preis ${aid.info && aid.info.price} statt 200`);
       aid.after > aid.before ? ok(`Wiederaufbau: Trümmer-Bergung +2 beim Verteidiger (${aid.before}→${aid.after}) ✓`) : fail(`Wiederaufbau: keine Bergung (${aid.before}→${aid.after})`);
     }
     // ── Reparatur-Bug (v3.31.1): nach dem Kill liegen Kanonen-Trümmer (RUBBLE_C)
@@ -2722,7 +2722,7 @@ async function suiteArmoryReady(browser) {
       sawBtn = await page.evaluate(() => {
         for (const b of document.querySelectorAll('button')) { if (/Nächste Runde/.test(b.textContent)) { b.click(); return false; } }
         return window.__phase && window.__phase() === 'cannon' &&
-          [...document.querySelectorAll('button')].some(b => /Fertig|Ready/.test(b.textContent) && !/⚙/.test(b.textContent));
+          [...document.querySelectorAll('button')].some(b => /Fertig|Ready/.test(b.textContent) && !/^\s*\d+\s*$/.test(b.textContent));
       });
       if (!sawBtn) await page.waitForTimeout(80);
     }
@@ -2939,15 +2939,15 @@ async function suiteBot(browser) {
           if (/Nächste Runde/.test(b.textContent)) { b.click(); return null; }
         }
         const t = document.body.innerText;
-        if (!/⚙ \d+/.test(t)) return null;
-        const cards = [...document.querySelectorAll('button')].filter(b => /⚙/.test(b.textContent) && /Kanone|Schnellladen|Panzermauern|Reparatur|Cannon|reload|Armored|Repair/i.test(b.textContent));
+        if (!/Beute|Spoils/i.test(t)) return null;
+        const cards = [...document.querySelectorAll('button')].filter(b => /Kanone|Bezwinger|Schnellladen|Panzermauern|Reparatur|Cannon|Slayer|reload|Armored|Repair/i.test(b.textContent));
         if (cards.length < 4) return null;
         return {
           cards: cards.length,
           svg: cards.filter(b => b.querySelector('svg')).length,        // Medaillen-Icons (kein Emoji)
-          priced: cards.filter(b => /⚙\s?\d+|MAX/.test(b.textContent)).length, // Preis-Pille od. MAX
+          priced: cards.filter(b => /\d+|MAX/.test(b.textContent)).length, // Preis-Pille od. MAX
           header: /RÜSTPHASE/.test(t),                                   // Panel-Titel
-          chip: /⚙ \d+/.test(t)                                         // goldener Schrott-Chip
+          chip: /Beute|Spoils/i.test(t)                                 // Beute-Anzeige im Shop-Kopf
         };
       });
       if (!shopSeen) await page.waitForTimeout(120);
@@ -2991,15 +2991,15 @@ async function suiteBot(browser) {
       await page.evaluate(() => { window.__grantScrap && window.__grantScrap(1, 40); });
       await page.waitForTimeout(200);
       const cannonEnabled = await page.evaluate(() => {
-        const b = [...document.querySelectorAll('button')].find(x => /Kanone|Cannon/.test(x.textContent) && /⚙/.test(x.textContent));
+        const b = [...document.querySelectorAll('button')].find(x => /^Kanone|^Cannon/.test(x.textContent.trim()));
         return b && !b.disabled;
       });
       cannonEnabled ? ok('Shop: Kanonen-Karte nach Schrott kaufbar (aktiv) ✓') : fail('Shop: Kanonen-Karte bleibt gesperrt trotz Schrott');
       if (cannonEnabled) {
-        await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Kanone|Cannon/.test(x.textContent) && /⚙/.test(x.textContent)); b && b.click(); });
+        await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /^Kanone|^Cannon/.test(x.textContent.trim())); b && b.click(); });
         await page.waitForTimeout(250);
         const afterBuy = await page.evaluate(() => {
-          const shopCards = [...document.querySelectorAll('button')].filter(b => /⚙/.test(b.textContent) && /Kanone|Schnellladen|Panzermauern|Reparatur/i.test(b.textContent)).length;
+          const shopCards = [...document.querySelectorAll('button')].filter(b => /Kanone|Bezwinger|Schnellladen|Panzermauern|Reparatur/i.test(b.textContent)).length;
           const hint = /Tippe aufs Feld|Tap the field/.test(document.body.innerText);
           return { shopCards, hint };
         });
