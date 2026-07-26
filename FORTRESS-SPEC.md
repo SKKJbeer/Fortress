@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.54.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.55.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4057,3 +4057,48 @@ Entscheidung und kein Automatismus — genau das war die Absicht.
 Damit ersetzt `wuchtKauf` die automatische `wucht` in der Empfehlung.
 Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.54.0`.
+
+---
+
+## v3.55.0 — Bauradius zurückgezogen, Mauer-Route bekommt ein Werkzeug
+
+Design-Entscheidung aus dem Playtest: **Frei auf der ganzen Fläche zu bauen und
+zu erweitern ist ein Kernversprechen des Spiels.** Der `bauRadius` aus v3.53.0
+wird deshalb ZURÜCKGEZOGEN — obwohl er technisch der sauberste Hebel war
+(18 % Mauer-Route, 88 % entschiedene Partien). Er bleibt als Experiment im
+Code, geht aber nicht in die Empfehlung.
+
+Damit fielen beide bis dahin bekannten Hebel weg: Baukosten (Bot-Artefakt,
+v3.53.0) und Bauradius (Design-Konflikt). Neue Richtung: **nicht den
+Verteidiger einschränken, sondern dem Mauer-Angriff ein eigenes Werkzeug
+geben.**
+
+**Gemessen (je 64 Partien, beide Orientierungen, killBlast 2 + faecherWahl):**
+| Variante | Mauer gewinnt | 95 %-Bereich | zerstörte Mauern |
+|---|---|---|---|
+| Nur Fächer-Wahl, freies Bauen | 6 % | 2–19 % | 55,5 |
+| **+ Splash-Granate (jede 3. Kanone)** | **19 %** | 9–34 % | **74,9** |
+| *(zum Vergleich: Bauradius 8)* | *18 %* | *10–30 %* | *–* |
+
+**Befund:** Die Splash-Granate erreicht **denselben Effekt wie der Bauradius**
+(19 % gegen 18 %) — aber ohne jede Einschränkung beim Bauen. Sie reißt ein
+Kreuz aus der Mauer und wirkt gegen Kanonen GAR NICHT, ist also ein reines
+Mauer-Werkzeug. Zusammen mit dem Fächer als Wahl hat damit jede Route ihr
+eigenes Instrument: fächern + Splash gegen die Mauer, bündeln + Fokusfeuer
+gegen die Kanonen.
+
+**Konsequenz für den Plan:** Die Splash-Granate wird aus Stufe 4 in Stufe 1
+vorgezogen — sie ist keine Kosmetik, sondern der Gegenpol zur Kanonen-Route.
+
+**Einordnung der Zahlen:** In diesem Messaufbau spielt eine Seite
+AUSSCHLIESSLICH auf Mauern und die andere AUSSCHLIESSLICH auf Kanonen. Das ist
+künstlich und dient nur dazu, die Routenstärke zu isolieren — die niedrige
+Entscheidungsrate dieses Aufbaus (37/64) sagt nichts über echte Partienlänge.
+Bei gemischter Spielweise enden 30 von 32 Partien (v3.54.0).
+
+**Offen bleibt:** Auch mit Werkzeug kommt die Mauer-Route nur auf 19 %, nicht
+auf 50 %. Volle Balance ist im Selbstspiel nicht nachweisbar. Die endgültige
+Abstimmung gehört an echte Partien.
+
+Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.55.0`.
