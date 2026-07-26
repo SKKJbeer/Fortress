@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.58.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.59.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4278,3 +4278,33 @@ wurde deshalb in ECHTER Zeit: bis Runde 3 waren es 76 Schüsse, 82 zerstörte
 Mauern, 2 Kanonen-Kills, Arsenal 4/4 — die Partie fiel vor Runde 5.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.58.0`.
+
+---
+
+## v3.59.0 — Die Salve trifft, wohin gezielt wird
+
+Playtest: Die breite Bresche ist gut, aber der Zielpunkt muss sitzen. Zwei
+Ursachen ließen Salven danebengehen, obwohl exakt gezielt war:
+
+**1. Fächer-Abstand 2 Zellen → `FAN_SPAN = 1`.** Die Einschläge lagen bei
+0, ±2, ±4 Zellen — jede zweite Zelle blieb stehen. Das sah aus wie Streuung,
+obwohl der Zielpunkt getroffen wurde. Mit Abstand 1 legen sich die Rohre
+LÜCKENLOS links und rechts an: eine zusammenhängende Bresche, zentriert auf
+dem Zielpunkt. Die erste Kanone (`index 0`) bleibt unversetzt und trifft
+IMMER exakt.
+
+**2. Zufallsstreuung entfernt.** Für gebündelte Salven (Bezwinger) gab es eine
+zufällige Abweichung von bis zu einer Zelle mit zufälligem Winkel. Beim
+Fokusfeuer ist das falsch: Die Waffe soll dort einschlagen, wo gezielt wurde.
+Der Spieler konnte danebentreffen, ohne etwas falsch gemacht zu haben.
+
+**Gemessen statt behauptet** (neuer gated Hook `__salvoDbg`, zeichnet Zielzelle
+und tatsächliche Einschlagzellen je Salve auf):
+- 16 von 16 Salven mit mindestens zwei Rohren trafen die **anvisierte Zelle** (100 %)
+- **0** Salven mit einer Lücke in der Bresche
+- Beispiel: Ziel `[19,23]` → Einschläge `[19,23]`, `[19,24]`, `[19,22]`
+
+`FAN_SPAN` liegt als Konstante in `src/engine/const.js` (Architektur-Regel:
+pure Logik gehört in die Engine-Schicht).
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.59.0`.
