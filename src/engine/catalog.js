@@ -38,11 +38,23 @@ export const WIN_ICON = {
   win_fireworks: { name: "rocket", c: "#f87171" },
   win_goldrain: { name: "coins", c: "#fbbf24" }
 };
+// Profilrahmen (v3.66.0): `bg` gibt jedem Rahmen eine eigene MACHART statt nur
+// einer anderen Randfarbe — vorher unterschieden sich Bronze, Silber, Gold und
+// Drache in genau einem Farbwert. Der Ring entsteht als CSS-Verlauf hinter dem
+// Avatar; das kostet nichts und wirkt wie geschmiedet.
+//   bronze  genietet: harte Punkte auf mattem Metall
+//   silber  kantig geschliffen: schmale helle Facetten
+//   gold    Zierkranz: feine Strahlen ringsum
+//   drache  Schuppenrand: ueberlappende Boegen, zweifarbig
 export const FRAME_STYLE = {
-  frame_bronze: { c: "#b45309", glow: "rgba(180,83,9,0.6)" },
-  frame_silver: { c: "#cbd5e1", glow: "rgba(203,213,225,0.6)" },
-  frame_gold: { c: "#fbbf24", glow: "rgba(251,191,36,0.65)" },
-  frame_dragon: { c: "#a78bfa", glow: "rgba(167,139,250,0.7)" }
+  frame_bronze: { c: "#b45309", glow: "rgba(180,83,9,0.6)", dick: 4,
+    bg: "repeating-conic-gradient(#7c3d06 0deg 9deg, #d97706 9deg 12deg, #a45309 12deg 18deg)" },
+  frame_silver: { c: "#cbd5e1", glow: "rgba(203,213,225,0.6)", dick: 4,
+    bg: "repeating-conic-gradient(#64748b 0deg 6deg, #f1f5f9 6deg 8deg, #94a3b8 8deg 15deg)" },
+  frame_gold: { c: "#fbbf24", glow: "rgba(251,191,36,0.65)", dick: 5,
+    bg: "repeating-conic-gradient(#a16207 0deg 4deg, #fde68a 4deg 6deg, #d97706 6deg 10deg, #fbbf24 10deg 12deg)" },
+  frame_dragon: { c: "#a78bfa", glow: "rgba(167,139,250,0.7)", dick: 5,
+    bg: "repeating-conic-gradient(#4c1d95 0deg 10deg, #a78bfa 10deg 14deg, #6d28d9 14deg 20deg, #c4b5fd 20deg 22deg)" }
 };
 export function cosOf(p) {
   const c = (p && p.cosmetics) || {};
@@ -98,12 +110,47 @@ export const CANNON_SKIN = {
   cannon_royal:    { dome: ["#fef3c7", "#c79a2e", "#4a3410"], core: "#fff7d6", style: "crystal", fx: "#fde68a",
                      form: { s: "krone",    r: "zier",     m: "krone" } }
 };
-// Einschlag-Effekte: p = Partikel-Palette, ring = Explosions-Gradient (r,g,b)
+// Einschlag-Effekte (v3.66.0): p = Partikel-Palette, ring = Explosions-Gradient.
+// NEU `art` — jeder Effekt hat jetzt eine EIGENE PHYSIK, nicht nur eine andere
+// Farbe. Vorher explodierten Lava, Eis, Blitz und Leere identisch und waren
+// nur umgefaerbt; fuer bis zu 800 Gold plus Drachenstahl war das zu wenig.
+//   n     Partikelzahl
+//   v     Grundgeschwindigkeit
+//   auf   Anfangsschub nach oben (negativ = faellt sofort)
+//   grav  Schwerkraft je Frame
+//   life  Lebensdauer in Frames
+//   size  Grundgroesse
+//   rund  runde Partikel (sonst eckige Splitter)
+//   sog   zieht die Partikel zum Einschlag HIN statt weg (Implosion)
 export const IMPACT_FX = {
-  impact_lava:  { p: ["#fff7ed", "#fdba74", "#f97316", "#dc2626"], ring: ["255,237,213", "249,115,22", "220,38,38"] },
-  impact_ice:   { p: ["#f0f9ff", "#bae6fd", "#38bdf8", "#0284c7"], ring: ["224,242,254", "56,189,248", "2,132,199"] },
-  impact_blitz: { p: ["#fefce8", "#fde047", "#facc15", "#a16207"], ring: ["254,249,195", "250,204,21", "161,98,7"] },
-  impact_void:  { p: ["#f5f3ff", "#c4b5fd", "#7c3aed", "#312e81"], ring: ["237,233,254", "124,58,237", "49,46,129"] }
+  // Lava: wenige schwere Brocken, fliegen hoch und klatschen zurueck
+  impact_lava:  { p: ["#fff7ed", "#fdba74", "#f97316", "#dc2626"], ring: ["255,237,213", "249,115,22", "220,38,38"],
+                  art: { n: 16, v: 3.4, auf: 2.6, grav: 0.30, life: 34, size: 3.4, rund: true } },
+  // Eis: viele scharfe Splitter, flach nach aussen, kaum Schwerkraft
+  impact_ice:   { p: ["#f0f9ff", "#bae6fd", "#38bdf8", "#0284c7"], ring: ["224,242,254", "56,189,248", "2,132,199"],
+                  art: { n: 30, v: 6.2, auf: 0, grav: 0.03, life: 22, size: 2.0, rund: false } },
+  // Blitz: sehr schnelle duenne Funken, extrem kurzlebig
+  impact_blitz: { p: ["#fefce8", "#fde047", "#facc15", "#a16207"], ring: ["254,249,195", "250,204,21", "161,98,7"],
+                  art: { n: 26, v: 9.0, auf: 0, grav: 0.0, life: 10, size: 1.5, rund: false } },
+  // Leere: Implosion — die Partikel starten aussen und werden hineingezogen
+  impact_void:  { p: ["#f5f3ff", "#c4b5fd", "#7c3aed", "#312e81"], ring: ["237,233,254", "124,58,237", "49,46,129"],
+                  art: { n: 24, v: 4.5, auf: 0, grav: 0.0, life: 26, size: 2.6, rund: true, sog: true } }
+};
+// Schweif-Formen (v3.66.0): Vorher war JEDER Trail eine Kette gleich grosser
+// Kreise, nur in einer anderen Farbe — bei fuenf Kaufartikeln zu wenig.
+// Jetzt hat jeder eine eigene Form und Bewegung.
+//   form  "funke" | "kristall" | "blase" | "muenze" | "kugel"
+//   drift seitliches Ausfransen je Glied
+//   wachs Groessenverlauf entlang des Schweifs
+export const TRAIL_FORM = {
+  trail_ember:  { form: "funke",    drift: 1.6, wachs: 0.35 },  // stiebende Funken
+  trail_frost:  { form: "kristall", drift: 0.9, wachs: 0.30 },  // eckige Splitter
+  trail_venom:  { form: "blase",    drift: 1.1, wachs: 0.60 },  // wachsende Blasen
+  trail_gold:   { form: "muenze",   drift: 0.7, wachs: 0.28 },  // flache Plaettchen
+  trail_ember_m: { form: "funke",    drift: 2.1, wachs: 0.42 },
+  trail_frost_m: { form: "kristall", drift: 1.3, wachs: 0.36 },
+  trail_venom_m: { form: "blase",    drift: 1.5, wachs: 0.72 },
+  trail_gold_m:  { form: "muenze",   drift: 1.0, wachs: 0.34 }
 };
 // Meister-Trails (veredelte Shop-Trails): mehrfarbiger, längerer Schweif
 export const MASTER_TRAIL = {

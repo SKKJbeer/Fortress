@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.65.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.66.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4557,3 +4557,47 @@ zwei kodierten die alten Beträge (Basispreis 20, Startkapital 15). Sie prüfen
 jetzt auf Kartennamen bzw. die neuen Werte.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.65.0`.
+
+---
+
+## v3.66.0 — Kosmetik: Einschläge, Schweife und Rahmen bekommen eigene Formen
+
+Nach den Kanonen (v3.62.0) und dem Schlachtfeld (v3.63–3.64) waren die
+restlichen Kaufartikel noch **reine Umfärbungen**. Für bis zu 800 Gold plus
+Drachenstahl bekam man dieselbe Explosion in einer anderen Farbe.
+
+### Einschlag-Effekte — eigene Physik statt nur einer Palette
+`IMPACT_FX[*].art` beschreibt jetzt Partikelzahl, Geschwindigkeit,
+Anfangsschub, Schwerkraft, Lebensdauer, Größe und Form:
+| Effekt | Verhalten |
+|---|---|
+| **Lava** | 16 schwere Brocken, hoher Anfangsschub, starke Schwerkraft (0,30) — sie fliegen hoch und klatschen zurück |
+| **Eis** | 30 scharfe eckige Splitter, flach nach außen, fast schwerelos (0,03) |
+| **Blitz** | 26 sehr schnelle dünne Funken (v 9,0), keine Schwerkraft, extrem kurzlebig (10 Frames) |
+| **Leere** | **Implosion** — 24 Partikel starten auf einem Ring und werden nach INNEN gezogen (`sog`) |
+
+Ohne gekauften Effekt gilt unverändert das bisherige Standardverhalten
+(Funken + grauer Schutt).
+
+### Schweife — eigene Form statt nur einer Farbe
+`TRAIL_FORM` gibt jedem Schweif Form, Ausfransen und Größenverlauf:
+**Glut** = spitze Funken · **Frost** = eckige Kristallsplitter ·
+**Gift** = wachsende Blasen mit heller Kappe · **Gold** = flache Plättchen.
+Das seitliche Ausfransen ist deterministisch aus Index und Kanonennummer —
+gleiche Kugel, gleiches Muster, kein Flackern. Meister-Trails erben die Form
+mit stärkerem Ausfransen. Rein `fillStyle` + Pfade, keine Gradients oder
+Schatten (Perf-Regel gilt hier im Frame).
+
+### Profilrahmen — eigene Machart statt nur einer Randfarbe
+`FRAME_STYLE[*].bg` ist ein CSS-Verlaufsring: **Bronze** genietet,
+**Silber** kantig geschliffen, **Gold** als Zierkranz mit feinen Strahlen,
+**Drache** zweifarbiger Schuppenrand. Der Ring entsteht über `padding` +
+`background`, der Avatar sitzt in einer runden Maske darin.
+
+### Sieges-Effekte — bewusst NICHT geändert
+Korrektur meiner eigenen früheren Einordnung: Konfetti, Feuerwerk und
+Goldregen sind bereits drei **strukturell verschiedene** Effekte (fallende
+Schnipsel, berstende Kugeln, gezeichnete Münzen mit Prägerand), keine
+Umfärbungen desselben Effekts. Hier bestand das Problem nicht.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.66.0`.

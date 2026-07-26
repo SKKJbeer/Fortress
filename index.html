@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.65.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.66.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -182,7 +182,7 @@ const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
-import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, RECIPES } from './src/engine/catalog.js';
+import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from './src/net/protocol.js';
 import { MM_BASE_RADIUS, MM_GROWTH_PER_SEC, mmRadius, MM_TICK_MS, MM_HEARTBEAT_STALE_MS, MM_CLAIM_HEAL_MS, MM_GUEST_JOIN_TIMEOUT_MS, MM_BOT_BACKFILL_S, computeMatchGroup } from './src/net/matchmaking.js';
@@ -4571,23 +4571,40 @@ window.FortressApp = function Fortress() {
     shakeRef.current = Math.max(shakeRef.current, 7);
     const pCap = particles.current.length < 350;
     const firePal = impFx ? impFx.p : ["#fff9c4", "#fbbf24", "#f97316", "#ef4444"];
-    for (let i = 0; i < 20; i++) {
+    // Physik je Einschlag-Effekt (v3.66.0). Ohne gekauften Effekt gilt das
+    // bisherige Standardverhalten — Feuerfunken plus grauer Schutt.
+    const A = (impFx && impFx.art) || { n: 20, v: 4.5, auf: 1.2, grav: 0.10, life: 16, size: 3, rund: true, std: true };
+    const zx = hitC * CELL + CELL / 2, zy = hitR * CELL + CELL / 2;
+    for (let i = 0; i < A.n; i++) {
       const a = Math.random() * Math.PI * 2;
-      const s = 1.5 + Math.random() * 4.5;
-      const fire = Math.random() < 0.6;
-      if (pCap) particles.current.push({
-        x: hitC * CELL + CELL / 2,
-        y: hitR * CELL + CELL / 2,
+      const s = A.v * (0.45 + Math.random() * 0.75);
+      // Standard behaelt die alte Mischung aus Funken und Schutt bei
+      const fire = A.std ? Math.random() < 0.6 : true;
+      if (!pCap) break;
+      if (A.sog) {
+        // Implosion: Start auf einem Ring, Bewegung nach INNEN
+        const rad = CELL * (1.1 + Math.random() * 0.9);
+        particles.current.push({
+          x: zx + Math.cos(a) * rad, y: zy + Math.sin(a) * rad,
+          vx: -Math.cos(a) * s * 0.55, vy: -Math.sin(a) * s * 0.55,
+          life: A.life, maxLife: A.life,
+          color: firePal[Math.floor(Math.random() * 4)],
+          size: A.size * (0.6 + Math.random() * 0.7),
+          round: A.rund, gravity: 0
+        });
+        continue;
+      }
+      particles.current.push({
+        x: zx, y: zy,
         vx: Math.cos(a) * s,
-        vy: Math.sin(a) * s - 1.2,
-        life: fire ? 16 : 30,
-        maxLife: fire ? 16 : 30,
+        vy: Math.sin(a) * s - (A.auf || 0),
+        life: fire ? A.life : 30, maxLife: fire ? A.life : 30,
         color: fire
           ? firePal[Math.floor(Math.random() * 4)]
           : ["#9ca3af", "#6b7280", "#78716c"][Math.floor(Math.random() * 3)],
-        size: fire ? 2 + Math.random() * 3 : 1.5 + Math.random() * 2,
-        round: fire,
-        gravity: fire ? 0.10 : 0.05
+        size: (fire ? A.size : 2) * (0.55 + Math.random() * 0.8),
+        round: fire ? A.rund : false,
+        gravity: fire ? A.grav : 0.05
       });
     }
     const opponents = playersList().filter((p) => p !== ball.player);
@@ -6786,13 +6803,46 @@ window.FortressApp = function Fortress() {
         ball.trail.push({ x: bx, y: drawY });
         if (ball.trail.length > maxTrail) ball.trail.shift();
         const trailCol = TRAIL_COLOR[trailId] || BALL_MID[ball.player] || BALL_MID[1];
+        // Form je Schweif (v3.66.0) — ohne gekauften Trail bleibt es die
+        // bisherige Kugelkette. Bewusst nur fillStyle + Pfade, keine
+        // Gradients oder Schatten (Perf-Regel gilt im Frame).
+        const tf = TRAIL_FORM[trailId];
         for (let ti = 0; ti < ball.trail.length - 1; ti++) {
           const tp = ball.trail[ti];
-          ctx.globalAlpha = (ti / ball.trail.length) * (mPal ? 0.75 : 0.4);
+          const f = ti / ball.trail.length;
+          ctx.globalAlpha = f * (mPal ? 0.75 : 0.4);
           ctx.fillStyle = mPal ? mPal[ti % 3] : trailCol;
-          ctx.beginPath();
-          ctx.arc(tp.x, tp.y, (mPal ? 2 : 1.5) + ti * 0.5, 0, Math.PI * 2);
-          ctx.fill();
+          if (!tf) {
+            ctx.beginPath();
+            ctx.arc(tp.x, tp.y, (mPal ? 2 : 1.5) + ti * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            continue;
+          }
+          // Deterministisches Ausfransen: gleiche Kugel -> gleiches Muster,
+          // kein Flackern zwischen Frames.
+          const j = Math.sin((ti + ball.cannonIndex * 3.1) * 12.9898) * 43758.5453;
+          const seit = ((Math.abs(j) % 1) - 0.5) * tf.drift * (1 - f) * 4;
+          const gr = (mPal ? 1.8 : 1.3) + ti * tf.wachs * (mPal ? 1.25 : 1);
+          const px = tp.x + seit, py = tp.y + seit * 0.4;
+          if (tf.form === "kristall") {          // eckige Eissplitter
+            ctx.save(); ctx.translate(px, py); ctx.rotate(j % 3);
+            ctx.fillRect(-gr, -gr * 0.55, gr * 2, gr * 1.1);
+            ctx.restore();
+          } else if (tf.form === "muenze") {     // flache Goldplaettchen
+            ctx.beginPath();
+            ctx.ellipse(px, py, gr * 1.25, gr * 0.45, j % 3, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (tf.form === "funke") {      // spitze Funken, nach hinten schmal
+            ctx.beginPath();
+            ctx.moveTo(px - gr * 1.6, py); ctx.lineTo(px, py - gr * 0.75);
+            ctx.lineTo(px + gr * 0.5, py); ctx.lineTo(px, py + gr * 0.75);
+            ctx.closePath(); ctx.fill();
+          } else {                                // Blasen mit heller Kappe
+            ctx.beginPath(); ctx.arc(px, py, gr, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = f * 0.35;
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(px - gr * 0.3, py - gr * 0.35, gr * 0.35, 0, Math.PI * 2); ctx.fill();
+          }
         }
         ctx.globalAlpha = 1;
       }
@@ -7207,10 +7257,18 @@ window.FortressApp = function Fortress() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      border: fr ? `3px solid ${fr.c}` : "none",
-      boxShadow: fr ? `0 0 14px ${fr.glow}, 0 0 26px ${profile.color}33` : `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
+      // Der Rahmen ist jetzt ein gemusterter Ring (CSS-Verlauf), kein
+      // einfarbiger Rand mehr. padding erzeugt die Ringbreite, der Avatar
+      // sitzt darin — so wirkt Bronze genietet, Gold als Zierkranz usw.
+      border: "none",
+      padding: fr ? (fr.dick || 4) : 0,
+      background: fr ? fr.bg : "transparent",
+      boxShadow: fr
+        ? `0 0 16px ${fr.glow}, inset 0 0 0 1px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.55)`
+        : `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
     };
-  })() }, React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 64 : 72 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
+  })() }, React.createElement("div", { style: { borderRadius: "50%", overflow: "hidden", background: "#0b101c", display: "flex", lineHeight: 0 } },
+      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
     /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
@@ -7302,7 +7360,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.65.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.66.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
