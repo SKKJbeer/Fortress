@@ -2632,7 +2632,7 @@ async function suiteCannonKill(browser) {
     if (typeof start !== 'object') { fail(`Kanonen-Kill: Setup nicht erreicht (${start})`); return { res, errs }; }
     await page.waitForTimeout(1000);
     const rr = await page.evaluate((cb) => ({ scrap: window.__readScrap(1), cannons: window.__enemyCannonCount(1), before: cb }), start.before.before);
-    rr.cannons < start.cannonsBefore ? ok(`Kanonen-Kill: ${start.before.hp} HP → Feindkanone zerstört (${start.cannonsBefore}→${rr.cannons}) ✓`) : fail(`Kanonen-Kill: Kanone überlebt ${start.before.hp} Treffer (${start.cannonsBefore}→${rr.cannons})`);
+    rr.cannons < start.cannonsBefore ? ok(`Kanonen-Kill: ${start.before.hp} HP → Feindkanone durch ${start.before.schuesse} Bezwinger-Treffer zerstört (${start.cannonsBefore}→${rr.cannons}) ✓`) : fail(`Kanonen-Kill: Kanone überlebt ${start.before.schuesse} Bezwinger-Treffer (${start.cannonsBefore}→${rr.cannons})`);
     rr.scrap >= rr.before + 18 ? ok(`Kanonen-Kill: +18 Schrott gutgeschrieben (${rr.before}→${rr.scrap}) ✓`) : fail(`Kanonen-Kill: Kill-Bonus fehlt (${rr.before}→${rr.scrap})`);
     // Match-Statistik (v3.21.0): Kill + Wirkungstreffer + Schrott-Zähler
     const ms = await page.evaluate(() => window.__matchStats && window.__matchStats(1));
@@ -2955,8 +2955,8 @@ async function suiteBot(browser) {
     if (!shopSeen) { fail('Premium-Shop nicht gefunden'); }
     else {
       ok(`Premium-Shop sichtbar (${shopSeen.cards} Karten) ✓`);
-      shopSeen.svg === 4 ? ok('Shop: alle 4 Karten mit SVG-Medaille (kein Emoji) ✓') : fail(`Shop: nur ${shopSeen.svg}/4 Karten mit SVG-Icon`);
-      shopSeen.priced === 4 ? ok('Shop: alle 4 Karten mit Preis/MAX ✓') : fail(`Shop: nur ${shopSeen.priced}/4 Karten mit Preis`);
+      shopSeen.svg === 5 ? ok('Shop: alle 5 Karten mit SVG-Medaille (kein Emoji) ✓') : fail(`Shop: nur ${shopSeen.svg}/5 Karten mit SVG-Icon`);
+      shopSeen.priced === 5 ? ok('Shop: alle 5 Karten mit Preis/MAX ✓') : fail(`Shop: nur ${shopSeen.priced}/5 Karten mit Preis`);
       shopSeen.header ? ok('Shop: RÜSTPHASE-Header ✓') : fail('Shop: Header fehlt');
       shopSeen.chip ? ok('Shop: goldener Schrott-Chip ✓') : fail('Shop: Schrott-Chip fehlt');
 

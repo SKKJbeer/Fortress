@@ -22,5 +22,8 @@ export const SHOP = {
   // Preis-Staffel wie Kanonen (Anti-Patt: unbegrenzte Flat-Reparatur war das
   // strukturelle Risiko; 1–2 Reparaturen pro Karte bleiben billig).
   armor:  { price: 45 },               // Mauern halten 2 Treffer
+  // Kanonen-Bezwinger (v3.57.0): zweite Kanonenart, wirkt NUR gegen Kanonen.
+  // Guenstiger als eine normale Kanone, weil sie keinen Mauerschaden macht.
+  slayer: { price: 25 },
   repair: { base: 15, step: 5 }        // +3 Trümmer → Mauern; Preis steigt je Kauf (Staffel pro Karte)
 };

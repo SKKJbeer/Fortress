@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.56.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.57.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4156,3 +4156,63 @@ Kanonen-Modell, damit man beide Arten auf dem Feld auseinanderhält.
 
 Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.56.0`.
+
+---
+
+## v3.57.0 — LIVE: Kanonen-Explosion repariert + zwei Kanonenarten
+
+Erste Übernahme aus der Balancing-Serie. Bis hierher war ALLES nur hinter
+`window.__balExp` messbar — diese Version schaltet zwei Dinge dauerhaft scharf.
+
+### 1. Die Kanonen-Explosion wirkt endlich (`KILL_BLAST = 2`)
+SPEC v3.16.0 versprach: *„Zerstörte Kanonen reißen im 3×3 auch die MAUERN des
+Besitzers mit — Kill öffnet die Hülle."* Das ist nie passiert: Eine Kanone
+belegt in `placeCannon` **selbst** ein 3×3-Feld, und der Radius 1 deckte exakt
+diesen Grundriss ab. Gemessen über 144 Kills: **0 zerstörte Mauern, 0 geöffnete
+Burgen.** Radius 2 erreicht den Ring AUSSERHALB der Kanone — gemessen öffnen
+damit 43 % aller Kills die Burg des Besitzers.
+
+### 2. Zwei Kanonenarten mit Salven-Schalter
+- **Mauerbrecher** (Standard, wie bisher gekauft): zerstört Mauern, richtet an
+  Kanonen NICHTS aus. Salve **fächert** sich entlang der Mauer.
+- **Kanonen-Bezwinger** (neu, `SHOP.slayer.price = 25`): trifft NUR Kanonen,
+  dafür mit `SLAYER_DMG = 3`. An Mauern wirkungslos. Salve **bündelt** auf ein
+  Ziel (Fokusfeuer — bei CANNON_HP 12 ist verteiltes Feuer verschenkt).
+- **Schalter in der Schussphase** (unten rechts, spiegelbildlich zum
+  Emote-Button): wählt, WELCHE Art feuert, mit Live-Zähler der feuerbereiten
+  Rohre je Art. Erscheint erst, sobald ein Bezwinger auf dem Feld steht.
+- Auf dem Feld trägt der Bezwinger einen **violetten Fadenkreuz-Aufsatz**
+  (`drawCannonFull(..., kt)`) — gleiche Silhouette, klare Rolle.
+
+**Warum das der Kern ist:** Bisher feuerte immer das GANZE Arsenal auf das, was
+man anvisierte — die Kanonenjagd kostete nichts. Jetzt feuert je Salve nur EINE
+Art. Wer Kanonen jagt, verzichtet in derselben Runde auf Mauerschaden. Die Wahl
+hat zum ersten Mal einen Preis, **ohne dass eine Regel den Spieler einschränkt**
+(anders als die verworfenen Baukosten und der verworfene Bauradius).
+
+**Messung vor der Übernahme (je 32 Partien):** Bezwinger-Schaden 3 ergibt
+19/32 entschiedene Partien gegen 17/32 mit einer Kanonenart — bei MEHR
+Mauerschaden (62,6 gegen 56,3) und gleicher Kill-Rate. Mit Schaden 1 bricht das
+System zusammen (5/32), weil jede Salve nur die halbe Feuerkraft einsetzt.
+
+### Weitere Änderungen
+- **Bot** wechselt salvenweise zwischen den Arten und kauft Bezwinger bis ~40 %
+  Arsenalanteil. Vorher tötete er **0,0 Kanonen je Partie** und hätte gegen
+  jeden Menschen verloren, der die Kanonentaktik spielt.
+- **Protokoll `PROTO_VERSION` 1 → 2**: Kanonen tragen `kt` ("std"|"slayer"),
+  neue Gast-Aktion `salvo`. Ein alter Gast würde die Art ignorieren und falsche
+  Wirkung anzeigen — deshalb inkompatibel.
+- **Engine-Konstanten** `KILL_BLAST`, `SLAYER_DMG` (const.js), `SHOP.slayer`
+  (economy.js) — Architektur-Regel: pure Logik gehört in `src/engine/`.
+- **Icons** `crosshair` + `bricks` in `ui/icons.js`, Shop-Thema + SVG-Medaille
+  für `slayer` (violett, klar von der blauen Standardkanone getrennt).
+- i18n: `shopSlayer`, `shopTagSlayer`, `shopInfoSlayerDesc`, `salvoWalls`,
+  `salvoSlayer`, `salvoHint` in de + en.
+
+**Tests angepasst (nicht übertönt):** Neun E2E-Prüfungen schlugen fehl, alle aus
+den beiden beabsichtigten Regeländerungen. `__testCannonKill` feuerte
+Mauerbrecher-Kugeln auf eine Kanone — nach neuer Regel wirkungslos; der Hook
+schießt jetzt Bezwinger-Kugeln (`Math.ceil(CANNON_HP / SLAYER_DMG)` Treffer).
+Shop-Prüfungen von 4 auf 5 Karten. Tests grün (Unit 39/39, E2E 309/309).
+
+SW-Cache `fortress-v3.57.0`.

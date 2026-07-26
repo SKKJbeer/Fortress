@@ -1,4 +1,4 @@
-const CACHE = 'fortress-v3.56.0';
+const CACHE = 'fortress-v3.57.0';
 const CORE = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-96.png',
   './icon-maskable-192.png', './icon-maskable-512.png',
   './sounds/shoot.mp3', './sounds/impact.mp3', './sounds/destroy.mp3', './sounds/place.mp3',

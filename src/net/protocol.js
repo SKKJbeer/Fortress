@@ -23,7 +23,10 @@ import { W, H } from '../engine/const.js';
 //   playerInfo  {name,wappen,color,elo,trail,frame,cannon,impact} je Spieler
 //   resultInfo  Endstand · screen · numPlayers
 
-export const PROTO_VERSION = 1;
+// v2 (v3.57.0): Kanonen tragen eine ART (cannons[].kt = "std"|"slayer") und
+// es gibt die Aktion "salvo". Ein alter Gast wuerde die Art ignorieren und
+// dadurch falsche Wirkung anzeigen — deshalb inkompatibel.
+export const PROTO_VERSION = 2;
 
 export function sanitizeState(s) {
   if (!s || typeof s !== "object") return null;
@@ -62,9 +65,10 @@ export function sanitizeAction(raw) {
     return null;
   }
   if (!a || typeof a !== "object") return null;
-  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy", "ready", "emote"];
+  const validTypes = ["place", "cannon", "fire", "aim", "join", "rotate", "leave", "buy", "ready", "emote", "salvo"];
   if (!validTypes.includes(a.type)) return null;
-  if (a.type === "buy" && !["cannon", "reload", "armor", "repair"].includes(a.item)) return null;
+  if (a.type === "buy" && !["cannon", "slayer", "reload", "armor", "repair"].includes(a.item)) return null;
+  if (a.type === "salvo" && !["std", "slayer"].includes(a.m)) return null;
   if (a.type === "emote" && (typeof a.e !== "number" || a.e < 0 || a.e > 7)) return null;
   if (a.r !== void 0 && (typeof a.r !== "number" || a.r < 0 || a.r > 300)) return null;
   if (a.c !== void 0 && (typeof a.c !== "number" || a.c < 0 || a.c > 300)) return null;

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.56.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.57.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -175,8 +175,9 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script type="module">
-import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
+import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
+const SHOP_SLAYER = SHOP.slayer.price;
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
@@ -713,13 +714,17 @@ const SHOP_THEME = {
   cannon: { c1: "#7dd3fc", c2: "#2563eb", c3: "#0b2a6b", glow: "96,165,250" },
   reload: { c1: "#fde68a", c2: "#f59e0b", c3: "#7c3d06", glow: "251,191,36" },
   armor:  { c1: "#ddd6fe", c2: "#8b5cf6", c3: "#4c1d95", glow: "167,139,250" },
-  repair: { c1: "#a7f3d0", c2: "#10b981", c3: "#065f46", glow: "52,211,153" }
+  repair: { c1: "#a7f3d0", c2: "#10b981", c3: "#065f46", glow: "52,211,153" },
+  // Kanonen-Bezwinger (v3.57.0): violette Farbwelt, klar von der blauen
+  // Standardkanone unterschieden — die Farbe wiederholt sich im Feld-Aufsatz.
+  slayer: { c1: "#e9d5ff", c2: "#7c3aed", c3: "#3b0764", glow: "167,139,250" }
 };
 const SHOP_ICONS = {
   cannon: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><circle cx="10.4" cy="14.4" r="6.9" fill="#fff"/><rect x="8.7" y="6.1" width="3.3" height="2.7" rx="0.7" fill="#fff"/><path d="M12.4 6.3 q2.9-2.7 4.9-0.6" stroke="#fde68a" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="17.6" cy="4.5" r="2" fill="#fde68a"/><circle cx="17.6" cy="4.5" r="0.9" fill="#f59e0b"/><circle cx="7.8" cy="11.9" r="2.2" fill="rgba(0,0,0,0.10)"/></svg>',
   reload: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M12.4 2 L4.8 13 a0.9 0.9 0 0 0 0.74 1.42 H9.6 l-1.3 6.9 a0.55 0.55 0 0 0 0.98 0.43 L18.9 10.4 a0.9 0.9 0 0 0-0.72-1.44 H13.9 l1.35-6.2 A0.62 0.62 0 0 0 12.4 2 z"/></svg>',
   armor:  '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M12 2.2 L20 5.1 v5.7 c0 5-3.4 8.4-8 11 -4.6-2.6-8-6-8-11 V5.1 z"/><path fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" d="M8.4 12.1 l2.5 2.5 4.7-5"/></svg>',
-  repair: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M20.9 6 a4.1 4.1 0 0 1-5.15 5.15 L8.2 18.7 a1.95 1.95 0 0 1-2.76-2.76 L13 8.4 A4.1 4.1 0 0 1 18.15 3.25 L15.5 5.9 a1.25 1.25 0 0 0 1.77 1.77 z"/></svg>'
+  repair: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M20.9 6 a4.1 4.1 0 0 1-5.15 5.15 L8.2 18.7 a1.95 1.95 0 0 1-2.76-2.76 L13 8.4 A4.1 4.1 0 0 1 18.15 3.25 L15.5 5.9 a1.25 1.25 0 0 0 1.77 1.77 z"/></svg>',
+  slayer: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><circle cx="12" cy="12" r="8.4" fill="none" stroke="#fff" stroke-width="1.7"/><path d="M12 1.6v3.6M12 18.8v3.6M1.6 12h3.6M18.8 12h3.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="3.4" fill="#fff"/><circle cx="12" cy="12" r="1.5" fill="#7c3aed"/></svg>'
 };
 // Emotes (v3.25.0): 6 vordefinierte Reaktionen fürs Online-Match — kein
 // Freitext (keine Moderationslast), Übertragung als Index via Action/State.
@@ -1836,10 +1841,14 @@ window.FortressApp = function Fortress() {
       if (!list.length) return null;
       const cn = list[0];
       const before = scrap.current[shooter] || 0;
-      for (let i = 0; i < CANNON_HP; i++) {
-        balls.current.push({ sx: cn.c * CELL + CELL / 2, sy: (cn.r + 6) * CELL, tx: cn.c * CELL + CELL / 2, ty: cn.r * CELL + CELL / 2, prog: 0.8, dur: 16, arcH: 6, player: shooter, alive: true, cannonIndex: 0, trail: [] });
+      // Seit v3.57.0 toeten NUR Bezwinger-Kugeln (kt:"slayer") Kanonen —
+      // Mauerbrecher richten dort nichts aus. Der Testschuss muss also die
+      // richtige Art tragen, sonst prueft er eine Wirkung, die es nicht gibt.
+      const n = Math.ceil(CANNON_HP / SLAYER_DMG);
+      for (let i = 0; i < n; i++) {
+        balls.current.push({ sx: cn.c * CELL + CELL / 2, sy: (cn.r + 6) * CELL, tx: cn.c * CELL + CELL / 2, ty: cn.r * CELL + CELL / 2, prog: 0.8, dur: 16, arcH: 6, player: shooter, alive: true, cannonIndex: 0, kt: "slayer", trail: [] });
       }
-      return { before, beforeCannons: list.length, hp: CANNON_HP };
+      return { before, beforeCannons: list.length, hp: CANNON_HP, schuesse: n };
     });
     window.__enemyCannonCount = gated((shooter) => (cannons.current[shooter === 1 ? 2 : 1] || []).length);
     // Testhilfe (v3.31.1): Reparatur darf NUR Mauer-Trümmer (RUBBLE) wandeln,
@@ -3131,6 +3140,7 @@ window.FortressApp = function Fortress() {
     if (a.type === "place" && ph === "build") placePiece(p, a.r, a.c);
     else if (a.type === "cannon" && (ph === "setup" || ph === "cannon")) placeCannon(p, a.r, a.c);
     else if (a.type === "buy" && ph === "cannon") buyUpgrade(p, a.item);
+    else if (a.type === "salvo") salvenModus.current[p] = a.m === "slayer" ? "slayer" : "std";
     else if (a.type === "ready" && ph === "cannon") setArmoryReady(p);
     else if (a.type === "fire" && ph === "shoot") fireMortar(p, a.tx, a.ty);
     else if (a.type === "aim") cannonAngle.current[p] = a.angle;
@@ -4319,11 +4329,8 @@ window.FortressApp = function Fortress() {
     {
       // Salven-Schalter: es feuert NUR die gewaehlte Kanonenart. Wer Kanonen
       // jagt, macht in dieser Runde keinen Mauerschaden — und umgekehrt.
-      const XZ = balExp() || {};
-      if (XZ.zweiKanonen) {
-        const modus = salvenModus.current[player] || "std";
-        ready = ready.filter((c) => (c.kt || "std") === modus);
-      }
+      const modus = salvenModus.current[player] || "std";
+      ready = ready.filter((c) => (c.kt || "std") === modus);
     }
     // STOERSENDER (Experiment): getroffene Kanonen sind fuer X Runden
     // lahmgelegt statt zerstoert — sie blockieren weiter Platz und Schrott.
@@ -4434,14 +4441,16 @@ window.FortressApp = function Fortress() {
       }
       const arc = (wp === "mortar" || wp === "emp");   // eigenes Ziel, keine Salven-Streuung
       const XF = arc ? null : balExp();
-      // faecherWahl: die Salve faechert NUR, wenn auf eine Mauer gezielt wurde.
-      // Gegen Kanonen bleibt sie gebuendelt — sonst zerfaellt das Fokusfeuer.
-      const faechern = XF && (XF.faecher
-        || (XF.faecherWahl && lastAimWall.current[player]));
+      // Salvenform folgt der Kanonenart (v3.57.0): Mauerbrecher FAECHERN sich
+      // entlang der Mauer (breite Bresche statt alle in dasselbe Loch),
+      // Bezwinger BUENDELN auf ein Ziel (Fokusfeuer — bei 12 Trefferpunkten je
+      // Kanone ist verteiltes Feuer verschenkt). Gemessen: Fokusfeuer macht
+      // den Unterschied zwischen 19/24 und 9/24 entschiedenen Partien.
+      const faechern = (cn.kt || "std") === "std" || (XF && XF.faecher);
       if (faechern && index > 0) {
         // Salven-Faecher: die Kanonen verteilen sich entlang der Mauerlinie,
         // statt alle in dieselbe frisch geschlagene Bresche zu feuern.
-        const step = (XF.faecherSpan || 2) * CELL;
+        const step = ((XF || {}).faecherSpan || 2) * CELL;
         const side = index % 2 === 1 ? 1 : -1;
         const rank = Math.ceil(index / 2);
         tx += side * rank * step;
@@ -4585,7 +4594,7 @@ window.FortressApp = function Fortress() {
     };
     if (kind === "cannon") {
       // Zwei Kanonenarten: der Mauerbrecher richtet an Kanonen NICHTS aus.
-      if ((balExp() || {}).zweiKanonen && (ball.kt || "std") !== "slayer") return;
+      if ((ball.kt || "std") !== "slayer") return;   // Mauerbrecher wirken nicht auf Kanonen
       const enemyCannon = CANNON_OF[ep];
       const cn = cannons.current[ep].find((c) => Math.abs(hitR - c.r) <= 1 && Math.abs(hitC - c.c) <= 1);
       if (cn) {
@@ -4602,7 +4611,7 @@ window.FortressApp = function Fortress() {
         // Der Bezwinger ist Spezialist: er trifft haerter als der fruehere
         // Allrounder — sonst lohnt der eigene Lauf nicht, weil jede Salve nur
         // eine Haelfte des Arsenals einsetzt.
-        if (XC.zweiKanonen) wucht = XC.slayerDmg || 1;
+        wucht = SLAYER_DMG;   // Spezialist trifft haerter: jede Salve nutzt nur eine Arsenalhaelfte
         if (XC.wuchtKauf) wucht = 1 + ((upgrades.current[ball.player] || {}).power || 0);
         else if (XC.wucht) wucht = Math.min(XC.wuchtMax || 3,
           1 + Math.floor((roundRefVal.current - 1) / (XC.wucht || 3)));
@@ -4620,13 +4629,14 @@ window.FortressApp = function Fortress() {
           }
           const newG2 = g.map((row) => [...row]);
           const enemyWallT = WALL_OF[ep];
-          // BEFUND v3.51.0: Eine Kanone belegt SELBST ein 3x3-Feld (placeCannon).
-          // Der Sprengradius 1 deckt damit exakt die Kanone ab und erreicht
-          // KEINE einzige Mauer — die im SPEC beschriebene Wirkung "reisst die
-          // 3x3-Mauern des Besitzers mit" ist nie eingetreten (gemessen: 18
-          // Kills, 0 Mauern). killBlast weitet den Radius als Experiment:
-          // 2 = ein Ring ausserhalb der Kanone, 3 = zwei Ringe.
-          const blastR = (balExp() || {}).killBlast || 1;
+          // Eine Kanone belegt SELBST ein 3x3-Feld (placeCannon). Radius 1
+          // deckte damit exakt die Kanone ab und erreichte KEINE einzige
+          // Mauer — die seit v3.16.0 dokumentierte Wirkung "Kill oeffnet die
+          // Huelle" trat nie ein (gemessen: 144 Kills, 0 Mauern, 0 geoeffnete
+          // Burgen). Radius 2 (v3.57.0): erst der Ring AUSSERHALB der Kanone
+          // erreicht die Mauern, in die sie eingebaut ist. Gemessen oeffnen
+          // damit 43 % aller Kills die Burg des Besitzers.
+          const blastR = KILL_BLAST;
           // Wiederaufbau-Paket C (v3.30.0): war das die LETZTE Kanone (die
           // sterbende hat hp<=0 und zählt nicht mehr), birgt der Verteidiger
           // +1 Schrott je eigener Mauer, die die Explosion mitreißt.
@@ -4695,7 +4705,7 @@ window.FortressApp = function Fortress() {
     }
     if (kind === "castle") return;
     // Der Bezwinger richtet an Mauern NICHTS aus — er ist reine Kanonenjagd.
-    if ((balExp() || {}).zweiKanonen && (ball.kt || "std") === "slayer") return;
+    if ((ball.kt || "std") === "slayer") return;    // Bezwinger wirkt nicht auf Mauern
     {
       // STEILFEUER-MOERSER (Experiment): die Granate fliegt UEBER den Mauerring
       // und detoniert erst im Burghof — an der Mauer richtet sie nichts aus.
@@ -4994,9 +5004,7 @@ window.FortressApp = function Fortress() {
       if (have < price) return false;
       up.armor = 1;
     } else if (item === "slayer") {
-      const XS2 = balExp() || {};
-      if (!XS2.zweiKanonen) return false;
-      price = XS2.slayerPreis || 25;
+      price = SHOP_SLAYER;
       if (have < price) return false;
       cannonBudget.current[player] = (cannonBudget.current[player] || 0) + 1;
       cannonTypeQueue.current[player].push("slayer");
@@ -5354,11 +5362,12 @@ window.FortressApp = function Fortress() {
     // so wie ein Mensch nachlegt statt die Schaeden zu verteilen.
     {
       const XA = balExp() || {};
-      // aimP1/aimP2 setzen die Route je Spieler getrennt ("wall" | "cannon" |
-      // "mixed") — damit spielt Mauer-Taktik direkt gegen Kanonen-Taktik und
-      // die Siegquote zeigt, welche Route sich lohnt.
+      // Der Bot wechselt salvenweise zwischen den Arten — er nutzt also beide
+      // Rohre, statt wie frueher nur auf Mauern zu schiessen (0,0 Kanonen-Kills
+      // je Partie). Experiment-Flags aimP1/aimP2/aim koennen das ueberschreiben.
+      const hatSlayer = (cannons.current[B] || []).some((c) => c.kt === "slayer" && c.hp > 0);
       const perP = XA["aimP" + B];
-      const modus = perP || XA.aim;
+      const modus = perP || XA.aim || (hatSlayer ? "mixed" : "wall");
       const wantCannon = modus === "cannon"
         || (modus === "mixed" && botAimSeq.current % 2 === 0);
       if (wantCannon && !tutorialMode.current) {
@@ -5477,15 +5486,14 @@ window.FortressApp = function Fortress() {
         }
         // Durchschlag ist fuer den Bot eine echte Alternative zur naechsten
         // Kanone: teurer, aber wirkt auf ALLE Kanonen gleichzeitig.
-        const XZ2 = balExp() || {};
-        if (XZ2.zweiKanonen) {
+        {
           // Der Bot haelt ein Verhaeltnis: etwa jede dritte Kanone ein
           // Bezwinger. Ohne Bezwinger kann er keine Kanone toeten, mit zu
           // vielen macht er keinen Mauerschaden mehr.
           const alle = cannons.current[B] || [];
           const slay = alle.filter((c) => c.kt === "slayer").length;
-          const anteil = XZ2.slayerAnteil == null ? 0.34 : XZ2.slayerAnteil;
-          const preisS = XZ2.slayerPreis || 25;
+          const anteil = 0.4;
+          const preisS = SHOP_SLAYER;
           if (alle.length >= 2 && slay < Math.max(1, Math.round(alle.length * anteil))
               && have >= preisS && cannonBudget.current[B] <= 0
               && alle.length < lvl.maxCannons) {
@@ -6663,7 +6671,7 @@ window.FortressApp = function Fortress() {
         const cy = cn.r * CELL + CELL / 2;
         const isClosed = isReady(cn);
         if (p1Flipped) p1CounterFlip(cx, cy);
-        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player], now, pSkinDef ? pSkinId : null, pSkinDef);
+        drawCannonFull(ctx, cx, cy, p1Flipped ? -angle : angle, player, reload.current[player], now, pSkinDef ? pSkinId : null, pSkinDef, cn.kt);
         if (p1Flipped) p1CounterFlipEnd();
         if (cn.hp < CANNON_HP) {
           const bw = CELL * 2.4, bx = cx - bw / 2, by = p1Flipped ? cy + CELL * 2.1 : cy - CELL * 2.1;
@@ -7209,7 +7217,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.56.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.57.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -8880,6 +8888,7 @@ window.FortressApp = function Fortress() {
       const have = scrap.current[sp] || 0;
       const items = [
         { k: "cannon", label: t("shopCannon"), tag: t("shopTagCannon"), price: cannonPriceOf(sp), max: false },
+        { k: "slayer", label: t("shopSlayer"), tag: t("shopTagSlayer"), price: SHOP_SLAYER, max: false },
         { k: "reload", label: t("shopReload"), tag: t("shopTagReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
         { k: "armor", label: t("shopArmor"), tag: t("shopTagArmor"), price: SHOP.armor.price, max: !!up.armor },
         { k: "repair", label: t("shopRepair"), tag: t("shopTagRepair"), price: SHOP.repair.base + SHOP.repair.step * (up.repair || 0), max: false, noNeed: (() => {
@@ -9038,6 +9047,7 @@ window.FortressApp = function Fortress() {
     ];
     const rows = [
       { k: "cannon", label: t("shopCannon"), desc: t("shopInfoCannonDesc") },
+      { k: "slayer", label: t("shopSlayer"), desc: t("shopInfoSlayerDesc") },
       { k: "reload", label: t("shopReload"), desc: t("shopInfoReloadDesc") },
       { k: "armor", label: t("shopArmor"), desc: t("shopInfoArmorDesc") },
       { k: "repair", label: t("shopRepair"), desc: t("shopInfoRepairDesc") }
@@ -9091,6 +9101,56 @@ window.FortressApp = function Fortress() {
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)"
         } }, "✓ " + t("shopInfoClose"))
       )
+    );
+  })(),
+  // ── Salven-Schalter (v3.57.0): welche Kanonenart feuert? ──────────────
+  // Mauerbrecher reissen Mauern, Bezwinger toeten nur Kanonen. Je Salve
+  // feuert NUR die gewaehlte Art — deshalb muss die Wahl sichtbar sein und
+  // zeigen, wie viele Rohre sie ueberhaupt bereitstellt.
+  phase === "shoot" && (() => {
+    const meS = online.current ? myRole.current : (botMode.current ? 1 : null);
+    if (!meS) return null;
+    const mine = (cannons.current[meS] || []).filter((c) => c.hp > 0);
+    if (!mine.some((c) => c.kt === "slayer")) return null;   // erst ab dem 1. Bezwinger
+    const frozen = new Set(frozenReady.current[meS] || []);
+    const zaehl = (art) => mine.filter((c) => (c.kt || "std") === art && frozen.has(c.id)).length;
+    const modus = salvenModus.current[meS] || "std";
+    const knopf = (art, icon, label) => {
+      const aktiv = modus === art, n = zaehl(art);
+      return /* @__PURE__ */ React.createElement("button", {
+        key: art,
+        onClick: () => {
+          salvenModus.current[meS] = art;
+          if (online.current && myRole.current !== 1) sendAction({ type: "salvo", m: art });
+          SFX.place && SFX.place();
+          setUiTick((t2) => t2 + 1);
+        },
+        "aria-label": label,
+        style: {
+          display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
+          padding: "7px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 800,
+          border: "1px solid " + (aktiv ? "rgba(96,165,250,0.85)" : "rgba(255,255,255,0.14)"),
+          background: aktiv
+            ? "linear-gradient(180deg,#2563eb,#1d4ed8)"
+            : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
+          color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b"),
+          boxShadow: aktiv ? "0 4px 16px rgba(37,99,235,0.45)" : "0 3px 12px rgba(0,0,0,0.45)",
+          opacity: n ? 1 : 0.55
+        }
+      }, React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b") }),
+         label, /* @__PURE__ */ React.createElement("span", {
+           style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
+    };
+    return /* @__PURE__ */ React.createElement("div", { key: "salvo", style: {
+      position: "fixed", right: 8, bottom: "calc(env(safe-area-inset-bottom, 0px) + 118px)",
+      zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5
+    } },
+      /* @__PURE__ */ React.createElement("span", { style: {
+        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", color: "#64748b",
+        textTransform: "uppercase", paddingRight: 4
+      } }, t("salvoHint")),
+      knopf("std", "bricks", t("salvoWalls")),
+      knopf("slayer", "crosshair", t("salvoSlayer"))
     );
   })(),
   // ── Emotes (v3.25.0): Button + Leiste (nur online) ──

@@ -916,7 +916,10 @@ export function cannonTurretSprite(player, skinId, skinDef) {
   return SPR.turret[key];
 }
 
-export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, skinId, skinDef) {
+// kt = Kanonenart (v3.57.0): "std" = Mauerbrecher, "slayer" = Kanonen-Bezwinger.
+// Der Bezwinger muss auf dem Feld SOFORT erkennbar sein — sonst weiss niemand,
+// welche Rohre die gewaehlte Salve ueberhaupt abfeuert.
+export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, skinId, skinDef, kt) {
   const R = CELL * 1.6;
   const n = CANNON_NEON[player] || CANNON_NEON[1];
   const now = nowT != null ? nowT : Date.now();
@@ -943,6 +946,34 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   ctx.globalAlpha = 0.92;
   ctx.drawImage(dome, cx - dome.width * 0.31, cy - dome.height * 0.31, dome.width * 0.62, dome.height * 0.62);
   ctx.restore();
+  // ── Kennzeichnung Kanonen-Bezwinger ────────────────────────────────────
+  // Bewusst als Aufsatz und nicht als eigenes Modell: die Silhouette bleibt
+  // dieselbe (es ist eine Kanone), nur das Visier macht die Rolle klar.
+  if (kt === "slayer") {
+    const t2 = (nowT != null ? nowT : Date.now()) / 900;
+    ctx.save();
+    ctx.translate(cx, cy);
+    // dunkler Sockel, damit der helle Ring auf jedem Untergrund traegt
+    ctx.fillStyle = "rgba(10,14,22,0.72)";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.46, 0, Math.PI * 2); ctx.fill();
+    // Fadenkreuz-Ring, pulsierend
+    ctx.strokeStyle = "#c4b5fd";
+    ctx.lineWidth = 1.7;
+    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t2);
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.40, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.3;
+    for (let q = 0; q < 4; q++) {
+      const a3 = q * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a3) * R * 0.22, Math.sin(a3) * R * 0.22);
+      ctx.lineTo(Math.cos(a3) * R * 0.56, Math.sin(a3) * R * 0.56);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#a78bfa";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.11, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
   // ── Signatur-Animation je Skin (v3.44.0) ────────────────────────────────
   // Das ist der eigentliche „Haben-wollen"-Faktor: ein Standbild kann man
   // umfärben, Bewegung nicht. Bewusst billig gehalten (wenige Arcs/Punkte),

@@ -16,6 +16,14 @@ export const CANNON_HP = 12;  // v3.31.0: 8→12 — Playtest (2 Spieler): mit 8
                        // Mit 12 kostet ein Kill ~1,5 Runden Commitment — erreichbar
                        // (15 war laut Selfplay tot), aber eine echte Investition.
 export const RELOAD_MS = 2500;
+// Sprengradius der Kanonen-Explosion (v3.57.0). Eine Kanone belegt SELBST ein
+// 3x3-Feld, Radius 1 traf deshalb nur sie selbst und nie eine Mauer — die seit
+// v3.16.0 dokumentierte Wirkung "Kill oeffnet die Huelle" trat nie ein.
+export const KILL_BLAST = 2;
+// Schaden des Kanonen-Bezwingers (v3.57.0). Deutlich hoeher als der eines
+// Mauerbrechers, weil je Salve nur EINE Kanonenart feuert — gemessen bricht
+// das System bei Schaden 1 zusammen (5/32 entschiedene Partien statt 19/32).
+export const SLAYER_DMG = 3;
 export const GRAV = 0.07;
 export const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12
 // v3.31.1: Kanonen-Trümmer als EIGENER Typ — Reparatur (repairRubble) darf nur
