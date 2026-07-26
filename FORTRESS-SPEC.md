@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.62.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.63.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4418,3 +4418,42 @@ Damit gibt es zehn unterscheidbare Modelle: acht Skins, das Standardmodell und
 der Kanonen-Bezwinger aus v3.61.0.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.62.0`.
+
+---
+
+## v3.63.0 — Mauern und Trümmer bekommen Varianten
+
+Bisher gab es **einen** gebackenen Mauerstein je Farbe und **einen** Trümmer-
+haufen für das ganze Spielfeld. Jede Zelle war pixelgleich — eine Mauerreihe
+sah aus wie kopiertes Kachelmuster, eine Bresche wie eine Reihe identischer
+Stempel. Kein Detailgrad half dagegen, solange sich alles wiederholt.
+
+**Mauern: vier Varianten je Farbe** (`WALL_VARIANTEN = 4`). Die Variante
+verschiebt Körnung, Fugenschnitt, Abplatzung und Farbton leicht. Neu je Stein:
+- **Liegende Mauerfuge** auf wechselnder Höhe — Nachbarzellen wirken dadurch
+  wie verschieden große Quader statt gleich großer Kacheln.
+- **Senkrechte Stoßfuge** an wechselnder Stelle, mal nach oben, mal nach unten.
+- **Abgeplatzte Ecke** an einer der vier Ecken — der Stein wirkt benutzt.
+- Körnung von 7 auf 11 Sprenkel erhöht.
+
+**Trümmer: drei Varianten** (`RUBBLE_VARIANTEN = 3`), komplett neu gezeichnet.
+Statt zweier Dreiecke und eines Punkts jetzt: dunkle Krater-Mulde mit
+radialem Verlauf, Staubschleier am Rand, **fünf** gebrochene Brocken mit
+eigener Lichtseite (Licht von oben links, konsistent zu `SHADOW_DX/DY`), drei
+aus dem Krater laufende Risse und eine zurückhaltende Glut.
+
+**Glut bewusst gedämpft:** Der erste Entwurf hatte zwei kräftige Glutpunkte je
+Zelle. Im Vorschau-Rendering einer echten Bresche ergab das eine orange Wand
+statt eines Schuttfelds — eine Bresche besteht aus vielen Trümmerzellen
+nebeneinander. Jetzt eine Glut mit knapp halbem Radius und deutlich geringerer
+Deckkraft.
+
+**Variantenwahl deterministisch aus der Zellposition:** `(r*7 + c*3) % 4` für
+Mauern, `(r*5 + c*2) % 3` für Trümmer. Dieselbe Zelle sieht damit immer gleich
+aus (kein Flackern zwischen Frames), Nachbarzellen aber verschieden.
+
+**Kosten: keine.** Es sind weiterhin nur vorgebackene Sprites, die geblittet
+werden — statt 3 Mauer- und 1 Trümmer-Sprite gibt es jetzt 12 und 3. Die
+Perf-Regel (keine Gradients/shadowBlur pro Objekt pro Frame) bleibt gewahrt.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.63.0`.

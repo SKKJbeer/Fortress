@@ -8,7 +8,14 @@ import { CELL } from '../engine/const.js';
 // Licht kommt global von OBEN LINKS (siehe SHADOW_DX/DY in index.html).
 // Wird einmal in ein Sprite gebacken (wallSprite) → im Frame-Loop nur geblittet,
 // die PERF-Regel „keine Gradients pro Objekt pro Frame" bleibt eingehalten.
-export function drawWall(ctx, px, py, base, hi, lo, mortar) {
+// vr = Variantennummer (v3.63.0). Es gibt jetzt VIER gebackene Steine je
+// Mauerfarbe statt eines einzigen. Vorher war jede Zelle pixelgleich — eine
+// Mauerreihe sah aus wie kopiertes Kachelmuster. Die Variante verschiebt
+// Koernung, Fugenschnitt, Abplatzung und Farbton leicht; das reicht, damit
+// eine Mauer wie gemauert wirkt statt wie ein Raster.
+export function drawWall(ctx, px, py, base, hi, lo, mortar, vr) {
+  const V = vr || 0;
+  const rnd = (k) => Math.abs(Math.sin((k + V * 17.3) * 12.9898) * 43758.5453) % 1;
   const m = 0.6;
   const x = px + m, y = py + m, w = CELL - 2 * m, hgt = CELL - 2 * m;
   // 1) Körper — Verlauf jetzt DIAGONAL entlang der Lichtachse statt rein vertikal
@@ -23,15 +30,40 @@ export function drawWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.save();
   roundRectPath(ctx, x, y, w, hgt, 3.5);
   ctx.clip();
-  for (let i = 0; i < 7; i++) {
-    // deterministisch aus i: identisch bei jedem Backen, kein Math.random
-    const h1 = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-    const h2 = Math.abs(Math.sin(i * 78.233 + 1.7) * 43758.5453) % 1;
-    ctx.fillStyle = h1 > 0.5 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.16)";
+  for (let i = 0; i < 11; i++) {
+    // deterministisch aus i und Variante: bei jedem Backen identisch,
+    // zwischen den Varianten aber verschieden — kein Math.random
+    const h1 = rnd(i), h2 = rnd(i + 40);
+    ctx.fillStyle = h1 > 0.5 ? "rgba(255,255,255,0.11)" : "rgba(0,0,0,0.18)";
     ctx.beginPath();
-    ctx.arc(x + h1 * w, y + h2 * hgt, 0.5 + h2 * 0.9, 0, Math.PI * 2);
+    ctx.arc(x + h1 * w, y + h2 * hgt, 0.4 + h2 * 1.1, 0, Math.PI * 2);
     ctx.fill();
   }
+  // FUGENSCHNITT: eine versetzte Mauerfuge quer durch den Stein. Sie laesst
+  // benachbarte Zellen wie unterschiedlich grosse Quader wirken statt wie
+  // gleich grosse Kacheln.
+  const fy = y + hgt * (0.34 + rnd(3) * 0.34);
+  ctx.strokeStyle = "rgba(0,0,0,0.30)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, fy); ctx.lineTo(x + w, fy); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.13)"; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(x, fy + 1); ctx.lineTo(x + w, fy + 1); ctx.stroke();
+  // senkrechte Stossfuge, je Variante an anderer Stelle
+  const fx = x + w * (0.28 + rnd(5) * 0.44);
+  ctx.strokeStyle = "rgba(0,0,0,0.24)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(fx, rnd(6) > 0.5 ? y : fy);
+  ctx.lineTo(fx, rnd(6) > 0.5 ? fy : y + hgt);
+  ctx.stroke();
+  // ABPLATZUNG an einer Ecke — der Stein wirkt benutzt, nicht gegossen
+  const eck = Math.floor(rnd(9) * 4);
+  const ex = eck % 2 ? x + w : x, ey = eck < 2 ? y : y + hgt;
+  const sx2 = eck % 2 ? -1 : 1, sy2 = eck < 2 ? 1 : -1;
+  ctx.fillStyle = "rgba(0,0,0,0.30)";
+  ctx.beginPath();
+  ctx.moveTo(ex, ey + sy2 * (2 + rnd(11) * 2.5));
+  ctx.lineTo(ex + sx2 * (2.5 + rnd(12) * 2), ey);
+  ctx.lineTo(ex, ey);
+  ctx.closePath(); ctx.fill();
   // 3) Ambient Occlusion — Abdunklung zur lichtabgewandten Seite (unten/rechts)
   const ao = ctx.createLinearGradient(x + w * 0.35, y + hgt * 0.35, x + w, y + hgt);
   ao.addColorStop(0, "rgba(0,0,0,0)");
@@ -83,34 +115,80 @@ function __oldWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.fillRect(px, py + CELL - 1.5, CELL, 1.5);
   ctx.fillRect(px + CELL - 1.5, py, 1.5, CELL);
 }
-export function drawRubble(ctx, px, py) {
-  const g = ctx.createLinearGradient(px, py, px, py + CELL);
-  g.addColorStop(0, "#2a3344");
-  g.addColorStop(1, "#141a26");
+export const RUBBLE_VARIANTEN = 3;
+// vr = Variante (v3.63.0). Vorher gab es EINEN Truemmerhaufen fuer das ganze
+// Spielfeld — eine Bresche sah aus wie eine Reihe identischer Stempel. Jetzt
+// drei Varianten mit unterschiedlich liegenden Brocken, Staub und Glut.
+export function drawRubble(ctx, px, py, vr) {
+  const V = vr || 0;
+  const rnd = (k) => Math.abs(Math.sin((k + V * 23.7) * 12.9898) * 43758.5453) % 1;
+  // Krater: dunkle Mulde statt flacher Kachel
+  const g = ctx.createRadialGradient(px + CELL * 0.44, py + CELL * 0.40, 1,
+                                     px + CELL * 0.5, py + CELL * 0.5, CELL * 0.72);
+  g.addColorStop(0, "#0d121b");
+  g.addColorStop(0.55, "#1b2230");
+  g.addColorStop(1, "#252e3e");
   ctx.fillStyle = g;
-  roundRectPath(ctx, px + 0.6, py + 0.6, CELL - 1.2, CELL - 1.2, 2.5);
+  roundRectPath(ctx, px + 0.5, py + 0.5, CELL - 1, CELL - 1, 2.5);
   ctx.fill();
-  // gebrochene Splitter
-  ctx.fillStyle = "rgba(120,135,160,0.55)";
-  ctx.beginPath();
-  ctx.moveTo(px + 3, py + CELL - 3);
-  ctx.lineTo(px + 6, py + 5);
-  ctx.lineTo(px + 9, py + CELL - 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "rgba(90,105,130,0.5)";
-  ctx.beginPath();
-  ctx.moveTo(px + CELL - 3, py + CELL - 3);
-  ctx.lineTo(px + CELL - 7, py + 7);
-  ctx.lineTo(px + CELL - 10, py + CELL - 4);
-  ctx.closePath();
-  ctx.fill();
-  // glimmende Glut
-  ctx.fillStyle = "rgba(251,146,60,0.55)";
-  ctx.beginPath();
-  ctx.arc(px + CELL * 0.5, py + CELL * 0.62, 1.5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.save();
+  roundRectPath(ctx, px + 0.5, py + 0.5, CELL - 1, CELL - 1, 2.5);
+  ctx.clip();
+  // Staubschleier am Kraterrand
+  const st = ctx.createRadialGradient(px + CELL * 0.5, py + CELL * 0.5, CELL * 0.18,
+                                      px + CELL * 0.5, py + CELL * 0.5, CELL * 0.62);
+  st.addColorStop(0, "rgba(0,0,0,0)");
+  st.addColorStop(1, "rgba(120,132,152,0.16)");
+  ctx.fillStyle = st;
+  ctx.fillRect(px, py, CELL, CELL);
+  // FUENF gebrochene Brocken mit eigener Lichtseite — Licht von oben links
+  for (let i = 0; i < 5; i++) {
+    const bx = px + 2 + rnd(i) * (CELL - 6);
+    const by = py + 2.5 + rnd(i + 9) * (CELL - 7);
+    const gr = 1.8 + rnd(i + 20) * 2.6;
+    const dreh = rnd(i + 30) * Math.PI;
+    ctx.save(); ctx.translate(bx, by); ctx.rotate(dreh);
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.beginPath();
+    ctx.moveTo(-gr + 0.7, gr * 0.7 + 0.8); ctx.lineTo(0.7, -gr * 0.9 + 0.8);
+    ctx.lineTo(gr + 0.7, gr * 0.6 + 0.8); ctx.closePath(); ctx.fill();
+    const hell = 90 + Math.round(rnd(i + 40) * 55);
+    ctx.fillStyle = "rgb(" + hell + "," + (hell + 10) + "," + (hell + 26) + ")";
+    ctx.beginPath();
+    ctx.moveTo(-gr, gr * 0.7); ctx.lineTo(0, -gr * 0.9);
+    ctx.lineTo(gr, gr * 0.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.30)";
+    ctx.beginPath();
+    ctx.moveTo(-gr, gr * 0.7); ctx.lineTo(0, -gr * 0.9);
+    ctx.lineTo(-gr * 0.25, gr * 0.1); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // Risse, die aus dem Krater herauslaufen
+  ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.lineWidth = 0.9;
+  for (let i = 0; i < 3; i++) {
+    const a = rnd(i + 50) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(px + CELL * 0.5, py + CELL * 0.5);
+    ctx.lineTo(px + CELL * 0.5 + Math.cos(a) * CELL * 0.55,
+               py + CELL * 0.5 + Math.sin(a) * CELL * 0.55);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // EINE kleine Glut, bewusst zurueckhaltend: eine Bresche besteht aus vielen
+  // Truemmerzellen nebeneinander — zwei kraeftige Glutpunkte je Zelle ergaben
+  // dort eine orange Wand statt eines Schuttfelds.
+  const gx = px + CELL * (0.34 + rnd(60) * 0.34);
+  const gy = py + CELL * (0.44 + rnd(70) * 0.28);
+  const gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, 2.4);
+  gg.addColorStop(0, "rgba(255,208,140,0.45)");
+  gg.addColorStop(0.45, "rgba(234,120,50,0.20)");
+  gg.addColorStop(1, "rgba(200,60,40,0)");
+  ctx.fillStyle = gg;
+  ctx.beginPath(); ctx.arc(gx, gy, 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(255,228,180,0.60)";
+  ctx.beginPath(); ctx.arc(gx, gy, 0.6, 0, Math.PI * 2); ctx.fill();
 }
+
 export const ROOF_OF = { 1: "#2563eb", 2: "#dc2626", 3: "#059669" };
 export const FLAG_OF = { 1: "\u2654", 2: "\u265A", 3: "\u265C" };
 export const ACCENT_OF = { 1: "#fbbf24", 2: "#a78bfa", 3: "#34d399" };
@@ -392,14 +470,17 @@ const WALL_SPRITE_COLORS = {
   [2]: ["#ef4444", "#fca5a5", "#991b1b", "#5e1414"],
   [10]: ["#10b981", "#6ee7b7", "#065f46", "#044a37"]
 };
-export function wallSprite(v) {
-  if (!SPR.wall[v]) {
+export const WALL_VARIANTEN = 4;
+export function wallSprite(v, vr) {
+  const V = ((vr || 0) % WALL_VARIANTEN + WALL_VARIANTEN) % WALL_VARIANTEN;
+  const key = v + "_" + V;
+  if (!SPR.wall[key]) {
     const c = mkSpriteCanvas(CELL, CELL);
     const col = WALL_SPRITE_COLORS[v] || WALL_SPRITE_COLORS[1];
-    drawWall(c.getContext("2d"), 0, 0, col[0], col[1], col[2], col[3]);
-    SPR.wall[v] = c;
+    drawWall(c.getContext("2d"), 0, 0, col[0], col[1], col[2], col[3], V);
+    SPR.wall[key] = c;
   }
-  return SPR.wall[v];
+  return SPR.wall[key];
 }
 export function crackSprite() {
   if (!SPR.crack) {
@@ -421,14 +502,17 @@ export function crackSprite() {
   }
   return SPR.crack;
 }
-export function rubbleSprite() {
-  if (!SPR.rubble) {
+export function rubbleSprite(vr) {
+  const V = ((vr || 0) % RUBBLE_VARIANTEN + RUBBLE_VARIANTEN) % RUBBLE_VARIANTEN;
+  if (!SPR.rubbleV) SPR.rubbleV = {};
+  if (!SPR.rubbleV[V]) {
     const c = mkSpriteCanvas(CELL, CELL);
-    drawRubble(c.getContext("2d"), 0, 0);
-    SPR.rubble = c;
+    drawRubble(c.getContext("2d"), 0, 0, V);
+    SPR.rubbleV[V] = c;
   }
-  return SPR.rubble;
+  return SPR.rubbleV[V];
 }
+
 export const CANNON_NEON = {
   1: { ac: "#3b82f6", lt: "#93c5fd", glow: "rgba(59,130,246," },
   2: { ac: "#ef4444", lt: "#fca5a5", glow: "rgba(239,68,68," },
