@@ -1199,6 +1199,22 @@ async function suiteMatchmaking(browser, fbPort) {
       ? ok(`ELO: Aufgeber verbucht Niederlage (1050→${eloQ}) ✓`)
       : fail(`ELO: Aufgeber verliert nichts (1050→${eloQ}) — Quit-Dodge möglich`);
 
+    // ── Schmiede-Material sichtbar (v3.68.0) ──────────────────
+    // Material floss vorher unsichtbar ins Profil (matChangeRef wurde gesetzt,
+    // aber nirgends gerendert) — der Sieger merkte nichts davon.
+    const matUi = await guestP.evaluate(() => {
+      const txt = document.body.innerText;
+      let stored = null;
+      try { stored = (JSON.parse(localStorage.getItem('fortress_profile')).materials || {}).iron; } catch (e) {}
+      // Die Karten-Überschrift rendert per CSS in Grossbuchstaben — innerText
+      // gibt in Chromium den TRANSFORMIERTEN Text zurück, deshalb case-insensitiv.
+      return { karte: /material erbeutet/i.test(txt), eisen: /\+5/.test(txt) && /Eisensplitter/.test(txt), stored };
+    });
+    matUi.karte ? ok('Ergebnis: Material-Karte sichtbar ✓') : fail('Ergebnis: Material-Karte fehlt');
+    matUi.eisen ? ok('Ergebnis: Sieger-Beute +5 Eisensplitter ausgewiesen ✓') : fail('Ergebnis: Material-Betrag/Name fehlt');
+    (matUi.stored >= 5) ? ok(`Ergebnis: Material im Profil verbucht (Eisen=${matUi.stored}) ✓`)
+                        : fail(`Ergebnis: Material NICHT im Profil (Eisen=${matUi.stored})`);
+
     // Beide zurück ins Menü
     await jsClick(guestP, ['Hauptmenü']);
     await jsClick(hostP, ['Hauptmenü']);

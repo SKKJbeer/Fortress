@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.67.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.68.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -182,7 +182,7 @@ const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
-import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from './src/engine/catalog.js';
+import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from './src/net/protocol.js';
 import { MM_BASE_RADIUS, MM_GROWTH_PER_SEC, mmRadius, MM_TICK_MS, MM_HEARTBEAT_STALE_MS, MM_CLAIM_HEAL_MS, MM_GUEST_JOIN_TIMEOUT_MS, MM_BOT_BACKFILL_S, computeMatchGroup } from './src/net/matchmaking.js';
@@ -1311,6 +1311,36 @@ window.FortressApp = function Fortress() {
       )
     );
   }
+  // Schmiede-Material sichtbar machen (v3.68.0). Vorher wanderten Eisen,
+  // Silber, Drachenstahl und Sternenstaub still ins Profil — man merkte erst
+  // in der Schmiede, dass sich etwas angesammelt hatte. Ein Rautenpip ist die
+  // gemeinsame Bildsprache: Menue-Leiste, Ergebnis-Karte, Aufgaben, Schmiede.
+  function MatPip({ k, size = 9 }) {
+    return React.createElement("span", { style: {
+      width: size, height: size, flexShrink: 0, background: MAT_META[k].c,
+      transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 6px " + MAT_META[k].c
+    } });
+  }
+  // Zeile aus Material-Chips. `vals` = {iron,silver,...}; `nurPositive` blendet
+  // Nullwerte aus (Belohnungs-Anzeige), sonst bleiben sie gedimmt stehen
+  // (Bestands-Anzeige — so sieht man auch, welche Sorten es ueberhaupt gibt).
+  function MatRow({ vals, nurPositive, plus, size, gap }) {
+    const keys = MAT_ORDER.filter((k) => !nurPositive || (vals[k] || 0) > 0);
+    if (!keys.length) return null;
+    return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: gap == null ? 6 : gap, flexWrap: "wrap" } },
+      keys.map((k) => {
+        const n = vals[k] || 0;
+        return React.createElement("span", { key: k, title: t("mat_" + k), style: {
+          display: "inline-flex", alignItems: "center", gap: 4,
+          fontSize: size || 11, fontWeight: 900,
+          color: n > 0 ? "#e2e8f0" : "#475569", opacity: n > 0 ? 1 : 0.55
+        } },
+          React.createElement(MatPip, { k, size: size ? size - 2 : 9 }),
+          (plus && n > 0 ? "+" : "") + n
+        );
+      })
+    );
+  }
   // Animierter XP-Reward-Screen nach Online-Spiel
   function XpResultAnim({ xpChange }) {
     const [started, setStarted] = useState(false);
@@ -2019,6 +2049,7 @@ window.FortressApp = function Fortress() {
     if (reward.special === "chest") {
       const dm = matOf(updatedProfile);
       updatedProfile = __spreadProps(__spreadValues({}, updatedProfile), { materials: __spreadProps(__spreadValues({}, dm), { dragon: dm.dragon + 1 }) });
+      showMatGain({ dragon: 1 });
     }
     saveProfile(updatedProfile);
     setDailyCollected(true);
@@ -2033,6 +2064,16 @@ window.FortressApp = function Fortress() {
   const [dailyState, setDailyState] = useState(() => loadDailyState());
   const [showDailyModal, setShowDailyModal] = useState(false);
   const [dailyCollected, setDailyCollected] = useState(false);
+  // Material-Toast (v3.68.0): kurze Einblendung, wenn ausserhalb des
+  // Ergebnis-Screens Schmiede-Material anfaellt (Tagesaufgabe, Tag-7-Kiste).
+  const [matToast, setMatToast] = useState(null);
+  const matToastT = useRef(null);
+  function showMatGain(gain) {
+    if (!gain || !MAT_ORDER.some((k) => (gain[k] || 0) > 0)) return;
+    setMatToast(gain);
+    if (matToastT.current) clearTimeout(matToastT.current);
+    matToastT.current = setTimeout(() => setMatToast(null), 2800);
+  }
   // ── Daily Tasks State (v3.22.0) ──
   const [tasksState, setTasksState] = useState(() => loadTasksState());
   const [showTasksModal, setShowTasksModal] = useState(false);
@@ -2073,12 +2114,14 @@ window.FortressApp = function Fortress() {
     const updated = __spreadProps(__spreadValues({}, profile), {
       gold: oldGold + def.gold,
       lifetimeGold: (typeof profile.lifetimeGold === "number" ? profile.lifetimeGold : 0) + def.gold,
-      materials: __spreadProps(__spreadValues({}, tm), { iron: tm.iron + 3, silver: tm.silver + 1 })
+      materials: __spreadProps(__spreadValues({}, tm), { iron: tm.iron + TASK_MAT.iron, silver: tm.silver + TASK_MAT.silver })
     });
     saveProfile(updated);
+    showMatGain(TASK_MAT);
     SFX.win && SFX.win();
   }
   const tasksClaimable = tasksState.tasks.filter((tk) => { const d = taskDef(tk.id); return d && !tk.collected && (tk.prog || 0) >= d.target; }).length;
+  const forgeReadyN = profile ? craftbar(profile) : 0; // Abzeichen am Schmiede-Button (v3.68.0)
   // ── Gold-Shop State (v3.23.0) ──
   const [showGoldShop, setShowGoldShop] = useState(false);
   // Kauf-Bestätigung (v3.26.2): {cat, item} des zur Bestätigung anstehenden Kaufs
@@ -3384,6 +3427,7 @@ window.FortressApp = function Fortress() {
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
+    matChangeRef.current = null;
     setMpCode(code);
     startPolling(code, role);
     setMpScreen("waiting");
@@ -3520,6 +3564,7 @@ window.FortressApp = function Fortress() {
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
+    matChangeRef.current = null;
     setMpCode(code);
     startPolling(code, role);
     setMpScreen("waiting");
@@ -3903,6 +3948,7 @@ window.FortressApp = function Fortress() {
     eloChangeRef.current = null;
     goldChangeRef.current = null;
     xpChangeRef.current = null;
+    matChangeRef.current = null;
     setMpScreen(null);
     if (role === 1) {
       initGrid();
@@ -7277,7 +7323,13 @@ window.FortressApp = function Fortress() {
         : `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
     };
   })() }, React.createElement("div", { style: { borderRadius: "50%", overflow: "hidden", background: "#0b101c", display: "flex", lineHeight: 0 } },
-      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
+      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"),
+    // Schmiede-Bestand (v3.68.0): steht jetzt direkt neben dem Gold, damit man
+    // sieht, dass sich Material ansammelt — Klick fuehrt in die Schmiede.
+    /* @__PURE__ */ React.createElement("div", { onClick: () => setShowForge(true), title: t("matToForge"), style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4, cursor: "pointer" } },
+      React.createElement(Icon, { name: "hammer", size: 12, color: forgeReadyN > 0 ? "#fb923c" : "#64748b" }),
+      React.createElement(MatRow, { vals: matOf(profile), size: 11, gap: 4 })
+    ), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
     /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
@@ -7307,10 +7359,17 @@ window.FortressApp = function Fortress() {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
       color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
     } }, React.createElement(Icon, { name: "shoppingCart", size: 16 })),
-    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForge(true), title: t('forgeTitle'), style: {
-      background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.35)",
-      color: "#fdba74", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
-    } }, React.createElement(Icon, { name: "hammer", size: 16 }))
+    // Schmiede-Button mit Abzeichen (v3.68.0): zeigt, wie viele Rezepte JETZT
+    // bezahlbar sind — sonst bleibt gesammeltes Material unbemerkt liegen.
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForge(true), title: t('forgeTitle') + (forgeReadyN > 0 ? " \xB7 " + forgeReadyN + " " + t("forgeReady") : ""), style: {
+      background: forgeReadyN > 0 ? "rgba(251,146,60,0.2)" : "rgba(251,146,60,0.1)",
+      border: "1px solid " + (forgeReadyN > 0 ? "rgba(251,146,60,0.75)" : "rgba(251,146,60,0.35)"),
+      color: "#fdba74", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative",
+      animation: forgeReadyN > 0 ? "streakGlow 2s ease infinite" : "none"
+    } },
+      React.createElement(Icon, { name: "hammer", size: 16 }),
+      forgeReadyN > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fb923c", color: "#2b1204", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, forgeReadyN) : null
+    )
   )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: { background: musicOn ? "rgba(52,211,153,0.16)" : "rgba(255,255,255,0.06)", border: musicOn ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(255,255,255,0.12)", color: musicOn ? "#6ee7b7" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), musicOn && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, justifyContent: "center", marginBottom: 12, padding: "0 26px" } },
     /* @__PURE__ */ React.createElement(Icon, { name: "music", size: 13, color: "#6ee7b7" }),
     /* @__PURE__ */ React.createElement("input", { type: "range", min: 0, max: 100, value: Math.round(musicVol * 100), "aria-label": "Musik-Lautst\u00e4rke",
@@ -7369,7 +7428,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.67.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.68.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7774,6 +7833,23 @@ window.FortressApp = function Fortress() {
     onClose: () => setShowDailyModal(false),
     collected: dailyCollected
   }),
+  // ── Material-Toast (v3.68.0) ──────────────────────────────
+  // Liegt ueber allen Modals, damit die Einblendung auch beim Abholen einer
+  // Aufgabe oder der Tag-7-Kiste sichtbar ist.
+  matToast && React.createElement("div", { style: {
+    position: "fixed", left: "50%", transform: "translateX(-50%)",
+    bottom: "calc(env(safe-area-inset-bottom, 0px) + 26px)", zIndex: 1400,
+    display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
+    borderRadius: 999, pointerEvents: "none",
+    background: "linear-gradient(180deg, rgba(48,30,12,0.97), rgba(14,11,20,0.97))",
+    border: "1px solid rgba(251,146,60,0.5)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.6), 0 0 22px rgba(251,146,60,0.25)",
+    animation: "dailyBounceIn 0.32s cubic-bezier(.36,1.5,.56,1) both"
+  } },
+    React.createElement(Icon, { name: "hammer", size: 15, color: "#fdba74" }),
+    React.createElement("span", { style: { fontSize: 11.5, fontWeight: 800, color: "#fdba74" } }, t("matEarned")),
+    React.createElement(MatRow, { vals: matToast, nurPositive: true, plus: true, size: 12, gap: 8 })
+  ),
   // ── Daily-Tasks-Modal (v3.22.0, SPEC 14.3) ──
   showTasksModal && (() => {
     const h = React.createElement;
@@ -7831,7 +7907,11 @@ window.FortressApp = function Fortress() {
                       fontSize: 11.5, fontWeight: 900, boxShadow: "0 3px 10px rgba(16,185,129,0.4)",
                       animation: "streakGlow 2s ease infinite"
                     } }, t("tasksCollect"))
-                  : h("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", padding: "3px 8px", borderRadius: 8 } }, "+" + def.gold + " G")
+                  : h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 } },
+                      h("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", background: "rgba(251,191,36,0.12)", padding: "3px 8px", borderRadius: 8 } }, "+" + def.gold + " G"),
+                      // Material war bisher eine stille Zugabe — jetzt steht sie dran
+                      h(MatRow, { vals: TASK_MAT, nurPositive: true, plus: true, size: 9.5, gap: 5 })
+                    )
             );
           })
         ),
@@ -8073,7 +8153,11 @@ window.FortressApp = function Fortress() {
       fontSize: 10.5, fontWeight: 800, color: need !== void 0 && need > (mats[k] || 0) ? "#f87171" : "#e2e8f0", whiteSpace: "nowrap"
     } },
       h("span", { style: { width: 8, height: 8, background: MAT_META[k].c, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 5px " + MAT_META[k].c, flexShrink: 0 } }),
-      (need !== void 0 ? need : (mats[k] || 0)) + (need !== void 0 ? "" : "")
+      // Fehlt etwas, steht der Fortschritt dran (v3.68.0) — "2/5" sagt, wie weit
+      // man ist; die nackte Zahl 5 sagte nur, dass es nicht reicht.
+      need === void 0 ? (mats[k] || 0)
+        : need > (mats[k] || 0) ? (mats[k] || 0) + "/" + need
+        : need
     );
     const goldChip = (n, short) => h("span", { style: {
       display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999,
@@ -8208,7 +8292,12 @@ window.FortressApp = function Fortress() {
               mats[k] || 0
             ))
           ),
-          h("div", { style: { fontSize: 9, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo"))
+          h("div", { style: { fontSize: 9, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
+          // Klartext, wie viele Rezepte gerade drin sind (v3.68.0)
+          h("div", { style: {
+            fontSize: 10, fontWeight: 800, marginTop: 5,
+            color: forgeReadyN > 0 ? "#fdba74" : "#475569"
+          } }, forgeReadyN > 0 ? forgeReadyN + " " + t("forgeReady") : t("forgeNothing"))
         ),
         section("cannon", t("forgeCatCannon")),
         section("impact", t("forgeCatImpact")),
@@ -8817,7 +8906,23 @@ window.FortressApp = function Fortress() {
         )
       ),
       // XP-KARTE
-      xpChangeRef.current && React.createElement(XpResultAnim, { xpChange: xpChangeRef.current })
+      xpChangeRef.current && React.createElement(XpResultAnim, { xpChange: xpChangeRef.current }),
+      // MATERIAL-KARTE (v3.68.0): Schmiede-Material floss bisher unsichtbar ins
+      // Profil. Jetzt steht die Beute neben ELO/Gold/XP — inklusive Hinweis,
+      // wofuer sie gut ist.
+      matChangeRef.current && MAT_ORDER.some((k) => (matChangeRef.current[k] || 0) > 0) && React.createElement("div", { style: card(251, 146, 60) },
+        React.createElement("div", { style: LABEL }, t("matEarned")),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, flexWrap: "wrap" } },
+          MAT_ORDER.filter((k) => (matChangeRef.current[k] || 0) > 0).map((k) => React.createElement("div", { key: k, style: {
+            display: "flex", alignItems: "center", gap: 6
+          } },
+            React.createElement(MatPip, { k, size: 13 }),
+            React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: MAT_META[k].c, textShadow: "0 0 10px " + MAT_META[k].c + "88" } }, "+" + matChangeRef.current[k]),
+            React.createElement("span", { style: { fontSize: 9.5, fontWeight: 700, color: "#94a3b8" } }, t("mat_" + k))
+          ))
+        ),
+        React.createElement("div", { style: { fontSize: 9.5, color: "#fdba74", marginTop: 6, fontWeight: 700 } }, t("matToForge"))
+      )
     ),
     // ── TEILEN ────────────────────────────────────────────────
     React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {

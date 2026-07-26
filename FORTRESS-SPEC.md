@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.67.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.68.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4642,3 +4642,45 @@ Der Fehler war im Zeitraffer-Harness NICHT sichtbar (dort sind Kills ohnehin
 ~0) — erst der Echtzeit-Lauf zeigte die stehengebliebene Kanonenzahl.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.67.0`.
+
+---
+
+## v3.68.0 — Crafting wird sichtbar
+
+**Problem.** Schmiede-Material war ein unsichtbares System. `matChangeRef` wurde
+nach jedem Online-Match korrekt gefüllt — aber **nirgends gerendert**. `MAT_ORDER`
+tauchte ausschließlich innerhalb des Schmiede-Modals auf. Wer die Schmiede nicht
+von sich aus öffnete, erfuhr nie, dass er Eisen, Silber und Drachenstahl besitzt.
+Auch die Tagesaufgabe (+3 Eisen, +1 Silber) und die Tag-7-Kiste (+1 Drachenstahl)
+zahlten still ins Profil ein.
+
+**Fünf Stellen, an denen Material jetzt auftaucht:**
+
+| Ort | Was neu ist |
+|---|---|
+| Ergebnis-Screen | Material-Karte neben ELO/Gold/XP: `+5 Eisensplitter`, `+1 Silbererz` in Materialfarbe, plus Hinweis „In der Schmiede einlösen" |
+| Menü-Profilkarte | Bestandsleiste direkt unter dem Gold (Hammer-Icon + vier Rauten). Klick öffnet die Schmiede |
+| Schmiede-Button | Abzeichen mit der Zahl der **jetzt** bezahlbaren Rezepte (`craftbar()`), Rahmen + `streakGlow` wenn > 0 |
+| Tagesaufgaben-Liste | Der Material-Bonus steht **vor** dem Abholen an der Aufgabe, nicht nur das Gold |
+| Toast | Kurze Einblendung (2,8 s) beim Abholen von Aufgabe oder Tag-7-Kiste — die einzigen Material-Quellen ohne Ergebnis-Screen |
+
+**In der Schmiede selbst:** Fehlt Material, zeigt der Chip jetzt den Fortschritt
+(`9/10`) statt nur der Zielzahl — die nackte `10` sagte lediglich, dass es nicht
+reicht. Dazu eine Klartextzeile „5 schmiedbar" bzw. „Noch nichts schmiedbar".
+
+**Nebenbefund (Bug).** `matChangeRef.current` wurde beim Start eines neuen Spiels
+**nie zurückgesetzt** — anders als `eloChangeRef`/`goldChangeRef`/`xpChangeRef`.
+Solange nichts gerendert wurde, fiel das nicht auf; mit der Material-Karte hätte
+es die Beute des Vor-Matches gezeigt. Reset an allen drei Startpfaden ergänzt.
+
+**Engine.** `craftbar(p)` und `TASK_MAT` nach `src/engine/catalog.js` (Architektur-
+Regel: Balancing-Konstanten und Formeln nicht inline in index.html). Neue i18n-Keys
+`matEarned`, `matToForge`, `forgeReady`, `forgeNothing` in de + en.
+
+**Test.** Drei neue E2E-Prüfungen im Online-2P-Ergebnispfad: Material-Karte
+sichtbar, `+5 Eisensplitter` ausgewiesen, Betrag im Profil verbucht. Achtung
+für künftige Assertions: die Karten-Überschrift rendert per CSS in Großbuchstaben,
+und Chromiums `innerText` liefert den **transformierten** Text — Prüfungen darauf
+müssen case-insensitiv sein.
+
+Tests grün (Unit 39/39, E2E 311/311). SW-Cache `fortress-v3.68.0`.

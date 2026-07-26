@@ -75,6 +75,25 @@ export const MAT_META = {
   dragon: { c: "#fb7185" },  // Drachenstahl — Siegesserien (3er-Schritte) + Tag-7-Kiste
   star:   { c: "#c4b5fd" }   // Sternenstaub — Achievement-Freischaltungen
 };
+// Material-Bonus je abgeholter Tagesaufgabe (v3.33.0, seit v3.68.0 als
+// Konstante — die Aufgaben-Liste wirbt jetzt vorab damit).
+export const TASK_MAT = { iron: 3, silver: 1 };
+// Wie viele Rezepte koennte der Spieler JETZT schmieden? (v3.68.0)
+// Treibt das Abzeichen am Schmiede-Button — ohne Hinweis merkt niemand, dass
+// sich genug Material angesammelt hat.
+export function craftbar(p) {
+  const m = matOf(p);
+  const owned = ((p && p.cosmetics) || {}).owned || [];
+  let n = 0;
+  for (const r of RECIPES) {
+    if (owned.includes(r.id)) continue;
+    if ((p && p.gold || 0) < (r.cost.gold || 0)) continue;
+    let ok = true;
+    for (const k of MAT_ORDER) if ((r.cost[k] || 0) > m[k]) { ok = false; break; }
+    if (ok) n++;
+  }
+  return n;
+}
 export function matOf(p) {
   const m = (p && p.materials) || {};
   return { iron: m.iron || 0, silver: m.silver || 0, dragon: m.dragon || 0, star: m.star || 0 };
