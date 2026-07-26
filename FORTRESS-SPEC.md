@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.51.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.52.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3890,3 +3890,58 @@ Report: `kanonentaktik.html`. Spielregeln weiterhin UNVERÄNDERT — alles läuf
 über `window.__balExp`.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.51.0`.
+
+---
+
+## v3.52.0 — Eskalation, Sparen und die Gesamtübersicht
+
+Playtest-Wunsch: das Spiel soll „mehr eskalieren", man soll sich mächtig fühlen
+und zwischen **Sparen** und **Bauen** wählen können. Vier Eskalations-Mechaniken
+gebaut und über 240 Partien gemessen (alle gated über `window.__balExp`).
+Basis dieser Serie ist die REALISTISCHE Spielweise: `aim:"cannon"` + `killBlast:2`.
+
+**Neue gated Experimente:**
+| Flag | Wirkung |
+|---|---|
+| `zins` | Verzinsung des nicht ausgegebenen Schrotts je Rüstphase (`__zinsDbg`) |
+| `eskal` | Nachladezeit schrumpft je Runde (`eskalMin` als Untergrenze) |
+| `salve` / `salveMax` | Wer eine Schussphase aussetzt, lädt auf: nächste Salve feuert je Ladungsstufe eine zusätzliche Kugel pro Kanone |
+| `wucht` / `wuchtMax` | Schaden an Kanonen wächst mit der Runde (1 → 3) |
+| `sperr` / `sperrPreis` / `sperrBreite` | Sperrfeuer: teurer Großkauf (120), reißt sofort eine Schneise in den gegnerischen Mauerring (`__sperrDbg`). Der Bot spart aktiv darauf hin (`sparAb`). |
+
+**Ergebnis (je 24 Partien, Rundenlimit 16):**
+| Variante | entschieden | Median | Spanne | Streuung | Kan-Kills |
+|---|---|---|---|---|---|
+| Basis (Kanonen zuerst + Blast 2) | 16/24 | 14 | 9–14 | 2,2 | 4,9 |
+| + Zins 15 % | 10/24 | 16 | 9–12 | 1,1 | 4,9 |
+| + Eskalation (Nachladen −6 %/Rd) | 12/24 | 16 | 9–15 | 1,7 | 5,1 |
+| + Aufladen | 13/24 | 14 | 9–14 | 2,2 | 5,2 |
+| **+ Wucht (1→3)** | **24/24** | **10** | **6–15** | **2,5** | **6,4** |
+| + Sperrfeuer allein | 14/24 | 15 | 9–15 | 2,6 | 4,8 |
+| **+ Sperrfeuer + Zins** | **21/24** | 11 | 9–15 | 2,2 | 4,2 |
+| + alles zusammen | 24/24 | 8 | 4–15 | 2,5 | 5,2 |
+
+**Zwei Befunde:**
+1. **Wachsende Feuerkraft ist der einzige Eskalations-Hebel, der wirkt.** Wucht
+   liefert 24/24 bei Median 10 und der breitesten Streuung. Schnelleres
+   Nachladen und Aufladen klangen plausibel und brachten nichts (12/24, 13/24).
+2. **Sparen funktioniert nur mit einem Sparziel.** Zins ALLEIN verschlechtert
+   das Spiel (10/24 statt 16/24): Der Schrottberg wächst auf 200, aber der
+   teuerste Shop-Posten kostet 45 — es gibt nichts zu kaufen. Erst mit dem
+   Sperrfeuer als Großkauf trägt die Sparlinie (21/24). Sperrfeuer ohne Zins:
+   14/24. Nur die Kombination wirkt.
+
+**Neue Seite `uebersicht.html`** — Gesamtübersicht aller fünf Studien
+(1029 Selbstspiel-Partien), sieben Kernerkenntnisse und ein Umsetzungsplan in
+vier Stufen. Im Menü verlinkt (i18n `reportsLink`), neben dem Datenschutz-Link.
+
+**Umsetzungsplan (Kurzfassung, Details in `uebersicht.html`):**
+1. *Reparatur* — Sprengradius 2, Bot lernt Kanonentaktik + Fokusfeuer, Tutorial-Tipp.
+   Klein, kein Asset, kein Protokoll. Erwartung 3/24 → 16–19/24.
+2. *Eskalation* — Wucht + sichtbare Stufenanzeige im HUD. Erwartung 24/24.
+3. *Sparen oder Bauen* — Sperrfeuer als Shop-Großkauf + Zins, nur zusammen.
+4. *Neue Kanonentypen* — Laser + Steilfeuer als Shop-Inhalt. Braucht Modelle,
+   Icons, Strahl-Darstellung und PROTO_VERSION 1→2. Bewusst zuletzt.
+
+Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.52.0`.

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.51.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.52.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -2691,7 +2691,16 @@ window.FortressApp = function Fortress() {
   }
   function reloadMsOf(player) {
     const lvl = (upgrades.current[player] || {}).reload || 0;
-    return RELOAD_MS * SHOP.reload.factors[lvl];
+    let ms = RELOAD_MS * SHOP.reload.factors[lvl];
+    // ESKALATION (Experiment v3.52.0): jede Runde laedt schneller nach.
+    // Fruehe Runden bleiben bedaechtig, spaete werden zum Trommelfeuer.
+    const XE = balExp() || {};
+    if (XE.eskal) {
+      const f = Math.max(XE.eskalMin || 0.45,
+        1 - (roundRefVal.current - 1) * (XE.eskal || 0.06));
+      ms *= f;
+    }
+    return ms;
   }
   const warnedOpen = useRef({ 1: false, 2: false });
   const cannonAngle = useRef({ 1: Math.PI / 2, 2: -Math.PI / 2 });
@@ -2705,6 +2714,11 @@ window.FortressApp = function Fortress() {
   const shakeRef = useRef(0);
   const reload = useRef({ 1: 1, 2: 1 });
   const lastShot = useRef({ 1: -99999, 2: -99999 });
+  // AUFLADEN (Experiment v3.52.0): wer eine ganze Schussphase NICHT feuert,
+  // sammelt Ladung — die naechste Salve schiesst entsprechend mehr Kugeln.
+  // Damit ist "aussetzen und zuschlagen" eine echte Alternative zum Dauerfeuer.
+  const salveCharge = useRef({ 1: 0, 2: 0, 3: 0 });
+  const firedPhase = useRef({ 1: false, 2: false, 3: false });
   const pointers = useRef(/* @__PURE__ */ new Map());
   const activeDrag = useRef({ 1: null, 2: null });
   const activeBuild = useRef({ 1: null, 2: null });
@@ -4193,6 +4207,15 @@ window.FortressApp = function Fortress() {
     checkLossOrContinue(startShoot);
   }
   function endShoot() {
+    {
+      const XS = balExp() || {};
+      if (XS.salve) for (const p of playersList()) {
+        if (eliminated.current[p]) continue;
+        if (firedPhase.current[p]) salveCharge.current[p] = 0;
+        else salveCharge.current[p] = Math.min(XS.salveMax || 2, (salveCharge.current[p] || 0) + 1);
+        firedPhase.current[p] = false;
+      }
+    }
     const players = playersList();
     const mk = (v) => players.reduce((o, p) => (o[p] = v, o), {});
     // Diagnose (gated): bei endShoot dürfen KEINE Kugeln mehr fliegen (v3.18.0)
@@ -4212,8 +4235,16 @@ window.FortressApp = function Fortress() {
     for (const p of players) if (!eliminated.current[p]) {
       // Wiederaufbau-Paket A (v3.30.0): ohne Kanonen doppelter Sold (+12)
       const sold = rebuildAidActive(p) ? SCRAP_REBUILD : SCRAP_SURVIVE;
-      scrap.current[p] = (scrap.current[p] || 0) + sold;
-      msOf(p).scrap += sold; // Match-Statistik (v3.21.0)
+      // ZINS (Experiment v3.52.0): Verzinsung des NICHT ausgegebenen Schrotts.
+      // Damit ist Sparen eine eigene Linie gegen sofortiges Nachbauen.
+      const XZ = balExp() || {};
+      const zins = XZ.zins ? Math.floor((scrap.current[p] || 0) * XZ.zins) : 0;
+      scrap.current[p] = (scrap.current[p] || 0) + sold + zins;
+      msOf(p).scrap += sold + zins; // Match-Statistik (v3.21.0)
+      if (zins > 0 && typeof window !== "undefined" && window.__mmDebug) {
+        const zd = window.__zinsDbg = window.__zinsDbg || { gezahlt: 0, summe: 0 };
+        zd.gezahlt++; zd.summe += zins;
+      }
       const ct = castles.current[p];
       if (ct) addScrapPop(ct.c * CELL + CELL / 2, ct.r * CELL - CELL, sold, p);
     }
@@ -4294,6 +4325,7 @@ window.FortressApp = function Fortress() {
       return false;
     }
     lastShot.current[player] = now;
+    firedPhase.current[player] = true;
     SFX.shoot();
     msOf(player).shots += ready.length; // Match-Statistik (v3.21.0): eine Kugel je schussbereiter Kanone
     // ── LASER (Experiment v3.50.0) ────────────────────────────────────────
@@ -4365,6 +4397,10 @@ window.FortressApp = function Fortress() {
         if (XL.weapon === "laser" && wpEvery === 1) return true;   // reines Laser-Arsenal → keine Kugeln
       }
     }
+    // Ladung wird von der ERSTEN Salve der Phase verbraucht — sonst waere jede
+    // weitere Salve derselben Phase ebenfalls aufgeladen.
+    const salveUsed = (balExp() || {}).salve ? (salveCharge.current[player] || 0) : 0;
+    salveCharge.current[player] = 0;
     ready.forEach((cn, index) => {
       const wp = wpAt(index);
       if (wp === "laser") return;   // wurde oben schon als Strahl abgehandelt
@@ -4408,6 +4444,20 @@ window.FortressApp = function Fortress() {
       }
       const dist = Math.hypot(tx - sx, ty - sy);
       const dur = Math.max(30, 26 + dist * 0.09);
+      // Aufgeladene Salve: zusaetzliche Kugeln je Ladungsstufe, leicht versetzt
+      const XSa = balExp() || {};
+      const extra = salveUsed;
+      for (let ex = 1; ex <= extra; ex++) {
+        const off = ex * (XSa.salveSpread || 1.2) * CELL * (ex % 2 ? 1 : -1);
+        balls.current.push({
+          sx, sy,
+          tx: Math.max(CELL / 2, Math.min(W - CELL / 2, tx + off)),
+          ty: Math.max(CELL / 2, Math.min(H - CELL / 2, ty)),
+          prog: 0, dur, arcH: 24 + dist * 0.22, player, alive: true,
+          cannonIndex: index, wp, trail: []
+        });
+        msOf(player).shots += 1;
+      }
       balls.current.push({
         sx,
         sy,
@@ -4530,7 +4580,12 @@ window.FortressApp = function Fortress() {
           if (ball.player !== ep) msOf(ball.player).hits += 1;
           return;
         }
-        cn.hp -= (ball.wp === "mortar") ? (XC.mortarDmg || 3) : 1;
+        // WUCHT (Experiment v3.52.0): Schaden an Kanonen waechst mit der Runde.
+        // Verstaerkt genau die Taktik, die Spieler ohnehin fahren.
+        const wucht = XC.wucht
+          ? Math.min(XC.wuchtMax || 3, 1 + Math.floor((roundRefVal.current - 1) / (XC.wucht || 3)))
+          : 1;
+        cn.hp -= (ball.wp === "mortar") ? (XC.mortarDmg || 3) : wucht;
         if (ball.player !== ep) msOf(ball.player).hits += 1; // Wirkungstreffer (Kanonen-Schaden)
         if (cn.hp <= 0) {
           // Kill-Belohnung (v3.16.0): Schrott für den Schützen
@@ -4810,6 +4865,48 @@ window.FortressApp = function Fortress() {
     const up = upgrades.current[player] || (upgrades.current[player] = { reload: 0, armor: 0, repair: 0, cbought: 0 });
     const have = scrap.current[player] || 0;
     let price = 0;
+    // SPERRFEUER (Experiment): teurer Grosskauf als SPARZIEL. Schlaegt sofort
+    // eine Schneise in den gegnerischen Mauerring — der Moment, in dem sich
+    // Zurueckhalten auszahlt. Ohne so ein Ziel ist Sparen sinnlos (gemessen).
+    if (item === "sperr") {
+      const XS = balExp() || {};
+      if (!XS.sperr) return false;
+      const pr = XS.sperrPreis || 120;
+      if (have < pr) return false;
+      const E = playersList().find((q) => q !== player && !eliminated.current[q]);
+      const ec = E && castles.current[E];
+      if (!ec) return false;
+      // Schneise: die dem Schuetzen zugewandte Mauerseite auf Breite N
+      const g0 = grid.current, wallT = WALL_OF[E];
+      const src = slingAnchor(player);
+      const dirDown = (ec.r * CELL) > src.y ? -1 : 1;   // von welcher Seite kommt der Angriff
+      const newG = g0.map((row) => [...row]);
+      let hit = 0;
+      const br = XS.sperrBreite || 7;
+      for (let dc = -Math.floor(br / 2); dc <= Math.floor(br / 2); dc++) {
+        // von aussen nach innen die ERSTE Mauerzelle je Spalte sprengen
+        for (let step = 9; step >= 2; step--) {
+          const r = ec.r + dirDown * step, c = ec.c + dc;
+          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+          if (newG[r][c] !== wallT) continue;
+          newG[r][c] = RUBBLE;
+          delete wallHp.current[r + "_" + c];
+          msOf(player).walls += 1;
+          hit++;
+          break;
+        }
+      }
+      scrap.current[player] = have - pr;
+      msOf(player).buys += 1;
+      setGrid(newG);
+      shakeRef.current = Math.max(shakeRef.current, 18);
+      if (typeof window !== "undefined" && window.__mmDebug) {
+        const sd2 = window.__sperrDbg = window.__sperrDbg || { kaeufe: 0, mauern: 0 };
+        sd2.kaeufe++; sd2.mauern += hit;
+      }
+      setUiTick((t) => t + 1);
+      return true;
+    }
     if (item === "cannon") {
       // Wiederaufbau-Paket B (v3.30.0): ohne Kanonen gilt der Basispreis
       // (Staffel pausiert für diesen Kauf, cbought zählt trotzdem weiter)
@@ -5264,6 +5361,14 @@ window.FortressApp = function Fortress() {
         const have = scrap.current[B] || 0;
         const cPrice = cannonPriceOf(B); // v3.30.0: Basispreis bei 0 Kanonen
         const canCannon = cannonBudget.current[B] <= 0 && have >= cPrice && (cannons.current[B] || []).length < lvl.maxCannons;
+        // Sparziel: liegt ein Sperrfeuer in Reichweite, wird dafuer gespart
+        // statt jede Runde Kleinkram zu kaufen.
+        const XSp = balExp() || {};
+        if (XSp.sperr) {
+          const pr = XSp.sperrPreis || 120;
+          if (have >= pr) { buyUpgrade(B, "sperr"); return; }
+          if (have >= pr * (XSp.sparAb || 0.55)) return;   // zurueckhalten
+        }
         if (lvl.buy === "basic") {
           // Leicht: nur gelegentlich eine Kanone, keine Upgrades
           if (canCannon && Math.random() < 0.5) buyUpgrade(B, "cannon");
@@ -6969,7 +7074,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.51.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.52.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

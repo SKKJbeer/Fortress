@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="FORTRESS — Gesamtübersicht aller Balancing-Studien, Erkenntnisse und der Umsetzungsplan.">
+<title>FORTRESS · Gesamtübersicht &amp; Plan</title>
+<style>
+:root{
+  --bg:#0a0c10; --panel:#141821; --panel2:#10141c;
+  --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.14);
+  --ink:#f0f2f6; --muted:#98a2b3; --faint:#606a7b;
+  --acc:#5eb0ef; --accdim:#2b5f8a;
+  --bad:#e2564d; --warn:#e0a83a; --good:#4fbf8b; --vio:#a78bfa;
+  --fm:ui-monospace,'SF Mono','Cascadia Code',Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+.wrap{max-width:1060px;margin:0 auto;padding:0 clamp(16px,4vw,36px)}
+.hero{padding:clamp(40px,9vh,84px) 0 clamp(26px,5vh,44px);border-bottom:1px solid var(--line)}
+.kick{display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:11px;
+  letter-spacing:0.2em;text-transform:uppercase;color:var(--acc);margin-bottom:18px}
+.kick::before{content:"";width:24px;height:1px;background:var(--acc)}
+h1{font-size:clamp(30px,5.4vw,52px);font-weight:800;letter-spacing:-0.025em;line-height:1.04;margin:0 0 16px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--acc)}
+.lede{font-size:clamp(15px,2vw,18.5px);color:var(--muted);max-width:66ch;margin:0}
+section{padding:clamp(36px,6.5vh,66px) 0;border-bottom:1px solid var(--line)}
+.sh{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sn{font-family:var(--fm);font-size:12px;color:var(--acc)}
+h2{font-size:clamp(22px,3.4vw,33px);font-weight:800;letter-spacing:-0.02em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:15.5px;max-width:72ch;margin:12px 0 0}
+.sub b{color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin-top:24px}
+.kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.kpi .n{font-family:var(--fm);font-weight:800;font-size:clamp(22px,3.2vw,30px);line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35}
+.n.bad{color:var(--bad)} .n.warn{color:var(--warn)} .n.good{color:var(--good)} .n.acc{color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:18px}
+th{text-align:left;font-family:var(--fm);font-size:11px;letter-spacing:0.07em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;padding:0 12px 10px 0;border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:11px 12px 11px 0;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+td b{color:var(--ink)} .tw{overflow-x:auto}
+.mono{font-family:var(--fm)}
+.tag{font-family:var(--fm);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.tag.crit{background:rgba(226,86,77,0.14);color:var(--bad);border:1px solid rgba(226,86,77,0.3)}
+.tag.med{background:rgba(224,168,58,0.13);color:var(--warn);border:1px solid rgba(224,168,58,0.28)}
+.tag.ok{background:rgba(79,191,139,0.13);color:var(--good);border:1px solid rgba(79,191,139,0.3)}
+.tag.neu{background:rgba(167,139,250,0.13);color:var(--vio);border:1px solid rgba(167,139,250,0.3)}
+.find{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:18px 0;border-bottom:1px solid var(--line)}
+.find:last-child{border-bottom:none}
+.fn{font-family:var(--fm);font-size:13px;color:var(--acc);padding-top:3px}
+.ft{font-size:clamp(15.5px,2vw,19px);font-weight:700;margin:0 0 7px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fb{font-size:15px;color:var(--muted);margin:0}
+.fb b{color:var(--ink)}
+.fb .mono{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+/* Studien-Karten */
+.studies{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:22px}
+.st{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:14px;padding:17px 19px;display:flex;flex-direction:column;gap:8px;text-decoration:none}
+.st:hover{border-color:var(--line2)}
+.st .v{font-family:var(--fm);font-size:11px;color:var(--faint);letter-spacing:0.06em}
+.st h3{margin:0;font-size:16px;font-weight:800;color:var(--ink)}
+.st .p{font-family:var(--fm);font-size:20px;font-weight:800;color:var(--acc);font-variant-numeric:tabular-nums}
+.st .d{font-size:13px;color:var(--muted);line-height:1.45;flex:1}
+.st .go{font-family:var(--fm);font-size:11px;color:var(--acc);letter-spacing:0.06em}
+/* Roadmap */
+.road{margin-top:24px;display:flex;flex-direction:column;gap:14px}
+.ph{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:16px;padding:20px 24px;position:relative;overflow:hidden}
+.ph::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accdim)}
+.ph.p1::before{background:var(--good)} .ph.p2::before{background:var(--acc)}
+.ph.p3::before{background:var(--vio)} .ph.p4::before{background:var(--warn)}
+.ph .hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.ph h3{margin:0;font-size:19px;font-weight:800}
+.ph .num{font-family:var(--fm);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--faint)}
+.ph .meta2{font-family:var(--fm);font-size:11.5px;color:var(--faint);margin:0 0 12px}
+.ph ul{margin:0 0 12px;padding-left:19px;color:var(--muted);font-size:14.5px}
+.ph li{margin-bottom:5px}
+.ph li b{color:var(--ink)}
+.ph .out{font-size:14px;color:var(--muted);margin:0;padding-top:11px;border-top:1px solid var(--line)}
+.ph .out b{color:var(--good)}
+.ph .risk{font-size:13.5px;color:var(--faint);margin:8px 0 0}
+.warnbox{margin-top:22px;background:rgba(224,168,58,0.07);border:1px solid rgba(224,168,58,0.28);
+  border-radius:14px;padding:18px 22px}
+.warnbox .l{font-family:var(--fm);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--warn);margin-bottom:9px}
+.warnbox p{margin:0;font-size:14.5px;color:var(--muted)}
+.warnbox p+p{margin-top:9px}
+.warnbox b{color:var(--ink)}
+.warnbox .mono{font-family:var(--fm);font-size:13px;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;color:var(--acc)}
+.bar{display:flex;align-items:center;gap:11px;margin:6px 0}
+.bar .lbl{font-size:13.5px;color:var(--muted);flex:0 0 clamp(150px,26vw,250px)}
+.bar .lbl b{color:var(--ink)}
+.bar .tr{flex:1;height:11px;background:rgba(255,255,255,0.05);border-radius:6px;overflow:hidden;min-width:60px}
+.bar .fi{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accdim),var(--acc))}
+.bar .fi.good{background:linear-gradient(90deg,#2c6b52,var(--good))}
+.bar .fi.bad{background:linear-gradient(90deg,#6d2f2b,var(--bad))}
+.bar .v{font-family:var(--fm);font-size:12.5px;color:var(--ink);width:60px;text-align:right;font-variant-numeric:tabular-nums}
+footer{padding:34px 0 60px;font-size:12.5px;color:var(--faint);line-height:1.75}
+footer a{color:var(--acc);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">Gesamtübersicht · Stand v3.52.0</span>
+    <h1><em>1029</em> Partien KI gegen KI.<br>Was wir jetzt wissen — und was zu tun ist.</h1>
+    <p class="lede">Fünf Studien, alle Ergebnisse gemessen statt behauptet. Diese Seite fasst zusammen, was in den Einzelreports steht, und leitet daraus einen Umsetzungsplan in vier Stufen ab. <b style="color:var(--ink)">Im Spiel selbst ist bis heute nichts davon aktiv</b> — alle Experimente laufen hinter <span class="mono" style="font-family:var(--fm)">window.__balExp</span>.</p>
+  </header>
+
+  <section>
+    <div class="sh"><span class="sn">01</span><h2>Die Kernzahlen</h2></div>
+    <div class="kpis">
+      <div class="kpi"><div class="n acc">1029</div><div class="l">gespielte Selbstspiel-Partien</div></div>
+      <div class="kpi"><div class="n bad">3/24</div><div class="l">Partien enden im <b>heutigen</b> Spiel regulär</div></div>
+      <div class="kpi"><div class="n bad">0/24</div><div class="l">wenn beide so spielen wie <b>echte Spieler</b></div></div>
+      <div class="kpi"><div class="n good">24/24</div><div class="l">mit Reparatur + Eskalation, Median Runde 10</div></div>
+      <div class="kpi"><div class="n warn">2</div><div class="l">gefundene Fehler in dokumentierten Regeln</div></div>
+      <div class="kpi"><div class="n warn">3</div><div class="l">eigene Empfehlungen, die ich selbst widerlegt habe</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">02</span><h2>Die fünf Studien</h2></div>
+    <p class="sub">Jede Karte führt zum ausführlichen Report mit allen Zahlen.</p>
+    <div class="studies">
+      <a class="st" href="balancing.html">
+        <span class="v">v3.47–3.49 · 270 Partien</span>
+        <h3>Balancing-Grundanalyse</h3>
+        <div class="d">Warum fast keine Partie endet. Erste Regelvarianten, gemessen statt geraten.</div>
+        <span class="p">94 %</span>
+        <span class="d" style="flex:none">der Partien enden nie</span>
+        <span class="go">Report öffnen →</span>
+      </a>
+      <a class="st" href="waffen.html">
+        <span class="v">v3.50 · 297 Partien</span>
+        <h3>Neue Waffentypen</h3>
+        <div class="d">Laser, Steilfeuer, Splash, Brandsatz, Störsender — fünf neue Wirkmechaniken im Vergleich.</div>
+        <span class="p">0 %</span>
+        <span class="d" style="flex:none">verpuffte Laser-Einschläge statt 49 %</span>
+        <span class="go">Report öffnen →</span>
+      </a>
+      <a class="st" href="waffen.html#">
+        <span class="v">v3.50.1 · 72 Partien</span>
+        <h3>Verlust-Diagnose</h3>
+        <div class="d">Warum verliert der Verlierer? Deckt auf, dass eine meiner Empfehlungen nur den Bot bremst.</div>
+        <span class="p">24/25</span>
+        <span class="d" style="flex:none">Niederlagen waren eine reine Ressourcen-Uhr</span>
+        <span class="go">Report öffnen →</span>
+      </a>
+      <a class="st" href="kanonentaktik.html">
+        <span class="v">v3.51 · 192 Partien</span>
+        <h3>Die Kanonen-Taktik</h3>
+        <div class="d">Echte Spieler gehen auf die Kanonen. Im heutigen Build kann diese Taktik nicht gewinnen.</div>
+        <span class="p">0/144</span>
+        <span class="d" style="flex:none">Kanonen-Kills, die eine Burg geöffnet haben</span>
+        <span class="go">Report öffnen →</span>
+      </a>
+      <a class="st" href="stats.html">
+        <span class="v">v3.52 · 240 Partien</span>
+        <h3>Eskalation &amp; Sparen</h3>
+        <div class="d">Wucht, Zins, Aufladen, Sperrfeuer — was erzeugt Machtgefühl und echte Taktikwahl?</div>
+        <span class="p">24/24</span>
+        <span class="d" style="flex:none">mit wachsender Feuerkraft, Median Runde 10</span>
+        <span class="go">Live-Telemetrie →</span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">03</span><h2>Die sieben Erkenntnisse</h2></div>
+
+    <div class="find">
+      <span class="fn">01</span>
+      <div>
+        <h3 class="ft">Das Spiel endet nicht — und der Grund ist nicht die Feuerkraft <span class="tag crit">Kern</span></h3>
+        <p class="fb">Trefferquote 51 %, 25 zerstörte Mauern je Partie — die Offensive arbeitet einwandfrei. Trotzdem endet fast nichts. Jede Bresche wird in der nächsten Bauphase <b>kostenlos und unbegrenzt</b> geschlossen. Angriff kostet Schrott und Zeit, Verteidigung kostet nichts.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">02</span>
+      <div>
+        <h3 class="ft">Die Taktik, die deine Spieler fahren, kann nicht gewinnen <span class="tag crit">Fehler</span></h3>
+        <p class="fb">Kanonen zerstören ist mechanisch die stärkste Linie: 18 Schrott je Kill, dem Gegner fehlt Feuerkraft. Nur endet die Partie davon nie — die einzige Verlustbedingung ist die offene Burg. <b>144 Kanonen-Kills, 0 geöffnete Burgen, 0/24 entschiedene Partien.</b></p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">03</span>
+      <div>
+        <h3 class="ft">Der Grund ist ein Sprengradius, der sich selbst trifft <span class="tag crit">Fehler</span></h3>
+        <p class="fb">Das Regelwerk sagt seit v3.16.0: „Kill öffnet die Hülle." Eine Kanone belegt aber <b>selbst</b> ein 3×3-Feld, und die Explosion sprengt genau diesen Grundriss. Sie erreicht keine einzige Mauer. Mit Radius 2 öffnen <b>43 % aller Kills</b> — und aus 3/24 werden 19/24 entschiedene Partien.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">04</span>
+      <div>
+        <h3 class="ft">Präzision schlägt Schaden — deutlich <span class="tag ok">belegt</span></h3>
+        <p class="fb">Die Splash-Granate <b>verdoppelt</b> den Mauerschaden und entscheidet 2/12. Der Laser mit Durchschlag 1 macht pro Schuss <b>exakt so viel</b> Schaden wie der heutige Mörser und entscheidet 11/12. Einziger Unterschied: 0 % statt 49 % verpuffte Einschläge. Mehr Wumms ist nicht die Antwort, besseres Zielen schon.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">05</span>
+      <div>
+        <h3 class="ft">Wachsende Feuerkraft ist der stärkste Eskalations-Hebel <span class="tag neu">neu</span></h3>
+        <p class="fb">Von vier getesteten Eskalations-Mechaniken wirkt genau eine: <b>Wucht</b> — der Schaden an Kanonen wächst mit der Runde von 1 auf 3. Ergebnis <b>24/24 entschieden</b>, Median Runde 10, breiteste Streuung (6–15), und <b>32 % mehr Kanonen-Kills</b>. Späte Runden fühlen sich mächtig an, frühe bleiben bedächtig. Schnelleres Nachladen (12/24) und Aufladen (13/24) brachten dagegen nichts.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">06</span>
+      <div>
+        <h3 class="ft">Sparen funktioniert nur mit einem Sparziel <span class="tag neu">neu</span></h3>
+        <p class="fb">Zinsen auf gespartes Schrott allein machen das Spiel <b>schlechter</b> (10/24 statt 16/24): Der Schrottberg wächst auf 200, aber der teuerste Posten im Shop kostet 45 — es gibt nichts, wofür es sich lohnt. Erst mit einem teuren Großkauf (Sperrfeuer für 120, reißt sofort eine Schneise) wird Sparen zur echten Linie: <b>21/24</b>. Sperrfeuer ohne Zins: 14/24. <b>Nur die Kombination trägt.</b></p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">07</span>
+      <div>
+        <h3 class="ft">Drei meiner eigenen Empfehlungen habe ich widerlegt <span class="tag med">Methodik</span></h3>
+        <p class="fb">„Belagerungsdruck über Bauzeit" — kein Effekt, Zeitdruck begrenzt Menschen, keinen Bot. „Schrumpfender Nachschub" — sah mit 96 % großartig aus, ist aber eine reine Ressourcen-Uhr, die nur greift, weil ein Bot 22 Teile pro Bauphase setzt und ein Mensch fünf bis zehn. „Mehr Durchschlag beendet Partien" — verdoppelter Schaden beendete <b>weniger</b> Partien. Deshalb wird hier gemessen und nicht argumentiert.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">04</span><h2>Die Eskalations-Messung im Detail</h2></div>
+    <p class="sub">Basis = realistische Spielweise (Kanonen zuerst) mit repariertem Sprengradius. Je 24 Partien. „Streuung" = Standardabweichung der Entscheidungsrunde — <b>höher ist besser</b>, weil Partien dann unterschiedlich verlaufen statt wie ein Countdown.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Variante</th><th>entschieden</th><th>Median</th><th>Spanne</th><th>Streuung</th><th>Mauern</th><th>Kan-Kills</th><th>Schrott</th></tr></thead>
+      <tbody>
+        <tr><td><b>Basis</b> (Kanonen zuerst + Blast 2)</td><td class="mono">16/24</td><td class="mono">14</td><td class="mono">9–14</td><td class="mono">2,2</td><td class="mono">34,0</td><td class="mono">4,9</td><td class="mono">117</td></tr>
+        <tr><td>+ Zins 15 % auf Gespartes</td><td class="mono" style="color:var(--bad)">10/24</td><td class="mono">16</td><td class="mono">9–12</td><td class="mono">1,1</td><td class="mono">33,7</td><td class="mono">4,9</td><td class="mono" style="color:var(--warn)">200</td></tr>
+        <tr><td>+ Eskalation (Nachladen −6 %/Rd)</td><td class="mono">12/24</td><td class="mono">16</td><td class="mono">9–15</td><td class="mono">1,7</td><td class="mono">36,0</td><td class="mono">5,1</td><td class="mono">113</td></tr>
+        <tr><td>+ Aufladen (aussetzen = 2× Salve)</td><td class="mono">13/24</td><td class="mono">14</td><td class="mono">9–14</td><td class="mono">2,2</td><td class="mono">35,8</td><td class="mono">5,2</td><td class="mono">113</td></tr>
+        <tr style="background:rgba(79,191,139,0.06)"><td><b>+ Wucht</b> (Schaden 1→3 mit der Runde)</td><td class="mono" style="color:var(--good)">24/24</td><td class="mono">10</td><td class="mono">6–15</td><td class="mono" style="color:var(--good)">2,5</td><td class="mono">53,2</td><td class="mono" style="color:var(--good)">6,4</td><td class="mono">156</td></tr>
+        <tr><td>+ Sperrfeuer (Großkauf 120)</td><td class="mono">14/24</td><td class="mono">15</td><td class="mono">9–15</td><td class="mono">2,6</td><td class="mono">33,9</td><td class="mono">4,8</td><td class="mono">160</td></tr>
+        <tr style="background:rgba(94,176,239,0.05)"><td><b>+ Sperrfeuer + Zins</b> (Sparlinie)</td><td class="mono" style="color:var(--good)">21/24</td><td class="mono">11</td><td class="mono">9–15</td><td class="mono">2,2</td><td class="mono">29,7</td><td class="mono">4,2</td><td class="mono">179</td></tr>
+        <tr><td>+ alles außer Sperrfeuer</td><td class="mono">21/24</td><td class="mono">10</td><td class="mono">6–13</td><td class="mono">2,3</td><td class="mono" style="color:var(--warn)">67,1</td><td class="mono">7,4</td><td class="mono">188</td></tr>
+        <tr><td>+ alles zusammen</td><td class="mono">24/24</td><td class="mono" style="color:var(--warn)">8</td><td class="mono">4–15</td><td class="mono">2,5</td><td class="mono">40,3</td><td class="mono">5,2</td><td class="mono">193</td></tr>
+      </tbody>
+    </table></div>
+
+    <p class="sub" style="margin-top:26px"><b>Entschiedene Partien</b> im direkten Vergleich:</p>
+    <div class="bar"><span class="lbl">Heute (Mauer-KI, kein Fix)</span><span class="tr"><span class="fi bad" style="width:12.5%"></span></span><span class="v">3/24</span></div>
+    <div class="bar"><span class="lbl">Wie echte Spieler, heutiger Code</span><span class="tr"><span class="fi bad" style="width:2%"></span></span><span class="v">0/24</span></div>
+    <div class="bar"><span class="lbl">+ Sprengradius repariert</span><span class="tr"><span class="fi" style="width:67%"></span></span><span class="v">16/24</span></div>
+    <div class="bar"><span class="lbl"><b>+ Wucht (Eskalation)</b></span><span class="tr"><span class="fi good" style="width:100%"></span></span><span class="v">24/24</span></div>
+    <div class="bar"><span class="lbl"><b>+ Sperrfeuer + Zins (Sparlinie)</b></span><span class="tr"><span class="fi good" style="width:88%"></span></span><span class="v">21/24</span></div>
+  </section>
+
+  <section>
+    <div class="sh"><span class="sn">05</span><h2>Der Umsetzungsplan</h2></div>
+    <p class="sub">Vier Stufen, bewusst nacheinander. Jede Stufe ist für sich messbar — wenn alles gleichzeitig kommt, lässt sich hinterher nicht sagen, was gewirkt hat. Nach jeder Stufe zwei Wochen Telemetrie abwarten, bevor die nächste kommt.</p>
+
+    <div class="road">
+
+      <div class="ph p1">
+        <div class="hd"><span class="num">Stufe 1</span><h3>Reparatur</h3><span class="tag ok">klein · kein Risiko</span></div>
+        <p class="meta2">1 Version · keine neue Grafik · keine Protokoll-Änderung · ~1 Arbeitssitzung</p>
+        <ul>
+          <li><b>Sprengradius der Kanonen-Explosion auf 2</b> — repariert die seit v3.16.0 dokumentierte Wirkung „Kill öffnet die Hülle".</li>
+          <li><b>Bot lernt die Kanonen-Taktik</b> inklusive Fokusfeuer — sonst spielt er nach dem Fix systematisch schlechter als jeder Mensch (heute 0,0 Kills je Partie).</li>
+          <li><b>Tutorial-Tipp Fokusfeuer</b> — eine Kanone nach der anderen statt Schaden verteilen. Macht in der Messung den Unterschied 19/24 zu 9/24.</li>
+        </ul>
+        <p class="out">Erwartung: <b>3/24 → 16–19/24</b> entschiedene Partien. Die Taktik, die deine Spieler ohnehin fahren, funktioniert endlich.</p>
+        <p class="risk">Risiko: Kanonen werden gleichzeitig wertvoller und verwundbarer. Das Wiederaufbau-Paket fängt die Todesspirale ab, wurde unter diesen Bedingungen aber nie gemessen — genau dafür ist die Telemetrie da.</p>
+      </div>
+
+      <div class="ph p2">
+        <div class="hd"><span class="num">Stufe 2</span><h3>Eskalation</h3><span class="tag ok">klein · hoher Effekt</span></div>
+        <p class="meta2">1 Version · eine Formel + Anzeige · ~1 Arbeitssitzung</p>
+        <ul>
+          <li><b>Wucht:</b> Der Schaden an gegnerischen Kanonen wächst mit der Runde von 1 auf 3. Frühe Runden bleiben bedächtig, späte werden entscheidend.</li>
+          <li><b>Sichtbar machen</b> — eine Stufenanzeige im HUD („Feuerkraft II"), sonst spürt man die Eskalation nur unbewusst.</li>
+        </ul>
+        <p class="out">Erwartung: <b>24/24</b> entschieden, Median Runde 10, breiteste Streuung von allem Getesteten. Genau das „es wird immer heftiger"-Gefühl.</p>
+        <p class="risk">Bewusst NICHT dabei: schnelleres Nachladen je Runde (12/24) und die Aufladen-Mechanik (13/24). Beide klangen gut und haben in der Messung nichts gebracht.</p>
+      </div>
+
+      <div class="ph p3">
+        <div class="hd"><span class="num">Stufe 3</span><h3>Sparen oder Bauen</h3><span class="tag med">mittel</span></div>
+        <p class="meta2">1–2 Versionen · neue Shop-Karte + Effekt + Online-Sync · ~2 Arbeitssitzungen</p>
+        <ul>
+          <li><b>Sperrfeuer als Großkauf (120 Schrott):</b> reißt sofort eine Schneise in den gegnerischen Mauerring. Das Sparziel, das heute fehlt.</li>
+          <li><b>Zins 15 % auf nicht ausgegebenen Schrott</b> je Rüstphase — macht Zurückhalten zur echten Alternative zum Nachbauen.</li>
+          <li>Beides <b>nur zusammen</b>. Einzeln bringt keines etwas (10/24 bzw. 14/24), zusammen 21/24.</li>
+        </ul>
+        <p class="out">Erwartung: zwei klar unterscheidbare Spielweisen — <b>ständig nachbauen</b> gegen <b>sparen und einmal groß zuschlagen</b>.</p>
+        <p class="risk">Der Großkauf braucht eine Shop-Karte, ein Icon und einen wuchtigen Effekt. Online muss der Host ihn rechnen; das Grid wandert ohnehin zum Gast, eine Protokoll-Erhöhung ist nicht nötig.</p>
+      </div>
+
+      <div class="ph p4">
+        <div class="hd"><span class="num">Stufe 4</span><h3>Neue Kanonentypen als Shop-Inhalt</h3><span class="tag neu">groß</span></div>
+        <p class="meta2">2–3 Versionen · Modelle, Icons, Strahl-Darstellung, PROTO_VERSION 1→2 · mehrere Sitzungen</p>
+        <ul>
+          <li><b>Laser</b> (Durchschlag 1, jede dritte Kanone) — der einzige gemessene Weg, die 49 % verpuffter Einschläge auf 0 zu senken.</li>
+          <li><b>Steilfeuer-Mörser</b> — fliegt über den Mauerring, jagt Kanonen im Burghof. Allein entscheidet er nichts, als Beimischung bringt er die Materialschlacht.</li>
+          <li>Braucht: Kanonenmodelle im neuen Stil, Shop-Karten, Icons, eine Darstellung für den Strahl (ein Laser hat keine Kugel) und eine Protokoll-Erhöhung, weil der Waffentyp je Lauf synchronisiert werden muss.</li>
+        </ul>
+        <p class="out">Erwartung: <b>22/24</b> entschieden bei Median Runde 7 — und gleichzeitig neuer Shop-Inhalt mit „haben wollen"-Effekt.</p>
+        <p class="risk">Bewusst zuletzt: Es ist die einzige Stufe, die neue Assets, neue UI und eine Protokoll-Änderung braucht. Die Stufen 1–3 holen den Großteil des Effekts zu einem Bruchteil des Aufwands.</p>
+      </div>
+
+    </div>
+
+    <div class="warnbox">
+      <div class="l">Parallel, unabhängig vom Balancing</div>
+      <p><b>Layout:</b> Auf allen modernen Hochkant-Handys bleiben <b>23–25 % der Bildschirmhöhe ungenutzt</b> (Pixel 5: 193 px, Galaxy S22 Ultra: 210 px). Das Brett ist im Seitenverhältnis fest und wird breitenbegrenzt skaliert. Nutzbar wird die Fläche nur, wenn die Steuerung sie bekommt — was nebenbei die Daumenreichweite verbessert.</p>
+      <p><b>Store:</b> Icons, Screenshots, Feature-Graphic und Datenschutz sind fertig. Offen bleibt nur <span class="mono">assetlinks.json</span> — Paketname und Fingerprint entstehen erst mit dem Bubblewrap-Keystore.</p>
+      <p><b>Gegenprüfung:</b> Alle Zahlen stammen aus Bot-gegen-Bot. Zwei identisch spielende Bots erreichen Kipppunkte gleichzeitig, deshalb häufen sich Entscheidungsrunden. Die Telemetrie echter Partien läuft bereits und ist der einzige Weg, das gegenzuprüfen.</p>
+    </div>
+  </section>
+
+  <footer>
+    Alle Experimente laufen ausschließlich über <span class="mono">window.__balExp</span> und sind ohne diesen Schalter toter Code.
+    Diagnose-Hooks: <span class="mono">__impactStats</span>, <span class="mono">__lossDbg</span>, <span class="mono">__aimDbg</span>,
+    <span class="mono">__killDbg</span>, <span class="mono">__laserDbg</span>, <span class="mono">__fireDbg</span>, <span class="mono">__zinsDbg</span>, <span class="mono">__sperrDbg</span>.<br>
+    <a href="https://skkjbeer.github.io/Fortress/">Zum Spiel</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/kanonentaktik.html">Kanonen-Taktik</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/waffen.html">Waffen-Experimente</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/balancing.html">Balancing-Analyse</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/stats.html">Live-Telemetrie</a> ·
+    <a href="https://skkjbeer.github.io/Fortress/review.html">Visual Review</a>
+  </footer>
+</div>
+</body>
+</html>
