@@ -106,15 +106,15 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="wrap">
 
   <header class="hero">
-    <span class="kick">Gesamtübersicht · Stand v3.54.0</span>
-    <h1><em>1887</em> Partien KI gegen KI.<br>Was wir jetzt wissen — und was zu tun ist.</h1>
+    <span class="kick">Gesamtübersicht · Stand v3.55.0</span>
+    <h1><em>2015</em> Partien KI gegen KI.<br>Was wir jetzt wissen — und was zu tun ist.</h1>
     <p class="lede">Sieben Studien, alle Ergebnisse gemessen statt behauptet. Diese Seite fasst zusammen, was in den Einzelreports steht, und leitet daraus einen Umsetzungsplan in vier Stufen ab. <b style="color:var(--ink)">Im Spiel selbst ist bis heute nichts davon aktiv</b> — alle Experimente laufen hinter <span class="mono" style="font-family:var(--fm)">window.__balExp</span>.</p>
   </header>
 
   <section>
     <div class="sh"><span class="sn">01</span><h2>Die Kernzahlen</h2></div>
     <div class="kpis">
-      <div class="kpi"><div class="n acc">1887</div><div class="l">gespielte Selbstspiel-Partien</div></div>
+      <div class="kpi"><div class="n acc">2015</div><div class="l">gespielte Selbstspiel-Partien</div></div>
       <div class="kpi"><div class="n bad">3/24</div><div class="l">Partien enden im <b>heutigen</b> Spiel regulär</div></div>
       <div class="kpi"><div class="n bad">0/24</div><div class="l">wenn beide so spielen wie <b>echte Spieler</b></div></div>
       <div class="kpi"><div class="n good">24/24</div><div class="l">mit Reparatur + Eskalation, Median Runde 10</div></div>
@@ -317,15 +317,24 @@ footer a{color:var(--acc);text-decoration:none}
     <div class="find">
       <span class="fn">12</span>
       <div>
-        <h3 class="ft">Der Bauradius ist der einzige saubere Hebel <span class="tag ok">Empfehlung</span></h3>
-        <p class="fb">Mauern dürfen nur nahe der eigenen Burg stehen. Damit kann der Verteidiger einer Bresche nicht mehr ausweichen und den Ring weiter außen neu ziehen — er muss <b>in der Trümmerzone</b> wieder aufbauen. Ergebnis: Mauer-Route auf <b>18 %</b>, <b>88 % entschiedene Partien</b>, Median Runde 13, nur 5 von 56 Frühausfällen und <b>kein Platzvorteil</b> (50 %). Vor allem: Die Regel hängt <b>nicht</b> davon ab, wie viele Teile jemand setzt — sie trifft Mensch und Bot gleich. Radius 6 ist zu eng, da ist die Burg gar nicht mehr versiegelbar.</p>
+        <h3 class="ft">Bauradius wirkt — verstößt aber gegen das Spielversprechen <span class="tag med">zurückgezogen</span></h3>
+        <p class="fb">Mauern nur nahe der eigenen Burg erlauben bringt die Mauer-Route auf <b>18 %</b> und <b>88 % entschiedene Partien</b>. Technisch der sauberste Hebel — er hängt nicht davon ab, wie viele Teile jemand setzt. <b>Trotzdem verworfen:</b> Frei auf der ganzen Fläche zu bauen und zu erweitern ist ein Kernversprechen des Spiels. Das gegen ein Balancing-Detail einzutauschen wäre der falsche Handel.</p>
+      </div>
+    </div>
+
+    <div class="find">
+      <span class="fn">13</span>
+      <div>
+        <h3 class="ft">Die Lösung ist ein Werkzeug, keine Einschränkung <span class="tag ok">Empfehlung</span></h3>
+        <p class="fb">Statt den Verteidiger zu beschneiden, bekommt der Mauer-Angriff eine <b>eigene Waffe</b>: die Splash-Granate reißt ein Kreuz aus der Mauer und wirkt gegen Kanonen <b>gar nicht</b> — ein reines Mauer-Werkzeug. Ergebnis: Mauer-Route auf <b>19 %</b> (9–34 %), also genauso stark wie mit Bauradius, bei <b>75 statt 55 zerstörten Mauern</b> je Partie. Und das <b>ohne jede Einschränkung beim Bauen</b>. Zusammen mit dem Fächer als Wahl hat damit jede Route ihr Werkzeug: fächern und Splash gegen die Mauer, bündeln und Fokusfeuer gegen die Kanonen.</p>
       </div>
     </div>
 
     <div class="warnbox">
       <div class="l">Was das für den Plan heißt</div>
-      <p><b>Ergänzung zu Stufe 1 und 2:</b> Zum Reparatur-Paket gehört zusätzlich der <b>Bauradius</b> und der <b>Fächer als Spielerwahl</b> — sonst wird die Kanonen-Route nach dem Explosions-Fix zur einzigen sinnvollen Taktik. Beides ist klein umzusetzen und braucht keine neuen Grafiken.</p>
-      <p><b>Ehrlich bleibt:</b> Auch mit Bauradius kommt die Mauer-Route nur auf 18 %, nicht auf 50 %. Volle Balance lässt sich im Selbstspiel nicht nachweisen, weil <b>jede</b> kapazitätsbasierte Regel das Bot-Verhalten verzerrt. Die endgültige Abstimmung zwischen den beiden Routen gehört an echte Partien — dafür läuft die Telemetrie.</p>
+      <p><b>Ergänzung zu Stufe 1:</b> Dazu gehört der <b>Fächer als Spielerwahl</b>, und die <b>Splash-Granate</b> wird aus Stufe 4 vorgezogen — sie ist das Werkzeug der Mauer-Route. Ohne beides wird die Kanonen-Route nach dem Explosions-Fix zur einzigen sinnvollen Taktik.</p>
+      <p><b>Ehrlich bleibt:</b> Auch damit kommt die Mauer-Route nur auf 19 %, nicht auf 50 %. Volle Balance lässt sich im Selbstspiel nicht nachweisen — jede Regel, die an der Baukapazität ansetzt, misst am Ende nur Bot-Verhalten. Die endgültige Abstimmung gehört an echte Partien; dafür läuft die Telemetrie.</p>
+      <p><b>Zur Einordnung der Zahlen:</b> In diesem Aufbau spielt eine Seite <i>ausschließlich</i> auf Mauern, die andere <i>ausschließlich</i> auf Kanonen — künstlich, um die Routenstärke zu isolieren. Die niedrigere Entscheidungsrate dieses Aufbaus sagt deshalb nichts über echte Partienlänge; bei gemischter Spielweise enden 30 von 32 Partien.</p>
     </div>
   </section>
 
