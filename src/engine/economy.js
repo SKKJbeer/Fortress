@@ -28,6 +28,15 @@ export const SHOP = {
   armor:  { price: 450 },               // Mauern halten 2 Treffer
   // Kanonen-Bezwinger (v3.57.0): zweite Kanonenart, wirkt NUR gegen Kanonen.
   // Guenstiger als eine normale Kanone, weil sie keinen Mauerschaden macht.
-  slayer: { price: 250 },
+  //
+  // FREISCHALTUNG (v3.67.0): Der Bezwinger ist eine Spezialwaffe und darf nicht
+  // gleich nach der ersten Runde dastehen — sonst wird die Aufbauphase
+  // uebersprungen und das Spiel beginnt sofort als Kanonenjagd. Er verlangt
+  // deshalb ZWEI Bedingungen, die BEIDE erfuellt sein muessen:
+  //   abRunde     fruehestens ab dieser Runde kaufbar
+  //   minKanonen  so viele eigene MAUERBRECHER muessen stehen (nicht nur
+  //               gekauft, sondern platziert) — erst eine Grundstellung,
+  //               dann der Spezialist
+  slayer: { price: 250, abRunde: 3, minKanonen: 3 },
   repair: { base: 150, step: 50 }        // +3 Trümmer → Mauern; Preis steigt je Kauf (Staffel pro Karte)
 };

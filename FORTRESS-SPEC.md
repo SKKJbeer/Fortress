@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.66.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.67.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4601,3 +4601,44 @@ Schnipsel, berstende Kugeln, gezeichnete Münzen mit Prägerand), keine
 Umfärbungen desselben Effekts. Hier bestand das Problem nicht.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.66.0`.
+
+---
+
+## v3.67.0 — Der Bezwinger wird freigeschaltet, nicht sofort gekauft
+
+Playtest: Der Kanonen-Bezwinger durfte direkt nach der ersten Runde gekauft
+werden. Damit war die Aufbauphase übersprungen — das Spiel begann sofort als
+Kanonenjagd, statt sich dorthin zu entwickeln.
+
+**Zwei Bedingungen, beide müssen erfüllt sein** (`SHOP.slayer`):
+- `abRunde: 3` — frühestens ab Runde 3
+- `minKanonen: 3` — so viele eigene **Mauerbrecher** müssen stehen; gekauft
+  reicht nicht, sie müssen platziert und am Leben sein
+
+Erst eine Grundstellung, dann der Spezialist. Die Prüfung sitzt in
+`buyUpgrade`, gilt also für Mensch, Gast und Bot gleichermaßen — alle Käufe
+laufen durch dieselbe Funktion.
+
+**Die Shop-Karte nennt den Grund**, statt nur grau zu sein: sie zeigt
+„ab Runde 3" bzw. „erst 3 Kanonen" an der Stelle, wo sonst „nur Kanonen"
+steht (i18n `shopLockRound` / `shopLockCannons`).
+
+**Gemessen in ECHTER Zeit** (der Zeitraffer taugt für diese Mechanik nicht,
+siehe v3.58.0):
+| Runde | Kanonen | Kanonen-Kills |
+|---|---|---|
+| 1–3 | 2 → 3 → 4 | **0** — reine Aufbauphase |
+| 4 | 4 | 2 — der Spezialist kommt zum Einsatz |
+| 6 | 3/4 | **7** — Materialschlacht |
+
+### Regression beim Bauen gefunden und behoben
+Der erste Entwurf ließ den Bot bei **zwei Kanonen stehen — sieben Runden lang
+ohne jeden Zubau**. Ursache: Der Bot brach seinen Einkauf ab, sobald er den
+Bezwinger *versuchte* (`buyUpgrade(...); return;`) — auch wenn der Kauf an der
+neuen Freischaltung scheiterte. Jetzt wird nur abgebrochen, wenn der Kauf
+tatsächlich geklappt hat (`if (buyUpgrade(...)) return;`).
+
+Der Fehler war im Zeitraffer-Harness NICHT sichtbar (dort sind Kills ohnehin
+~0) — erst der Echtzeit-Lauf zeigte die stehengebliebene Kanonenzahl.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.67.0`.
