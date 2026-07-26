@@ -24,11 +24,12 @@ export const KILL_BLAST = 2;
 // Mauerbrechers, weil je Salve nur EINE Kanonenart feuert — gemessen bricht
 // das System bei Schaden 1 zusammen (5/32 entschiedene Partien statt 19/32).
 export const SLAYER_DMG = 3;
-// Abstand der Faecher-Salve in Zellen (v3.59.0). 1 = die Einschlaege liegen
-// LUECKENLOS nebeneinander und bilden eine zusammenhaengende Bresche um den
-// Zielpunkt. Mit 2 blieb jede zweite Zelle stehen — das wirkte wie Streuung,
-// obwohl exakt gezielt war.
-export const FAN_SPAN = 1;
+// Streuung der Salve in Zellen (v3.60.0). Die ERSTE Kanone trifft immer exakt
+// die anvisierte Zelle; jede weitere streut zufaellig um bis zu FAN_SPREAD
+// Zellen in beide Richtungen — und darf dabei auch dieselbe Zelle treffen wie
+// die erste. Zielen bleibt damit verlaesslich, die Bresche wird trotzdem
+// breiter und unregelmaessiger.
+export const FAN_SPREAD = 2;
 export const GRAV = 0.07;
 export const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12
 // v3.31.1: Kanonen-Trümmer als EIGENER Typ — Reparatur (repairRubble) darf nur

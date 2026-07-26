@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.59.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.60.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4308,3 +4308,38 @@ und tatsächliche Einschlagzellen je Salve auf):
 pure Logik gehört in die Engine-Schicht).
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.59.0`.
+
+---
+
+## v3.60.0 — Erste Kugel garantiert, der Rest streut
+
+Playtest: Der erste Schuss soll IMMER die anvisierte Zelle treffen — wer zielt,
+wird belohnt. Alle weiteren Rohre der Salve streuen dagegen zufällig, dürfen
+dabei bis zu zwei Zellen abweichen und auch auf DERSELBEN Zelle landen wie der
+erste.
+
+Der deterministische Fächer aus v3.59.0 wird damit ersetzt. Er war zwar
+zielgenau, erzeugte aber ein gestanztes, immer gleiches Muster
+(0, ±1, ±2 …) — vorhersehbar statt lebendig.
+
+**Neu (`FAN_SPREAD = 2` in `src/engine/const.js`):**
+- `index 0` bleibt unversetzt → garantierter Treffer auf der Zielzelle.
+- `index > 0` bekommt einen ganzzahligen Zufallsversatz von −2 bis +2 Zellen
+  in BEIDEN Achsen. Der Versatz 0/0 ist eingeschlossen — dann liegen zwei
+  Kugeln auf derselben Zelle.
+
+**Gemessen** (gated Hook `__salvoDbg`, Zielzelle gegen tatsächliche Einschläge):
+| | |
+|---|---|
+| Salven | 26 |
+| erste Kugel exakt auf der Zielzelle | **26 (100 %)** |
+| weitere Kugeln | 17 |
+| größte Abweichung | 2 Zellen |
+| davon auf derselben Zelle wie die erste | 2 |
+| Abweichung 0 / 1 / 2 Zellen | 2 / 3 / 12 |
+
+Die Häufung bei 2 Zellen ist kein Fehler, sondern Geometrie: In einem
+gleichverteilten 5×5-Feld liegen 16 von 25 Zellen im Abstand 2, 8 im Abstand 1
+und genau eine im Abstand 0.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.60.0`.

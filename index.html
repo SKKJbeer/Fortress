@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.59.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.60.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -175,7 +175,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script type="module">
-import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, FAN_SPAN, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
+import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, FAN_SPREAD, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
 const SHOP_SLAYER = SHOP.slayer.price;
 const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
@@ -4465,24 +4465,21 @@ window.FortressApp = function Fortress() {
       // Bezwinger BUENDELN auf ein Ziel (Fokusfeuer — bei 12 Trefferpunkten je
       // Kanone ist verteiltes Feuer verschenkt). Gemessen: Fokusfeuer macht
       // den Unterschied zwischen 19/24 und 9/24 entschiedenen Partien.
-      const faechern = (cn.kt || "std") === "std" || (XF && XF.faecher);
-      if (faechern && index > 0) {
-        // Salven-Faecher (v3.59.0): Die erste Kanone trifft IMMER exakt den
-        // Zielpunkt (index 0 bleibt unversetzt), die uebrigen legen sich
-        // abwechselnd links und rechts DIREKT DANEBEN an. Abstand 1 Zelle
-        // statt 2 — dadurch entsteht eine ZUSAMMENHAENGENDE Bresche um den
-        // Zielpunkt herum statt verstreuter Einzeltreffer mit Luecken.
-        const step = ((XF || {}).faecherSpan || FAN_SPAN) * CELL;
-        const side = index % 2 === 1 ? 1 : -1;
-        const rank = Math.ceil(index / 2);
-        tx += side * rank * step;
+      // ── Salvenform (v3.60.0) ────────────────────────────────────────────
+      // Die ERSTE Kanone trifft garantiert die anvisierte Zelle — wer zielt,
+      // wird belohnt. Jede weitere streut zufaellig um bis zu FAN_SPREAD
+      // Zellen; sie darf dabei auch auf DERSELBEN Zelle landen wie die erste.
+      // So bleibt das Zielen verlaesslich, und die Salve reisst trotzdem eine
+      // breitere, unregelmaessige Bresche statt eines gestanzten Musters.
+      if (index > 0) {
+        const R2 = (XF && XF.faecherSpan) || FAN_SPREAD;
+        const dc = Math.floor(Math.random() * (R2 * 2 + 1)) - R2;
+        const dr = Math.floor(Math.random() * (R2 * 2 + 1)) - R2;
+        tx += dc * CELL;
+        ty += dr * CELL;
         tx = Math.max(CELL / 2, Math.min(W - CELL / 2, tx));
         ty = Math.max(CELL / 2, Math.min(H - CELL / 2, ty));
       }
-      // KEINE Zufallsstreuung mehr (v3.59.0): Der Bezwinger ist Fokusfeuer —
-      // er muss dort einschlagen, wo gezielt wurde. Die alte zufaellige
-      // Streuung von bis zu einer Zelle liess Salven danebengehen, ohne dass
-      // der Spieler etwas falsch gemacht haette.
       if (salvoDbg) salvoDbg.treffer.push([Math.floor(ty / CELL), Math.floor(tx / CELL)]);
       const dist = Math.hypot(tx - sx, ty - sy);
       const dur = Math.max(30, 26 + dist * 0.09);
@@ -7277,7 +7274,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.59.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.60.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
