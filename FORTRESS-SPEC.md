@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.53.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.54.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4018,3 +4018,42 @@ gemessen; die Telemetrie läuft.
 
 Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.53.0`.
+
+---
+
+## v3.54.0 — Eskalation wird GEKAUFT statt geschenkt
+
+Design-Entscheidung aus dem Playtest: Kanonen sollen **nicht von allein**
+stärker werden. Eskalation soll man sich taktisch erarbeiten — über Upgrades.
+Die automatische Wucht aus v3.52.0 wird damit verworfen.
+
+**Neu: `power` als kaufbares Shop-Upgrade** (gated über `wuchtKauf`).
+Drei Stufen mit steigendem Preis (`powerPreise`, Standard 30/60/100), jede
+Stufe +1 Durchschlag gegen Kanonen. Der Spieler wählt damit zwischen **mehr**
+Kanonen und **stärkeren** Kanonen. Der Bot kauft je nach Stufe unterschiedlich:
+Schwer bis Stufe 2, Mittel bis Stufe 1 (erst ab 2 Kanonen), Leicht gar nicht —
+so entstehen ohne Zusatzaufwand drei erkennbare Spielweisen.
+
+**Ergebnis (je 32 Partien, gemischte Taktik, auf Paket A aufgesetzt):**
+| Variante | entschieden | Median | Spanne | Rd 1–2 | Ø gekaufte Stufe |
+|---|---|---|---|---|---|
+| Paket A ohne Eskalation | 25/32 | 13 | 1–13 | 4 | – |
+| Durchschlag kaufbar 30/60/100 | 30/32 | 9 | 1–14 | 9 | 0,58 |
+| **Durchschlag kaufbar 20/40/70** | **30/32** | **10** | **2–13** | **2** | **0,75** |
+| Durchschlag automatisch (verworfen) | 31/32 | 8 | 1–14 | 5 | – |
+
+**Befund:** Die gekaufte Eskalation ist der automatischen **ebenbürtig**
+(30/32 gegen 31/32) und in der Verteilung sogar besser: nur 2 statt 5 sehr
+frühe Entscheidungen, und keine einzige Partie endet in Runde 1. Die
+automatische Variante ballt sich zudem stark auf Runde 8 (elf von 31 Partien) —
+das ist ein Countdown, keine Spannungskurve. Die gekaufte Variante streut
+zwischen Runde 9 und 13.
+
+Die **günstigere Preisstaffel (20/40/70) ist klar besser** als 30/60/100:
+Sie wird tatsächlich gekauft (Ø 0,75 statt 0,58 Stufen) und erzeugt viermal
+weniger Frühausfälle. Bei Ø 0,75 gekauften Stufen bleibt der Kauf eine echte
+Entscheidung und kein Automatismus — genau das war die Absicht.
+
+Damit ersetzt `wuchtKauf` die automatische `wucht` in der Empfehlung.
+Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.54.0`.

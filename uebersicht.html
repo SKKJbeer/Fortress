@@ -106,20 +106,20 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="wrap">
 
   <header class="hero">
-    <span class="kick">Gesamtübersicht · Stand v3.53.0</span>
-    <h1><em>1756</em> Partien KI gegen KI.<br>Was wir jetzt wissen — und was zu tun ist.</h1>
-    <p class="lede">Sechs Studien, alle Ergebnisse gemessen statt behauptet. Diese Seite fasst zusammen, was in den Einzelreports steht, und leitet daraus einen Umsetzungsplan in vier Stufen ab. <b style="color:var(--ink)">Im Spiel selbst ist bis heute nichts davon aktiv</b> — alle Experimente laufen hinter <span class="mono" style="font-family:var(--fm)">window.__balExp</span>.</p>
+    <span class="kick">Gesamtübersicht · Stand v3.54.0</span>
+    <h1><em>1887</em> Partien KI gegen KI.<br>Was wir jetzt wissen — und was zu tun ist.</h1>
+    <p class="lede">Sieben Studien, alle Ergebnisse gemessen statt behauptet. Diese Seite fasst zusammen, was in den Einzelreports steht, und leitet daraus einen Umsetzungsplan in vier Stufen ab. <b style="color:var(--ink)">Im Spiel selbst ist bis heute nichts davon aktiv</b> — alle Experimente laufen hinter <span class="mono" style="font-family:var(--fm)">window.__balExp</span>.</p>
   </header>
 
   <section>
     <div class="sh"><span class="sn">01</span><h2>Die Kernzahlen</h2></div>
     <div class="kpis">
-      <div class="kpi"><div class="n acc">1756</div><div class="l">gespielte Selbstspiel-Partien</div></div>
+      <div class="kpi"><div class="n acc">1887</div><div class="l">gespielte Selbstspiel-Partien</div></div>
       <div class="kpi"><div class="n bad">3/24</div><div class="l">Partien enden im <b>heutigen</b> Spiel regulär</div></div>
       <div class="kpi"><div class="n bad">0/24</div><div class="l">wenn beide so spielen wie <b>echte Spieler</b></div></div>
       <div class="kpi"><div class="n good">24/24</div><div class="l">mit Reparatur + Eskalation, Median Runde 10</div></div>
       <div class="kpi"><div class="n warn">2</div><div class="l">gefundene Fehler in dokumentierten Regeln</div></div>
-      <div class="kpi"><div class="n warn">3</div><div class="l">eigene Empfehlungen, die ich selbst widerlegt habe</div></div>
+      <div class="kpi"><div class="n warn">4</div><div class="l">eigene Empfehlungen, die ich selbst widerlegt habe</div></div>
     </div>
   </section>
 
@@ -348,14 +348,14 @@ footer a{color:var(--acc);text-decoration:none}
       </div>
 
       <div class="ph p2">
-        <div class="hd"><span class="num">Stufe 2</span><h3>Eskalation</h3><span class="tag ok">klein · hoher Effekt</span></div>
-        <p class="meta2">1 Version · eine Formel + Anzeige · ~1 Arbeitssitzung</p>
+        <div class="hd"><span class="num">Stufe 2</span><h3>Eskalation — erkauft, nicht geschenkt</h3><span class="tag ok">klein · hoher Effekt</span></div>
+        <p class="meta2">1 Version · eine Shop-Karte + Anzeige · ~1 Arbeitssitzung</p>
         <ul>
-          <li><b>Wucht:</b> Der Schaden an gegnerischen Kanonen wächst mit der Runde von 1 auf 3. Frühe Runden bleiben bedächtig, späte werden entscheidend.</li>
-          <li><b>Sichtbar machen</b> — eine Stufenanzeige im HUD („Feuerkraft II"), sonst spürt man die Eskalation nur unbewusst.</li>
+          <li><b>Durchschlag als kaufbares Upgrade</b> — drei Stufen zu 20 / 40 / 70 Schrott, jede Stufe +1 Schaden gegen Kanonen. Die Wahl lautet: <b>mehr</b> Kanonen oder <b>stärkere</b>?</li>
+          <li><b>Sichtbar machen</b> — Stufenanzeige im HUD („Durchschlag II"), sonst bleibt der Kauf abstrakt.</li>
         </ul>
-        <p class="out">Erwartung: <b>24/24</b> entschieden, Median Runde 10, breiteste Streuung von allem Getesteten. Genau das „es wird immer heftiger"-Gefühl.</p>
-        <p class="risk">Bewusst NICHT dabei: schnelleres Nachladen je Runde (12/24) und die Aufladen-Mechanik (13/24). Beide klangen gut und haben in der Messung nichts gebracht.</p>
+        <p class="out">Gemessen: <b>30 von 32</b> entschieden, Median Runde 10, Spanne 2–13, nur <b>2</b> sehr frühe Entscheidungen.</p>
+        <p class="risk">Eine automatische Verstärkung („Waffen werden jede Runde stärker") war die ursprüngliche Idee und wurde <b>verworfen</b> — nicht wegen schlechterer Zahlen (31/32), sondern weil sich elf von 31 Partien auf exakt Runde 8 ballten. Das ist ein Countdown, keine Spannungskurve. Und geschenkte Stärke ist keine Taktik. Bewusst ebenfalls draußen: schnelleres Nachladen je Runde (12/24) und Salven aufsparen (13/24) — beide klangen gut und brachten nichts.</p>
       </div>
 
       <div class="ph p3">
