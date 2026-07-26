@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.63.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.64.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4457,3 +4457,58 @@ werden — statt 3 Mauer- und 1 Trümmer-Sprite gibt es jetzt 12 und 3. Die
 Perf-Regel (keine Gradients/shadowBlur pro Objekt pro Frame) bleibt gewahrt.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.63.0`.
+
+---
+
+## v3.64.0 — Mauer-Verzahnung + Review der restlichen Elemente
+
+### Verzahnung der Mauern
+`drawWall` bekommt eine **Nachbarschaftsmaske** (1 oben, 2 rechts, 4 unten,
+8 links; Bit gesetzt = dort steht eine Mauer DERSELBEN Farbe). Nur an FREIEN
+Seiten entstehen Rundung, Fase, Randabstand und die leuchtende Oberkante — an
+verzahnten Seiten läuft der Stein bis an die Zellkante und bekommt nur eine
+feine Fuge.
+
+Damit wird aus vielen Einzelsteinen ein zusammenhängendes Mauerwerk mit klarer
+Außenkontur. Vorher trug jede Zelle rundum ihren eigenen Rahmen — auch mitten
+im Mauerblock, wo gar keine Kante ist. Ecken werden nur noch gerundet, wenn
+BEIDE angrenzenden Seiten frei sind.
+
+Gebacken wird je (Farbe, Variante, Maske) und zwar **lazy** — nur
+Kombinationen, die auf dem Brett wirklich vorkommen, landen im Cache.
+Theoretisch 3×4×16 = 192 Sprites à 14×14 px, praktisch deutlich weniger. Es
+bleibt beim reinen Blitten, keine Frame-Kosten.
+
+### Riss auf Panzermauern — neu (3 Varianten)
+Vorher EINE flache dunkle Linie; auf dem texturierten Stein wirkte das wie ein
+Kritzler. Jetzt ein Zickzack-Bruch mit **hellem Bruchrand oben links** und
+dunklem Kern darunter (wirkt dadurch eingetieft, Lichtrichtung konsistent zum
+Stein), zwei Seitenrissen und drei abgesprengten Splittern.
+
+### Geschosse — neu
+Vorher ein einfacher Radialverlauf. Jetzt heißer weißer Kern oben links,
+Schattenrand unten rechts für Volumen und ein sehr dezentes Randlicht.
+
+**Korrektur im Bauen:** Der erste Entwurf hatte ein kräftiges Randlicht als
+Bogen — zusammen mit dem hellen Punkt oben las sich die Kugel als **Gesicht**
+(Auge + Mund). Alpha von 0,42 auf 0,16 und der Bogen kürzer.
+
+### UI-Fehler behoben
+Der Salven-Schalter aus v3.58.0 saß bei `top + 58px` — **genau unter dem
+Warnbanner**. Ausgerechnet die Meldung „Kanonen werden umgerüstet" verdeckte
+den Schalter, zu dem sie gehört. Jetzt `top + 118px`, beides gleichzeitig
+lesbar.
+
+### Review: was NICHT geändert wurde und warum
+- **Burg** (`castleSprite`): 2023 in v3.43.0 bereits gebacken neu gezeichnet
+  (Mauerwerk, vier Ecktürme mit Zinnen, Torbogen, Wappenscheibe). Passt
+  stilistisch zum neuen Stand — kein Handlungsbedarf.
+- **Terrain/Hintergrund**: läuft über den `bgCanvas`-Offscreen-Render mit
+  Tiefenkarte für den Fluss (v3.42.0) und sieben Weltthemen. Ebenfalls aktuell.
+- **Kanonenkuppel** (`cannonDomeSprite`): wird für Skins mit eigener Form seit
+  v3.62.0 gar nicht mehr gezeichnet; für das Standardmodell bleibt sie.
+- **Explosionen/Partikel**: rein prozedural im Frame, bewusst billig gehalten
+  (Perf-Regel). Ein Redesign hier würde die Frame-Kosten treffen, nicht den
+  Sprite-Cache — deshalb bewusst ausgelassen.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.64.0`.

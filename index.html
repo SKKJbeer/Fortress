@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.63.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.64.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -6553,9 +6553,17 @@ window.FortressApp = function Fortress() {
           // Zelle sieht immer gleich aus, Nachbarzellen aber verschieden —
           // eine Mauerreihe wirkt gemauert statt gekachelt. Kostet nichts:
           // es sind weiterhin nur vier vorgebackene Sprites je Farbe.
-          ctx.drawImage(wallSprite(v, (r * 7 + c * 3) % 4), px, py);
+          // Verzahnung (v3.64.0): Maske aus den vier Nachbarn DERSELBEN
+          // Mauerfarbe. Nur freie Seiten bekommen Kante und Rundung — so
+          // wird aus Einzelsteinen ein Mauerwerk mit klarer Aussenkontur.
+          const mk = (r > 0 && g[r - 1][c] === v ? 1 : 0)
+                   | (c < COLS - 1 && g[r][c + 1] === v ? 2 : 0)
+                   | (r < ROWS - 1 && g[r + 1][c] === v ? 4 : 0)
+                   | (c > 0 && g[r][c - 1] === v ? 8 : 0);
+          ctx.drawImage(wallSprite(v, (r * 7 + c * 3) % 4, mk), px, py);
           // Panzermauer angeknackst (v3.16.0): Riss-Overlay
-          if (anyCrack && wallHp.current[r + "_" + c]) ctx.drawImage(crackSprite(), px, py);
+          if (anyCrack && wallHp.current[r + "_" + c])
+            ctx.drawImage(crackSprite((r * 3 + c) % 3), px, py);
         }
         else if (v === RUBBLE || v === RUBBLE_C) ctx.drawImage(rubbleSprite((r * 5 + c * 2) % 3), px, py);
       }
@@ -7278,7 +7286,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.63.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.64.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -9216,7 +9224,10 @@ window.FortressApp = function Fortress() {
           style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
     };
     return /* @__PURE__ */ React.createElement("div", { key: "salvo", style: {
-      position: "fixed", right: 8, top: "calc(env(safe-area-inset-top, 0px) + 58px)",
+      // 118px statt 58px (v3.64.0): Auf 58 lag der Schalter GENAU unter dem
+      // Warnbanner ("Kanonen werden umgeruestet") und wurde davon verdeckt —
+      // ausgerechnet von der Meldung, die zum Schalter gehoert.
+      position: "fixed", right: 8, top: "calc(env(safe-area-inset-top, 0px) + 118px)",
       zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5
     } },
       /* @__PURE__ */ React.createElement("span", { style: {

@@ -13,22 +13,49 @@ import { CELL } from '../engine/const.js';
 // Mauerreihe sah aus wie kopiertes Kachelmuster. Die Variante verschiebt
 // Koernung, Fugenschnitt, Abplatzung und Farbton leicht; das reicht, damit
 // eine Mauer wie gemauert wirkt statt wie ein Raster.
-export function drawWall(ctx, px, py, base, hi, lo, mortar, vr) {
-  const V = vr || 0;
+// mask = Nachbarschafts-Bitmaske (v3.64.0): 1 oben, 2 rechts, 4 unten, 8 links.
+// Gesetztes Bit heisst: dort steht eine Mauer DESSELBEN Spielers. Nur an
+// FREIEN Seiten entstehen Rundung, Fase und Schlagschatten — an verzahnten
+// Seiten laeuft der Stein bis an die Zellkante und bekommt nur eine Fuge.
+// Dadurch wird aus vielen Einzelsteinen ein zusammenhaengendes Mauerwerk mit
+// klarer Aussenkante, statt eines Rasters gleich grosser Kacheln.
+export function drawWall(ctx, px, py, base, hi, lo, mortar, vr, mask) {
+  const V = vr || 0, MK = mask || 0;
+  const frei = (bit) => (MK & bit) === 0;
   const rnd = (k) => Math.abs(Math.sin((k + V * 17.3) * 12.9898) * 43758.5453) % 1;
-  const m = 0.6;
-  const x = px + m, y = py + m, w = CELL - 2 * m, hgt = CELL - 2 * m;
+  const mO = frei(1) ? 0.6 : 0, mR = frei(2) ? 0.6 : 0;
+  const mU = frei(4) ? 0.6 : 0, mL = frei(8) ? 0.6 : 0;
+  const x = px + mL, y = py + mO;
+  const w = CELL - mL - mR, hgt = CELL - mO - mU;
+  // Ecke nur runden, wenn BEIDE angrenzenden Seiten frei sind
+  const eck = {
+    ol: frei(1) && frei(8) ? 3.5 : 0, or: frei(1) && frei(2) ? 3.5 : 0,
+    ur: frei(4) && frei(2) ? 3.5 : 0, ul: frei(4) && frei(8) ? 3.5 : 0
+  };
+  const pfad = () => {
+    ctx.beginPath();
+    ctx.moveTo(x + eck.ol, y);
+    ctx.lineTo(x + w - eck.or, y);
+    if (eck.or) ctx.quadraticCurveTo(x + w, y, x + w, y + eck.or); else ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + hgt - eck.ur);
+    if (eck.ur) ctx.quadraticCurveTo(x + w, y + hgt, x + w - eck.ur, y + hgt); else ctx.lineTo(x + w, y + hgt);
+    ctx.lineTo(x + eck.ul, y + hgt);
+    if (eck.ul) ctx.quadraticCurveTo(x, y + hgt, x, y + hgt - eck.ul); else ctx.lineTo(x, y + hgt);
+    ctx.lineTo(x, y + eck.ol);
+    if (eck.ol) ctx.quadraticCurveTo(x, y, x + eck.ol, y);
+    ctx.closePath();
+  };
   // 1) Körper — Verlauf jetzt DIAGONAL entlang der Lichtachse statt rein vertikal
   const g = ctx.createLinearGradient(px, py, px + CELL * 0.75, py + CELL);
   g.addColorStop(0, hi);
   g.addColorStop(0.26, base);
   g.addColorStop(1, lo);
   ctx.fillStyle = g;
-  roundRectPath(ctx, x, y, w, hgt, 3.5);
+  pfad();
   ctx.fill();
   // 2) Steinkorn — feine deterministische Sprenkel, brechen den Plastik-Look
   ctx.save();
-  roundRectPath(ctx, x, y, w, hgt, 3.5);
+  pfad();
   ctx.clip();
   for (let i = 0; i < 11; i++) {
     // deterministisch aus i und Variante: bei jedem Backen identisch,
@@ -55,9 +82,9 @@ export function drawWall(ctx, px, py, base, hi, lo, mortar, vr) {
   ctx.lineTo(fx, rnd(6) > 0.5 ? fy : y + hgt);
   ctx.stroke();
   // ABPLATZUNG an einer Ecke — der Stein wirkt benutzt, nicht gegossen
-  const eck = Math.floor(rnd(9) * 4);
-  const ex = eck % 2 ? x + w : x, ey = eck < 2 ? y : y + hgt;
-  const sx2 = eck % 2 ? -1 : 1, sy2 = eck < 2 ? 1 : -1;
+  const platz = Math.floor(rnd(9) * 4);
+  const ex = platz % 2 ? x + w : x, ey = platz < 2 ? y : y + hgt;
+  const sx2 = platz % 2 ? -1 : 1, sy2 = platz < 2 ? 1 : -1;
   ctx.fillStyle = "rgba(0,0,0,0.30)";
   ctx.beginPath();
   ctx.moveTo(ex, ey + sy2 * (2 + rnd(11) * 2.5));
@@ -77,28 +104,37 @@ export function drawWall(ctx, px, py, base, hi, lo, mortar, vr) {
   ctx.fillStyle = sp;
   ctx.fillRect(x, y, w, hgt);
   ctx.restore();
-  // 5) Leuchtende Oberkante (durchgehende Linie über Mauerreihen — bleibt)
-  ctx.fillStyle = hi;
-  roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, 2.0, 1.3);
-  ctx.fill();
-  // 6) Harte Steinfase: helle Kante oben/links …
+  // 5) Leuchtende Oberkante NUR an einer freien Oberseite — sonst zieht sich
+  // ein heller Streifen quer durch das Innere des Mauerwerks.
+  if (frei(1)) {
+    ctx.fillStyle = hi;
+    roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, 2.0, 1.3);
+    ctx.fill();
+  }
+  // 6) Steinfase nur an FREIEN Kanten: helles Licht oben/links …
   ctx.strokeStyle = "rgba(255,255,255,0.42)";
   ctx.lineWidth = 1.1;
-  ctx.beginPath();
-  ctx.moveTo(x + 1, y + hgt - 2.5);
-  ctx.lineTo(x + 1, y + 2.5);
-  ctx.lineTo(x + 2.5, y + 1);
-  ctx.lineTo(x + w - 2.5, y + 1);
-  ctx.stroke();
-  // … dunkle Kante unten/rechts (Tiefe)
+  if (frei(8)) { ctx.beginPath();
+    ctx.moveTo(x + 1, y + hgt - (frei(4) ? 2.5 : 0));
+    ctx.lineTo(x + 1, y + (frei(1) ? 2.5 : 0)); ctx.stroke(); }
+  if (frei(1)) { ctx.beginPath();
+    ctx.moveTo(x + (frei(8) ? 2.5 : 0), y + 1);
+    ctx.lineTo(x + w - (frei(2) ? 2.5 : 0), y + 1); ctx.stroke(); }
+  // … dunkle Tiefe unten/rechts
   ctx.strokeStyle = "rgba(0,0,0,0.52)";
   ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(x + w - 0.8, y + 2.5);
-  ctx.lineTo(x + w - 0.8, y + hgt - 2.5);
-  ctx.lineTo(x + w - 2.5, y + hgt - 0.8);
-  ctx.lineTo(x + 2.5, y + hgt - 0.8);
-  ctx.stroke();
+  if (frei(2)) { ctx.beginPath();
+    ctx.moveTo(x + w - 0.8, y + (frei(1) ? 2.5 : 0));
+    ctx.lineTo(x + w - 0.8, y + hgt - (frei(4) ? 2.5 : 0)); ctx.stroke(); }
+  if (frei(4)) { ctx.beginPath();
+    ctx.moveTo(x + w - (frei(2) ? 2.5 : 0), y + hgt - 0.8);
+    ctx.lineTo(x + (frei(8) ? 2.5 : 0), y + hgt - 0.8); ctx.stroke(); }
+  // 7) FUGE an verzahnten Kanten: eine feine dunkle Linie, damit die Steine
+  // nicht zu einer strukturlosen Flaeche verschmelzen.
+  ctx.strokeStyle = mortar || "rgba(0,0,0,0.34)";
+  ctx.lineWidth = 1;
+  if (!frei(2)) { ctx.beginPath(); ctx.moveTo(px + CELL - 0.5, py); ctx.lineTo(px + CELL - 0.5, py + CELL); ctx.stroke(); }
+  if (!frei(4)) { ctx.beginPath(); ctx.moveTo(px, py + CELL - 0.5); ctx.lineTo(px + CELL, py + CELL - 0.5); ctx.stroke(); }
 }
 function __oldWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.fillStyle = base;
@@ -201,27 +237,45 @@ export const BALL_GLOW = { 1: "rgba(59,130,246,0.9)", 2: "rgba(239,68,68,0.9)", 
 // Ball-Sprites (v3.15.5): Glow + Verlauf einmal backen; im Flug nur noch
 // skaliert blitten. Basisradius 8, Sprite-Halbgröße 24 (Platz für den Glow).
 const BALL_SPRITES = {};
+// Geschoss (v3.64.0): vorher ein einfacher Radialverlauf. Jetzt heisser Kern,
+// dunkler Schattenrand unten rechts und ein duennes Randlicht — dieselbe
+// Lichtrichtung wie Mauern und Kanonen. Wird EINMAL je Spieler gebacken, der
+// shadowBlur kostet also nichts pro Frame.
 export function ballSprite(player) {
   if (!BALL_SPRITES[player]) {
     const HS = 24, BR = 8;
     const c = document.createElement("canvas");
-    c.width = HS * 2;
-    c.height = HS * 2;
+    c.width = HS * 2; c.height = HS * 2;
     const x = c.getContext("2d");
+    // aeusserer Schein
     x.shadowColor = BALL_GLOW[player] || BALL_GLOW[1];
-    x.shadowBlur = 12;
-    const g = x.createRadialGradient(HS - 3, HS - 3, 0, HS, HS, BR);
+    x.shadowBlur = 13;
+    const g = x.createRadialGradient(HS - 3, HS - 3.5, 0, HS, HS, BR);
     g.addColorStop(0, "#ffffff");
-    g.addColorStop(0.4, BALL_MID[player] || BALL_MID[1]);
+    g.addColorStop(0.30, BALL_MID[player] || BALL_MID[1]);
     g.addColorStop(1, BALL_DARK[player] || BALL_DARK[1]);
     x.fillStyle = g;
-    x.beginPath();
-    x.arc(HS, HS, BR, 0, Math.PI * 2);
-    x.fill();
+    x.beginPath(); x.arc(HS, HS, BR, 0, Math.PI * 2); x.fill();
+    x.shadowBlur = 0;
+    // Schattenrand unten rechts — gibt der Kugel Volumen
+    const ao = x.createRadialGradient(HS + 3, HS + 3.5, BR * 0.2, HS, HS, BR);
+    ao.addColorStop(0, "rgba(0,0,0,0.40)");
+    ao.addColorStop(0.75, "rgba(0,0,0,0.10)");
+    ao.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = ao;
+    x.beginPath(); x.arc(HS, HS, BR, 0, Math.PI * 2); x.fill();
+    // Randlicht bewusst SEHR dezent: mit kraeftigem Bogen las sich die Kugel
+    // als Gesicht (heller Punkt oben, leuchtender Bogen unten = Mund).
+    x.strokeStyle = "rgba(255,255,255,0.16)"; x.lineWidth = 0.8;
+    x.beginPath(); x.arc(HS, HS, BR - 0.8, 0.9, 2.0); x.stroke();
+    // heisser Kern
+    x.fillStyle = "rgba(255,255,255,0.92)";
+    x.beginPath(); x.arc(HS - 2.4, HS - 2.8, BR * 0.30, 0, Math.PI * 2); x.fill();
     BALL_SPRITES[player] = c;
   }
   return BALL_SPRITES[player];
 }
+
 // Burg-Sprite (v3.43.0, AAA): frueher wurde die Burg PRO FRAME mit mehreren
 // Gradients gezeichnet - Detail war dadurch teuer. Jetzt EINMAL pro Spieler in
 // ein Sprite gebacken, im Frame nur noch geblittet. Dadurch ist reichhaltige
@@ -471,37 +525,71 @@ const WALL_SPRITE_COLORS = {
   [10]: ["#10b981", "#6ee7b7", "#065f46", "#044a37"]
 };
 export const WALL_VARIANTEN = 4;
-export function wallSprite(v, vr) {
+// Gebacken wird je (Farbe, Variante, Nachbarschaftsmaske) — und zwar LAZY:
+// nur Kombinationen, die auf dem Brett wirklich vorkommen, landen im Cache.
+// Theoretisch 3x4x16 = 192 Sprites a 14x14 px, praktisch deutlich weniger.
+export function wallSprite(v, vr, mask) {
   const V = ((vr || 0) % WALL_VARIANTEN + WALL_VARIANTEN) % WALL_VARIANTEN;
-  const key = v + "_" + V;
+  const M = (mask || 0) & 15;
+  const key = v + "_" + V + "_" + M;
   if (!SPR.wall[key]) {
     const c = mkSpriteCanvas(CELL, CELL);
     const col = WALL_SPRITE_COLORS[v] || WALL_SPRITE_COLORS[1];
-    drawWall(c.getContext("2d"), 0, 0, col[0], col[1], col[2], col[3], V);
+    drawWall(c.getContext("2d"), 0, 0, col[0], col[1], col[2], col[3], V, M);
     SPR.wall[key] = c;
   }
   return SPR.wall[key];
 }
-export function crackSprite() {
-  if (!SPR.crack) {
-    const c = mkSpriteCanvas(CELL, CELL);
-    const x = c.getContext("2d");
-    x.strokeStyle = "rgba(10,12,18,0.75)";
-    x.lineWidth = 1.2;
-    x.beginPath();
-    x.moveTo(CELL * 0.5, CELL * 0.1);
-    x.lineTo(CELL * 0.42, CELL * 0.45);
-    x.lineTo(CELL * 0.62, CELL * 0.6);
-    x.lineTo(CELL * 0.5, CELL * 0.92);
-    x.moveTo(CELL * 0.42, CELL * 0.45);
-    x.lineTo(CELL * 0.18, CELL * 0.62);
-    x.moveTo(CELL * 0.62, CELL * 0.6);
-    x.lineTo(CELL * 0.85, CELL * 0.72);
-    x.stroke();
-  SPR.crack = c;
+export const CRACK_VARIANTEN = 3;
+// Riss auf Panzermauern (v3.64.0). Vorher EINE flache dunkle Linie — auf dem
+// texturierten Stein wirkte das wie ein Kritzler. Jetzt drei Varianten mit
+// dunklem Bruchkern, hellem Bruchrand (Licht von oben links, konsistent zum
+// Stein) und abgesprengten Splittern.
+export function crackSprite(vr) {
+  const V = ((vr || 0) % CRACK_VARIANTEN + CRACK_VARIANTEN) % CRACK_VARIANTEN;
+  if (!SPR.crackV) SPR.crackV = {};
+  if (SPR.crackV[V]) return SPR.crackV[V];
+  const c = mkSpriteCanvas(CELL, CELL);
+  const x = c.getContext("2d");
+  const rnd = (k) => Math.abs(Math.sin((k + V * 31.7) * 12.9898) * 43758.5453) % 1;
+  // Hauptriss als Zickzack von oben nach unten, je Variante anders versetzt
+  const pts = [];
+  for (let i = 0; i <= 5; i++) {
+    pts.push([CELL * (0.30 + rnd(i) * 0.42), CELL * (0.06 + i * 0.176)]);
   }
-  return SPR.crack;
+  const zeichneLinie = (versatzX, versatzY, farbe, breite) => {
+    x.strokeStyle = farbe; x.lineWidth = breite; x.lineJoin = "round";
+    x.beginPath();
+    pts.forEach((p, i) => i ? x.lineTo(p[0] + versatzX, p[1] + versatzY)
+                            : x.moveTo(p[0] + versatzX, p[1] + versatzY));
+    x.stroke();
+  };
+  // heller Bruchrand oben links, darunter der dunkle Kern -> wirkt eingetieft
+  zeichneLinie(-0.7, -0.7, "rgba(255,255,255,0.34)", 1.3);
+  zeichneLinie(0, 0, "rgba(6,9,14,0.85)", 1.5);
+  // zwei Seitenrisse
+  for (let i = 0; i < 2; i++) {
+    const start = pts[1 + i * 2];
+    const zx = start[0] + (rnd(i + 20) > 0.5 ? 1 : -1) * CELL * (0.18 + rnd(i + 30) * 0.16);
+    const zy = start[1] + CELL * (0.10 + rnd(i + 40) * 0.14);
+    x.strokeStyle = "rgba(255,255,255,0.26)"; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(start[0] - 0.6, start[1] - 0.6); x.lineTo(zx - 0.6, zy - 0.6); x.stroke();
+    x.strokeStyle = "rgba(6,9,14,0.75)"; x.lineWidth = 1.1;
+    x.beginPath(); x.moveTo(start[0], start[1]); x.lineTo(zx, zy); x.stroke();
+  }
+  // abgesprengte Splitter am Riss
+  for (let i = 0; i < 3; i++) {
+    const p = pts[1 + Math.floor(rnd(i + 50) * 4)];
+    const sx = p[0] + (rnd(i + 60) - 0.5) * 5, sy = p[1] + (rnd(i + 70) - 0.5) * 5;
+    x.fillStyle = "rgba(0,0,0,0.45)";
+    x.beginPath(); x.arc(sx + 0.5, sy + 0.6, 1.1, 0, Math.PI * 2); x.fill();
+    x.fillStyle = "rgba(214,224,238,0.55)";
+    x.beginPath(); x.arc(sx, sy, 1, 0, Math.PI * 2); x.fill();
+  }
+  SPR.crackV[V] = c;
+  return c;
 }
+
 export function rubbleSprite(vr) {
   const V = ((vr || 0) % RUBBLE_VARIANTEN + RUBBLE_VARIANTEN) % RUBBLE_VARIANTEN;
   if (!SPR.rubbleV) SPR.rubbleV = {};
