@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.55.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.56.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4316,6 +4316,15 @@ window.FortressApp = function Fortress() {
     } else {
       ready = closedCannons(g, player, cannons.current[player]);
     }
+    {
+      // Salven-Schalter: es feuert NUR die gewaehlte Kanonenart. Wer Kanonen
+      // jagt, macht in dieser Runde keinen Mauerschaden — und umgekehrt.
+      const XZ = balExp() || {};
+      if (XZ.zweiKanonen) {
+        const modus = salvenModus.current[player] || "std";
+        ready = ready.filter((c) => (c.kt || "std") === modus);
+      }
+    }
     // STOERSENDER (Experiment): getroffene Kanonen sind fuer X Runden
     // lahmgelegt statt zerstoert — sie blockieren weiter Platz und Schrott.
     // (c.emp ist ohne das Experiment nie gesetzt.)
@@ -4474,6 +4483,7 @@ window.FortressApp = function Fortress() {
         alive: true,
         cannonIndex: index,
         wp,                 // Waffentyp dieses Laufs (Experiment, sonst null)
+        kt: cn.kt || "std", // Kanonenart: mauerbrechend oder kanonenjagend
         trail: []
       });
       const angle = Math.atan2(ty - sy, tx - sx);
@@ -4574,6 +4584,8 @@ window.FortressApp = function Fortress() {
       return ((_a2 = playerInfo.current[x]) == null ? void 0 : _a2.name) || (x === 1 ? t('bluePlayer') : x === 2 ? t('redPlayer') : t('greenPlayer'));
     };
     if (kind === "cannon") {
+      // Zwei Kanonenarten: der Mauerbrecher richtet an Kanonen NICHTS aus.
+      if ((balExp() || {}).zweiKanonen && (ball.kt || "std") !== "slayer") return;
       const enemyCannon = CANNON_OF[ep];
       const cn = cannons.current[ep].find((c) => Math.abs(hitR - c.r) <= 1 && Math.abs(hitC - c.c) <= 1);
       if (cn) {
@@ -4587,6 +4599,10 @@ window.FortressApp = function Fortress() {
         // Durchschlag: entweder GEKAUFT (wuchtKauf, Standard) oder — nur als
         // Vergleichsmessung — automatisch mit der Runde (wucht).
         let wucht = 1;
+        // Der Bezwinger ist Spezialist: er trifft haerter als der fruehere
+        // Allrounder — sonst lohnt der eigene Lauf nicht, weil jede Salve nur
+        // eine Haelfte des Arsenals einsetzt.
+        if (XC.zweiKanonen) wucht = XC.slayerDmg || 1;
         if (XC.wuchtKauf) wucht = 1 + ((upgrades.current[ball.player] || {}).power || 0);
         else if (XC.wucht) wucht = Math.min(XC.wuchtMax || 3,
           1 + Math.floor((roundRefVal.current - 1) / (XC.wucht || 3)));
@@ -4678,6 +4694,8 @@ window.FortressApp = function Fortress() {
       return;
     }
     if (kind === "castle") return;
+    // Der Bezwinger richtet an Mauern NICHTS aus — er ist reine Kanonenjagd.
+    if ((balExp() || {}).zweiKanonen && (ball.kt || "std") === "slayer") return;
     {
       // STEILFEUER-MOERSER (Experiment): die Granate fliegt UEBER den Mauerring
       // und detoniert erst im Burghof — an der Mauer richtet sie nichts aus.
@@ -4975,6 +4993,13 @@ window.FortressApp = function Fortress() {
       price = SHOP.armor.price;
       if (have < price) return false;
       up.armor = 1;
+    } else if (item === "slayer") {
+      const XS2 = balExp() || {};
+      if (!XS2.zweiKanonen) return false;
+      price = XS2.slayerPreis || 25;
+      if (have < price) return false;
+      cannonBudget.current[player] = (cannonBudget.current[player] || 0) + 1;
+      cannonTypeQueue.current[player].push("slayer");
     } else if (item === "power") {
       const XW = balExp() || {};
       if (!XW.wuchtKauf) return false;
@@ -5029,7 +5054,8 @@ window.FortressApp = function Fortress() {
     setGrid(newG);
     if (typeof window !== "undefined" && window.__mmDebug) { window.__places = window.__places || {}; window.__places[player] = (window.__places[player] || 0) + 1; }
     cannonSeq.current += 1;
-    cannons.current[player].push({ r: gr, c: gc, id: "c" + cannonSeq.current, hp: CANNON_HP });
+    const kTyp = (cannonTypeQueue.current[player] || []).shift() || "std";
+    cannons.current[player].push({ r: gr, c: gc, id: "c" + cannonSeq.current, hp: CANNON_HP, kt: kTyp });
     cannonBudget.current[player] -= 1;
     setUiTick((t) => t + 1);
     const left = cannonBudget.current[player];
@@ -5350,6 +5376,7 @@ window.FortressApp = function Fortress() {
           }
           botAimSeq.current++;
           lastAimWall.current[B] = false;   // Kanonenziel -> buendeln
+          salvenModus.current[B] = "slayer";   // Kanonenjagd -> Bezwinger feuern
           const jitC = botLvl().spread * 0.35;
           if (typeof window !== "undefined" && window.__mmDebug) {
             const ad = window.__aimDbg = window.__aimDbg || { cannon: 0, wall: 0 };
@@ -5362,6 +5389,7 @@ window.FortressApp = function Fortress() {
         }
       }
       lastAimWall.current[B] = true;    // Mauerziel -> faechern
+      salvenModus.current[B] = "std";   // Mauerangriff -> Mauerbrecher feuern
       if (typeof window !== "undefined" && window.__mmDebug) {
         const ad = window.__aimDbg = window.__aimDbg || { cannon: 0, wall: 0 };
         ad.wall++;
@@ -5415,6 +5443,13 @@ window.FortressApp = function Fortress() {
   // Fuer die Salven-Wahl (Experiment v3.53.0): worauf hat dieser Spieler
   // zuletzt gezielt? Mauer -> faechern (breite Bresche), Kanone -> buendeln
   // (Fokusfeuer). So bekommt JEDE Route ihr eigenes Werkzeug.
+  // ZWEI KANONENARTEN (Experiment v3.56.0, Playtest-Idee):
+  // Standard = Mauerbrecher (Schaden NUR an Mauern),
+  // Bezwinger = Kanonenjaeger (Schaden NUR an Kanonen).
+  // In der Schussphase waehlt man je Salve, WELCHE Art feuert. Damit kostet
+  // die Kanonenjagd zum ersten Mal etwas: den Mauerschaden derselben Runde.
+  const cannonTypeQueue = useRef({ 1: [], 2: [], 3: [] });   // Typ der naechsten Platzierung
+  const salvenModus = useRef({ 1: "std", 2: "std", 3: "std" }); // gewaehlte Art
   const lastAimWall = useRef({ 1: false, 2: false, 3: false });
   const botAimSeq = useRef(0); // rotiert die Zielmauer, damit das Feuer nicht auf einer Stelle klebt
   function botActFor(B) {
@@ -5442,6 +5477,21 @@ window.FortressApp = function Fortress() {
         }
         // Durchschlag ist fuer den Bot eine echte Alternative zur naechsten
         // Kanone: teurer, aber wirkt auf ALLE Kanonen gleichzeitig.
+        const XZ2 = balExp() || {};
+        if (XZ2.zweiKanonen) {
+          // Der Bot haelt ein Verhaeltnis: etwa jede dritte Kanone ein
+          // Bezwinger. Ohne Bezwinger kann er keine Kanone toeten, mit zu
+          // vielen macht er keinen Mauerschaden mehr.
+          const alle = cannons.current[B] || [];
+          const slay = alle.filter((c) => c.kt === "slayer").length;
+          const anteil = XZ2.slayerAnteil == null ? 0.34 : XZ2.slayerAnteil;
+          const preisS = XZ2.slayerPreis || 25;
+          if (alle.length >= 2 && slay < Math.max(1, Math.round(alle.length * anteil))
+              && have >= preisS && cannonBudget.current[B] <= 0
+              && alle.length < lvl.maxCannons) {
+            buyUpgrade(B, "slayer"); return;
+          }
+        }
         const XPw = balExp() || {};
         if (XPw.wuchtKauf) {
           const preise = XPw.powerPreise || [30, 60, 100];
@@ -7159,7 +7209,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.55.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.56.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

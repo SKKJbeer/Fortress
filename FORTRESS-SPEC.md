@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.55.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.56.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4102,3 +4102,57 @@ Abstimmung gehört an echte Partien.
 
 Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.55.0`.
+
+---
+
+## v3.56.0 — Zwei Kanonenarten mit Salven-Schalter (Playtest-Idee)
+
+Idee aus dem Playtest: Es gibt **zwei Kanonenarten**. Die Standard-Kanone
+zerstört Mauern. Im Shop kaufbar ist ein **„Kanonen-Bezwinger"**, der
+ausschließlich gegen Kanonen wirkt. In der Schussphase wählt man per Schalter,
+**welche Art feuert**.
+
+**Warum das der Schlüssel ist:** Heute feuert immer das ganze Arsenal auf das,
+worauf man zielt — die Kanonenjagd kostet also nichts. Mit dem Schalter feuert
+je Salve nur EINE Hälfte. Wer Kanonen jagt, verzichtet in derselben Runde auf
+Mauerschaden. Zum ersten Mal hat die Wahl einen Preis — ohne dass irgendeine
+Regel den Spieler einschränkt.
+
+**Umsetzung (gated über `zweiKanonen`):**
+- Kanonen tragen ein Feld `kt` (`"std"` | `"slayer"`), gesetzt bei der
+  Platzierung aus `cannonTypeQueue` (Shop-Kauf `slayer`, `slayerPreis` 25).
+- `salvenModus` je Spieler wählt, welche Art in `fireMortar` feuert.
+- `impactAt`: Mauerbrecher richten an Kanonen NICHTS aus, Bezwinger an Mauern
+  NICHTS. Bezwinger-Schaden über `slayerDmg`.
+- Bot: wählt den Modus passend zum Ziel und hält ein Kaufverhältnis
+  (`slayerAnteil`, Standard 0,34).
+
+**Ergebnis (je 32 Partien, gemischte Taktik, auf killBlast 2 + Fächer-Wahl):**
+| Variante | entschieden | Median | Spanne | Mauern | Kan-Kills |
+|---|---|---|---|---|---|
+| Referenz: eine Kanonenart | 17/32 | 14 | 9–14 | 56,3 | 3,4 |
+| Zwei Arten, Bezwinger Schaden 1 | 5/32 | 16 | 1–14 | 41,2 | 0,9 |
+| Zwei Arten, Bezwinger Schaden 3 | 19/32 | 15 | 10–15 | 62,6 | 3,4 |
+| **Zwei Arten, Schaden 3, halbes Arsenal** | **22/32** | **11** | 1–15 | 57,2 | 3,2 |
+
+**Drei Befunde:**
+1. **Der Spezialist muss deutlich härter treffen als der Allrounder.** Mit
+   Schaden 1 bricht alles ein (5/32, Kills 0,9), weil jede Salve nur die
+   halbe Feuerkraft einsetzt. Mit Schaden 3 ist das System der einen
+   Kanonenart **ebenbürtig bis leicht überlegen** (19/32 gegen 17/32) — bei
+   MEHR Mauerschaden (62,6 gegen 56,3) und gleicher Kill-Rate (3,4).
+2. **Die Mischung ist eine echte Entscheidung.** Gleicher Schaden, nur ein
+   anderes Kaufverhältnis: 34 % Bezwinger → 19/32 bei Median 15, 50 % → 22/32
+   bei Median 11. Der Anteil verändert Ausgang UND Tempo messbar — genau das
+   Ziel: eine Kaufentscheidung mit Konsequenz.
+3. **Kein Regelverlust für den Spieler.** Anders als Baukosten oder Bauradius
+   schränkt der Schalter niemanden ein. Er verteilt nur die vorhandene
+   Feuerkraft — und macht damit die Kanonenjagd zum ersten Mal teuer.
+
+**Offen:** Der beste Bezwinger-Anteil (34 % gegen 50 %) verschiebt vor allem
+das Tempo; welcher sich besser anfühlt, entscheidet sich am echten Spieltisch.
+Der Schalter braucht außerdem UI in der Schussphase und ein eigenes
+Kanonen-Modell, damit man beide Arten auf dem Feld auseinanderhält.
+
+Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.56.0`.
