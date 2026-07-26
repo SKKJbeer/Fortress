@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.52.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.53.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -4425,7 +4425,11 @@ window.FortressApp = function Fortress() {
       }
       const arc = (wp === "mortar" || wp === "emp");   // eigenes Ziel, keine Salven-Streuung
       const XF = arc ? null : balExp();
-      if (XF && XF.faecher && index > 0) {
+      // faecherWahl: die Salve faechert NUR, wenn auf eine Mauer gezielt wurde.
+      // Gegen Kanonen bleibt sie gebuendelt — sonst zerfaellt das Fokusfeuer.
+      const faechern = XF && (XF.faecher
+        || (XF.faecherWahl && lastAimWall.current[player]));
+      if (faechern && index > 0) {
         // Salven-Faecher: die Kanonen verteilen sich entlang der Mauerlinie,
         // statt alle in dieselbe frisch geschlagene Bresche zu feuern.
         const step = (XF.faecherSpan || 2) * CELL;
@@ -4737,11 +4741,12 @@ window.FortressApp = function Fortress() {
           }
         }
         if (ball.player !== ep) {
-          scrap.current[ball.player] = (scrap.current[ball.player] || 0) + SCRAP_WALL;
-          addScrapPop(hitC * CELL + CELL / 2, hitR * CELL, SCRAP_WALL, ball.player);
+          const lohn = (balExp() || {}).wandLohn || SCRAP_WALL;
+          scrap.current[ball.player] = (scrap.current[ball.player] || 0) + lohn;
+          addScrapPop(hitC * CELL + CELL / 2, hitR * CELL, lohn, ball.player);
           const msD = msOf(ball.player);
           msD.walls += 1;
-          msD.scrap += SCRAP_WALL;
+          msD.scrap += lohn;
           msD.hits += 1;
           // Wiederaufbau-Paket C (v3.30.0): Trümmer-Bergung — der kanonenlose
           // Verteidiger birgt +1 Schrott aus der eigenen zerstörten Mauer.
@@ -4784,6 +4789,21 @@ window.FortressApp = function Fortress() {
       const used = placedThisPhase.current[player] || 0;
       if (used >= lim) return;
     }
+    {
+      // BAURADIUS (Experiment v3.53.0): Mauern duerfen nur nahe der eigenen Burg
+      // stehen. Ohne das weicht der Verteidiger einer Bresche einfach aus und
+      // zieht den Ring weiter aussen neu — die Truemmer, die der Beschuss
+      // hinterlaesst, sind dann folgenlos. Anders als ein Bauteil-Limit haengt
+      // diese Regel NICHT davon ab, wie viele Teile jemand setzt: sie trifft
+      // Mensch und Bot gleich.
+      const XR = balExp() || {};
+      if (XR.bauRadius) {
+        const ct = castles.current[player];
+        if (ct) for (const [r, c] of abs) {
+          if (Math.max(Math.abs(r - ct.r), Math.abs(c - ct.c)) > XR.bauRadius) return;
+        }
+      }
+    }
     for (const [r, c] of abs) {
       if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
       if (g[r][c] !== EMPTY) return;
@@ -4795,6 +4815,36 @@ window.FortressApp = function Fortress() {
           fd.blocked++;
         }
         return;
+      }
+    }
+    {
+      const XK = balExp() || {};
+      // Messung: Kosten AB DEM ERSTEN TEIL machen die Eroeffnung unmoeglich —
+      // Startschrott 15, erster Mauerring ~20 Teile, Partien endeten in Runde 1
+      // mit ueber 2000 abgelehnten Bauzuegen. Deshalb ein Freikontingent je
+      // Bauphase; erst der Wiederaufbau DARUEBER HINAUS kostet. Und Runde 1
+      // bleibt ganz frei, damit die Burg initial versiegelbar ist.
+      const frei = XK.mauerFrei == null ? 6 : XK.mauerFrei;
+      const zahlpflichtig = XK.mauerKosten
+        && roundRefVal.current > 1
+        && (placedThisPhase.current[player] || 0) >= frei;
+      if (zahlpflichtig) {
+        // Bauen kostet — wer viele Loecher stopfen muss, kann sich weniger
+        // Kanonen leisten. Erst dadurch wird der Mauer-Beschuss wirtschaftlich
+        // wirksam statt folgenlos.
+        const kosten = XK.mauerKosten;
+        if ((scrap.current[player] || 0) < kosten) {
+          if (typeof window !== "undefined" && window.__mmDebug) {
+            const bd = window.__bauDbg = window.__bauDbg || { gebaut: 0, bezahlt: 0, abgelehnt: 0 };
+            bd.abgelehnt++;
+          }
+          return;   // kein Schrott -> Loch bleibt offen
+        }
+        scrap.current[player] -= kosten;
+        if (typeof window !== "undefined" && window.__mmDebug) {
+          const bd = window.__bauDbg = window.__bauDbg || { gebaut: 0, bezahlt: 0, abgelehnt: 0 };
+          bd.gebaut++; bd.bezahlt += kosten;
+        }
       }
     }
     placedThisPhase.current[player] = (placedThisPhase.current[player] || 0) + 1;
@@ -5268,8 +5318,13 @@ window.FortressApp = function Fortress() {
     // so wie ein Mensch nachlegt statt die Schaeden zu verteilen.
     {
       const XA = balExp() || {};
-      const wantCannon = XA.aim === "cannon"
-        || (XA.aim === "mixed" && botAimSeq.current % 2 === 0);
+      // aimP1/aimP2 setzen die Route je Spieler getrennt ("wall" | "cannon" |
+      // "mixed") — damit spielt Mauer-Taktik direkt gegen Kanonen-Taktik und
+      // die Siegquote zeigt, welche Route sich lohnt.
+      const perP = XA["aimP" + B];
+      const modus = perP || XA.aim;
+      const wantCannon = modus === "cannon"
+        || (modus === "mixed" && botAimSeq.current % 2 === 0);
       if (wantCannon && !tutorialMode.current) {
         const cann = (cannons.current[E] || []).filter((cn) => cn.hp > 0);
         if (cann.length) {
@@ -5284,6 +5339,7 @@ window.FortressApp = function Fortress() {
                 - Math.hypot(y.c*CELL - src.x, y.r*CELL - src.y)))[0];
           }
           botAimSeq.current++;
+          lastAimWall.current[B] = false;   // Kanonenziel -> buendeln
           const jitC = botLvl().spread * 0.35;
           if (typeof window !== "undefined" && window.__mmDebug) {
             const ad = window.__aimDbg = window.__aimDbg || { cannon: 0, wall: 0 };
@@ -5295,6 +5351,7 @@ window.FortressApp = function Fortress() {
           return;
         }
       }
+      lastAimWall.current[B] = true;    // Mauerziel -> faechern
       if (typeof window !== "undefined" && window.__mmDebug) {
         const ad = window.__aimDbg = window.__aimDbg || { cannon: 0, wall: 0 };
         ad.wall++;
@@ -5345,6 +5402,10 @@ window.FortressApp = function Fortress() {
   // Laufzeit-Fallback (z. B. Tutorial), keine UI-Vorauswahl.
   const botLevel = useRef("mid");
   function botLvl() { return BOT_LEVELS[tutorialMode.current ? "mid" : botLevel.current] || BOT_LEVELS.mid; }
+  // Fuer die Salven-Wahl (Experiment v3.53.0): worauf hat dieser Spieler
+  // zuletzt gezielt? Mauer -> faechern (breite Bresche), Kanone -> buendeln
+  // (Fokusfeuer). So bekommt JEDE Route ihr eigenes Werkzeug.
+  const lastAimWall = useRef({ 1: false, 2: false, 3: false });
   const botAimSeq = useRef(0); // rotiert die Zielmauer, damit das Feuer nicht auf einer Stelle klebt
   function botActFor(B) {
     if (eliminated.current[B]) return;
@@ -7074,7 +7135,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.52.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.53.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

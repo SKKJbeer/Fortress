@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.52.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.53.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -3945,3 +3945,76 @@ vier Stufen. Im Menü verlinkt (i18n `reportsLink`), neben dem Datenschutz-Link.
 
 Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
 SW-Cache `fortress-v3.52.0`.
+
+---
+
+## v3.53.0 — Ist die MAUER-Route überhaupt attraktiv? (688 Partien, mit Seitenkontrolle)
+
+Playtest-Impuls: Es soll nicht nur die Kanonen-Taktik lohnen. Auch der
+Mauer-Beschuss muss attraktiv sein, Löcher schließen soll Druck erzeugen und
+anstrengender sein als bloßes Kanonen-Zerstören.
+
+**Neue Messmethode.** Bisher spielten in jeder Messung BEIDE Seiten dieselbe
+Taktik — das sagt nichts über deren Attraktivität. Neu: `aimP1`/`aimP2` setzen
+die Route je Spieler getrennt, sodass Mauer-Taktik direkt gegen Kanonen-Taktik
+antritt. Die Siegquote zeigt dann, welche Route sich lohnt. **Jede Variante
+wurde in BEIDEN Orientierungen gemessen** (Rollen getauscht) — ohne diese
+Kontrolle wäre eine Empfehlung falsch ausgefallen (aus P1-Sicht 40 %,
+getauscht 20 %, tatsächlich 31 %).
+
+**Neue gated Experimente:**
+| Flag | Wirkung |
+|---|---|
+| `aimP1` / `aimP2` | Zielroute je Spieler: `"wall"` \| `"cannon"` \| `"mixed"` |
+| `mauerKosten` / `mauerFrei` | Bauen kostet Schrott ab dem N-ten Teil je Bauphase (`__bauDbg`) |
+| `wandLohn` | Schrott je zerstörter Mauer (statt `SCRAP_WALL`=2) |
+| `faecherWahl` | Salve fächert NUR beim Mauerziel, bündelt beim Kanonenziel |
+| `bauRadius` | Mauern nur innerhalb N Feldern um die eigene Burg |
+
+**Ergebnis — wie oft gewinnt der MAUER-Angreifer?** (50 % = beide Routen gleich stark)
+| Variante | Partien | Mauer gewinnt | 95 %-Bereich | Platz-1-Vorteil |
+|---|---|---|---|---|
+| **Heute** | 24 | **0 %** | 0–14 % | – |
+| Nur Fächer als Wahl | 35 | 9 % | 3–22 % | 63 % |
+| **Bauradius 8 + Fächer-Wahl** | 56 | **18 %** | 10–30 % | 54 % |
+| Bauradius 6 + Fächer-Wahl | 64 | 100 % | – | *degeneriert* |
+| Mauerschaden zahlt 6 statt 2 | 17 | **0 %** | 0–18 % | – |
+| Salven-Fächer als globale Regel | 32 | 97 % | 84–99 % | 56 % |
+| Bauen kostet 2 + Lohn 6 | 80 | 31 % | 22–42 % | 56 % |
+| Bauen kostet 2 + Fächer-Wahl | 40 | 55 % | 40–69 % | 55 % |
+
+**Fünf Befunde:**
+1. **Die Mauer-Route ist heute chancenlos** — 0 von 24, obere Vertrauensgrenze
+   14 %. Wer auf Mauern schießt, verliert praktisch immer gegen einen
+   Kanonen-Jäger.
+2. **Mauerschaden besser zu bezahlen wirkt GEGENTEILIG** (0 %). Grund: Die
+   Kill-Explosion des Kanonen-Spielers reißt mehrere Mauern auf einmal — von
+   einem höheren Mauerlohn profitiert er stärker als der Mauer-Angreifer.
+3. **Der Salven-Fächer ist ein Schalter, kein Regler.** Als globale Regel
+   kippt er auf 97 %, weil das Fokusfeuer auf Kanonen zerfällt. Als
+   SPIELERWAHL (fächern gegen Mauern, bündeln gegen Kanonen) ist er ein
+   sauberes Werkzeug — allein aber zu schwach (9 %).
+4. **Baukosten balancieren am besten (55 %) — sind aber ein BOT-ARTEFAKT.**
+   Die Verlust-Diagnose zeigt den Verlierer bei exakt 12 platzierten Teilen,
+   also genau am Freikontingent. Bots setzen 3–5× mehr Teile als Menschen
+   (gemessen: Median 12–50 je Bauphase gegenüber 5–10 bei Menschen). Dieselbe
+   Falle wie beim Nachschub-Limit in v3.49.0. **Nicht übernehmen.**
+5. **Bauradius ist der beste menschentaugliche Hebel** (18 %, 88 % entschiedene
+   Partien, Median Runde 13, nur 5 von 56 Frühausfällen, KEIN Platzvorteil).
+   Er zwingt zum Wiederaufbau in der Trümmerzone, statt den Ring einfach weiter
+   außen neu zu ziehen — und hängt nicht davon ab, wie viele Teile jemand setzt.
+   Radius 6 ist zu eng: die Burg ist nicht mehr versiegelbar (alle 64 Partien
+   endeten in Runde 1–2).
+
+**Kernaussage:** Die Mauer-Route wird nur attraktiv, wenn **Verteidigen etwas
+kostet**. Ohne Kosten ist auch die breiteste Bresche folgenlos, weil sie gratis
+geschlossen wird. Von allen Kostenformen ist der Bauradius die einzige, die
+nicht von der Bauteil-MENGE abhängt und deshalb Mensch und Bot gleich trifft.
+
+**Offen:** Auch Bauradius 8 bringt die Mauer-Route nur auf 18 %, nicht auf 50 %.
+Volle Balance ist im Selbstspiel nicht nachweisbar — jede kapazitätsbasierte
+Regel verzerrt das Bot-Verhalten. Die Route-Balance gehört an echten Partien
+gemessen; die Telemetrie läuft.
+
+Spielregeln weiterhin UNVERÄNDERT. Tests grün (Unit 39/39, E2E 309/309).
+SW-Cache `fortress-v3.53.0`.
