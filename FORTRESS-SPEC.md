@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.60.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.61.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4343,3 +4343,41 @@ gleichverteilten 5×5-Feld liegen 16 von 25 Zellen im Abstand 2, 8 im Abstand 1
 und genau eine im Abstand 0.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.60.0`.
+
+---
+
+## v3.61.0 — Eigenes Modell für den Kanonen-Bezwinger
+
+Bis v3.60.0 war der Bezwinger die Standardkanone mit einem Fadenkreuz-Aufsatz.
+Playtest: Er soll auf einen Blick als ANDERE und deutlich WUCHTIGERE Waffe
+lesbar sein. Er bekommt deshalb ein eigenes Modell.
+
+**Neu in `src/render/sprites.js`:** `slayerBaseSprite()` und
+`slayerTurretSprite()`, gewählt über den neuen Parameter `kt` in
+`cannonBaseSprite` / `cannonTurretSprite` / `drawCannonFull`. Der Sprite-Cache
+ist um die Kanonenart erweitert (`|S` im Schlüssel), es entstehen also keine
+zusätzlichen Frame-Kosten — beide Modelle werden weiterhin EINMAL offscreen
+gebacken und dann nur geblittet (Perf-Regel bleibt gewahrt).
+
+**Was den Bezwinger unterscheidet:**
+- **Kantiger Sechseck-Sockel** statt runder Panzerplatte, dazu vier diagonale
+  Ankerklauen mit Kralle — breiterer Stand, schwerere Silhouette.
+- **Rohr 4,1 statt 2,9 Zellen lang und 11,5 statt 8,5 breit**, leicht konisch.
+- **Durchgehende violette Energieader** über die ganze Rohrlänge, dreilagig
+  (dunkler Kanal, Kernfarbe, heller Glanz) — sie bindet Sockel, Gehäuse und
+  Rohr farblich zusammen.
+- **Mündungsbremse als EIN breiter Block** mit vier Auswurfschlitzen statt
+  drei dünner Rippen. Dünne Rippen zerfallen bei 14 px Zellgröße zu Grieß —
+  dieselbe Lektion wie beim App-Icon in v3.50.2.
+- **Zwei dicke Rücklaufzylinder** über und unter dem Rohr, mit Endkappe statt
+  aufgesetztem Farbklotz (der wirkte wie ein angeklebter Baustein).
+- **Violettes Kantenlicht** am Gehäuse, violetter Glutkern in der Mündung.
+
+**Weggelassen:** Die Skin-Kuppel (`cannonDomeSprite`) wird beim Bezwinger NICHT
+gezeichnet — sein eigenes Modell ist die Signatur, ein zusätzlicher Aufsatz
+würde die Silhouette zumatschen. Das große Fadenkreuz aus v3.57.0 weicht einem
+kleinen pulsierenden Energiekern; die Erkennbarkeit trägt jetzt die Form.
+
+Violett ist durchgängig seine Farbe: Shop-Karte, Salven-Schalter und Feldmodell.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.61.0`.

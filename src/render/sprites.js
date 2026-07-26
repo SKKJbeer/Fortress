@@ -699,10 +699,185 @@ export function cannonBarrelSprite(player, skinId, skinDef) {
 //   FEST     Basisplatte (Panzerung, Bolzen) + Turmring
 //   ROTIEREND Turmgehäuse + Rohr + zwei Rücklaufzylinder + Mündungsbremse
 // Beides wird gebacken; im Frame nur zwei drawImage (eins davon rotiert).
-export function cannonBaseSprite(player, skinId, skinDef) {
+// ── KANONEN-BEZWINGER (v3.61.0) ───────────────────────────────────────────
+// Bewusst eine ANDERE Silhouette als der Mauerbrecher: breiterer, kantiger
+// Sockel mit vier Ankerklauen statt runder Panzerplatte, und ein deutlich
+// laengeres, dickeres Rohr mit mehrkammriger Muendungsbremse. Violette
+// Energieadern sind seine Signaturfarbe (dieselbe wie im Shop und am Schalter).
+// Er soll auf einen Blick als schwerere, spezialisierte Waffe lesbar sein.
+const SLAYER_VIO = "#a78bfa", SLAYER_VIO_HELL = "#ddd6fe", SLAYER_VIO_DUNKEL = "#5b21b6";
+
+function slayerBaseSprite(player) {
+  const R = CELL * 1.6;
+  const D = Math.ceil(R * 2.9);
+  const c = mkSpriteCanvas(D, D);
+  const x = c.getContext("2d");
+  const cx = D / 2, cy = D / 2;
+  // Bodenschatten — groesser als beim Mauerbrecher, das Ding ist schwerer
+  x.fillStyle = "rgba(0,0,0,0.45)";
+  x.beginPath(); x.ellipse(cx + 2.5, cy + 4, R * 1.18, R * 0.55, 0, 0, Math.PI * 2); x.fill();
+  // VIER ANKERKLAUEN diagonal — die markanteste Formaenderung
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + i * Math.PI / 2;
+    x.save(); x.translate(cx, cy); x.rotate(a);
+    x.fillStyle = "rgba(0,0,0,0.40)"; x.fillRect(R * 0.62 + 1.5, -R * 0.30 + 2, R * 0.62, R * 0.60);
+    const g = x.createLinearGradient(R * 0.6, -R * 0.3, R * 1.25, R * 0.3);
+    g.addColorStop(0, "#8b95a6"); g.addColorStop(0.55, "#4a5464"); g.addColorStop(1, "#232b36");
+    x.fillStyle = g; x.fillRect(R * 0.62, -R * 0.30, R * 0.62, R * 0.60);
+    // Kralle vorn
+    x.fillStyle = "#1b222d";
+    x.beginPath();
+    x.moveTo(R * 1.24, -R * 0.30); x.lineTo(R * 1.44, 0); x.lineTo(R * 1.24, R * 0.30);
+    x.closePath(); x.fill();
+    x.fillStyle = "rgba(255,255,255,0.16)"; x.fillRect(R * 0.62, -R * 0.30, R * 0.62, 2);
+    x.restore();
+  }
+  // Kantiger Sechseck-Sockel statt runder Platte
+  const pr = R * 0.98;
+  x.save();
+  x.fillStyle = "rgba(0,0,0,0.35)";
+  x.beginPath();
+  for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3;
+    const px = cx + Math.cos(a) * pr + 2, py = cy + Math.sin(a) * pr + 2.5;
+    i ? x.lineTo(px, py) : x.moveTo(px, py); }
+  x.closePath(); x.fill();
+  const bg = x.createLinearGradient(cx - pr, cy - pr, cx + pr, cy + pr);
+  bg.addColorStop(0, "#79839a"); bg.addColorStop(0.5, "#3a4351"); bg.addColorStop(1, "#161c26");
+  x.fillStyle = bg;
+  x.beginPath();
+  for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3;
+    const px = cx + Math.cos(a) * pr, py = cy + Math.sin(a) * pr;
+    i ? x.lineTo(px, py) : x.moveTo(px, py); }
+  x.closePath(); x.fill();
+  x.strokeStyle = "rgba(255,255,255,0.18)"; x.lineWidth = 1.3; x.stroke();
+  x.restore();
+  // Violette Energieadern im Sockel
+  x.strokeStyle = SLAYER_VIO; x.lineWidth = 1.5; x.globalAlpha = 0.75;
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3 + Math.PI / 6;
+    x.beginPath();
+    x.moveTo(cx + Math.cos(a) * pr * 0.42, cy + Math.sin(a) * pr * 0.42);
+    x.lineTo(cx + Math.cos(a) * pr * 0.86, cy + Math.sin(a) * pr * 0.86);
+    x.stroke();
+  }
+  x.globalAlpha = 1;
+  // Schwerer Drehkranz mit Zaehnen
+  x.strokeStyle = "#0d1219"; x.lineWidth = R * 0.20;
+  x.beginPath(); x.arc(cx, cy, R * 0.62, 0, Math.PI * 2); x.stroke();
+  x.strokeStyle = "#6d7789"; x.lineWidth = 1.6;
+  x.beginPath(); x.arc(cx, cy, R * 0.62, 0, Math.PI * 2); x.stroke();
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2;
+    x.strokeStyle = i % 2 ? "#8b95a6" : SLAYER_VIO_DUNKEL;
+    x.lineWidth = 2.2;
+    x.beginPath();
+    x.moveTo(cx + Math.cos(a) * R * 0.55, cy + Math.sin(a) * R * 0.55);
+    x.lineTo(cx + Math.cos(a) * R * 0.70, cy + Math.sin(a) * R * 0.70);
+    x.stroke();
+  }
+  return c;
+}
+
+function slayerTurretSprite(player) {
+  const R = CELL * 1.6;
+  // Deutlich laenger und dicker als der Mauerbrecher (2.9 / 8.5)
+  const barrelLen = CELL * 4.1, barrelW = 11.5;
+  const PAD = 14;
+  const W2 = Math.ceil(R * 1.0 + barrelLen + PAD * 2);
+  const H2 = Math.ceil(R * 1.8 + PAD * 2);
+  const c = mkSpriteCanvas(W2, H2);
+  const x = c.getContext("2d");
+  const ox = PAD + R * 0.66, oy = H2 / 2;
+  // Schlagschatten
+  x.save(); x.translate(2.5, 3.5);
+  x.fillStyle = "rgba(0,0,0,0.42)";
+  x.fillRect(ox - R * 0.6, oy - R * 0.62, R * 1.25, R * 1.24);
+  x.fillRect(ox + R * 0.5, oy - barrelW / 2, barrelLen, barrelW);
+  x.restore();
+  // Kantiges Gehaeuse
+  const hg = x.createLinearGradient(ox - R * 0.6, oy - R * 0.6, ox + R * 0.6, oy + R * 0.6);
+  hg.addColorStop(0, "#8d97a8"); hg.addColorStop(0.5, "#414b5a"); hg.addColorStop(1, "#191f2a");
+  x.fillStyle = hg;
+  x.beginPath();
+  x.moveTo(ox - R * 0.60, oy - R * 0.44); x.lineTo(ox - R * 0.34, oy - R * 0.64);
+  x.lineTo(ox + R * 0.52, oy - R * 0.58); x.lineTo(ox + R * 0.66, oy - R * 0.30);
+  x.lineTo(ox + R * 0.66, oy + R * 0.30); x.lineTo(ox + R * 0.52, oy + R * 0.58);
+  x.lineTo(ox - R * 0.34, oy + R * 0.64); x.lineTo(ox - R * 0.60, oy + R * 0.44);
+  x.closePath(); x.fill();
+  x.strokeStyle = "rgba(255,255,255,0.20)"; x.lineWidth = 1.2; x.stroke();
+  // Violettes Kantenlicht: bindet Gehaeuse, Sockel und Rohr farblich zusammen
+  x.save(); x.globalAlpha = 0.55; x.strokeStyle = SLAYER_VIO; x.lineWidth = 1.6;
+  x.beginPath();
+  x.moveTo(ox - R * 0.34, oy - R * 0.64); x.lineTo(ox + R * 0.52, oy - R * 0.58);
+  x.stroke(); x.restore();
+  // Zwei dicke Ruecklaufzylinder ueber und unter dem Rohr
+  for (const sgn of [-1, 1]) {
+    const zy = oy + sgn * (barrelW / 2 + 4.2);
+    x.fillStyle = "rgba(0,0,0,0.35)"; x.fillRect(ox + R * 0.42 + 1.5, zy - 3 + 2, barrelLen * 0.52, 6);
+    const zg = x.createLinearGradient(0, zy - 3, 0, zy + 3);
+    zg.addColorStop(0, "#93a0b2"); zg.addColorStop(0.5, "#4c576a"); zg.addColorStop(1, "#232b38");
+    x.fillStyle = zg; x.fillRect(ox + R * 0.42, zy - 3, barrelLen * 0.52, 6);
+    // Endkappe statt aufgesetztem Farbklotz — sonst wirken die Zylinder
+    // wie angeklebte Bausteine statt wie Teil der Waffe.
+    x.fillStyle = "#1a212c";
+    x.fillRect(ox + R * 0.42 + barrelLen * 0.52 - 3, zy - 3, 3, 6);
+    x.fillStyle = "rgba(255,255,255,0.22)";
+    x.fillRect(ox + R * 0.42, zy - 3, barrelLen * 0.52, 1.2);
+  }
+  // HAUPTROHR: lang, leicht konisch, mit violetter Energieader
+  const bx0 = ox + R * 0.48, bx1 = ox + R * 0.48 + barrelLen;
+  const bgr = x.createLinearGradient(0, oy - barrelW / 2, 0, oy + barrelW / 2);
+  bgr.addColorStop(0, "#a3adbd"); bgr.addColorStop(0.42, "#59637a");
+  bgr.addColorStop(0.75, "#2b3340"); bgr.addColorStop(1, "#141a24");
+  x.fillStyle = bgr;
+  x.beginPath();
+  x.moveTo(bx0, oy - barrelW / 2); x.lineTo(bx1 - 10, oy - barrelW * 0.40);
+  x.lineTo(bx1 - 10, oy + barrelW * 0.40); x.lineTo(bx0, oy + barrelW / 2);
+  x.closePath(); x.fill();
+  // Energieader laeuft durchgehend bis zur Muendung und glimmt
+  x.fillStyle = "rgba(91,33,182,0.85)";
+  x.fillRect(bx0 + 3, oy - 2, barrelLen - 16, 4);
+  x.fillStyle = SLAYER_VIO;
+  x.fillRect(bx0 + 4, oy - 1.1, barrelLen - 18, 2.2);
+  x.fillStyle = SLAYER_VIO_HELL; x.globalAlpha = 0.7;
+  x.fillRect(bx0 + 4, oy - 1.1, barrelLen - 18, 0.9);
+  x.globalAlpha = 1;
+  // Muendungsbremse: EIN breiter Block mit zwei Schlitzen — als Silhouette
+  // lesbar, statt drei duenner Rippen, die bei 14 px Zellgroesse zerfallen.
+  const mbx = bx1 - 14, mbw = 15;
+  x.fillStyle = "rgba(0,0,0,0.40)";
+  x.fillRect(mbx + 1.5, oy - barrelW * 0.70 + 2, mbw, barrelW * 1.40);
+  const mbg = x.createLinearGradient(0, oy - barrelW * 0.7, 0, oy + barrelW * 0.7);
+  mbg.addColorStop(0, "#9aa5b6"); mbg.addColorStop(0.45, "#4b5566"); mbg.addColorStop(1, "#1d242f");
+  x.fillStyle = mbg;
+  x.fillRect(mbx, oy - barrelW * 0.70, mbw, barrelW * 1.40);
+  x.strokeStyle = "rgba(255,255,255,0.22)"; x.lineWidth = 1;
+  x.strokeRect(mbx + 0.5, oy - barrelW * 0.70 + 0.5, mbw - 1, barrelW * 1.40 - 1);
+  // zwei Auswurfschlitze
+  x.fillStyle = "#0e131b";
+  x.fillRect(mbx + 3.5, oy - barrelW * 0.66, 3, barrelW * 0.34);
+  x.fillRect(mbx + 3.5, oy + barrelW * 0.32, 3, barrelW * 0.34);
+  x.fillRect(mbx + 9, oy - barrelW * 0.66, 3, barrelW * 0.34);
+  x.fillRect(mbx + 9, oy + barrelW * 0.32, 3, barrelW * 0.34);
+  // Muendung mit violettem Glutkern
+  x.fillStyle = "#0b1017";
+  x.beginPath(); x.ellipse(bx1 + 3, oy, 3.2, barrelW * 0.44, 0, 0, Math.PI * 2); x.fill();
+  const mg = x.createRadialGradient(bx1 + 3, oy, 0, bx1 + 3, oy, 5);
+  mg.addColorStop(0, SLAYER_VIO_HELL); mg.addColorStop(1, "rgba(167,139,250,0)");
+  x.fillStyle = mg;
+  x.beginPath(); x.ellipse(bx1 + 3, oy, 5, barrelW * 0.55, 0, 0, Math.PI * 2); x.fill();
+  // Visierbuegel oben auf dem Gehaeuse
+  x.strokeStyle = SLAYER_VIO_HELL; x.lineWidth = 1.6; x.globalAlpha = 0.9;
+  x.beginPath(); x.arc(ox + R * 0.05, oy, R * 0.34, -2.5, -0.65); x.stroke();
+  x.globalAlpha = 1;
+  return { canvas: c, ox, oy };
+}
+
+export function cannonBaseSprite(player, skinId, skinDef, kt) {
   if (!SPR.base) SPR.base = {};
-  const key = player + (skinId ? "|" + skinId : "");
+  const key = player + (skinId ? "|" + skinId : "") + (kt === "slayer" ? "|S" : "");
   if (SPR.base[key]) return SPR.base[key];
+  if (kt === "slayer") return (SPR.base[key] = slayerBaseSprite(player));
   const R = CELL * 1.6;
   const D = Math.ceil(R * 2.3);
   const c = mkSpriteCanvas(D, D);
@@ -779,10 +954,11 @@ export function cannonBaseSprite(player, skinId, skinDef) {
   return c;
 }
 // Rotierender Teil: Turmgehäuse + Rohr, gezeichnet nach RECHTS (0°).
-export function cannonTurretSprite(player, skinId, skinDef) {
+export function cannonTurretSprite(player, skinId, skinDef, kt) {
   if (!SPR.turret) SPR.turret = {};
-  const key = player + (skinId ? "|" + skinId : "");
+  const key = player + (skinId ? "|" + skinId : "") + (kt === "slayer" ? "|S" : "");
   if (SPR.turret[key]) return SPR.turret[key];
+  if (kt === "slayer") return (SPR.turret[key] = slayerTurretSprite(player));
   const R = CELL * 1.6;
   const barrelLen = CELL * 2.9, barrelW = 8.5;
   const PAD = 12;
@@ -930,10 +1106,10 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   ctx.fill();
   // FESTER Unterbau: Panzerplatte + Turmring (dreht NICHT mit — das ist der
   // Kern des Redesigns v3.45.0; vorher rotierte nur ein Stab an einer Kuppel)
-  const base = cannonBaseSprite(player, skinId, skinDef);
+  const base = cannonBaseSprite(player, skinId, skinDef, kt);
   ctx.drawImage(base, cx - base.width / 2, cy - base.height / 2);
   // ROTIERENDER Turm: Gehäuse + Rohr + Rücklaufzylinder + Mündungsbremse
-  const tur = cannonTurretSprite(player, skinId, skinDef);
+  const tur = cannonTurretSprite(player, skinId, skinDef, kt);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
@@ -941,37 +1117,34 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   ctx.restore();
   // Kuppel-Sprite liefert weiterhin die Skin-Signatur (Facetten/Runen/Schuppen)
   // als Aufsatz auf dem Turmdach — kleiner skaliert, damit der Turm dominiert.
-  const dome = cannonDomeSprite(player, skinId, skinDef);
-  ctx.save();
-  ctx.globalAlpha = 0.92;
-  ctx.drawImage(dome, cx - dome.width * 0.31, cy - dome.height * 0.31, dome.width * 0.62, dome.height * 0.62);
-  ctx.restore();
+  // Der Bezwinger traegt KEINE Skin-Kuppel: sein eigenes Modell ist die
+  // Signatur, ein zusaetzlicher Aufsatz wuerde die Silhouette nur zumatschen.
+  if (kt !== "slayer") {
+    const dome = cannonDomeSprite(player, skinId, skinDef);
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(dome, cx - dome.width * 0.31, cy - dome.height * 0.31, dome.width * 0.62, dome.height * 0.62);
+    ctx.restore();
+  }
   // ── Kennzeichnung Kanonen-Bezwinger ────────────────────────────────────
   // Bewusst als Aufsatz und nicht als eigenes Modell: die Silhouette bleibt
   // dieselbe (es ist eine Kanone), nur das Visier macht die Rolle klar.
   if (kt === "slayer") {
-    const t2 = (nowT != null ? nowT : Date.now()) / 900;
+    // Kleiner pulsierender Energiekern auf dem Turmdach. Bewusst dezent —
+    // das schwere Modell traegt die Erkennbarkeit, der Kern setzt nur den
+    // violetten Akzent, der sich im Shop und am Salven-Schalter wiederholt.
+    const t2 = (nowT != null ? nowT : Date.now()) / 700;
     ctx.save();
     ctx.translate(cx, cy);
-    // dunkler Sockel, damit der helle Ring auf jedem Untergrund traegt
-    ctx.fillStyle = "rgba(10,14,22,0.72)";
-    ctx.beginPath(); ctx.arc(0, 0, R * 0.46, 0, Math.PI * 2); ctx.fill();
-    // Fadenkreuz-Ring, pulsierend
-    ctx.strokeStyle = "#c4b5fd";
-    ctx.lineWidth = 1.7;
-    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t2);
-    ctx.beginPath(); ctx.arc(0, 0, R * 0.40, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1.3;
-    for (let q = 0; q < 4; q++) {
-      const a3 = q * Math.PI / 2;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a3) * R * 0.22, Math.sin(a3) * R * 0.22);
-      ctx.lineTo(Math.cos(a3) * R * 0.56, Math.sin(a3) * R * 0.56);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#a78bfa";
-    ctx.beginPath(); ctx.arc(0, 0, R * 0.11, 0, Math.PI * 2); ctx.fill();
+    const puls = 0.72 + 0.28 * Math.sin(t2);
+    const kg = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.34);
+    kg.addColorStop(0, "rgba(221,214,254," + puls.toFixed(2) + ")");
+    kg.addColorStop(0.45, "rgba(167,139,250,0.45)");
+    kg.addColorStop(1, "rgba(167,139,250,0)");
+    ctx.fillStyle = kg;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.34, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ede9fe";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.10, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
   // ── Signatur-Animation je Skin (v3.44.0) ────────────────────────────────
