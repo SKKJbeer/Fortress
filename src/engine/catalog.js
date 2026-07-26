@@ -73,17 +73,30 @@ export function matOf(p) {
 // bleibt in allen Varianten erhalten (Team-Erkennung!).
 //   crystal = Facetten-Kuppel     rune = rotierender Runenkranz (Hexer)
 //   scale   = Drachenschuppen     star = umlaufende Sterne
+// form (v3.62.0): eigene SILHOUETTE je Skin — vorher unterschieden sich alle
+// Modelle nur in der Farbe, die Form war identisch. Jetzt beschreibt `form`
+// Sockel (s), Rohr (r) und Muendung (m); src/render/sprites.js baut daraus das
+// Modell. Damit ist ein Skin auf dem Spielfeld an der Kontur erkennbar, nicht
+// erst an der Farbe — das ist der eigentliche "haben wollen"-Faktor.
 export const CANNON_SKIN = {
-  cannon_crystal:  { dome: ["#cffafe", "#0e7490", "#083344"], core: "#a5f3fc", style: "crystal", fx: "#67e8f9" },
-  cannon_obsidian: { dome: ["#6d28d9", "#27216b", "#0c0a1d"], core: "#c4b5fd", style: "rune",    fx: "#a78bfa" },
-  cannon_hexer:    { dome: ["#7e22ce", "#3b0764", "#100519"], core: "#f0abfc", style: "rune",    fx: "#e879f9", hexer: true },
-  cannon_dragon:   { dome: ["#dc2626", "#7f1d1d", "#1c0a0a"], core: "#fca5a5", style: "scale",   fx: "#fb923c" },
-  cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", style: "star",    fx: "#fde047", stars: true },
+  cannon_crystal:  { dome: ["#cffafe", "#0e7490", "#083344"], core: "#a5f3fc", style: "crystal", fx: "#67e8f9",
+                     form: { s: "kristall", r: "kristall", m: "prisma" } },
+  cannon_obsidian: { dome: ["#6d28d9", "#27216b", "#0c0a1d"], core: "#c4b5fd", style: "rune",    fx: "#a78bfa",
+                     form: { s: "monolith", r: "kurz",     m: "ring" } },
+  cannon_hexer:    { dome: ["#7e22ce", "#3b0764", "#100519"], core: "#f0abfc", style: "rune",    fx: "#e879f9", hexer: true,
+                     form: { s: "monolith", r: "haken",    m: "ring" } },
+  cannon_dragon:   { dome: ["#dc2626", "#7f1d1d", "#1c0a0a"], core: "#fca5a5", style: "scale",   fx: "#fb923c",
+                     form: { s: "schuppe",  r: "hals",     m: "kiefer" } },
+  cannon_star:     { dome: ["#2563eb", "#1e3a8a", "#0b1026"], core: "#fde047", style: "star",    fx: "#fde047", stars: true,
+                     form: { s: "ring",     r: "stab",     m: "stern" } },
   // Gold-Shop-Modelle (v3.45.0): kaufbar statt schmiedbar. Eigene Panzerung,
   // bewusst OHNE Signatur-Animation — die bleibt der Schmiede-Stufe vorbehalten.
-  cannon_bronze:   { dome: ["#e6b877", "#a06a2c", "#3c2410"], core: "#fde68a" },
-  cannon_steel:    { dome: ["#dbe3ee", "#69748a", "#1b2029"], core: "#e2e8f0" },
-  cannon_royal:    { dome: ["#fef3c7", "#c79a2e", "#4a3410"], core: "#fff7d6", style: "crystal", fx: "#fde68a" }
+  cannon_bronze:   { dome: ["#e6b877", "#a06a2c", "#3c2410"], core: "#fde68a",
+                     form: { s: "niete",    r: "trichter", m: "wulst" } },
+  cannon_steel:    { dome: ["#dbe3ee", "#69748a", "#1b2029"], core: "#e2e8f0",
+                     form: { s: "kaste",    r: "doppel",   m: "brems" } },
+  cannon_royal:    { dome: ["#fef3c7", "#c79a2e", "#4a3410"], core: "#fff7d6", style: "crystal", fx: "#fde68a",
+                     form: { s: "krone",    r: "zier",     m: "krone" } }
 };
 // Einschlag-Effekte: p = Partikel-Palette, ring = Explosions-Gradient (r,g,b)
 export const IMPACT_FX = {

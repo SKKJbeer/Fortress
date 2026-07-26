@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.61.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.62.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4381,3 +4381,40 @@ kleinen pulsierenden Energiekern; die Erkennbarkeit trägt jetzt die Form.
 Violett ist durchgängig seine Farbe: Shop-Karte, Salven-Schalter und Feldmodell.
 
 Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.61.0`.
+
+---
+
+## v3.62.0 — Jeder Kanonen-Skin bekommt eine eigene Silhouette
+
+Bis hierher unterschieden sich die acht Skins nur in der FARBE plus einer
+kleinen Signatur-Animation — Sockel, Gehäuse und Rohr waren bei allen
+identisch. Auf dem Spielfeld war ein 500-Gold-Modell damit nur ein
+umgefärbtes Standardmodell. Das ist das Gegenteil eines „haben wollen"-Effekts.
+
+**Neu: Formsystem.** `CANNON_SKIN[*].form = { s, r, m }` beschreibt Sockel,
+Rohr und Mündung; `formBaseSprite()` und `formTurretSprite()` in
+`src/render/sprites.js` bauen daraus das Modell. Die Skin-ID steckt bereits im
+Sprite-Cache-Schlüssel — jedes Modell wird also weiterhin EINMAL offscreen
+gebacken und danach nur geblittet (Perf-Regel unberührt).
+
+| Skin | Sockel | Rohr | Mündung |
+|---|---|---|---|
+| Kristall | Zwölfzack-Splitter | nach vorn breiter, facettiert | Prisma |
+| Obsidian | gedrehter Monolith | kurz und dick | schwebender Runenring |
+| Hexer | gedrehter Monolith | gebogener Haken | schwebender Runenring |
+| Drache | Schuppenpanzer | welliger Hals mit Rückenkamm | zwei Klauen |
+| Stern | offener Schweberring | schlanker Stab mit Ringen | Sternkern |
+| Bronze | Nietenkranz | Trichter | Wulst |
+| Stahl | Kastenblock | ZWEI Läufe | Mündungsbremse |
+| Königlich | Zackenkrone mit Edelsteinen | Zierringe | Krone |
+
+**Kuppel entfernt.** Skins mit eigener Form zeichnen die runde
+`cannonDomeSprite` nicht mehr. Sie lag früher über jedem Sockel und machte alle
+Kanonen optisch wieder gleich — genau das, was die Formvielfalt beheben soll.
+Die Signatur-ANIMATIONEN (Runenkranz, Kristallfacetten, Schuppen, Sterne)
+bleiben erhalten; Bewegung kann man nicht umfärben.
+
+Damit gibt es zehn unterscheidbare Modelle: acht Skins, das Standardmodell und
+der Kanonen-Bezwinger aus v3.61.0.
+
+Tests grün (Unit 39/39, E2E 309/309). SW-Cache `fortress-v3.62.0`.

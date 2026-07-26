@@ -699,6 +699,282 @@ export function cannonBarrelSprite(player, skinId, skinDef) {
 //   FEST     Basisplatte (Panzerung, Bolzen) + Turmring
 //   ROTIEREND Turmgehäuse + Rohr + zwei Rücklaufzylinder + Mündungsbremse
 // Beides wird gebacken; im Frame nur zwei drawImage (eins davon rotiert).
+// ── SKIN-FORMEN (v3.62.0) ─────────────────────────────────────────────────
+// Jeder Skin bekommt eine eigene Kontur statt nur eine andere Farbe. Alles
+// wird EINMAL offscreen gebacken (Cache-Schluessel enthaelt die Skin-ID) und
+// danach nur geblittet — die Perf-Regel bleibt unberuehrt.
+function mitAlpha(hex, a) {
+  const h = hex.replace("#", "");
+  const v = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
+  const n = parseInt(v, 16);
+  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+}
+// Polygon aus Radien: r(i) liefert je Ecke den Abstand — damit lassen sich
+// Zacken, Kronen und Kristalle mit einer Funktion bauen.
+function polyPfad(x, cx, cy, ecken, r) {
+  x.beginPath();
+  for (let i = 0; i < ecken; i++) {
+    const a = i / ecken * Math.PI * 2 - Math.PI / 2;
+    const rr = r(i);
+    const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.closePath();
+}
+function formBaseSprite(player, form, cols, core) {
+  const R = CELL * 1.6;
+  const D = Math.ceil(R * 2.9);
+  const c = mkSpriteCanvas(D, D);
+  const x = c.getContext("2d");
+  const cx = D / 2, cy = D / 2;
+  const [hell, mitte, dunkel] = cols;
+  const grd = (r0) => { const g = x.createLinearGradient(cx - r0, cy - r0, cx + r0, cy + r0);
+    g.addColorStop(0, hell); g.addColorStop(0.52, mitte); g.addColorStop(1, dunkel); return g; };
+  x.fillStyle = "rgba(0,0,0,0.42)";
+  x.beginPath(); x.ellipse(cx + 2.5, cy + 4, R * 1.05, R * 0.48, 0, 0, Math.PI * 2); x.fill();
+  const S = form.s;
+  if (S === "kristall") {
+    // Sechs Splitter, abwechselnd lang und kurz — scharfkantig, nichts rundes
+    for (const [sk, al] of [[1.30, 0.35], [1.0, 1]]) {
+      x.fillStyle = al < 1 ? "rgba(0,0,0,0.35)" : grd(R);
+      polyPfad(x, cx + (al < 1 ? 2 : 0), cy + (al < 1 ? 3 : 0), 12,
+        (i) => (i % 2 ? R * 0.62 : R * 1.02) * (al < 1 ? sk * 0.78 : 1));
+      x.fill();
+    }
+    x.strokeStyle = mitAlpha(core, 0.55); x.lineWidth = 1.2;
+    polyPfad(x, cx, cy, 12, (i) => i % 2 ? R * 0.62 : R * 1.02); x.stroke();
+  } else if (S === "monolith") {
+    // Rechteckiger Steinblock, leicht gedreht — massiv und dunkel
+    x.save(); x.translate(cx, cy); x.rotate(0.22);
+    x.fillStyle = "rgba(0,0,0,0.4)"; x.fillRect(-R * 0.92 + 2, -R * 0.92 + 3, R * 1.84, R * 1.84);
+    x.fillStyle = grd(R); x.fillRect(-R * 0.92, -R * 0.92, R * 1.84, R * 1.84);
+    x.strokeStyle = mitAlpha(core, 0.5); x.lineWidth = 1.4;
+    x.strokeRect(-R * 0.92, -R * 0.92, R * 1.84, R * 1.84);
+    x.strokeStyle = mitAlpha(core, 0.3); x.lineWidth = 1;
+    for (let i = 1; i < 3; i++) { x.beginPath();
+      x.moveTo(-R * 0.92, -R * 0.92 + i * R * 0.61); x.lineTo(R * 0.92, -R * 0.92 + i * R * 0.61); x.stroke(); }
+    x.restore();
+  } else if (S === "schuppe") {
+    x.fillStyle = grd(R); polyPfad(x, cx, cy, 8, () => R * 1.0); x.fill();
+    // Schuppenreihen, von aussen nach innen kleiner
+    for (let ring = 0; ring < 3; ring++) {
+      const rr = R * (0.92 - ring * 0.26), n = 10 - ring * 2;
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2 + ring * 0.3;
+        x.fillStyle = ring % 2 ? mitAlpha(dunkel, 0.85) : mitAlpha(hell, 0.30);
+        x.beginPath();
+        x.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, R * 0.17, 0, Math.PI * 2);
+        x.fill();
+      }
+    }
+    x.strokeStyle = mitAlpha(core, 0.5); x.lineWidth = 1.3;
+    polyPfad(x, cx, cy, 8, () => R * 1.0); x.stroke();
+  } else if (S === "ring") {
+    // Schwebender Ring: innen offen, wirkt schwerelos
+    x.strokeStyle = grd(R); x.lineWidth = R * 0.34;
+    x.beginPath(); x.arc(cx, cy, R * 0.80, 0, Math.PI * 2); x.stroke();
+    x.strokeStyle = mitAlpha(core, 0.75); x.lineWidth = 2;
+    x.beginPath(); x.arc(cx, cy, R * 0.97, 0, Math.PI * 2); x.stroke();
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + Math.PI / 4;
+      x.strokeStyle = mitAlpha(core, 0.9); x.lineWidth = 2.4;
+      x.beginPath();
+      x.moveTo(cx + Math.cos(a) * R * 0.34, cy + Math.sin(a) * R * 0.34);
+      x.lineTo(cx + Math.cos(a) * R * 0.66, cy + Math.sin(a) * R * 0.66);
+      x.stroke();
+    }
+  } else if (S === "niete") {
+    x.fillStyle = grd(R); polyPfad(x, cx, cy, 16, () => R * 1.0); x.fill();
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2;
+      const nx = cx + Math.cos(a) * R * 0.80, ny = cy + Math.sin(a) * R * 0.80;
+      x.fillStyle = "rgba(0,0,0,0.42)"; x.beginPath(); x.arc(nx + 0.8, ny + 1, 2.6, 0, 7); x.fill();
+      x.fillStyle = hell; x.beginPath(); x.arc(nx, ny, 2.4, 0, 7); x.fill();
+      x.fillStyle = mitAlpha(dunkel, 0.75); x.beginPath(); x.arc(nx + 0.5, ny + 0.6, 1.1, 0, 7); x.fill();
+    }
+  } else if (S === "kaste") {
+    x.save(); x.translate(cx, cy);
+    x.fillStyle = "rgba(0,0,0,0.4)"; x.fillRect(-R * 0.98 + 2, -R * 0.80 + 3, R * 1.96, R * 1.60);
+    x.fillStyle = grd(R); x.fillRect(-R * 0.98, -R * 0.80, R * 1.96, R * 1.60);
+    x.fillStyle = mitAlpha(dunkel, 0.9);
+    for (let i = 0; i < 4; i++) x.fillRect(-R * 0.98 + i * R * 0.52, -R * 0.80, R * 0.16, R * 1.60);
+    x.strokeStyle = "rgba(255,255,255,0.24)"; x.lineWidth = 1.3;
+    x.strokeRect(-R * 0.98, -R * 0.80, R * 1.96, R * 1.60);
+    x.restore();
+  } else if (S === "krone") {
+    // Zackenkranz wie eine Krone, dazwischen Edelsteine
+    x.fillStyle = grd(R);
+    polyPfad(x, cx, cy, 16, (i) => i % 2 ? R * 0.72 : R * 1.08); x.fill();
+    x.strokeStyle = mitAlpha(core, 0.8); x.lineWidth = 1.4;
+    polyPfad(x, cx, cy, 16, (i) => i % 2 ? R * 0.72 : R * 1.08); x.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * 2 + 1) / 16 * Math.PI * 2 - Math.PI / 2;
+      x.fillStyle = core;
+      x.beginPath(); x.arc(cx + Math.cos(a) * R * 0.60, cy + Math.sin(a) * R * 0.60, 2, 0, 7); x.fill();
+    }
+  } else {
+    x.fillStyle = grd(R); polyPfad(x, cx, cy, 8, () => R * 1.0); x.fill();
+  }
+  // Drehkranz — bei allen Formen gleich, sonst "schwebt" das Rohr
+  x.strokeStyle = "rgba(8,12,18,0.9)"; x.lineWidth = R * 0.18;
+  x.beginPath(); x.arc(cx, cy, R * 0.56, 0, Math.PI * 2); x.stroke();
+  x.strokeStyle = mitAlpha(core, 0.6); x.lineWidth = 1.4;
+  x.beginPath(); x.arc(cx, cy, R * 0.56, 0, Math.PI * 2); x.stroke();
+  return c;
+}
+
+function formTurretSprite(player, form, cols, core) {
+  const R = CELL * 1.6;
+  const [hell, mitte, dunkel] = cols;
+  const RR = form.r, MM = form.m;
+  // Rohrlaenge und -breite je Form — die Silhouette entsteht vor allem hier
+  const len = { kristall: 3.3, kurz: 2.1, haken: 2.9, hals: 3.4, stab: 4.0,
+                trichter: 2.2, doppel: 3.1, zier: 3.2 }[RR] || 2.9;
+  const br  = { kristall: 11, kurz: 12.5, haken: 9.5, hals: 10.5, stab: 6,
+                trichter: 13, doppel: 6.5, zier: 9.5 }[RR] || 8.5;
+  const barrelLen = CELL * len, barrelW = br, PAD = 16;
+  const W2 = Math.ceil(R * 1.0 + barrelLen + PAD * 2);
+  const H2 = Math.ceil(R * 2.0 + PAD * 2);
+  const c = mkSpriteCanvas(W2, H2);
+  const x = c.getContext("2d");
+  const ox = PAD + R * 0.62, oy = H2 / 2;
+  const bx0 = ox + R * 0.44, bx1 = bx0 + barrelLen;
+  const rohrG = () => { const g = x.createLinearGradient(0, oy - barrelW / 2, 0, oy + barrelW / 2);
+    g.addColorStop(0, hell); g.addColorStop(0.45, mitte); g.addColorStop(1, dunkel); return g; };
+  // Gehaeuse
+  x.fillStyle = "rgba(0,0,0,0.42)";
+  x.fillRect(ox - R * 0.56 + 2, oy - R * 0.58 + 3, R * 1.18, R * 1.16);
+  const hg = x.createLinearGradient(ox - R * 0.6, oy - R * 0.6, ox + R * 0.6, oy + R * 0.6);
+  hg.addColorStop(0, hell); hg.addColorStop(0.5, mitte); hg.addColorStop(1, dunkel);
+  x.fillStyle = hg;
+  x.beginPath();
+  x.moveTo(ox - R * 0.56, oy - R * 0.40); x.lineTo(ox - R * 0.30, oy - R * 0.58);
+  x.lineTo(ox + R * 0.48, oy - R * 0.52); x.lineTo(ox + R * 0.62, oy - R * 0.26);
+  x.lineTo(ox + R * 0.62, oy + R * 0.26); x.lineTo(ox + R * 0.48, oy + R * 0.52);
+  x.lineTo(ox - R * 0.30, oy + R * 0.58); x.lineTo(ox - R * 0.56, oy + R * 0.40);
+  x.closePath(); x.fill();
+  x.strokeStyle = mitAlpha(core, 0.45); x.lineWidth = 1.2; x.stroke();
+  // ── ROHR ───────────────────────────────────────────────────────────────
+  x.fillStyle = "rgba(0,0,0,0.40)";
+  x.fillRect(bx0 + 2, oy - barrelW / 2 + 3, barrelLen, barrelW);
+  if (RR === "kristall") {
+    // Nach vorn BREITER werdender Facettenkristall
+    x.fillStyle = rohrG();
+    x.beginPath();
+    x.moveTo(bx0, oy - barrelW * 0.34); x.lineTo(bx1, oy - barrelW * 0.62);
+    x.lineTo(bx1, oy + barrelW * 0.62); x.lineTo(bx0, oy + barrelW * 0.34);
+    x.closePath(); x.fill();
+    x.strokeStyle = mitAlpha(core, 0.65); x.lineWidth = 1.1;
+    for (let i = 1; i < 4; i++) { const px = bx0 + (bx1 - bx0) * i / 4;
+      x.beginPath(); x.moveTo(px, oy - barrelW * 0.5); x.lineTo(px, oy + barrelW * 0.5); x.stroke(); }
+  } else if (RR === "haken") {
+    // Gebogener Hexerstab
+    x.strokeStyle = rohrG(); x.lineWidth = barrelW;
+    x.lineCap = "round";
+    x.beginPath(); x.moveTo(bx0, oy);
+    x.quadraticCurveTo(bx0 + barrelLen * 0.6, oy - barrelW * 1.4, bx1, oy - barrelW * 0.5);
+    x.stroke(); x.lineCap = "butt";
+  } else if (RR === "hals") {
+    // Drachenhals: wellig, nach vorn schmaler
+    x.fillStyle = rohrG();
+    x.beginPath();
+    x.moveTo(bx0, oy - barrelW * 0.55);
+    x.quadraticCurveTo(bx0 + barrelLen * 0.5, oy - barrelW * 0.95, bx1, oy - barrelW * 0.30);
+    x.lineTo(bx1, oy + barrelW * 0.30);
+    x.quadraticCurveTo(bx0 + barrelLen * 0.5, oy - barrelW * 0.10, bx0, oy + barrelW * 0.55);
+    x.closePath(); x.fill();
+    for (let i = 0; i < 5; i++) {   // Rueckenschuppen
+      const px = bx0 + barrelLen * (0.15 + i * 0.17);
+      x.fillStyle = mitAlpha(core, 0.85);
+      x.beginPath();
+      x.moveTo(px, oy - barrelW * 0.72); x.lineTo(px + 5, oy - barrelW * 1.25);
+      x.lineTo(px + 9, oy - barrelW * 0.66); x.closePath(); x.fill();
+    }
+  } else if (RR === "stab") {
+    x.fillStyle = rohrG(); x.fillRect(bx0, oy - barrelW / 2, barrelLen, barrelW);
+    x.fillStyle = mitAlpha(core, 0.9); x.fillRect(bx0, oy - 1, barrelLen, 2);
+    for (let i = 0; i < 3; i++) {   // Ringe entlang des Stabes
+      const px = bx0 + barrelLen * (0.25 + i * 0.25);
+      x.fillStyle = core; x.fillRect(px, oy - barrelW * 1.1, 2.5, barrelW * 2.2);
+    }
+  } else if (RR === "trichter") {
+    x.fillStyle = rohrG();
+    x.beginPath();
+    x.moveTo(bx0, oy - barrelW * 0.42); x.lineTo(bx1, oy - barrelW * 0.95);
+    x.lineTo(bx1, oy + barrelW * 0.95); x.lineTo(bx0, oy + barrelW * 0.42);
+    x.closePath(); x.fill();
+    x.strokeStyle = mitAlpha(hell, 0.5); x.lineWidth = 2;
+    for (let i = 1; i < 3; i++) { const px = bx0 + (bx1 - bx0) * i / 3;
+      const hh = barrelW * (0.42 + 0.53 * i / 3);
+      x.beginPath(); x.moveTo(px, oy - hh); x.lineTo(px, oy + hh); x.stroke(); }
+  } else if (RR === "doppel") {
+    for (const sgn of [-1, 1]) {
+      const yy = oy + sgn * barrelW * 0.85;
+      x.fillStyle = rohrG(); x.fillRect(bx0, yy - barrelW / 2, barrelLen, barrelW);
+      x.fillStyle = "rgba(255,255,255,0.20)"; x.fillRect(bx0, yy - barrelW / 2, barrelLen, 1.4);
+      x.fillStyle = "#0e131b";
+      x.beginPath(); x.ellipse(bx1, yy, 2.4, barrelW * 0.45, 0, 0, 7); x.fill();
+    }
+    x.fillStyle = mitAlpha(dunkel, 0.9);
+    x.fillRect(bx0 + barrelLen * 0.35, oy - barrelW * 0.9, 5, barrelW * 1.8);
+  } else if (RR === "zier") {
+    x.fillStyle = rohrG(); x.fillRect(bx0, oy - barrelW / 2, barrelLen, barrelW);
+    for (let i = 0; i < 4; i++) {   // goldene Zierringe
+      const px = bx0 + barrelLen * (0.14 + i * 0.22);
+      x.fillStyle = hell; x.fillRect(px, oy - barrelW * 0.72, 4, barrelW * 1.44);
+      x.fillStyle = mitAlpha(dunkel, 0.55); x.fillRect(px + 3, oy - barrelW * 0.72, 1.2, barrelW * 1.44);
+    }
+  } else {   // kurz + Standard
+    x.fillStyle = rohrG(); x.fillRect(bx0, oy - barrelW / 2, barrelLen, barrelW);
+    x.fillStyle = "rgba(255,255,255,0.18)"; x.fillRect(bx0, oy - barrelW / 2, barrelLen, 1.6);
+  }
+  // ── MUENDUNG ───────────────────────────────────────────────────────────
+  if (MM === "prisma") {
+    x.fillStyle = mitAlpha(core, 0.95);
+    x.beginPath(); x.moveTo(bx1, oy - barrelW * 0.62); x.lineTo(bx1 + 11, oy);
+    x.lineTo(bx1, oy + barrelW * 0.62); x.closePath(); x.fill();
+    x.strokeStyle = hell; x.lineWidth = 1.2; x.stroke();
+  } else if (MM === "ring") {
+    x.strokeStyle = core; x.lineWidth = 2.6;
+    x.beginPath(); x.arc(bx1 + 5, oy - (RR === "haken" ? barrelW * 0.5 : 0), 8.5, 0, Math.PI * 2); x.stroke();
+    x.strokeStyle = mitAlpha(hell, 0.55); x.lineWidth = 1.3;
+    x.beginPath(); x.arc(bx1 + 5, oy - (RR === "haken" ? barrelW * 0.5 : 0), 5, 0, Math.PI * 2); x.stroke();
+  } else if (MM === "kiefer") {
+    for (const sgn of [-1, 1]) {   // zwei Klauen
+      x.fillStyle = hell;
+      x.beginPath();
+      x.moveTo(bx1 - 2, oy + sgn * barrelW * 0.12);
+      x.lineTo(bx1 + 13, oy + sgn * barrelW * 0.75);
+      x.lineTo(bx1 + 1, oy + sgn * barrelW * 0.52);
+      x.closePath(); x.fill();
+    }
+    x.fillStyle = core;
+    x.beginPath(); x.arc(bx1 + 1, oy, 3.4, 0, Math.PI * 2); x.fill();
+  } else if (MM === "stern") {
+    x.fillStyle = core;
+    polyPfad(x, bx1 + 4, oy, 10, (i) => i % 2 ? 3.4 : 9.5); x.fill();
+    x.fillStyle = "#fff";
+    x.beginPath(); x.arc(bx1 + 4, oy, 2.2, 0, Math.PI * 2); x.fill();
+  } else if (MM === "wulst") {
+    x.fillStyle = hell;
+    x.beginPath(); x.ellipse(bx1, oy, 5, barrelW * 1.05, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = "#0e131b";
+    x.beginPath(); x.ellipse(bx1 + 1, oy, 2.6, barrelW * 0.72, 0, 0, Math.PI * 2); x.fill();
+  } else if (MM === "krone") {
+    x.fillStyle = hell;
+    polyPfad(x, bx1 + 3, oy, 10, (i) => i % 2 ? 4.5 : 10); x.fill();
+    x.strokeStyle = mitAlpha(dunkel, 0.7); x.lineWidth = 1.2; x.stroke();
+    x.fillStyle = core;
+    x.beginPath(); x.arc(bx1 + 3, oy, 2.6, 0, Math.PI * 2); x.fill();
+  } else {   // brems
+    x.fillStyle = mitte; x.fillRect(bx1 - 9, oy - barrelW * 0.95, 11, barrelW * 1.90);
+    x.fillStyle = "#0e131b";
+    x.fillRect(bx1 - 6.5, oy - barrelW * 0.90, 2.6, barrelW * 0.55);
+    x.fillRect(bx1 - 6.5, oy + barrelW * 0.35, 2.6, barrelW * 0.55);
+  }
+  return { canvas: c, ox, oy };
+}
+
 // ── KANONEN-BEZWINGER (v3.61.0) ───────────────────────────────────────────
 // Bewusst eine ANDERE Silhouette als der Mauerbrecher: breiterer, kantiger
 // Sockel mit vier Ankerklauen statt runder Panzerplatte, und ein deutlich
@@ -878,6 +1154,8 @@ export function cannonBaseSprite(player, skinId, skinDef, kt) {
   const key = player + (skinId ? "|" + skinId : "") + (kt === "slayer" ? "|S" : "");
   if (SPR.base[key]) return SPR.base[key];
   if (kt === "slayer") return (SPR.base[key] = slayerBaseSprite(player));
+  if (skinDef && skinDef.form)
+    return (SPR.base[key] = formBaseSprite(player, skinDef.form, skinDef.dome, skinDef.core));
   const R = CELL * 1.6;
   const D = Math.ceil(R * 2.3);
   const c = mkSpriteCanvas(D, D);
@@ -959,6 +1237,8 @@ export function cannonTurretSprite(player, skinId, skinDef, kt) {
   const key = player + (skinId ? "|" + skinId : "") + (kt === "slayer" ? "|S" : "");
   if (SPR.turret[key]) return SPR.turret[key];
   if (kt === "slayer") return (SPR.turret[key] = slayerTurretSprite(player));
+  if (skinDef && skinDef.form)
+    return (SPR.turret[key] = formTurretSprite(player, skinDef.form, skinDef.dome, skinDef.core));
   const R = CELL * 1.6;
   const barrelLen = CELL * 2.9, barrelW = 8.5;
   const PAD = 12;
@@ -1117,9 +1397,10 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   ctx.restore();
   // Kuppel-Sprite liefert weiterhin die Skin-Signatur (Facetten/Runen/Schuppen)
   // als Aufsatz auf dem Turmdach — kleiner skaliert, damit der Turm dominiert.
-  // Der Bezwinger traegt KEINE Skin-Kuppel: sein eigenes Modell ist die
-  // Signatur, ein zusaetzlicher Aufsatz wuerde die Silhouette nur zumatschen.
-  if (kt !== "slayer") {
+  // Skins mit eigener Form tragen KEINE Kuppel mehr — ihr Modell IST die
+  // Signatur. Die runde Scheibe lag frueher ueber jedem Sockel und machte
+  // alle Kanonen wieder gleich; genau das sollte die Formvielfalt beheben.
+  if (kt !== "slayer" && !(skinDef && skinDef.form)) {
     const dome = cannonDomeSprite(player, skinId, skinDef);
     ctx.save();
     ctx.globalAlpha = 0.92;
