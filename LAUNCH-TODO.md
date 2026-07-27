@@ -48,8 +48,11 @@
 
 ## 3. Qualität & Stabilität (vor breitem Launch)
 
-- [ ] **Verbindungsabbruch-Handling**: Heartbeat/Reconnect für Online-Spiele
-      (was passiert wenn Host abbricht? Gast hängt aktuell).
+- [x] **Verbindungsabbruch-Handling** (v3.70.0): Herzschlag der Gäste + Reconnect
+      mit Backoff. Die alte Notiz hier war falsch herum — der GAST war längst
+      abgesichert (Watchdog, Resubscribe, Hart-Timeout), der HOST merkte einen
+      harten Gast-Abbruch nie und spielte gegen einen Geist weiter. Siehe SPEC
+      v3.70.0.
 - [ ] **3-Spieler-Online End-to-End-Test** mit echten Geräten (v3.0.7-Fix verifizieren).
 - [ ] **Matchmaking-Lasttest**: mehrere echte Spieler gleichzeitig, Cross-Device-Selbstmatch
       (bekannte Limitierung) beobachten.

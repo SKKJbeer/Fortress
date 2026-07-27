@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.69.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.70.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -624,6 +624,19 @@ const fb = {
       onData(exists ? snap.val() : null, exists);
     }, (err) => { _fbError = err.message; });
     return { stop: () => { try { unsub(); } catch (e) {} } };
+  },
+  // Echter Verbindungsstatus des SDK (v3.70.0). Nötig für den Herzschlag:
+  // Ist die EIGENE Leitung weg, sehen fremde Herzschläge zwangsläufig tot aus —
+  // ohne diese Gegenprobe würde der Host bei einem eigenen Netz-Aussetzer den
+  // Gast rauswerfen. `.info/connected` ist ein lokaler Pseudo-Knoten des SDK,
+  // kostet keine Bandbreite und ist auch im Spark-Plan verfügbar.
+  subscribeConnected(onChange) {
+    const s = sdk();
+    if (!s) return { stop: () => {} };
+    try {
+      const unsub = s.onValue(s.ref(s.db, ".info/connected"), (snap) => onChange(snap.val() === true));
+      return { stop: () => { try { unsub(); } catch (e) {} } };
+    } catch (e) { return { stop: () => {} }; }
   },
   // Registriert serverseitiges Auto-Löschen falls die Verbindung abbricht
   // (Tab geschlossen, Crash, Netzwerkausfall) — ohne Cloud Functions.
@@ -1968,6 +1981,19 @@ window.FortressApp = function Fortress() {
       up: JSON.parse(JSON.stringify(upgrades.current)),
       elim: __spreadValues({}, eliminated.current)
     }));
+    // Herzschlag-Diagnose (v3.70.0): Alter der zuletzt gesehenen Lebenszeichen
+    // je Gast-Slot, plus eigener SDK-Verbindungsstatus.
+    window.__hbDbg = gated(() => {
+      const out = { fbOnline: fbOnline.current, opp: oppLostRef.current,
+                    started: gameStarted.current, role: myRole.current,
+                    online: online.current, screen: screenRef.current,
+                    watch: !!hbWatchdog.current, slots: {} };
+      for (const k of Object.keys(hbSeen.current)) {
+        const r = hbSeen.current[k];
+        out.slots[k] = { ever: r.ever, ageMs: r.last ? Date.now() - r.last : null };
+      }
+      return out;
+    });
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
@@ -2879,14 +2905,122 @@ window.FortressApp = function Fortress() {
   const connLostRef = useRef(false);
   const pushFails = useRef(0);
   const resubAttempted = useRef(false);
+  const resubTries = useRef(0);      // Reconnect-Versuche (v3.70.0, Backoff)
+  const nextResubAt = useRef(0);
   const connWatchdog = useRef(null);
   const gameDisconnectCancel = useRef(null);
   const everGotState = useRef(false);
   const disconnectEnding = useRef(false);
+  // ── Herzschlag (v3.70.0) ───────────────────────────────────────────────────
+  // Verlässt ein Gast das Spiel SAUBER, schickt er `leave` und handlePlayerLeft
+  // regelt alles korrekt. Bricht er HART weg (App gekillt, Netz weg, Tab zu),
+  // kommt gar nichts — der Host spielte danach gegen einen Geist weiter und
+  // erfuhr nie, warum der Gegner nichts mehr tut. Es fehlte schlicht ein
+  // Lebenszeichen: ein untätiger Gast schreibt sonst NIE etwas.
+  const hbTimer = useRef(null);            // Gast: Schreib-Intervall
+  const hbCancel = useRef(null);           // Gast: onDisconnect-Abbruchfunktion
+  const hbMyRole = useRef(0);              // Gast: eigener Slot (leaveOnline nullt myRole vorher)
+  const hbChannels = useRef({});           // Host: Abos je Gast-Slot
+  const hbSeen = useRef({});               // Host: {2:{last,ever}, 3:{...}}
+  const hbWatchdog = useRef(null);         // Host: Prüf-Intervall
+  const [oppLost, setOppLost] = useState(null); // Name des vermissten Gegners
+  const oppLostRef = useRef(null);
+  const fbOnline = useRef(true);           // .info/connected — eigene Leitung
+  // Fristen. `window.__hbFast` staucht sie fuer die E2E-Suite zusammen —
+  // 30 s Wartezeit je Testfall waeren sonst untragbar (gleiche Bauart wie
+  // __mmDebug/__balExp: Schalter nur fuer Diagnose und Tests).
+  const HB_FAST = typeof window !== "undefined" && window.__hbFast;
+  const HB_WRITE_MS = HB_FAST ? 400 : 3e3;        // Schreibtakt des Gastes
+  const HB_WARN_MS  = HB_FAST ? 1600 : 10e3;      // → Banner "Gegner offline?"
+  const HB_DROP_MS  = HB_FAST ? 4500 : 30e3;      // → Partie sauber beenden
+  function setOpp(name) {
+    if (oppLostRef.current === name) return;
+    oppLostRef.current = name;
+    setOppLost(name);
+  }
   function setConn(lost) {
     if (connLostRef.current === lost) return;
     connLostRef.current = lost;
     setConnLost(lost);
+  }
+  // Gast: schreibt alle 3 s einen Zeitstempel nach games/{code}/hb{rolle}.
+  // Zusätzlich onDisconnect-Löschung auf GENAU DIESEN Knoten — damit erkennt
+  // der Host einen harten Abbruch sofort statt erst nach Ablauf der Frist.
+  // (Die Regression aus v3.14.10 betraf das Löschen des SPIELKNOTENS; ein
+  // eigener Herzschlag-Knoten ist davon nicht berührt — geht er verloren,
+  // bleibt die Lobby bestehen.)
+  function startHeartbeat(code, role) {
+    stopHeartbeat();
+    if (!code || role === 1) return;
+    hbMyRole.current = role;
+    const path = `games/${code}/hb${role}`;
+    const beat = () => { fb.patch(`games/${code}`, { ["hb" + role]: Date.now() }); };
+    beat();
+    try { hbCancel.current = fb.onDisconnectRemove(path); } catch (e) {}
+    hbTimer.current = setInterval(beat, HB_WRITE_MS);
+  }
+  function stopHeartbeat() {
+    if (hbTimer.current) { clearInterval(hbTimer.current); hbTimer.current = null; }
+    if (hbCancel.current) { try { hbCancel.current(); } catch (e) {} hbCancel.current = null; }
+  }
+  // Host: beobachtet die Herzschläge aller Gäste und beendet die Partie über
+  // handlePlayerLeft — denselben Weg wie ein sauberes Verlassen. Dadurch
+  // entstehen KEINE neuen ELO-/Ergebnis-Regeln: der Weggebliebene verliert,
+  // genau wie der, der auf "Beenden" tippt.
+  function startHostHeartbeatWatch(code, np) {
+    stopHostHeartbeatWatch();
+    const slots = np === 3 ? [2, 3] : [2];
+    for (const p of slots) {
+      hbSeen.current[p] = { last: 0, ever: false, val: 0 };
+      hbChannels.current[p] = fb.subscribeRaw(`games/${code}/hb${p}`, (val, exists) => {
+        const rec = hbSeen.current[p];
+        if (!rec) return;
+        if (!exists) { if (rec.ever) rec.last = 0; return; }  // Knoten weg (onDisconnect) = sofort tot
+        if (typeof val !== "number") return;
+        // NUR ein GEÄNDERTER Wert zählt als Lebenszeichen. Auf das blosse
+        // Eintreffen eines Events zu vertrauen wäre falsch: liefert die
+        // Zustellung denselben Stand erneut aus (Re-Emit, Wiederverbindung,
+        // Ereignis am Elternknoten), hielte das einen toten Gast beliebig
+        // lange am Leben — genau das hat der E2E-Test aufgedeckt.
+        // Der Abstand wird auf der HOST-Uhr gemessen, nie im Vergleich zum
+        // Zeitstempel des Gastes: fremde Uhren dürfen hier nichts entscheiden.
+        if (val === rec.val) return;
+        rec.val = val; rec.last = Date.now(); rec.ever = true;
+      });
+    }
+    hbWatchdog.current = setInterval(() => {
+      if (!online.current || myRole.current !== 1) return;
+      if (screenRef.current === "result" || !gameStarted.current) return;
+      // Eigene Leitung weg? Dann sind ALLE Herzschläge zwangsläufig still —
+      // das ist kein Gast-Problem. Niemanden verdächtigen, erst recht keinen
+      // rauswerfen; die Frist läuft weiter, sobald die Verbindung wieder steht.
+      if (!fbOnline.current) {
+        for (const p of slots) if (hbSeen.current[p]) hbSeen.current[p].last = Date.now();
+        setOpp(null);
+        return;
+      }
+      let vermisst = null;
+      for (const p of slots) {
+        const rec = hbSeen.current[p];
+        if (!rec || !rec.ever) continue;              // nie da gewesen → nicht unser Fall
+        if (eliminated.current[p]) continue;          // schon raus
+        const still = rec.last === 0 ? HB_DROP_MS + 1 : Date.now() - rec.last;
+        if (still > HB_DROP_MS) { handlePlayerLeft(p); continue; }
+        if (still > HB_WARN_MS && !vermisst) {
+          vermisst = (playerInfo.current[p] || {}).name || t('playerFallback', { n: p });
+        }
+      }
+      setOpp(vermisst);
+    }, HB_FAST ? 350 : 2e3);
+  }
+  function stopHostHeartbeatWatch() {
+    if (hbWatchdog.current) { clearInterval(hbWatchdog.current); hbWatchdog.current = null; }
+    for (const k of Object.keys(hbChannels.current)) {
+      try { hbChannels.current[k].stop(); } catch (e) {}
+    }
+    hbChannels.current = {};
+    hbSeen.current = {};
+    setOpp(null);
   }
   // Gemeinsamer Gast-State-Handler: erkennt Löschung des Spielknotens (exists=false)
   // als sauberes Host-Spielende. Wird von startPolling und resubscribeGuestState genutzt.
@@ -2907,6 +3041,8 @@ window.FortressApp = function Fortress() {
     everGotState.current = true;
     setConn(false);
     resubAttempted.current = false;
+    resubTries.current = 0;
+    nextResubAt.current = 0;
     dbgBump("statesRecv", "state empfangen (" + (typeof stateStr === "string" ? stateStr.length : "?") + "B)");
     try { applyState(JSON.parse(stateStr)); } catch (e) { dbg.current.lastErr = "applyState: " + e.message; }
     if (typeof window !== "undefined" && window.__mmDebug) window.__guestDbg = { recv: dbg.current.statesRecv, lastErr: dbg.current.lastErr, screen: screenRef.current, role: myRole.current, online: online.current };
@@ -3268,7 +3404,12 @@ window.FortressApp = function Fortress() {
     resubAttempted.current = false;
     everGotState.current = false;
     disconnectEnding.current = false;
+    resubTries.current = 0;
+    nextResubAt.current = 0;
+    stopHeartbeat();
+    stopHostHeartbeatWatch();
     if (role !== 1) {
+      startHeartbeat(code, role);
       mpChannel.current = fb.subscribeRaw(`games/${code}/state`, guestStateHandler);
       // Verbindungs-Watchdog: nach 6s ohne State → "verbunden?"-Banner + einmaliger
       // Reconnect-Versuch. Banner verschwindet automatisch sobald wieder State fließt.
@@ -3296,8 +3437,13 @@ window.FortressApp = function Fortress() {
         }
         if (stale > 6e3) {
           setConn(true);
-          if (!resubAttempted.current) {
-            resubAttempted.current = true;
+          // v3.70.0: vorher genau EIN Versuch (`resubAttempted`) — half der
+          // nicht, passierte bis zum harten 30-s-Abbruch nichts mehr. Jetzt
+          // wird mit wachsendem Abstand weiter versucht (4/6/8/… bis 12 s).
+          const now = Date.now();
+          if (now >= nextResubAt.current) {
+            resubTries.current++;
+            nextResubAt.current = now + Math.min(12e3, 2e3 + resubTries.current * 2e3);
             resubscribeGuestState();
           }
         }
@@ -3306,9 +3452,11 @@ window.FortressApp = function Fortress() {
       const origStop = mpChannel.current.stop;
       mpChannel.current.stop = () => {
         clearInterval(timeoutCheck);
+        stopHeartbeat();
         origStop();
       };
     } else {
+      startHostHeartbeatWatch(code, numPlayersRef.current || 2);
       mpChannel.current = fb.subscribe(`games/${code}/guestAction2`, (actionStr) => {
         dbgBump("actRecv", "Aktion P2");
         handleGuestAction(actionStr, 2);
@@ -4022,6 +4170,13 @@ window.FortressApp = function Fortress() {
       try { gameDisconnectCancel.current(); } catch (e) {}
       gameDisconnectCancel.current = null;
     }
+    // Herzschlag beidseitig einstellen (v3.70.0): der Gast hört auf zu schlagen
+    // und bestellt sein onDisconnect ab, der Host beendet seine Beobachtung.
+    // Ohne das schlüge ein Gast im Menü weiter in ein fremdes Spiel hinein.
+    stopHeartbeat();
+    stopHostHeartbeatWatch();
+    if (!wasHost && code && hbMyRole.current) { try { fb.delete(`games/${code}/hb${hbMyRole.current}`); } catch (e) {} }
+    hbMyRole.current = 0;
     if (wasHost && code) {
       setTimeout(() => {
         try {
@@ -4074,6 +4229,12 @@ window.FortressApp = function Fortress() {
     screenRef.current = "menu";
     setScreen("menu");
   }
+  // Verbindungsstatus des SDK dauerhaft mitführen (v3.70.0) — siehe
+  // fb.subscribeConnected: die Gegenprobe für den Herzschlag-Watchdog.
+  useEffect(() => {
+    const sub = fb.subscribeConnected((up) => { fbOnline.current = up; });
+    return () => { try { sub.stop(); } catch (e) {} };
+  }, []);
   useEffect(() => {
     const onVisibility = () => {
       if (!mpChannel.current) return;
@@ -7434,7 +7595,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.69.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.70.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -8369,6 +8530,20 @@ window.FortressApp = function Fortress() {
       },
       style: { flexShrink: 0, background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.5)", color: "#fdba74", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }
     }, t('connReconnect'))
+  )),
+  // Gegner-Herzschlag ausgeblieben (v3.70.0). Eigenes Verbindungsproblem hat
+  // Vorrang — sonst stünden zwei Banner übereinander und das falsche würde
+  // dem Gegner die Schuld geben.
+  oppLost && !connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
+  }, /* @__PURE__ */ React.createElement("div", {
+    style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(40,10,10,0.94)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
+  },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(248,113,113,0.35)", borderTopColor: "#f87171", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
+    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fca5a5", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('oppLostTitle', { name: oppLost })),
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fecaca", opacity: 0.85, lineHeight: 1.25 } }, t('oppLostSub'))
+    )
   )), showOnboarding && React.createElement(OnboardingModal, {
     step: onboardStep,
     setStep: setOnboardStep,

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.69.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.70.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4739,3 +4739,73 @@ und fand nach der Umbenennung nur noch 4 von 5 Karten — jetzt auf `Panzer`/
 `Armor`. (Der Fehlschlag war korrekt: der Test hat die Umbenennung gemeldet.)
 
 Tests grün (Unit 39/39, E2E 312/312). SW-Cache `fortress-v3.69.0`.
+
+---
+
+## v3.70.0 — Herzschlag: der Host merkt einen harten Abbruch
+
+**Die Lücke.** Verlässt ein Gast das Spiel *sauber*, schickt er die Aktion
+`leave`, und `handlePlayerLeft()` regelt alles korrekt — Gegner ausgeschieden,
+Sieger bestimmt, ELO verbucht, `reason: "left"`. Bricht er *hart* weg (App
+gekillt, Netz weg, Tab zu), kommt **gar nichts**. Der Host spielte danach gegen
+einen Geist weiter: Der Gast baute nie wieder, seine Burg blieb offen, irgendwann
+schied er „regulär" aus — der Host erfuhr nie, warum sein Gegner erstarrt war.
+
+Der Grund ist simpel: ein **untätiger Gast schreibt nie etwas**. `guestAction2/3`
+wird nur bei Eingaben beschrieben. Es fehlte schlicht ein Lebenszeichen.
+
+### Aufbau
+
+| Seite | Was passiert |
+|---|---|
+| Gast | schreibt alle 3 s `games/{code}/hb{rolle}` = Zeitstempel; dazu `onDisconnect`-Löschung auf **genau diesen** Knoten |
+| Host | abonniert `hb2` (+`hb3` bei 3 Spielern), prüft alle 2 s |
+| → 10 s still | Banner „{Name} antwortet nicht" |
+| → 30 s still | `handlePlayerLeft(p)` — **derselbe Weg wie ein echtes Verlassen** |
+
+Dass der Abbruch über `handlePlayerLeft` läuft, ist die eigentliche Pointe:
+es entstehen **keine neuen ELO- oder Ergebnisregeln**. Wer wegbleibt, verliert —
+genau wie der, der auf „Beenden" tippt (Anti-Quit-Dodge aus v3.30.3).
+
+Das `onDisconnect` betrifft **nur den Herzschlag-Knoten**, nicht den Spielknoten.
+Die Regression aus v3.14.10 (mobiler App-Wechsel löschte die Lobby) bleibt damit
+ausgeschlossen: geht der Herzschlag verloren, bleibt die Lobby bestehen.
+
+### Zwei Fallen, beide entschärft
+
+**1. Die eigene Leitung.** Ist die Verbindung des *Hosts* weg, sehen alle
+Herzschläge zwangsläufig tot aus — er hätte einen völlig gesunden Gast
+rausgeworfen. Gegenprobe ist jetzt `.info/connected` (lokaler Pseudo-Knoten des
+SDK, kostenlos, Spark-tauglich): solange die eigene Leitung unten ist, wird
+niemand verdächtigt und die Frist läuft nicht.
+
+**2. Nur geänderte Werte zählen.** Erster Entwurf wertete das *Eintreffen* eines
+Events als Lebenszeichen. Der E2E-Test deckte auf, dass ein erneut zugestelltes,
+**unverändertes** Snapshot einen toten Gast beliebig lange am Leben hält
+(`ageMs: 51` Sekunden nach dem Kill). Gezählt wird jetzt der **Wertwechsel**, und
+der Abstand wird auf der **Host-Uhr** gemessen — nie im Vergleich zum Zeitstempel
+des Gastes, denn fremde Uhren dürfen hier nichts entscheiden.
+
+### Nebenbei: Reconnect war ein Einmalversuch
+
+`resubAttempted` erlaubte dem Gast **genau einen** Wiederverbindungsversuch.
+Half der nicht, passierte bis zum harten 30-s-Abbruch nichts mehr. Jetzt wird mit
+wachsendem Abstand weiter versucht (4/6/8/… bis 12 s), zurückgesetzt sobald
+wieder State fliesst.
+
+### Test
+
+Neue Suite `suiteHeartbeat`: killt den Gast-Kontext **ohne** Beenden-Klick (also
+ohne `leave`) und prüft Lebenszeichen, Empfang, Banner und sauberes Spielende.
+`window.__hbFast` staucht die Fristen (sonst 30 s Wartezeit je Fall). Läuft
+seriell in `onlineHeavy` — parallel dazu weitere Online-Kontexte erzeugen die
+bekannten Phase-Sync-Flakes.
+
+Am Mock war eine Korrektur nötig: `.info/connected` ist ein **lokaler**
+Pseudo-Knoten, kein DB-Pfad. Der Mock lieferte dort `null`, der Client hätte sich
+für offline gehalten — der Watchdog wäre in **jedem** Test stillgelegt gewesen.
+(Gleiche Lehre wie v3.14.11: Der Mock muss die SDK-Semantik spiegeln.)
+
+`firebase-security-rules.json`: `hb2`/`hb3` als Zahlen validiert.
+
+Tests grün (Unit 39/39, E2E 320/320). SW-Cache `fortress-v3.70.0`.

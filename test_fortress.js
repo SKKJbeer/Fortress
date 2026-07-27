@@ -753,6 +753,14 @@ function makeFbMock(port) {
     return { exists:()=>v!==null&&v!==undefined, val:()=>v };
   }
   function onValue(ref, cb, errCb) {
+    // .info/connected ist ein LOKALER Pseudo-Knoten des SDK, kein DB-Pfad —
+    // die echte SDK meldet dort sofort true. Ohne diesen Zweig lieferte der
+    // Mock null, der Client haette sich fuer offline gehalten und der
+    // Herzschlag-Watchdog waere in JEDEM Test stillgelegt gewesen.
+    if (ref.__p === '.info/connected') {
+      setTimeout(() => cb({ exists:()=>true, val:()=>true }), 0);
+      return () => {};
+    }
     let last = -1;
     const id = setInterval(async () => {
       try {
@@ -1340,6 +1348,108 @@ async function suiteMatchmaking(browser, fbPort) {
 // SUITE 5c: Online 3-Spieler — Code-Join (Host + 2 Gäste), Phasen-Sync,
 // Quick-Match-Tripel (queue3), Gast-Ausstieg + Rejoin (screenRef-Regression)
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// SUITE 5b: Herzschlag — HARTER Gast-Abbruch (v3.70.0)
+// Ein sauberes Verlassen schickt `leave`; ein gekillter Client schickt gar
+// nichts. Vorher spielte der Host danach gegen einen Geist weiter. Der Test
+// killt den Gast-Kontext OHNE Beenden-Klick und prueft, dass der Host es
+// merkt und die Partie ueber denselben Weg beendet wie ein echtes Verlassen.
+// `__hbFast` staucht die Fristen (sonst 30 s Wartezeit).
+// ═══════════════════════════════════════════════════════════════
+async function suiteHeartbeat(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Herzschlag / harter Abbruch\n' + '='.repeat(50));
+
+  const fastInit = `window.__hbFast = true; window.__mmDebug = true;`;
+  const { ctx: ctxH, page: pH } = await makeOnlineCtx(browser, fbPort, fastInit);
+  const { ctx: ctxG, page: pG } = await makeOnlineCtx(browser, fbPort, fastInit);
+  pH.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+
+  let guestClosed = false;
+  try {
+    await Promise.all([loadMenu(pH), loadMenu(pG)]);
+    await jsClick(pH, ['ONLINE']); await pH.waitForTimeout(200);
+    await jsClick(pH, ['Spiel erstellen']); await pH.waitForTimeout(1200);
+    const code = await pH.evaluate(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
+      return null;
+    });
+    if (!code) { fail('Herzschlag: kein Spielcode → Suite abgebrochen'); return { res, errs }; }
+
+    await jsClick(pG, ['ONLINE']); await pG.waitForTimeout(200);
+    await jsClick(pG, ['Spiel beitreten', 'beitreten']); await pG.waitForTimeout(200);
+    await pG.waitForSelector('input:not([type=range])', { timeout: 3000 }).catch(() => {});
+    if (await pG.evaluate(() => !!document.querySelector('input:not([type=range])')))
+      await pG.fill('input:not([type=range])', code);
+    await pG.waitForTimeout(100);
+    await jsClick(pG, ['Beitreten']);
+
+    const hostCanvas = await pH.waitForSelector('canvas', { timeout: 8000 }).then(() => true).catch(() => false);
+    const guestCanvas = await pG.waitForSelector('canvas', { timeout: 8000 }).then(() => true).catch(() => false);
+    const bothIn = hostCanvas && guestCanvas;
+    if (!bothIn) { fail('Herzschlag: Spiel kam nicht zustande → Suite abgebrochen'); return { res, errs }; }
+    ok('Herzschlag: Host + Gast im Spiel ✓');
+
+    // 1) Der Gast MUSS ein Lebenszeichen schreiben — vorher gab es keines.
+    const hb = await pH.evaluate(async (a) => {
+      try { return await (await fetch('http://localhost:' + a.port + '/fb?op=get&path=' + encodeURIComponent('games/' + a.code + '/hb2'))).json(); }
+      catch (e) { return 'ERR'; }
+    }, { port: fbPort, code });
+    (typeof hb === 'number' && hb > 0) ? ok(`Herzschlag: Gast schreibt hb2 (${hb}) ✓`)
+                                       : fail(`Herzschlag: kein hb2 vom Gast (${JSON.stringify(hb)})`);
+
+    // 2) Der Host muss das Lebenszeichen auch SEHEN.
+    const seen = await pH.evaluate(() => (window.__hbDbg && window.__hbDbg()) || null);
+    (seen && seen.slots && seen.slots['2'] && seen.slots['2'].ever)
+      ? ok('Herzschlag: Host empfängt das Lebenszeichen ✓')
+      : fail(`Herzschlag: Host sieht keinen Gast-Slot (${JSON.stringify(seen)})`);
+    (seen && seen.fbOnline === true)
+      ? ok('Herzschlag: eigener Verbindungsstatus erkannt (.info/connected) ✓')
+      : fail(`Herzschlag: fbOnline nicht true (${JSON.stringify(seen && seen.fbOnline)})`);
+
+    // 3) HARTER Abbruch: Kontext killen, KEIN Beenden-Klick → kein `leave`.
+    await ctxG.close(); guestClosed = true;
+
+    // 4)+5) In EINER Schleife beobachten: das Banner steht nur zwischen
+    // HB_WARN_MS und HB_DROP_MS (im Schnellmodus ~1,6-4,5 s) — wer erst danach
+    // zu pollen beginnt, sieht es nicht mehr. Deshalb beides gleichzeitig.
+    let banner = false, ended = null;
+    for (let i = 0; i < 80 && !ended; i++) {
+      const st = await pH.evaluate(() => {
+        const t = document.body.innerText;
+        const d = (window.__hbDbg && window.__hbDbg()) || {};
+        return {
+          banner: /antwortet nicht/i.test(t) || !!d.opp,
+          over: d.screen === 'result',
+          left: /verlassen/i.test(t),
+          dbg: d
+        };
+      });
+      if (st.banner) banner = true;
+      if (st.over) ended = st;
+      if (!ended) await pH.waitForTimeout(150);
+    }
+    const lastDbg = await pH.evaluate(() => JSON.stringify((window.__hbDbg && window.__hbDbg()) || {}));
+    banner ? ok('Herzschlag: Host meldet "Gegner antwortet nicht" ✓')
+           : fail(`Herzschlag: kein Hinweis beim Host — ${lastDbg}`);
+    ended ? ok('Herzschlag: Partie beendet statt Geisterspiel ✓')
+          : fail(`Herzschlag: Host spielt nach hartem Abbruch weiter — ${lastDbg}`);
+    (ended && ended.left) ? ok('Herzschlag: Ergebnis nennt "verlassen" (reason=left) ✓')
+                          : fail('Herzschlag: Ergebnis ohne Verlassen-Begründung');
+
+    errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+                : ok('Herzschlag: keine JS-Fehler ✓');
+  } finally {
+    try { if (!guestClosed) await ctxG.close(); } catch (e) {}
+    try { await ctxH.close(); } catch (e) {}
+  }
+  return { res, errs };
+}
+
 async function suiteOnline3P(browser, fbPort) {
   const res = [], errsAll = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -3162,7 +3272,11 @@ async function suiteTutorial(browser) {
   const onlineHeavy = (async () => {
     const mm = await suiteMatchmaking(browser, FB_PORT);
     const mm3 = await suiteOnline3P(browser, FB_PORT);
-    return { mm, mm3 };
+    // Herzschlag laeuft bewusst HIER (seriell) und nicht parallel: die Suite
+    // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
+    // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
+    const hb = await suiteHeartbeat(browser, FB_PORT);
+    return { mm, mm3, hb };
   })();
   const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -3189,14 +3303,14 @@ async function suiteTutorial(browser) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

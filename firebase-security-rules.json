@@ -41,6 +41,12 @@
     "  - Game-Node-Ownership: jeder mit dem Code kann das Spiel ueberschreiben/loeschen.",
     "    Fix braucht per-Child-Rules (host-uid gebunden) + Test gegen echte DB.",
     "",
+    "Neu (v3.70.0): Felder 'hb2'/'hb3' am Spielknoten — Herzschlag der Gaeste,",
+    "damit der Host einen HARTEN Verbindungsabbruch erkennt (ein sauberes",
+    "Verlassen schickt 'leave', ein gekillter Client schickt gar nichts). Nur",
+    "Zahlen erlaubt. Der Gast registriert zusaetzlich onDisconnect-Loeschung auf",
+    "GENAU DIESEN Knoten — nicht auf den Spielknoten (siehe Regression v3.14.10).",
+    "",
     "Neu (v3.47.0): Knoten 'telemetry' — anonyme Match-Zusammenfassungen fuers Balancing.",
     "Schreiben nur authentifiziert und nur als NEUER Eintrag (kein Ueberschreiben).",
     "Lesen offen (Dashboard stats.html). Enthaelt KEINE Namen/Profil-IDs."
@@ -90,6 +96,12 @@
         },
         "guestAction3": {
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)"
+        },
+        "hb2": {
+          ".validate": "!newData.exists() || newData.isNumber()"
+        },
+        "hb3": {
+          ".validate": "!newData.exists() || newData.isNumber()"
         }
       }
     },
