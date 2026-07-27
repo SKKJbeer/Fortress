@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.70.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.71.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4809,3 +4809,38 @@ für offline gehalten — der Watchdog wäre in **jedem** Test stillgelegt gewes
 `firebase-security-rules.json`: `hb2`/`hb3` als Zahlen validiert.
 
 Tests grün (Unit 39/39, E2E 320/320). SW-Cache `fortress-v3.70.0`.
+
+---
+
+## v3.71.0 — Bestenliste: Migrations-Dubletten ausblenden
+
+**Ursache.** Mit den auth-gebundenen Security-Rules wechselt der Schlüssel eines
+Ranglisten-Eintrags von der localStorage-Profil-ID (`p_…`) auf die Firebase-uid.
+Ein zurückkehrender Spieler legt dadurch einen **zweiten** Eintrag an — gleicher
+Name, eigene Werte. Der alte Eintrag lässt sich von **keinem Client mehr
+löschen**: die Regel `auth.uid === $playerId` ist für einen `p_…`-Schlüssel nie
+erfüllt. `cleanupMyDuplicates()` versucht es weiterhin, der Löschversuch wird
+abgelehnt, und `fb.delete` schluckt den Fehler — die Funktion ist für
+Alt-Einträge faktisch wirkungslos geworden.
+
+**Lösung.** `dropMigratedDupes()` in `src/engine/progression.js` blendet einen
+Alt-Eintrag aus, **sobald** zum selben Namen ein Eintrag im neuen Format
+existiert. Rein anzeigeseitig, keine Schreibrechte nötig.
+
+Die Bedingung ist der Kern: **ohne sie wäre die Bestenliste direkt nach der
+Umstellung schlagartig leer**, weil in dem Moment jeder Eintrag alt ist. So
+bleibt jeder sichtbar, bis er selbst zurückkommt — und verschwindet in genau
+dem Moment doppelt zu sein aufhört.
+
+Zwei verschiedene Personen mit gleichem Namen bleiben unberührt: beide hätten
+neue Schlüssel, und **neue Einträge blendet die Funktion nie aus**. Namen sind
+nicht eindeutig (im Bestand dreimal „Galthran", dreimal „JB", dreimal
+„Spieler"), deshalb darf über den Namen allein nie etwas verschwinden.
+
+Die Anzeige filterte schon vorher `games > 0` — die 23 Einträge ohne Partie
+sieht ohnehin niemand.
+
+7 neue Unit-Tests, darunter der Leer-Fall (alles alt → nichts ausblenden),
+Namenswechsel, Mehrfach-Alt-Einträge und Müll-Eingaben.
+
+Tests grün (Unit 46/46, E2E 320/320). SW-Cache `fortress-v3.71.0`.

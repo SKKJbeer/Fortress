@@ -7,7 +7,7 @@ import { ROWS, COLS, WALL_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, EMPTY, CANNON_HP 
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from '../src/engine/economy.js';
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain3FromSeed, buildSectorMap } from '../src/engine/terrain.js';
 import { computeOutsideMap, isObjectClosed, isCastleClosed, closedCannons } from '../src/engine/flood.js';
-import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from '../src/engine/progression.js';
+import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, isLegacyKey, dropMigratedDupes } from '../src/engine/progression.js';
 import { COSMETICS, RECIPES, MASTER_TRAIL, CANNON_SKIN, IMPACT_FX, MAT_ORDER, cosOf, matOf } from '../src/engine/catalog.js';
 
 // ── Progression ──────────────────────────────────────────────────────
@@ -248,4 +248,69 @@ test('findSealCells: ohne Mauerring keine Markierung (nur Spur)', () => {
   const g = emptyGrid();
   g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
   assert.deepEqual(findSealCells(g, 1, CASTLE_P1), []);
+});
+
+// ── Bestenliste: Migrations-Dubletten (v3.71.0) ──────────────────────────
+test('dropMigratedDupes: Alt-Eintrag verschwindet, wenn derselbe Name neu existiert', () => {
+  const list = [
+    { id: 'p_alt123', name: 'Bierkoenig', elo: 1046 },
+    { id: 'XyZ28stelligeUid0000000000', name: 'Bierkoenig', elo: 1050 }
+  ];
+  const out = dropMigratedDupes(list);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, 'XyZ28stelligeUid0000000000');
+});
+
+test('dropMigratedDupes: Alt-Eintrag BLEIBT, solange es keinen neuen gibt', () => {
+  // Der wichtigste Fall: direkt nach der Rules-Umstellung sind ALLE Eintraege
+  // alt. Wuerde hier gefiltert, waere die Bestenliste schlagartig leer.
+  const list = [
+    { id: 'p_alt123', name: 'Bierkoenig', elo: 1046 },
+    { id: 'p_alt456', name: 'Plo', elo: 1013 }
+  ];
+  assert.equal(dropMigratedDupes(list).length, 2);
+});
+
+test('dropMigratedDupes: mehrere Alt-Eintraege desselben Namens fallen zusammen weg', () => {
+  const list = [
+    { id: 'p_a', name: 'Galthran', elo: 1000 },
+    { id: 'p_b', name: 'Galthran', elo: 1018 },
+    { id: 'p_c', name: 'Galthran', elo: 1000 },
+    { id: 'Uid000000000000000000000001', name: 'Galthran', elo: 1030 }
+  ];
+  const out = dropMigratedDupes(list);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, 'Uid000000000000000000000001');
+});
+
+test('dropMigratedDupes: zwei verschiedene Personen mit gleichem Namen bleiben beide', () => {
+  // Namen sind nicht eindeutig. Neue Eintraege werden NIE ausgeblendet.
+  const list = [
+    { id: 'Uid000000000000000000000001', name: 'Spieler', elo: 1200 },
+    { id: 'Uid000000000000000000000002', name: 'Spieler', elo: 900 }
+  ];
+  assert.equal(dropMigratedDupes(list).length, 2);
+});
+
+test('dropMigratedDupes: Namenswechsel laesst den Alt-Eintrag stehen', () => {
+  const list = [
+    { id: 'p_alt', name: 'AlterName', elo: 1046 },
+    { id: 'Uid000000000000000000000001', name: 'NeuerName', elo: 1046 }
+  ];
+  assert.equal(dropMigratedDupes(list).length, 2);
+});
+
+test('dropMigratedDupes: robust gegen Muell (null, kein Array, fehlende Felder)', () => {
+  assert.deepEqual(dropMigratedDupes(null), []);
+  assert.deepEqual(dropMigratedDupes(undefined), []);
+  const list = [null, { id: 'p_x' }, { name: 'ohneId' }];
+  assert.equal(dropMigratedDupes(list).length, 3);
+});
+
+test('isLegacyKey: nur p_-Schluessel gelten als alt', () => {
+  assert.equal(isLegacyKey('p_abc'), true);
+  assert.equal(isLegacyKey('Uid00000000000000000000001'), false);
+  assert.equal(isLegacyKey(''), false);
+  assert.equal(isLegacyKey(null), false);
+  assert.equal(isLegacyKey(undefined), false);
 });

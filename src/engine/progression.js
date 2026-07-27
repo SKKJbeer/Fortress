@@ -36,3 +36,28 @@ export function applyXpGain(prof, xpGained) {
   while (xp >= xpToNextLevel(level)) { xp -= xpToNextLevel(level); level++; levelsGained.push(level); }
   return { level, xp, levelsGained };
 }
+
+// ── Bestenliste: Migrations-Dubletten ausblenden (v3.71.0) ───────────────
+// Bis zu den auth-gebundenen Security-Rules war der Schluessel eines
+// Ranglisten-Eintrags die localStorage-Profil-ID ("p_..."); seither ist es die
+// Firebase-uid. Ein zurueckkehrender Spieler legt dadurch einen ZWEITEN Eintrag
+// an — und den alten kann niemand mehr loeschen, weil die Rules Schreibzugriff
+// nur noch auf den eigenen uid-Schluessel erlauben (auth.uid === $playerId).
+// Deshalb wird der veraltete Eintrag nur noch AUSGEBLENDET.
+export function isLegacyKey(id) {
+  return typeof id === "string" && id.startsWith("p_");
+}
+// Ausgeblendet wird ein Alt-Eintrag NUR, wenn zum selben Namen bereits ein
+// Eintrag im neuen Format existiert. Ohne diese Bedingung verschwaenden alle
+// Spieler aus der Liste, die seit der Umstellung nicht mehr gespielt haben —
+// direkt nach der Umstellung waere die Bestenliste schlagartig leer.
+// Zwei verschiedene Personen mit gleichem Namen bleiben unberuehrt: beide
+// haetten neue Schluessel, und neue Eintraege blendet diese Funktion nie aus.
+export function dropMigratedDupes(entries) {
+  if (!Array.isArray(entries)) return [];
+  const modern = new Set();
+  for (const e of entries) {
+    if (e && e.name && !isLegacyKey(e.id)) modern.add(e.name);
+  }
+  return entries.filter((e) => !(e && isLegacyKey(e.id) && modern.has(e.name)));
+}

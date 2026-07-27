@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.70.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.71.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -181,7 +181,7 @@ const SHOP_SLAYER = SHOP.slayer.price;
 const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
-import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain } from './src/engine/progression.js';
+import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from './src/engine/progression.js';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from './src/net/protocol.js';
@@ -2415,7 +2415,9 @@ window.FortressApp = function Fortress() {
   }
   function applyLbMode(raw, mode) {
     const m3 = mode === 3;
-    const list = raw.map((e) => ({
+    // Alt-Eintraege derselben Person ausblenden (v3.71.0) — sie sind seit der
+    // Rules-Umstellung fuer keinen Client mehr loeschbar.
+    const list = dropMigratedDupes(raw).map((e) => ({
       id: e.id,
       name: e.name,
       wappen: e.wappen,
@@ -7595,7 +7597,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.70.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.71.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
