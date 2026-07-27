@@ -44,7 +44,21 @@
         },
         "guestAction3": {
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)"
+        },
+        "hb2": {
+          ".validate": "!newData.exists() || newData.isNumber()"
+        },
+        "hb3": {
+          ".validate": "!newData.exists() || newData.isNumber()"
         }
+      }
+    },
+    "telemetry": {
+      "_c": "Match-Telemetrie (v3.47.0): anonyme Aggregate fuer Balancing-Auswertung. Schreiben nur authentifiziert und nur NEUE Eintraege (kein Ueberschreiben/Loeschen fremder Datensaetze). Lesen offen, damit das Dashboard stats.html ohne Login funktioniert — die Daten enthalten bewusst KEINE Namen oder Profil-IDs.",
+      ".read": true,
+      "$id": {
+        ".write": "auth != null && !data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['ts','mode','rounds','per']) && newData.child('rounds').isNumber() && newData.child('rounds').val() <= 500"
       }
     }
   }
