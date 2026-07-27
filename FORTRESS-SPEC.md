@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.71.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.72.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4844,3 +4844,85 @@ sieht ohnehin niemand.
 Namenswechsel, Mehrfach-Alt-Einträge und Müll-Eingaben.
 
 Tests grün (Unit 46/46, E2E 320/320). SW-Cache `fortress-v3.71.0`.
+
+---
+
+## v3.72.0 — Cloud-Save: der Fortschritt überlebt die Neuinstallation
+
+**Ausgangslage.** Der komplette Fortschritt lag ausschliesslich im
+localStorage: ELO, Statistiken, Gold, Level, XP, Achievements, Schmiede-Material
+und **gekaufte Kosmetik**. Eine Neuinstallation löschte alles, ohne jede
+Wiederherstellung — es gab keinen einzigen Lade-Pfad. In Firebase lagen nur
+`games/` und `leaderboard/`, und das Leaderboard ist eine Einbahnstrasse: es
+wird geschrieben, nie gelesen, um ein Profil zurückzuholen.
+
+Für den Play Store ist das der Klassiker unter den Ein-Stern-Bewertungen. Und
+`cosmetics.owned` trifft am härtesten — dort steckt, wofür jemand wochenlang
+Gold gesammelt hat. Auf Androids Auto-Backup ist kein Verlass: bei einer TWA
+liegt der localStorage in den Chrome-Daten, nicht in den App-Daten.
+
+### Zwei Stufen
+
+**Stufe 1** hängt das Profil an die anonyme uid (`players/{uid}`). Überlebt
+App-Updates und geleerte Browser-Caches — aber **keine Neuinstallation**, weil
+die anonyme uid dann ebenfalls verloren ist.
+
+**Stufe 2** verknüpft ein Google-Konto (`linkWithRedirect`). Erst damit ist die
+uid dauerhaft und der Stand kehrt auf jedem Gerät zurück. **Redirect, nie
+Popup** — ein Auth-Popup bricht in der TWA.
+
+Fängt `linkWithRedirect` ein `auth/credential-already-in-use` (das Google-Konto
+hängt schon an einem anderen Spielstand), wird per `signInWithCredential` zu
+jenem Konto gewechselt. Der lokale Stand geht dabei nicht verloren: er wird beim
+nächsten Sync zusammengeführt.
+
+### Die eigentliche Arbeit: das Zusammenführen
+
+Nicht der Upload ist schwierig, sondern der Konfliktfall. Grundhaltung:
+**verzeihend** — bei jedem Konflikt gewinnt, was dem Spieler mehr lässt.
+
+| Feldgruppe | Regel |
+|---|---|
+| Zähler (Gold, XP, Season-XP, Material) | Maximum |
+| Mengen (Kosmetik, Achievements) | Vereinigung — ein Kauf verschwindet nie |
+| Spielbilanz (ELO, Stats, Serie) | komplett aus **einem** Profil |
+| Bestmarken (Peak-ELO) | Maximum |
+| Anzeige (Name, Wappen, Angelegtes) | jüngerer Zeitstempel |
+
+Die Spielbilanz wird bewusst **nicht** feldweise gemischt: ein ELO-Wert gehört
+zu genau der Siegesbilanz, aus der er entstanden ist. Feldweises Maximum ergäbe
+hohes ELO neben fremder Niederlagenzahl — eine Wertung, die es nie gab. Es
+gewinnt das Profil mit den **mehr gespielten Partien**. Ebenso bleiben Level und
+XP gekoppelt, sonst entstünde Level 12 mit dem XP-Rest eines Level-3-Profils.
+
+Geräteeinstellungen (Sprache, Ton, Vibration) bleiben bewusst lokal — sie
+gehören zum Gerät, nicht zum Spieler.
+
+**Was es nicht löst:** Manipulationssicherheit. Der Client schreibt weiterhin
+seine eigenen Werte. Cloud-Save heisst „nichts verlieren", nicht „nicht
+schummeln"; echte Integrität bräuchte serverseitige Validierung.
+
+### Rules
+
+Neuer Knoten `players/$uid` — der **strengste** der Datenbank: Lesen *und*
+Schreiben nur für den Eigentümer. Anders als beim Leaderboard ist hier nichts
+öffentlich, es hängt der komplette Fortschritt drin.
+
+### Test — und ein Mock-Fehler mit grosser Wirkung
+
+19 neue Unit-Tests zur Zusammenführung, dazu eine E2E-Suite, die das Versprechen
+prüft: Profil hochladen, localStorage **komplett leeren** (= frische
+Installation), gleiche uid — Stand muss zurückkommen, inklusive Kosmetik.
+
+Beim Bau der Suite bekam der Mock ein `auth`-Objekt. Damit fielen plötzlich
+**vier fremde Suiten** aus („kein Spielcode"). Ursache: `getFirebase()` wartet
+bei vorhandenem `auth` ohne `uid` bis zu **3 Sekunden** auf den anonymen Login —
+der Mock hatte auth, aber weder uid noch `__fbAuthError`, also lief *jeder*
+Firebase-Zugriff in diese Wartezeit. Das auth-Objekt wird jetzt nur noch
+gesetzt, wenn der Test auch eine uid simuliert.
+
+Gleiche Lehre wie v3.14.11: **Der Mock muss die SDK-Semantik spiegeln.** Und:
+Der Fehler sah nach Flakiness aus — erst der Vergleich gegen den unveränderten
+Vorgängerstand (dort 320/320 grün) machte ihn als echte Regression sichtbar.
+
+Tests grün (Unit 60/60, E2E 330/330). SW-Cache `fortress-v3.72.0`.

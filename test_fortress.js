@@ -796,7 +796,30 @@ function makeFbMock(port) {
     }
   }
   function onDisconnect(ref) { return { remove:()=>{}, cancel:()=>{} }; }
+  // Auth-Identitaet (v3.72.0): ohne uid laeuft der Cloud-Save-Pfad gar nicht an.
+  // __testUid wird pro Kontext ueber extraInit gesetzt; ohne Angabe bleibt uid
+  // null und alles verhaelt sich wie vor v3.72.0 (kein Bruch in Altsuiten).
+  // Auth-Identitaet (v3.72.0). WICHTIG: das auth-Objekt wird NUR gesetzt, wenn
+  // der Test auch eine uid simuliert. getFirebase() wartet bei vorhandenem
+  // auth-Objekt OHNE uid bis zu 3 SEKUNDEN auf den anonymen Login — ein Mock
+  // mit auth, aber ohne uid und ohne __fbAuthError, liess also jeden
+  // Firebase-Zugriff in diese Wartezeit laufen ("kein Spielcode").
+  // Gleiche Lehre wie v3.14.11: Der Mock muss die SDK-Semantik spiegeln.
+  const _uid = (typeof window !== 'undefined' && window.__testUid) || null;
   window.__fb = { db:{}, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect };
+  if (_uid) {
+    window.__fb.uid = _uid;
+    window.__fb.anon = (typeof window !== 'undefined' && window.__testAnon === false) ? false : true;
+    window.__fb.mail = (typeof window !== 'undefined' && window.__testMail) || null;
+    window.__fb.auth = { currentUser: { uid: _uid, isAnonymous: window.__fb.anon } };
+    window.__fb.GoogleAuthProvider = function(){};
+    window.__fb.linkWithRedirect = () => Promise.resolve();
+    window.__fb.signInWithRedirect = () => Promise.resolve();
+    window.__fb.signInWithCredential = () => Promise.resolve();
+    window.__fb.getRedirectResult = () => Promise.resolve(null);
+    window.__fb.signOut = () => Promise.resolve();
+    setTimeout(() => window.dispatchEvent(new Event('fb-auth')), 0);
+  }
 })();`;
 }
 
@@ -1348,6 +1371,111 @@ async function suiteMatchmaking(browser, fbPort) {
 // SUITE 5c: Online 3-Spieler — Code-Join (Host + 2 Gäste), Phasen-Sync,
 // Quick-Match-Tripel (queue3), Gast-Ausstieg + Rejoin (screenRef-Regression)
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// SUITE 5c: Cloud-Save (v3.72.0)
+// Das Versprechen des Features lautet "ueberlebt eine Neuinstallation".
+// Genau das wird hier geprueft: Profil hochladen, localStorage komplett
+// leeren (= frische Installation), gleiche uid, Stand muss zurueckkommen —
+// inklusive gekaufter Kosmetik, denn die tut beim Verlust am meisten weh.
+// ═══════════════════════════════════════════════════════════════
+async function suiteCloudSave(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Cloud-Save\n' + '='.repeat(50));
+
+  const UID = 'testuid_cloud_0000000000001';
+  const reich = {
+    id: 'p_lokal_alt', name: 'Sichermann', wappen: 'ritter', color: '#2563eb',
+    elo: 1250, elo3: 1000, peakElo: 1300, peakElo3: 1000,
+    stats: { wins: 40, losses: 22, games: 62 }, stats3: { wins: 0, losses: 0, games: 0 },
+    gold: 3000, level: 14, xp: 120, seasonXp: 800,
+    achievements: ['erster_sieg'], unlockedRewards: [], dailyTasks: [],
+    cosmetics: { owned: ['cannon_dragon', 'frame_gold'], equipped: { cannon: 'cannon_dragon' } },
+    materials: { iron: 55, silver: 12, dragon: 4, star: 3 },
+    // Beide Nachtrags-Migrationen als erledigt markieren: loadProfile vergibt
+    // sonst beim ersten Laden rueckwirkend Achievements samt Gold und XP, und
+    // der Test wuerde dieses Zusatzguthaben faelschlich dem Cloud-Save anlasten.
+    historicalXpApplied: true, achievementsRetroApplied: true
+  };
+  const init = (prof) => `window.__testUid = ${JSON.stringify(UID)};` +
+    (prof ? `try{localStorage.setItem('fortress_profile', ${JSON.stringify(JSON.stringify(prof))});}catch(e){}`
+          : `try{localStorage.removeItem('fortress_profile');}catch(e){}`);
+
+  const lies = async (p) => p.evaluate(async (a) =>
+    await (await fetch('http://localhost:' + a.port + '/fb?op=get&path=' + encodeURIComponent('players/' + a.uid))).json(),
+    { port: fbPort, uid: UID });
+
+  // ── 1) Voller Spielstand wird hochgeladen ──────────────────────
+  const { ctx: c1, page: p1 } = await makeOnlineCtx(browser, fbPort, init(reich));
+  p1.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(p1);
+    let rec = null;
+    for (let i = 0; i < 40 && !(rec && rec.p); i++) { await p1.waitForTimeout(250); rec = await lies(p1); }
+    (rec && typeof rec.p === 'string')
+      ? ok('Cloud-Save: Profil landet unter players/{uid} ✓')
+      : fail(`Cloud-Save: nichts hochgeladen (${JSON.stringify(rec)})`);
+    if (rec && rec.p) {
+      const o = JSON.parse(rec.p);
+      (o.gold === 3000 && o.elo === 1250 && o.level === 14)
+        ? ok('Cloud-Save: Gold, ELO und Level vollstaendig ✓')
+        : fail(`Cloud-Save: Werte unvollstaendig (gold=${o.gold} elo=${o.elo} lvl=${o.level})`);
+      (o.cosmetics && (o.cosmetics.owned || []).length === 2)
+        ? ok('Cloud-Save: gekaufte Kosmetik mit hochgeladen ✓')
+        : fail(`Cloud-Save: Kosmetik fehlt (${JSON.stringify(o.cosmetics)})`);
+    }
+  } finally { await c1.close(); }
+
+  // ── 2) Neuinstallation: localStorage leer, gleiche uid ─────────
+  const { ctx: c2, page: p2 } = await makeOnlineCtx(browser, fbPort, init(null));
+  p2.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(p2);
+    let prof = null;
+    for (let i = 0; i < 50 && !(prof && prof.gold >= 3000); i++) {
+      await p2.waitForTimeout(250);
+      prof = await p2.evaluate(() => { try { return JSON.parse(localStorage.getItem('fortress_profile')); } catch (e) { return null; } });
+    }
+    (prof && prof.gold === 3000 && prof.elo === 1250)
+      ? ok('Cloud-Save: Stand kehrt nach Neuinstallation zurueck ✓')
+      : fail(`Cloud-Save: Stand NICHT wiederhergestellt (${JSON.stringify(prof && { gold: prof.gold, elo: prof.elo })})`);
+    (prof && prof.cosmetics && (prof.cosmetics.owned || []).indexOf('cannon_dragon') >= 0)
+      ? ok('Cloud-Save: gekaufte Kosmetik ist wieder da ✓')
+      : fail('Cloud-Save: gekaufte Kosmetik nach Neuinstallation verloren');
+    (prof && prof.stats && prof.stats.games === 62)
+      ? ok('Cloud-Save: Statistik wiederhergestellt ✓')
+      : fail(`Cloud-Save: Statistik falsch (${JSON.stringify(prof && prof.stats)})`);
+    (prof && prof.materials && prof.materials.iron === 55)
+      ? ok('Cloud-Save: Schmiede-Material wiederhergestellt ✓')
+      : fail(`Cloud-Save: Material falsch (${JSON.stringify(prof && prof.materials)})`);
+  } finally { await c2.close(); }
+
+  // ── 3) Hinweis im Profil-Editor, solange nichts verknuepft ist ──
+  const { ctx: c3, page: p3 } = await makeOnlineCtx(browser, fbPort, init(reich));
+  try {
+    await loadMenu(p3);
+    await p3.evaluate(() => {
+      for (const b of document.querySelectorAll('button')) {
+        if ((b.getAttribute('title') || '').startsWith('Profil')) { b.click(); return; }
+      }
+    });
+    await p3.waitForTimeout(600);
+    const ui = await p3.evaluate(() => ({
+      warnung: /nur auf diesem Ger/i.test(document.body.innerText),
+      knopf: [...document.querySelectorAll('button')].some(b => /Mit Google sichern/i.test(b.textContent))
+    }));
+    ui.warnung ? ok('Cloud-Save: Warnung "nur auf diesem Geraet" sichtbar ✓')
+               : fail('Cloud-Save: Warnung fehlt im Profil');
+    ui.knopf ? ok('Cloud-Save: Knopf "Mit Google sichern" vorhanden ✓')
+             : fail('Cloud-Save: Sicherungs-Knopf fehlt');
+  } finally { await c3.close(); }
+
+  errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+              : ok('Cloud-Save: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SUITE 5b: Herzschlag — HARTER Gast-Abbruch (v3.70.0)
 // Ein sauberes Verlassen schickt `leave`; ein gekillter Client schickt gar
@@ -3276,7 +3404,8 @@ async function suiteTutorial(browser) {
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
     const hb = await suiteHeartbeat(browser, FB_PORT);
-    return { mm, mm3, hb };
+    const cs = await suiteCloudSave(browser, FB_PORT);
+    return { mm, mm3, hb, cs };
   })();
   const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -3303,14 +3432,14 @@ async function suiteTutorial(browser) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res];
   const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

@@ -1,4 +1,4 @@
-const CACHE = 'fortress-v3.71.0';
+const CACHE = 'fortress-v3.72.0';
 const CORE = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-96.png',
   './icon-maskable-192.png', './icon-maskable-512.png',
   './sounds/shoot.mp3', './sounds/impact.mp3', './sounds/destroy.mp3', './sounds/place.mp3',
@@ -6,6 +6,7 @@ const CORE = ['./index.html', './manifest.json', './icon-192.png', './icon-512.p
   // ES-Module (v3.34.0, Phase 1 der Modularisierung) — müssen offline verfügbar sein
   './src/engine/const.js', './src/engine/economy.js', './src/engine/terrain.js',
   './src/engine/flood.js', './src/engine/progression.js', './src/engine/catalog.js',
+  './src/engine/cloudsave.js',
   './src/i18n.js', './src/net/protocol.js', './src/net/matchmaking.js',
   './src/ui/icons.js', './src/render/sprites.js'];
 

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.71.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.72.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -95,7 +95,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged }
+    import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
+             linkWithRedirect, signInWithRedirect, signInWithCredential, getRedirectResult, signOut }
       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     try {
       const app = initializeApp({
@@ -128,7 +129,10 @@
           .catch((e) => { window.__appCheckError = e && e.message; });
       }
       const db = getDatabase(app);
-      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, uid: null };
+      window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, uid: null,
+                      // Cloud-Save (v3.72.0): Konto-Verknuepfung
+                      GoogleAuthProvider, linkWithRedirect, signInWithRedirect, signInWithCredential,
+                      getRedirectResult, signOut, anon: true, mail: null };
       window.dispatchEvent(new Event("fb-ready"));
       // Anonyme Authentifizierung (kostenlos im Spark-Plan). BEST EFFORT:
       // Ist "Anonymous" in der Firebase-Console noch NICHT aktiviert, schlägt der
@@ -139,8 +143,38 @@
         window.__fb.auth = auth;
         onAuthStateChanged(auth, (user) => {
           window.__fb.uid = user ? user.uid : null;
+          // isAnonymous unterscheidet "nur Geraet" von "mit Google gesichert" —
+          // davon haengt ab, ob der Fortschritt eine Neuinstallation ueberlebt.
+          window.__fb.anon = user ? user.isAnonymous !== false : true;
+          window.__fb.mail = (user && user.email) || null;
           window.dispatchEvent(new Event("fb-auth"));
         });
+        // Rueckkehr von der Google-Weiterleitung auswerten (v3.72.0).
+        // REDIRECT statt Popup — ein Auth-Popup bricht in der TWA (siehe CLAUDE.md).
+        getRedirectResult(auth)
+          .then((res) => {
+            if (res && res.user) window.dispatchEvent(new Event("fb-linked"));
+          })
+          .catch((e) => {
+            const code = e && e.code;
+            // Das Google-Konto haengt schon an einem ANDEREN Spielstand. Dann
+            // ist Verknuepfen unmoeglich — stattdessen zu jenem Konto wechseln.
+            // Der lokale Stand geht nicht verloren: er wird beim naechsten
+            // Sync ueber mergeProfiles mit dem Cloud-Stand zusammengefuehrt.
+            if (code === "auth/credential-already-in-use" ||
+                code === "auth/email-already-in-use") {
+              try {
+                const cred = GoogleAuthProvider.credentialFromError(e);
+                if (cred) {
+                  signInWithCredential(auth, cred)
+                    .then(() => window.dispatchEvent(new Event("fb-linked")))
+                    .catch((e2) => { window.__fbLinkError = e2 && (e2.code || e2.message); });
+                  return;
+                }
+              } catch (e3) {}
+            }
+            if (code) window.__fbLinkError = code;
+          });
         signInAnonymously(auth).catch((e) => { window.__fbAuthError = e && (e.code || e.message); });
       } catch (e) { window.__fbAuthError = e && e.message; }
     } catch (e) {
@@ -182,6 +216,7 @@ const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from './src/engine/terrain.js';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.js';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from './src/engine/progression.js';
+import { mergeProfiles, cloudPayload, parseCloud } from './src/engine/cloudsave.js';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from './src/engine/catalog.js';
 import { LANGS } from './src/i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from './src/net/protocol.js';
@@ -1695,6 +1730,87 @@ window.FortressApp = function Fortress() {
     } catch (e) {
     }
     setProfile(p);
+    cloudPush(p);
+  }
+  // ── Cloud-Save (v3.72.0) ──────────────────────────────────────────────
+  // Der Fortschritt lag bis v3.71.0 ausschliesslich im localStorage — eine
+  // Neuinstallation loeschte ELO, Gold, Level, Achievements UND gekaufte
+  // Kosmetik ohne jede Wiederherstellung.
+  //
+  // Stufe 1 haengt das Profil an die anonyme uid: ueberlebt App-Updates und
+  // geloeschte Browser-Caches, aber KEINE Neuinstallation (die uid ist dann
+  // auch weg). Stufe 2 (Google verknuepfen, `linkAccount`) macht die uid
+  // dauerhaft — erst damit ueberlebt der Stand Geraetewechsel.
+  const cloudTimer = useRef(null);
+  const cloudPending = useRef(null);
+  const cloudSyncedFor = useRef(null);   // uid, fuer die schon gelesen wurde
+  const cloudLastSent = useRef("");
+  const [cloudState, setCloudState] = useState("idle"); // idle|syncing|saved|error
+  function cloudPush(p) {
+    if (!MP_CONFIGURED || !p) return;
+    cloudPending.current = p;
+    if (cloudTimer.current) return;
+    // Gedrosselt: der Ergebnis-Screen speichert mehrfach kurz hintereinander
+    // (Stats, Achievements, Tasks) — das waeren sonst vier Schreibvorgaenge.
+    cloudTimer.current = setTimeout(async () => {
+      cloudTimer.current = null;
+      const prof2 = cloudPending.current;
+      cloudPending.current = null;
+      const uid = authUid();
+      if (!uid || !prof2) return;
+      const rec = cloudPayload(prof2, Date.now());
+      if (!rec) return;
+      // Unveraenderte Staende nicht erneut hochladen (updatedAt ausgenommen).
+      const sig = rec.p;
+      if (sig === cloudLastSent.current) return;
+      const ok = await fb.set(`players/${uid}`, rec);
+      if (ok !== false) { cloudLastSent.current = sig; setCloudState("saved"); }
+      else setCloudState("error");
+    }, 2500);
+  }
+  // Beim Start (und nach jedem Auth-Wechsel) den Cloud-Stand holen und mit dem
+  // lokalen zusammenfuehren. Nach einer Neuinstallation ist der lokale Stand
+  // leer — mergeProfiles holt dann alles zurueck.
+  async function cloudPull() {
+    const uid = authUid();
+    if (!MP_CONFIGURED || !uid) return;
+    if (cloudSyncedFor.current === uid) return;
+    cloudSyncedFor.current = uid;
+    setCloudState("syncing");
+    try {
+      const rec = await fb.get(`players/${uid}`);
+      const remote = parseCloud(rec);
+      const local = profileRef.current;
+      if (!remote) {
+        // Erster Sync auf diesem Konto: lokalen Stand hochladen.
+        if (local) { cloudLastSent.current = ""; cloudPush(local); }
+        setCloudState("saved");
+        return;
+      }
+      const merged = mergeProfiles(local, remote);
+      if (!merged) { setCloudState("error"); return; }
+      merged.id = (local && local.id) || merged.id;
+      cloudLastSent.current = "";
+      saveProfile(merged);            // schreibt lokal UND stoesst den Push an
+      setCloudState("saved");
+    } catch (e) {
+      setCloudState("error");
+    }
+  }
+  // Stufe 2: Google-Konto verknuepfen. REDIRECT, nie Popup — ein Auth-Popup
+  // bricht in der TWA (siehe CLAUDE.md, Store-Vorbereitung).
+  async function linkAccount() {
+    const F = window.__fb;
+    if (!F || !F.auth || !F.GoogleAuthProvider) return;
+    try {
+      const prov = new F.GoogleAuthProvider();
+      const user = F.auth.currentUser;
+      if (user && user.isAnonymous) await F.linkWithRedirect(user, prov);
+      else await F.signInWithRedirect(F.auth, prov);
+    } catch (e) {
+      window.__fbLinkError = e && (e.code || e.message);
+      setCloudState("error");
+    }
   }
   function recordResult(won, mode) {
     if (!profile) return;
@@ -7297,6 +7413,19 @@ window.FortressApp = function Fortress() {
     }, 500);
     return () => clearInterval(iv);
   }, [showDbg]);
+  // Cloud-Sync anstossen, sobald eine uid feststeht — und erneut, wenn sich die
+  // Identitaet aendert (Google verknuepft oder zu einem bestehenden Konto
+  // gewechselt). cloudPull() schuetzt sich selbst gegen Doppellaeufe.
+  useEffect(() => {
+    const onAuth = () => { cloudPull(); };
+    window.addEventListener("fb-auth", onAuth);
+    window.addEventListener("fb-linked", onAuth);
+    if (authUid()) cloudPull();
+    return () => {
+      window.removeEventListener("fb-auth", onAuth);
+      window.removeEventListener("fb-linked", onAuth);
+    };
+  }, []);
   useEffect(() => {
     if (!profile || !profile.id) return;
     let done = false;
@@ -7597,7 +7726,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.71.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.72.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7904,6 +8033,35 @@ window.FortressApp = function Fortress() {
         borderRadius: 10, padding: "8px", background: "rgba(251,191,36,0.08)",
         color: "#fcd34d", fontSize: 11.5, fontWeight: 800
       } }, h(Icon, { name: "shoppingCart", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invMoreInShop'))
+    );
+  })(),
+  // ── Fortschritt sichern (v3.72.0) ──────────────────────────────────────
+  // Ohne verknuepftes Konto haengt der Spielstand an einer anonymen Kennung,
+  // die eine Neuinstallation nicht ueberlebt. Der Hinweis sagt genau das —
+  // schwammige Formulierungen fuehren dazu, dass niemand den Knopf drueckt.
+  MP_CONFIGURED && (() => {
+    const h = React.createElement;
+    const F = (typeof window !== "undefined" && window.__fb) || {};
+    const gesichert = !!authUid() && F.anon === false;
+    return h("div", { style: {
+      background: gesichert ? "rgba(52,211,153,0.07)" : "rgba(251,191,36,0.07)",
+      border: "1px solid " + (gesichert ? "rgba(52,211,153,0.28)" : "rgba(251,191,36,0.28)"),
+      borderRadius: 16, padding: "11px 12px", marginBottom: 12, textAlign: "left"
+    } },
+      h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginBottom: 5 } },
+        h(Icon, { name: gesichert ? "shieldCheck" : "cloud", size: 14, color: gesichert ? "#34d399" : "#fbbf24" }),
+        h("span", { style: { fontSize: 12, fontWeight: 800, color: gesichert ? "#6ee7b7" : "#fcd34d" } },
+          t(gesichert ? "cloudOnTitle" : "cloudOffTitle")),
+        cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: "#64748b", marginLeft: "auto" } }, t("cloudSyncing")) : null,
+        cloudState === "saved" ? h("span", { style: { fontSize: 9.5, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
+      ),
+      h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
+        gesichert ? t("cloudOnSub", { mail: F.mail || "" }) : t("cloudOffSub")),
+      gesichert ? null : h("button", { onClick: linkAccount, style: {
+        width: "100%", border: "none", cursor: "pointer", borderRadius: 10, padding: "9px",
+        background: "linear-gradient(180deg,#fbbf24,#d97706)", color: "#2b1204",
+        fontSize: 12, fontWeight: 900
+      } }, t("cloudLink"))
     );
   })(),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {

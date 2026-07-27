@@ -314,3 +314,145 @@ test('isLegacyKey: nur p_-Schluessel gelten als alt', () => {
   assert.equal(isLegacyKey(null), false);
   assert.equal(isLegacyKey(undefined), false);
 });
+
+// ── Cloud-Save: Profil-Zusammenfuehrung (v3.72.0) ────────────────────────
+import { mergeProfiles, profileForCloud, cloudPayload, parseCloud, CLOUD_MAX_BYTES }
+  from '../src/engine/cloudsave.js';
+
+const prof = (o = {}) => Object.assign({
+  id: 'p_x', name: 'Held', wappen: 'ritter', color: '#2563eb',
+  elo: 1000, elo3: 1000, peakElo: 1000, peakElo3: 1000,
+  stats: { wins: 0, losses: 0, games: 0 }, stats3: { wins: 0, losses: 0, games: 0 },
+  gold: 100, level: 1, xp: 0, seasonXp: 0, winStreak: 0,
+  achievements: [], unlockedRewards: [], dailyTasks: [],
+  cosmetics: { owned: [], equipped: {} },
+  materials: { iron: 0, silver: 0, dragon: 0, star: 0 },
+  updatedAt: 1000
+}, o);
+
+test('mergeProfiles: gekaufte Kosmetik geht NIE verloren (Vereinigung)', () => {
+  const a = prof({ cosmetics: { owned: ['trail_ember', 'frame_gold'], equipped: {} } });
+  const b = prof({ cosmetics: { owned: ['cannon_crystal'], equipped: {} } });
+  const m = mergeProfiles(a, b);
+  assert.deepEqual(m.cosmetics.owned.sort(), ['cannon_crystal', 'frame_gold', 'trail_ember']);
+});
+
+test('mergeProfiles: Achievements werden vereinigt, nicht ersetzt', () => {
+  const m = mergeProfiles(prof({ achievements: ['a', 'b'] }), prof({ achievements: ['b', 'c'] }));
+  assert.deepEqual(m.achievements.sort(), ['a', 'b', 'c']);
+});
+
+test('mergeProfiles: Gold und Material werden maximiert', () => {
+  const a = prof({ gold: 500, materials: { iron: 30, silver: 2, dragon: 0, star: 1 } });
+  const b = prof({ gold: 120, materials: { iron: 5, silver: 9, dragon: 3, star: 0 } });
+  const m = mergeProfiles(a, b);
+  assert.equal(m.gold, 500);
+  assert.deepEqual(m.materials, { iron: 30, silver: 9, dragon: 3, star: 1 });
+});
+
+test('mergeProfiles: ELO bleibt an SEINER Bilanz — kein Feld-Mischmasch', () => {
+  // Das Profil mit mehr Partien gewinnt die Bilanz KOMPLETT. Feldweises
+  // Maximum ergaebe hohes ELO neben fremder Niederlagenzahl — eine Wertung,
+  // die es nie gegeben hat.
+  const viel = prof({ elo: 1100, stats: { wins: 12, losses: 8, games: 20 } });
+  const wenig = prof({ elo: 1200, stats: { wins: 4, losses: 1, games: 5 } });
+  const m = mergeProfiles(viel, wenig);
+  assert.equal(m.elo, 1100);
+  assert.deepEqual(m.stats, { wins: 12, losses: 8, games: 20 });
+});
+
+test('mergeProfiles: Bestmarke ist immer der Hoechststand', () => {
+  const a = prof({ peakElo: 1300, elo: 1000, stats: { wins: 1, losses: 0, games: 1 } });
+  const b = prof({ peakElo: 1100, elo: 1250, stats: { wins: 9, losses: 0, games: 9 } });
+  const m = mergeProfiles(a, b);
+  assert.equal(m.elo, 1250);          // Bilanz vom fuehrenden Profil
+  assert.equal(m.peakElo, 1300);      // Bestmarke aber vom anderen
+});
+
+test('mergeProfiles: Level und XP bleiben gekoppelt', () => {
+  // Getrennte Maxima ergaeben Level 12 mit dem XP-Rest eines Level-3-Profils.
+  const a = prof({ level: 12, xp: 40 });
+  const b = prof({ level: 3, xp: 400 });
+  const m = mergeProfiles(a, b);
+  assert.equal(m.level, 12);
+  assert.equal(m.xp, 40);
+});
+
+test('mergeProfiles: Name und angelegte Kosmetik vom juengeren Profil', () => {
+  const alt = prof({ name: 'Alt', updatedAt: 1000, cosmetics: { owned: ['x'], equipped: { trail: 'a' } } });
+  const neu = prof({ name: 'Neu', updatedAt: 2000, cosmetics: { owned: ['y'], equipped: { trail: 'b' } } });
+  const m = mergeProfiles(alt, neu);
+  assert.equal(m.name, 'Neu');
+  assert.equal(m.cosmetics.equipped.trail, 'b');
+  assert.deepEqual(m.cosmetics.owned.sort(), ['x', 'y']);   // Besitz bleibt vereinigt
+});
+
+test('mergeProfiles: Reihenfolge egal bei Besitz und Zaehlern', () => {
+  const a = prof({ gold: 700, cosmetics: { owned: ['q'], equipped: {} }, achievements: ['m'] });
+  const b = prof({ gold: 200, cosmetics: { owned: ['r'], equipped: {} }, achievements: ['n'] });
+  const ab = mergeProfiles(a, b), ba = mergeProfiles(b, a);
+  assert.equal(ab.gold, ba.gold);
+  assert.deepEqual(ab.cosmetics.owned.sort(), ba.cosmetics.owned.sort());
+  assert.deepEqual(ab.achievements.sort(), ba.achievements.sort());
+});
+
+test('mergeProfiles: frisches Geraet gegen vollen Spielstand verliert nichts', () => {
+  // Der Alltagsfall nach einer Neuinstallation: leeres Anon-Profil trifft auf
+  // den Cloud-Stand. Es darf NICHTS vom Cloud-Stand verloren gehen.
+  const frisch = prof({ updatedAt: 9999 });
+  const voll = prof({
+    elo: 1250, gold: 3000, level: 14, xp: 120,
+    stats: { wins: 40, losses: 22, games: 62 },
+    cosmetics: { owned: ['cannon_dragon', 'frame_gold'], equipped: { cannon: 'cannon_dragon' } },
+    materials: { iron: 55, silver: 12, dragon: 4, star: 3 },
+    achievements: ['erster_sieg', 'zehn_siege'], updatedAt: 500
+  });
+  const m = mergeProfiles(frisch, voll);
+  assert.equal(m.elo, 1250);
+  assert.equal(m.gold, 3000);
+  assert.equal(m.level, 14);
+  assert.deepEqual(m.stats, { wins: 40, losses: 22, games: 62 });
+  assert.deepEqual(m.cosmetics.owned.sort(), ['cannon_dragon', 'frame_gold']);
+  assert.deepEqual(m.materials, { iron: 55, silver: 12, dragon: 4, star: 3 });
+  assert.deepEqual(m.achievements.sort(), ['erster_sieg', 'zehn_siege']);
+});
+
+test('mergeProfiles: Einmal-Migrationen bleiben erledigt', () => {
+  const m = mergeProfiles(prof({ historicalXpApplied: true }), prof({ achievementsRetroApplied: true }));
+  assert.equal(m.historicalXpApplied, true);
+  assert.equal(m.achievementsRetroApplied, true);
+});
+
+test('mergeProfiles: robust gegen null und Muell', () => {
+  assert.equal(mergeProfiles(null, null), null);
+  assert.equal(mergeProfiles(prof(), null).gold, 100);
+  assert.equal(mergeProfiles(null, prof()).gold, 100);
+  const m = mergeProfiles({ gold: 'viel', stats: 'kaputt', cosmetics: 5 }, prof());
+  assert.equal(m.gold, 100);
+  assert.deepEqual(m.stats, { wins: 0, losses: 0, games: 0 });
+});
+
+test('cloudPayload / parseCloud: Rundlauf erhaelt den Stand', () => {
+  const p = prof({ gold: 640, cosmetics: { owned: ['trail_gold'], equipped: {} } });
+  const rec = cloudPayload(p, 4242);
+  assert.equal(rec.updatedAt, 4242);
+  const back = parseCloud(rec);
+  assert.equal(back.gold, 640);
+  assert.deepEqual(back.cosmetics.owned, ['trail_gold']);
+});
+
+test('cloudPayload: uebergrosse Profile werden abgelehnt statt abgeschnitten', () => {
+  // Bewusst UNTERSCHIEDLICHE Werte: unite() entdoppelt, gleiche Eintraege
+  // waeren nach dem Zusammenfuehren nur noch einer und blieben winzig.
+  const viele = Array.from({ length: 3000 }, (_, i) => 'achievement_mit_langem_schluessel_' + i);
+  const p = prof({ achievements: viele });
+  assert.equal(cloudPayload(p, 1), null);
+});
+
+test('parseCloud: Muell ergibt null, nie eine Ausnahme', () => {
+  assert.equal(parseCloud(null), null);
+  assert.equal(parseCloud({}), null);
+  assert.equal(parseCloud({ p: 'kein json' }), null);
+  assert.equal(parseCloud({ p: '"nur ein string"' }), null);
+  assert.equal(parseCloud({ p: 'x'.repeat(CLOUD_MAX_BYTES + 1) }), null);
+});
