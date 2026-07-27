@@ -1,41 +1,14 @@
 {
   "rules": {
-    "leaderboard": {
-      ".read": true,
-      "$playerId": {
-        ".write": "auth != null && auth.uid === $playerId",
-        ".validate": "newData.hasChildren(['name']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && (!newData.child('wappen').exists() || (newData.child('wappen').isString() && newData.child('wappen').val().length <= 20)) && (!newData.child('elo').exists() || (newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999)) && (!newData.child('elo3').exists() || (newData.child('elo3').isNumber() && newData.child('elo3').val() >= 0 && newData.child('elo3').val() <= 9999)) && (!newData.child('peakElo').exists() || (newData.child('peakElo').isNumber() && newData.child('peakElo').val() >= 0 && newData.child('peakElo').val() <= 9999)) && (!newData.child('peakElo3').exists() || (newData.child('peakElo3').isNumber() && newData.child('peakElo3').val() >= 0 && newData.child('peakElo3').val() <= 9999)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000)) && (!newData.child('losses').exists() || (newData.child('losses').isNumber() && newData.child('losses').val() >= 0 && newData.child('losses').val() <= 1000000)) && (!newData.child('games').exists() || (newData.child('games').isNumber() && newData.child('games').val() >= 0 && newData.child('games').val() <= 1000000)) && (!newData.child('wins3').exists() || (newData.child('wins3').isNumber() && newData.child('wins3').val() >= 0 && newData.child('wins3').val() <= 1000000)) && (!newData.child('losses3').exists() || (newData.child('losses3').isNumber() && newData.child('losses3').val() >= 0 && newData.child('losses3').val() <= 1000000)) && (!newData.child('games3').exists() || (newData.child('games3').isNumber() && newData.child('games3').val() >= 0 && newData.child('games3').val() <= 1000000)) && (!newData.child('level').exists() || (newData.child('level').isNumber() && newData.child('level').val() >= 0 && newData.child('level').val() <= 1000)) && (!newData.child('xp').exists() || (newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000)) && (!newData.child('gold').exists() || (newData.child('gold').isNumber() && newData.child('gold').val() >= 0 && newData.child('gold').val() <= 1000000000))"
-      }
-    },
-    "queue2": {
-      ".read": true,
-      "$sessionId": {
-        ".write": "auth != null",
-        ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())",
-        "$field": {
-          ".validate": "!newData.isString() || newData.val().length <= 2000"
-        }
-      }
-    },
-    "queue3": {
-      ".read": true,
-      "$sessionId": {
-        ".write": "auth != null",
-        ".validate": "newData == null || (newData.hasChildren(['status','ts']) && newData.child('status').isString() && newData.child('ts').isNumber())",
-        "$field": {
-          ".validate": "!newData.isString() || newData.val().length <= 2000"
-        }
-      }
-    },
     "games": {
       "ping": {
         ".read": true,
         ".write": "auth != null"
       },
-      "$gameCode": {
+      "$code": {
         ".read": true,
         ".write": "auth != null",
-        ".validate": "newData == null || newData.hasChildren(['createdAt'])",
+        ".validate": "newData.hasChildren(['createdAt'])",
         "state": {
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200000)"
         },
@@ -45,16 +18,123 @@
         "guestAction3": {
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20000)"
         },
+        "numPlayers": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 3"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
         "hb2": {
-          ".validate": "!newData.exists() || newData.isNumber()"
+          ".validate": "newData.isNumber()"
         },
         "hb3": {
-          ".validate": "!newData.exists() || newData.isNumber()"
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "leaderboard": {
+      ".read": true,
+      "$playerId": {
+        ".write": "auth != null && auth.uid === $playerId",
+        ".validate": "newData.hasChildren(['name','wins','games']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && (!newData.child('wappen').exists() || (newData.child('wappen').isString() && newData.child('wappen').val().length <= 20)) && (!newData.child('color').exists() || (newData.child('color').isString() && newData.child('color').val().length <= 20)) && (!newData.child('elo').exists() || (newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999)) && (!newData.child('elo3').exists() || (newData.child('elo3').isNumber() && newData.child('elo3').val() >= 0 && newData.child('elo3').val() <= 9999)) && (!newData.child('peakElo').exists() || (newData.child('peakElo').isNumber() && newData.child('peakElo').val() >= 0 && newData.child('peakElo').val() <= 9999)) && (!newData.child('peakElo3').exists() || (newData.child('peakElo3').isNumber() && newData.child('peakElo3').val() >= 0 && newData.child('peakElo3').val() <= 9999)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000)) && (!newData.child('losses').exists() || (newData.child('losses').isNumber() && newData.child('losses').val() >= 0 && newData.child('losses').val() <= 1000000)) && (!newData.child('games').exists() || (newData.child('games').isNumber() && newData.child('games').val() >= 0 && newData.child('games').val() <= 1000000)) && (!newData.child('wins3').exists() || (newData.child('wins3').isNumber() && newData.child('wins3').val() >= 0 && newData.child('wins3').val() <= 1000000)) && (!newData.child('losses3').exists() || (newData.child('losses3').isNumber() && newData.child('losses3').val() >= 0 && newData.child('losses3').val() <= 1000000)) && (!newData.child('games3').exists() || (newData.child('games3').isNumber() && newData.child('games3').val() >= 0 && newData.child('games3').val() <= 1000000)) && (!newData.child('level').exists() || (newData.child('level').isNumber() && newData.child('level').val() >= 0 && newData.child('level').val() <= 1000)) && (!newData.child('xp').exists() || (newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000)) && (!newData.child('gold').exists() || (newData.child('gold').isNumber() && newData.child('gold').val() >= 0 && newData.child('gold').val() <= 1000000000)) && (!newData.child('updatedAt').exists() || newData.child('updatedAt').isNumber())"
+      }
+    },
+    "queue2": {
+      ".read": true,
+      "$ticketId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['ts','status'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "wappen": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "color": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "pid": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "dev": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "elo": {
+          ".validate": "newData.isNumber()"
+        },
+        "ts": {
+          ".validate": "newData.isNumber()"
+        },
+        "hb": {
+          ".validate": "newData.isNumber()"
+        },
+        "claimBy": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "claimTs": {
+          ".validate": "newData.isNumber()"
+        },
+        "code": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "role": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "queue3": {
+      ".read": true,
+      "$ticketId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['ts','status'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "wappen": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "color": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "pid": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "dev": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "elo": {
+          ".validate": "newData.isNumber()"
+        },
+        "ts": {
+          ".validate": "newData.isNumber()"
+        },
+        "hb": {
+          ".validate": "newData.isNumber()"
+        },
+        "claimBy": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "claimTs": {
+          ".validate": "newData.isNumber()"
+        },
+        "code": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "role": {
+          ".validate": "newData.isNumber()"
         }
       }
     },
     "telemetry": {
-      "_c": "Match-Telemetrie (v3.47.0): anonyme Aggregate fuer Balancing-Auswertung. Schreiben nur authentifiziert und nur NEUE Eintraege (kein Ueberschreiben/Loeschen fremder Datensaetze). Lesen offen, damit das Dashboard stats.html ohne Login funktioniert — die Daten enthalten bewusst KEINE Namen oder Profil-IDs.",
       ".read": true,
       "$id": {
         ".write": "auth != null && !data.exists() && newData.exists()",
