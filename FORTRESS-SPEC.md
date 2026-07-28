@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.72.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.73.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -4926,3 +4926,50 @@ Der Fehler sah nach Flakiness aus — erst der Vergleich gegen den unveränderte
 Vorgängerstand (dort 320/320 grün) machte ihn als echte Regression sichtbar.
 
 Tests grün (Unit 60/60, E2E 330/330). SW-Cache `fortress-v3.72.0`.
+
+---
+
+## v3.73.0 — Der Bezwinger wird teuer statt gesperrt
+
+**Was sich ändert.** v3.67.0 hielt den Bezwinger mit zwei künstlichen
+Bedingungen aus den ersten Runden heraus (`abRunde: 3`, `minKanonen: 3`). Beide
+sind ersatzlos entfallen. Der Preis steigt von **250 auf 550** und erledigt die
+Aufgabe allein — die Karte verhält sich jetzt wie jede andere: zu wenig Beute,
+also grau.
+
+**Die Rechnung.** Runde 1 ist damit nicht „verboten", sondern rechnerisch
+unerreichbar:
+
+| | |
+|---|---|
+| Startbeute | 150 |
+| `SCRAP_SURVIVE` beim Eintritt in die Rüstphase | +60 |
+| Schüsse: 2 Startkanonen × ⌊`SHOOT_TIME`/`RELOAD_MS`⌋ = 2 × ⌊20000/2500⌋ | 16 Kugeln |
+| `SCRAP_WALL` je Treffer — **einmal pro Kugel**, nicht pro zerstörter Zelle | +320 |
+| **Obergrenze bei perfektem Spiel** | **530** |
+
+Kanonen-Kills scheiden aus: Standardkugeln beschädigen Kanonen gar nicht, dafür
+bräuchte es bereits einen Bezwinger. 550 liegt also über allem, was in Runde 1
+überhaupt entstehen kann. Gemessen erreichten Bots (Stufe Mittel) in Runde 1
+höchstens 250 — der Abstand ist gross genug, dass auch starke Menschen die
+Grenze nicht reissen.
+
+Ab Runde 2 ist der Kauf offen, verlangt aber **Verzicht**: wer ihn will, darf in
+Runde 1 nichts anderes kaufen. Genau diese Entscheidung macht das Upgrade
+interessant — sie ist verdient statt verordnet.
+
+### Der Bot musste sparen lernen
+
+Erste Messung nach der Preiserhöhung: **0 Bezwinger-Käufe in 20 Partien.** Der
+Bot verteilte seine Beute jede Runde auf Kleinkram und kam nie auf 550 — die
+Kanonenjagd wäre aus Bot-Partien verschwunden. Er hält jetzt ab der Hälfte des
+Preises zurück (gleiches Muster wie das Sperrfeuer-Sparziel).
+
+Danach: **17 von 20 Partien mit Kauf, frühestens Runde 6, Median Runde 7.**
+Menschen sind schneller, weil sie mehr Mauern treffen — bei rund 10 Treffern je
+Runde reicht es nach Runde 2.
+
+Die i18n-Schlüssel `shopLockRound` und `shopLockCannons` sind entfallen, ebenso
+der tote `it.gesperrt`-Zweig in der Shop-Karte.
+
+Tests grün (Unit 60/60, E2E 330/330). SW-Cache `fortress-v3.73.0`.

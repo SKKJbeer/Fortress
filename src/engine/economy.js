@@ -29,14 +29,31 @@ export const SHOP = {
   // Kanonen-Bezwinger (v3.57.0): zweite Kanonenart, wirkt NUR gegen Kanonen.
   // Guenstiger als eine normale Kanone, weil sie keinen Mauerschaden macht.
   //
-  // FREISCHALTUNG (v3.67.0): Der Bezwinger ist eine Spezialwaffe und darf nicht
-  // gleich nach der ersten Runde dastehen — sonst wird die Aufbauphase
-  // uebersprungen und das Spiel beginnt sofort als Kanonenjagd. Er verlangt
-  // deshalb ZWEI Bedingungen, die BEIDE erfuellt sein muessen:
-  //   abRunde     fruehestens ab dieser Runde kaufbar
-  //   minKanonen  so viele eigene MAUERBRECHER muessen stehen (nicht nur
-  //               gekauft, sondern platziert) — erst eine Grundstellung,
-  //               dann der Spezialist
-  slayer: { price: 250, abRunde: 3, minKanonen: 3 },
+  // FREISCHALTUNG UEBER DEN PREIS (v3.73.0, loest die Regel-Sperre aus v3.67.0 ab)
+  // Der Bezwinger darf in Runde 1 nicht dastehen — sonst wird die Aufbauphase
+  // uebersprungen und das Spiel beginnt sofort als Kanonenjagd. Bis v3.72.0
+  // erzwangen das zwei kuenstliche Bedingungen (abRunde 3, minKanonen 3). Das
+  // ist jetzt eine reine PREISFRAGE: 550 ist in Runde 1 rechnerisch nicht
+  // erreichbar.
+  //
+  // Rechnung der Obergrenze fuer Runde 1:
+  //   Startbeute                                        150
+  //   SCRAP_SURVIVE beim Eintritt in die Ruestphase    + 60
+  //   Schuesse: 2 Startkanonen × floor(SHOOT_TIME / RELOAD_MS)
+  //             = 2 × floor(20000/2500) = 16 Kugeln
+  //   Beute je Treffer: SCRAP_WALL wird EINMAL pro Kugel gezahlt,
+  //             nicht pro zerstoerter Zelle          + 16 × 20 = 320
+  //   ─────────────────────────────────────────────────────────
+  //   absolute Obergrenze bei perfektem Spiel           530
+  //
+  // Kanonen-Kills scheiden aus: Standardkugeln beschaedigen Kanonen gar nicht
+  // (dafuer braeuchte es bereits einen Bezwinger). Gemessen erreichten Bots auf
+  // Stufe Mittel in Runde 1 hoechstens 250 — der Abstand zur Grenze ist also
+  // gross genug, dass auch starke Menschen sie nicht reissen.
+  //
+  // Ab Runde 2 ist der Kauf offen, verlangt aber Verzicht: wer ihn will, darf
+  // in Runde 1 nichts anderes kaufen. Das ist die Entscheidung, die das
+  // Upgrade interessant macht.
+  slayer: { price: 550 },
   repair: { base: 150, step: 50 }        // +3 Trümmer → Mauern; Preis steigt je Kauf (Staffel pro Karte)
 };

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.72.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.73.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -5374,11 +5374,8 @@ window.FortressApp = function Fortress() {
       if (have < price) return false;
       up.armor = 1;
     } else if (item === "slayer") {
-      // Freischaltung pruefen — gilt fuer Mensch, Gast UND Bot gleichermassen,
-      // weil alle Kaeufe durch diese Funktion laufen.
-      if (roundRefVal.current < SHOP.slayer.abRunde) return false;
-      const eigene = (cannons.current[player] || []).filter((c) => (c.kt || "std") === "std" && c.hp > 0).length;
-      if (eigene < SHOP.slayer.minKanonen) return false;
+      // Keine Regel-Sperre mehr (v3.73.0): der Preis allein haelt den Bezwinger
+      // aus Runde 1 heraus — Begruendung und Rechnung in economy.js.
       price = SHOP_SLAYER;
       if (have < price) return false;
       cannonBudget.current[player] = (cannonBudget.current[player] || 0) + 1;
@@ -5892,14 +5889,23 @@ window.FortressApp = function Fortress() {
           const slay = alle.filter((c) => c.kt === "slayer").length;
           const anteil = 0.4;
           const preisS = SHOP_SLAYER;
-          if (alle.length >= 2 && slay < Math.max(1, Math.round(alle.length * anteil))
-              && have >= preisS && cannonBudget.current[B] <= 0
-              && alle.length < lvl.maxCannons) {
-            // NUR abbrechen, wenn der Kauf auch geklappt hat. Sonst blockiert
-            // eine nicht erfuellte Freischaltung den ganzen Einkauf und der Bot
-            // bleibt fuer immer bei zwei Kanonen stehen (gemessen: 7 Runden
-            // ohne jeden Zubau).
-            if (buyUpgrade(B, "slayer")) return;
+          const willBezwinger = alle.length >= 2
+            && slay < Math.max(1, Math.round(alle.length * anteil))
+            && cannonBudget.current[B] <= 0 && alle.length < lvl.maxCannons;
+          if (willBezwinger) {
+            if (have >= preisS) {
+              // NUR abbrechen, wenn der Kauf auch geklappt hat — sonst blockiert
+              // ein gescheiterter Kauf den ganzen Einkauf und der Bot bleibt bei
+              // zwei Kanonen stehen (gemessen: 7 Runden ohne jeden Zubau).
+              if (buyUpgrade(B, "slayer")) return;
+            } else if (have >= preisS * 0.5) {
+              // SPAREN (v3.73.0): Der Bezwinger kostet jetzt mehr, als in einer
+              // Runde zusammenkommt. Ohne Zurueckhalten verteilt der Bot seine
+              // Beute jede Runde auf Kleinkram und erreicht den Preis NIE —
+              // gemessen 0 Kaeufe in 20 Partien. Ab der Haelfte wird gespart,
+              // gleiches Muster wie beim Sperrfeuer-Sparziel oben.
+              return;
+            }
           }
         }
         const XPw = balExp() || {};
@@ -7726,7 +7732,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.72.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.73.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -9566,17 +9572,9 @@ window.FortressApp = function Fortress() {
       const have = scrap.current[sp] || 0;
       const items = [
         { k: "cannon", label: t("shopCannon"), tag: t("shopTagCannon"), price: cannonPriceOf(sp), max: false },
-        (() => {
-          // Gesperrter Bezwinger zeigt den GRUND, nicht nur einen grauen Knopf.
-          const eig = (cannons.current[sp] || []).filter((c) => (c.kt || "std") === "std" && c.hp > 0).length;
-          const zuFrueh = roundRefVal.current < SHOP.slayer.abRunde;
-          const zuWenig = eig < SHOP.slayer.minKanonen;
-          return { k: "slayer", label: t("shopSlayer"),
-            tag: zuFrueh ? t("shopLockRound", { n: SHOP.slayer.abRunde })
-               : zuWenig ? t("shopLockCannons", { n: SHOP.slayer.minKanonen })
-               : t("shopTagSlayer"),
-            price: SHOP_SLAYER, max: false, gesperrt: zuFrueh || zuWenig };
-        })(),
+        // Der Bezwinger ist nicht mehr gesperrt, nur teuer (v3.73.0) — er
+        // verhaelt sich damit wie jede andere Karte: zu wenig Beute = grau.
+        { k: "slayer", label: t("shopSlayer"), tag: t("shopTagSlayer"), price: SHOP_SLAYER, max: false },
         { k: "reload", label: t("shopReload"), tag: t("shopTagReload"), price: (up.reload || 0) >= 2 ? 0 : SHOP.reload.prices[up.reload || 0], max: (up.reload || 0) >= 2 },
         { k: "armor", label: t("shopArmor"), tag: t("shopTagArmor"), price: SHOP.armor.price, max: !!up.armor },
         { k: "repair", label: t("shopRepair"), tag: t("shopTagRepair"), price: SHOP.repair.base + SHOP.repair.step * (up.repair || 0), max: false, noNeed: (() => {
@@ -9632,7 +9630,7 @@ window.FortressApp = function Fortress() {
           h("div", { style: { display: "flex", gap: 7, alignItems: "stretch" } },
             items.map((it, idx) => {
               const th = SHOP_THEME[it.k];
-              const afford = !it.max && !it.noNeed && !it.gesperrt && have >= it.price;
+              const afford = !it.max && !it.noNeed && have >= it.price;
               const dim = !afford;
               const buyC = shopBuyAnim.current[sp + "_" + it.k] || 0;
               return h("button", {
