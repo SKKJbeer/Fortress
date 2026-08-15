@@ -1,7 +1,13 @@
 // Phase 3 der Modularisierung (v3.36.0) — aus index.html extrahiert.
-// Icon-System: Lucide-Pfade als Inline-SVG. React kommt als CDN-Global
-// (window.React) — die Komponente wird nur im Browser aufgerufen; Node
-// importiert dieses Modul nur fuer Daten-Tests der Pfade.
+// Icon-System: Lucide-Pfade als Inline-SVG.
+//
+// React wird seit dem Vite-Umbau EXPLIZIT importiert (Architektur E3). Vorher
+// war es ein CDN-Global (window.React) — im Bundle gibt es dieses Global nicht
+// mehr, und das Modul warf beim ersten Icon "React is not defined".
+// Node importiert die Datei weiterhin nur fuer Daten-Tests der Pfade; der
+// Import ist dabei unschaedlich, weil React nur INNERHALB von Icon() benutzt
+// wird und die Tests die Komponente nicht aufrufen.
+import React from "react";
 // ── Icon-System (Lucide-Pfade als Inline-SVG, React-nativ) ──────────────
 // Ersetzt Emojis durch saubere, konsistente Strich-Icons. textContent bleibt
 // leer, daher stören Icons keine Test-Selektoren, die auf Button-Text prüfen.

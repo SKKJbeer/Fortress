@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.73.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.74.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -1121,7 +1121,7 @@ Pay2Win“ bleibt: alles nur mit erspieltem Gold, kein Echtgeld).
 - **Bug 2 (neues Profil)**: `useEffect([], [])` lief beim ersten Mount, wenn `profile = null` (neues Konto / Profil-Editor offen). Early-Return → 1200ms-Timer nie gestartet. Nach Profil-Erstellung ändert sich `profile`, aber leerer Deps-Array verhinderte Re-Run → Modal erschien nie automatisch.
   - **Fix**: `profile?.id` als Dependency. Effekt läuft wenn Profil von `null` auf einen Wert wechselt.
 
-- **Test-Erweiterung** (`test_fortress.js`):
+- **Test-Erweiterung** (`test_fortress.cjs`):
   - `PROFILE_INIT` aktualisiert: alle neuen Felder (level, xp, peakElo, peakElo3, unlockedRewards, achievements, dailyTasks, seasonXp). `fortress_daily` mit aktuellem Timestamp → verhindert Auto-Show in unrelated Tests.
   - Neue Suite `suiteProgression`: 14 Tests für LevelBadge, XP-Leiste, Win-Rate %, ELO-Anzeige, CSS-Keyframes, Tages-Belohnungs-Button, Modal-Kalender, Abhol-Flow, Gold-Update, Streak-Persistenz, gesperrte Avatare, Basis-Avatare frei, Level-Overlay.
 
@@ -1379,7 +1379,7 @@ Pay2Win“ bleibt: alles nur mit erspieltem Gold, kein Echtgeld).
 - Neue Suite `suiteOnboarding` (8 Checks): Auto-Popup, Navigation, Durchklicken bis
   letzter Slide, Abschluss schließt + setzt Flag, Re-Open via Menü, Überspringen schließt,
   keine JS-Fehler. Gesamt jetzt **148 Tests grün**.
-- `test_fortress.js` PROFILE_INIT setzt `fortress_onboarded='1'`, damit das Auto-Popup
+- `test_fortress.cjs` PROFILE_INIT setzt `fortress_onboarded='1'`, damit das Auto-Popup
   andere Suites nicht blockiert.
 
 ### v3.12.2 — Sound & Haptik (prozedurale SFX + Vibration)
@@ -1850,7 +1850,7 @@ mitten aus dem zweiten Beitritt/Matchmaking. Erst ein Seiten-Reload räumte auf.
 - `guestStateHandler`: Schutz-Guard — reagiert nur noch, wenn wirklich eine
   Online-Gast-Session aktiv ist (`online && myRole !== 1`); ein verwaister Listener
   kann keine neue Session mehr beenden.
-- Test-Mock (`test_fortress.js`): `onValue` gibt jetzt wie die echte SDK eine
+- Test-Mock (`test_fortress.cjs`): `onValue` gibt jetzt wie die echte SDK eine
   Unsubscribe-Funktion zurück (die alte Mock-Semantik hatte den Bug unsichtbar gemacht).
 
 **Phasenzeiten (Klarstellung nach v3.14.9):** Bauphase wieder **25s** (v3.14.9 hatte
@@ -3083,7 +3083,7 @@ sie aus, der Service Worker cached sie):
 - `src/i18n.js` — LANGS komplett (de/en)
 index.html importiert alles via `import`-Statements im Modul-Script — identische
 Semantik, keine Verhaltens-Änderung. `src/package.json`+`tests/package.json`
-(`type: module`) machen die Module für Node ESM-fähig, ohne test_fortress.js
+(`type: module`) machen die Module für Node ESM-fähig, ohne test_fortress.cjs
 (CommonJS) anzufassen.
 **Neue Test-Etage (Pyramide):** `node --test tests/engine.test.js tests/i18n.test.js`
 — 31 Unit-Tests in ~0,2s: ELO-Nullsumme, Gold-Grenzen, XP-Level-Aufstieg,
@@ -4973,3 +4973,52 @@ Die i18n-Schlüssel `shopLockRound` und `shopLockCannons` sind entfallen, ebenso
 der tote `it.gesperrt`-Zweig in der Shop-Karte.
 
 Tests grün (Unit 60/60, E2E 330/330). SW-Cache `fortress-v3.73.0`.
+
+---
+
+## v3.74.0 — Vite: ein Build für Web und App
+
+Erster Schritt des Architektur-Umbaus (`ARCHITEKTUR.md`, Entscheidungen E2/E3).
+**Die Spiellogik ist unverändert** — es ändert sich, wie sie ausgeliefert wird.
+
+**Warum.** iOS erzwingt einen Build: Apple 2.5.2 verbietet das Nachladen von
+ausführbarem Code, und beim ersten Start ohne Netz hätte eine App, die React vom
+CDN holt, überhaupt keinen Code. Die Alternative wäre gewesen, das Web ohne Build
+zu lassen und iOS daraus abzuleiten — zwei Auslieferungswege für denselben Code,
+und damit die Fehlerklasse „tritt nur in einem Weg auf". Ein Artefakt für beide
+Ziele schliesst das konstruktiv aus.
+
+**Was sich ändert:**
+
+| | |
+|---|---|
+| React, Firebase | aus `node_modules` statt von unpkg/gstatic |
+| Statische Dateien | nach `public/` (Sounds, Icons, Manifest, Nebenseiten) — Pfade bleiben identisch |
+| Bauergebnis | `dist/` — wird von Pages **und** später von Capacitor ausgeliefert |
+| E2E | läuft gegen `dist/`, also gegen das, was wirklich ausgeliefert wird |
+| `test_fortress.js` | heisst jetzt `.cjs` — die neue Wurzel-`package.json` setzt `type: module` |
+
+Ergebnis: **keine einzige externe URL** mehr im Bundle. 1,19 MB, 473 KB gzip.
+
+### Drei Dinge, die der Umbau ans Licht brachte
+
+**`src/ui/icons.js` benutzte `React` als CDN-Global.** Im Bundle gibt es dieses
+Global nicht — das Modul warf beim ersten Icon `React is not defined` und die
+App blieb leer. React wird dort jetzt explizit importiert. Es war das einzige
+betroffene Modul; alle anderen `src/`-Dateien sind rein.
+
+**Firebase überschrieb den Test-Mock.** Solange das SDK vom CDN kam, liess es
+sich im Test durch Blockieren der Anfrage stilllegen. Mitgebündelt kann die
+Initialisierung nicht mehr scheitern — sie hätte den vorab gesetzten Mock
+verdrängt und die E2E-Suite gegen die **echte Produktivdatenbank** laufen lassen.
+Der Kopf-Block prüft jetzt, ob bereits ein Ersatz installiert ist, und hält sich
+dann heraus.
+
+**Eine Prüfung war zu eng formuliert.** „Gold-Anzeige im Menü" suchte ein Element
+*ohne Kindknoten*, das „Gold" enthält — neben dem Betrag steht aber das
+Münz-Icon als Kind. Sie prüft jetzt die Absicht (`/\d+\s*Gold/` im sichtbaren
+Text), gleiche Formulierung wie ihre Schwester in `suiteProgression`. Warum sie
+vor dem Umbau durchging, liess sich nicht mehr rekonstruieren; die Anzeige selbst
+ist nachweislich vorhanden.
+
+Tests grün (Unit 60/60, E2E 330/330 gegen `dist/`).

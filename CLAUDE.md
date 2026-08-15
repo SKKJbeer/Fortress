@@ -21,12 +21,12 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `src/engine/*.js` | **Engine-Schicht (seit v3.34.0)**: pure Logik/Daten als native ES-Module — `const.js` (Grid/Zelltypen), `economy.js` (Schrott/SHOP), `terrain.js` (RNG, Welten, Generatoren), `flood.js` (Umschlossen-Regel), `progression.js` (ELO/XP/Gold-Formeln), `catalog.js` (Kosmetik/Rezepte). Kein DOM/React/Firebase → unit-testbar. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
 | `tests/*.test.js` | **Unit-Tests** (`node --test tests/engine.test.js tests/i18n.test.js`, ~0,2s). |
-| `test_fortress.js` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
+| `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |
 
 ### Stack
-- **React** via unpkg CDN + **native ES-Module** für die Engine (KEIN Build-Schritt — Browser lädt `src/` direkt; neue Engine-Dateien in `sw.js` CORE eintragen!)
+- **Vite**-Build (seit v3.74.0): React + Firebase aus npm, `src/` als ES-Module gebündelt nach `dist/`. Statische Dateien (Sounds, Icons, Manifest, Nebenseiten) liegen in `public/` und behalten dort ihre Pfade.
 - **Firebase Realtime Database** für Online-Multiplayer (Web SDK v10.12.2, ES-Module via gstatic CDN)
 - **GitHub Pages** für Hosting
 - **localStorage** für Spieler-Profile
@@ -65,13 +65,18 @@ bezahlte Services eingeführt werden — aber erst dann.
 
 **Wenn das Spiel monetarisiert wird:** dann Firebase Blaze (Cloud Functions für serverseitige Logik, echte Stat-Sicherheit) und ggf. eigenes Backend evaluieren. Das wäre auch der richtige Zeitpunkt für vollständige Firebase Security Rules mit Auth.
 
-### Build-Workflow
+### Build-Workflow (seit v3.74.0 mit Vite — siehe ARCHITEKTUR.md)
 ```
-index.html direkt editieren
+index.html / src/ editieren
+→ npm run build          erzeugt dist/  (Pages UND Capacitor liefern dies aus)
+→ npm run test:unit && npm run test:e2e
 → git push origin main
-→ GitHub Actions deployt automatisch
-→ Version wird aus <title>FORTRESS vX.Y.Z</title> gelesen
+→ GitHub Actions baut und deployt dist/
 ```
+WICHTIG: Die E2E-Suite laeuft gegen **dist/**, nicht gegen die Quelle —
+also `npm run build` VOR `npm run test:e2e`. Der Server muss dist/ ausliefern.
+React und Firebase kommen aus node_modules, nicht mehr vom CDN (Apple 2.5.2).
+`test_fortress.cjs` heisst .cjs, weil die Wurzel-package.json `type: module` setzt.
 
 **Versionen immer an 2 Stellen hochsetzen:**
 1. `<title>FORTRESS vX.Y.Z</title>` (Zeile ~11)
@@ -303,10 +308,10 @@ node --test tests/engine.test.js tests/i18n.test.js
 python3 -m http.server 8765 &
 
 # 3) E2E-Suite (Playwright, ~60s):
-node test_fortress.js
+node test_fortress.cjs
 ```
 
-- Test-Datei: `test_fortress.js` (Playwright, Chromium headless)
+- Test-Datei: `test_fortress.cjs` (Playwright, Chromium headless)
 - Prüft zuerst: Version in `index.html` auf Disk == Version vom Server (Mismatch → Abbruch)
 - React-CDN wird lokal gemockt aus `/tmp/react.min.js` + `/tmp/react-dom.min.js`
 - Firebase/gstatic werden abgeblockt

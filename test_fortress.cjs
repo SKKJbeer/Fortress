@@ -2,8 +2,9 @@ const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
 const http = require('http');
 
-const REACT_JS = fs.readFileSync('/tmp/react.min.js', 'utf8');
-const REACT_DOM_JS = fs.readFileSync('/tmp/react-dom.min.js', 'utf8');
+// React kommt seit dem Vite-Umbau aus dem Bundle (Architektur E3), nicht mehr
+// vom CDN. Das fruehere Nachreichen von /tmp/react.min.js entfaellt damit
+// ersatzlos — es gibt keine unpkg-Anfrage mehr, die man abfangen koennte.
 
 // Speedup-Skript: setInterval >= 900ms → 50ms (Phasen 20× schneller)
 //                 setTimeout >= 2000ms → /5   (Banner 5× schneller)
@@ -133,10 +134,6 @@ async function makeCtx(browser) {
   const page = await ctx.newPage();
   await page.addInitScript(PROFILE_INIT);
   await page.addInitScript(TIMER_SPEEDUP);
-  await page.route('**unpkg.com**react@18**react.production.min.js**',
-    r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
-  await page.route('**unpkg.com**react-dom@18**react-dom.production.min.js**',
-    r => r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
   await page.route('**firebase**',   r => r.abort());
   await page.route('**gstatic**',    r => r.abort());
   await page.route('**googleapis**', r => r.abort());
@@ -208,11 +205,12 @@ async function suiteMenu(browser) {
       ? ok('Menü-Hauptbuttons LOKAL & ONLINE ✓')
       : fail(`Menü-Buttons fehlen: ${btnTexts.slice(0, 5).join(', ')}`);
 
-    // Gold-Anzeige
-    const goldOk = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('*')).some(el =>
-        el.children.length === 0 && (el.textContent || '').includes('Gold'))
-    );
+    // Gold-Anzeige — geprueft wird die ABSICHT ("steht der Goldstand im
+    // Menue?"), nicht das Markup. Die fruehere Fassung verlangte ein Element
+    // OHNE Kinder; daneben steht aber das Muenz-Icon als Kindknoten, womit die
+    // Pruefung an jeder Icon-Aenderung zerbricht statt an einem echten Fehler.
+    // Gleiche Formulierung wie die Schwester-Pruefung in suiteProgression.
+    const goldOk = await page.evaluate(() => /\d+\s*Gold/.test(document.body.innerText));
     goldOk ? ok('Gold-Anzeige im Menü ✓') : fail('Gold-Anzeige fehlt');
 
     // Bestenliste-Button (auch als Rangliste/Leaderboard bekannt)
@@ -833,10 +831,6 @@ async function makeOnlineCtx(browser, fbPort, extraInit) {
   if (extraInit) await page.addInitScript(extraInit);
   await page.addInitScript(TIMER_SPEEDUP);
   await page.addInitScript(makeFbMock(fbPort));
-  await page.route('**unpkg.com**react@18**react.production.min.js**',
-    r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
-  await page.route('**unpkg.com**react-dom@18**react-dom.production.min.js**',
-    r => r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
   await page.route('**firebase**',   r => r.abort());
   await page.route('**gstatic**',    r => r.abort());
   await page.route('**googleapis**', r => r.abort());
@@ -2735,10 +2729,6 @@ async function suiteGoldShop(browser) {
     // ist im Context geteilt) → echter loadProfile-Durchlauf.
     const page2 = await ctx.newPage();
     page2.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
-    await page2.route('**unpkg.com**react@18**react.production.min.js**',
-      r => r.fulfill({ contentType: 'application/javascript', body: REACT_JS }));
-    await page2.route('**unpkg.com**react-dom@18**react-dom.production.min.js**',
-      r => r.fulfill({ contentType: 'application/javascript', body: REACT_DOM_JS }));
     await page2.route('**firebase**',   r => r.abort());
     await page2.route('**gstatic**',    r => r.abort());
     await page2.route('**googleapis**', r => r.abort());

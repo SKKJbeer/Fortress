@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.73.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.74.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -92,12 +92,20 @@
 
   <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
   <script type="module" async>
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { initializeApp } from "firebase/app";
     import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect }
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+      from "firebase/database";
     import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
              linkWithRedirect, signInWithRedirect, signInWithCredential, getRedirectResult, signOut }
-      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      from "firebase/auth";
+    // Ist bereits ein Firebase-Ersatz installiert, wird NICHT ueberschrieben.
+    // Seit das SDK mitgebuendelt ist (Architektur E3), kann die Initialisierung
+    // nicht mehr am Netz scheitern — ohne diese Weiche wuerde sie den in der
+    // E2E-Suite vorab gesetzten Mock verdraengen und die Tests liefen gegen die
+    // ECHTE Produktivdatenbank. In der App ist die Bedingung immer erfuellt.
+    if (typeof window !== "undefined" && window.__fb) {
+      window.dispatchEvent(new Event("fb-ready"));
+    } else
     try {
       const app = initializeApp({
         databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
@@ -117,7 +125,7 @@
       // Firebase-Initialisierung (Spiel läuft weiter).
       const APPCHECK_SITE_KEY = ""; // <-- reCAPTCHA v3 Site-Key hier eintragen
       if (APPCHECK_SITE_KEY) {
-        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js")
+        import("firebase/app-check")
           .then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
             try {
               initializeAppCheck(app, {
@@ -206,9 +214,13 @@
     <button onclick="this.closest('#ios-hint').style.display='none'">Verstanden ✓</button>
   </div>
   <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script type="module">
+// React kommt aus node_modules statt vom CDN (Architektur E3). Die beiden
+// Bezeichner heissen bewusst weiter React/ReactDOM: so bleiben alle 543
+// React.createElement-Aufrufe und der createRoot-Aufruf unveraendert gueltig,
+// ohne 10.000 Zeilen anzufassen.
+import React from "react";
+import * as ReactDOM from "react-dom/client";
 import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, FAN_SPREAD, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from './src/engine/const.js';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from './src/engine/economy.js';
 const SHOP_SLAYER = SHOP.slayer.price;
@@ -7732,7 +7744,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.73.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.74.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
