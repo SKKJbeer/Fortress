@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.75.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.76.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5078,3 +5078,64 @@ nirgends. Jetzt eine echte Prüfung statt einer Zusicherung: sie kostet nichts
 und hält auch dann, wenn sich `mergeProfiles` einmal ändert.
 
 Tests grün (Unit 60/60, E2E 336/336, Typen 0 Fehler).
+
+---
+
+## v3.76.0 — iOS: Plattform-Weiche, Fortschritt löschen, Capacitor
+
+Schritte 5–7 des Architektur-Umbaus. Damit ist die App baubar.
+
+### Eine Weiche, nicht viele
+
+`src/platform.ts` ist die **einzige** Stelle, an der sich App und Website
+unterscheiden. Sobald sich solche Abfragen verteilen, kann niemand mehr
+aufzählen, worin der Unterschied besteht — und was man nicht aufzählen kann,
+kann man nicht testen.
+
+Gesteuert werden: Konto-Verknüpfung (in der App aus), Haptik (Capacitor statt
+`navigator.vibrate`, das es auf iOS nicht gibt), Statusleiste.
+
+Die Weiche ist über `window.__NATIVE__` schaltbar — **beide** Zustände werden
+in der E2E-Suite durchgespielt, ohne dass eine App gebaut werden muss.
+
+### Fortschritt löschen
+
+Apple verlangt das, sobald eine App Konten anlegt (5.1.1(v)) — und es gehört
+ohnehin zum Cloud-Save: wer Daten in die Wolke legt, muss sie wieder
+herausbekommen. Gelöscht wird **beides**, Serverdatensatz und lokaler Stand.
+Nur eins von beidem wäre schlimmer als nichts, weil der jeweils andere ihn beim
+nächsten Abgleich wiederherstellen würde.
+
+Danach steht das Spiel wie nach einer Erstinstallation da. Die Prüfung dazu ist
+zweimal umgeschrieben worden: erst erwartete sie „ein frisches Profil liegt
+vor" (falsch — es entsteht keines), dann scheiterte sie daran, dass der
+Test-Fixture-Setzer bei **jedem** Laden lief und den alten Stand nach dem
+Neuladen sofort wieder einsäte. Jetzt wird einmalig geimpft.
+
+### Capacitor
+
+`ios/` ist eingecheckt. Zwei Dinge, die sonst erst im CI aufgefallen wären:
+
+**Kein `.xcworkspace`.** Capacitor 8 bindet Plugins über Swift Package Manager
+ein — der Workflow muss `-project` verwenden, nicht `-workspace`.
+
+**Kein geteiltes Schema.** `npx cap add ios` legt keines an; ohne ein
+`xcshareddata`-Schema findet `xcodebuild` im CI kein Ziel.
+
+Dazu: Hochkant erzwungen (das Raster 44×68 wäre im Querformat unbrauchbar, und
+Apple prüft, ob angebotene Ausrichtungen funktionieren), helle Statusleiste,
+App-Icon als 1024×1024 **ohne Alphakanal** — mit Transparenz lehnt Apple ab.
+
+### Der iOS-Workflow
+
+`macos-14`, kostenlos für öffentliche Repositories. Läuft auf Zuruf oder bei
+einem Versions-Tag — nicht bei jedem Push, denn ein TestFlight-Upload ist eine
+Aussenwirkung.
+
+Ohne Signierungs-Geheimnisse läuft er bis zum Bundle-Check durch. Das ist der
+nützliche Fall „baut es überhaupt?", den man ohne jedes Zertifikat fahren kann.
+Der Upload nutzt einen App-Store-Connect-API-Schlüssel statt eines
+app-spezifischen Passworts: kein persönliches Apple-Passwort im Repository,
+jederzeit widerrufbar.
+
+Tests grün (Unit 60/60, E2E 345/345, Typen 0 Fehler).

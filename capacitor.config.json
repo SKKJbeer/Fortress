@@ -1,0 +1,21 @@
+{
+  "appId": "de.skkjbeer.fortress",
+  "appName": "FORTRESS",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#050d05",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 900,
+      "backgroundColor": "#050d05",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#050d05"
+    }
+  }
+}

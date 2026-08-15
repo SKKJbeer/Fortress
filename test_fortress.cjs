@@ -1554,6 +1554,105 @@ async function suiteOffline(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 0c: Plattform-Weiche + Fortschritt loeschen (v3.76.0)
+// Der Unterschied zwischen App und Website muss GEPRUEFT sein, sonst ist er
+// nur behauptet. Die Weiche (src/platform.ts) laesst sich ueber __NATIVE__
+// setzen — beide Zustaende werden hier durchgespielt, ohne eine App zu bauen.
+// ═══════════════════════════════════════════════════════════════
+async function suitePlattform(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Plattform-Weiche\n' + '='.repeat(50));
+
+  const oeffneProfil = async (page) => {
+    await page.evaluate(() => {
+      for (const b of document.querySelectorAll('button')) {
+        if ((b.getAttribute('title') || '').startsWith('Profil')) { b.click(); return; }
+      }
+    });
+    await page.waitForTimeout(600);
+  };
+
+  for (const nativ of [false, true]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+      serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      // NUR EINMAL impfen. PROFILE_INIT laeuft sonst bei jedem Laden — auch
+      // nach dem Neuladen, das auf das Loeschen folgt — und saet den alten
+      // Stand sofort wieder ein. Der Merker ueberlebt das Loeschen bewusst,
+      // weil wipeProgress nur die fortress_*-Schluessel entfernt.
+      await page.addInitScript(`try{ if(!localStorage.getItem('__geimpft')){ ${PROFILE_INIT}
+        localStorage.setItem('__geimpft','1'); } }catch(e){}`);
+      await page.addInitScript(`window.__NATIVE__ = ${nativ};`);
+      await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+      await page.waitForTimeout(900);
+      await oeffneProfil(page);
+
+      const ui = await page.evaluate(() => ({
+        link: [...document.querySelectorAll('button')].some(b => /Mit Google sichern|Save with Google/i.test(b.textContent)),
+        wipe: [...document.querySelectorAll('button')].some(b => /Fortschritt l|Delete progress/i.test(b.textContent)),
+        appText: /automatisch gesichert|backed up automatically/i.test(document.body.innerText)
+      }));
+      const wo = nativ ? 'App' : 'Web';
+      if (nativ) {
+        !ui.link ? ok('Weiche (App): kein Google-Knopf — 4.8 und 5.1.1(v) entfallen ✓')
+                 : fail('Weiche (App): Google-Knopf trotz nativer Huelle sichtbar');
+        ui.appText ? ok('Weiche (App): eigener Hinweistext statt leerer Aufforderung ✓')
+                   : fail('Weiche (App): zeigt weiter den Web-Text');
+      } else {
+        ui.link ? ok('Weiche (Web): Google-Knopf vorhanden ✓')
+                : fail('Weiche (Web): Google-Knopf fehlt');
+      }
+      ui.wipe ? ok(`Weiche (${wo}): "Fortschritt loeschen" vorhanden ✓`)
+              : fail(`Weiche (${wo}): Loeschknopf fehlt`);
+
+      // ── Loeschen wirklich durchspielen (nur einmal) ──────────
+      if (nativ) {
+        const vorher = await page.evaluate(() => {
+          try { const p = JSON.parse(localStorage.getItem('fortress_profile')); return { id: p.id, gold: p.gold }; }
+          catch (e) { return null; }
+        });
+        await page.evaluate(() => {
+          for (const b of document.querySelectorAll('button'))
+            if (/Fortschritt l|Delete progress/i.test(b.textContent)) { b.click(); return; }
+        });
+        await page.waitForTimeout(400);
+        const dialog = await page.evaluate(() => /Wirklich alles|Delete everything/i.test(document.body.innerText));
+        dialog ? ok('Loeschen: Rueckfrage erscheint (kein Sofort-Loeschen) ✓')
+               : fail('Loeschen: keine Rueckfrage');
+        await page.evaluate(() => {
+          for (const b of document.querySelectorAll('button'))
+            if (/Ja, alles|Yes, delete/i.test(b.textContent)) { b.click(); return; }
+        });
+        await page.waitForTimeout(2200);
+        // Nach dem Loeschen steht das Spiel wie nach einer Erstinstallation da:
+        // KEIN Profil im Speicher, und der Profil-Editor fordert einen neuen
+        // Namen an. (Erst gemessen, dann behauptet — die urspruengliche
+        // Erwartung "es legt sofort ein frisches an" war falsch.)
+        const nachher = await page.evaluate(() => {
+          try { return localStorage.getItem('fortress_profile'); } catch (e) { return 'FEHLER'; }
+        });
+        (vorher && nachher === null)
+          ? ok(`Loeschen: Stand entfernt (war ${vorher.id}, jetzt leer) ✓`)
+          : fail(`Loeschen: Profil noch da (${String(nachher).slice(0, 40)})`);
+        const frisch = await page.evaluate(() =>
+          !!document.querySelector('input:not([type=range])') ||
+          /WAPPEN|CREST|Profil|Profile/i.test(document.body.innerText));
+        frisch ? ok('Loeschen: Spiel steht wie nach Erstinstallation ✓')
+               : fail('Loeschen: kein Erstinstallations-Zustand nach dem Loeschen');
+      }
+    } finally { await ctx.close(); }
+  }
+  errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+              : ok('Plattform-Weiche: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE 5b: Herzschlag — HARTER Gast-Abbruch (v3.70.0)
 // Ein sauberes Verlassen schickt `leave`; ein gekillter Client schickt gar
 // nichts. Vorher spielte der Host danach gegen einen Geist weiter. Der Test
@@ -3480,9 +3579,10 @@ async function suiteTutorial(browser) {
     const cs = await suiteCloudSave(browser, FB_PORT);
     return { mm, mm3, hb, cs };
   })();
-  const [rMenu, rOff, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, rPlat, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
+    suitePlattform(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
     suiteMechanics(browser),
@@ -3510,9 +3610,9 @@ async function suiteTutorial(browser) {
   await browser.close();
   mockFbSrv.close();
 
-  const allRes  = [...rMenu.res, ...rOff.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
                    ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res];
-  const allErrs = [...rMenu.errs, ...rOff.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
                    ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));

@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>FORTRESS v3.75.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>FORTRESS v3.76.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -229,6 +229,7 @@ import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainF
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from './src/engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from './src/engine/progression.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from './src/engine/cloudsave.ts';
+import { istNativ, kontoVerknuepfbar, vibriere } from './src/platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from './src/engine/catalog.ts';
 import { LANGS } from './src/i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from './src/net/protocol.js';
@@ -398,7 +399,7 @@ const SFX = {
   },
   vibrate(p) {
     if (!this.haptics) return;
-    try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {}
+    vibriere(p);   // Weiche: Capacitor-Haptik in der App, navigator.vibrate im Browser
   },
   shoot() { if (!this._play("shoot", 0.85)) { this._tone({ freq: 320, freqEnd: 90, type: "sawtooth", dur: 0.18, vol: 0.16 }); this._noise({ dur: 0.12, vol: 0.10, filterFreq: 800 }); } this.vibrate(15); },
   impact() { if (!this._play("impact", 0.9)) { this._noise({ dur: 0.25, vol: 0.20, filterFreq: 600 }); this._tone({ freq: 120, freqEnd: 40, type: "square", dur: 0.2, vol: 0.10 }); } this.vibrate(25); },
@@ -1808,6 +1809,33 @@ window.FortressApp = function Fortress() {
     } catch (e) {
       setCloudState("error");
     }
+  }
+  // Fortschritt vollstaendig loeschen (v3.76.0). Apple verlangt das, sobald
+  // eine App Konten anlegt (5.1.1(v)) — und es gehoert ohnehin zum Cloud-Save:
+  // wer Daten in die Wolke legt, muss sie auch wieder herausbekommen.
+  // Geloescht wird BEIDES: der Serverdatensatz und der lokale Stand. Nur eins
+  // von beidem waere schlimmer als nichts, weil der jeweils andere ihn beim
+  // naechsten Sync wiederherstellen wuerde.
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  async function wipeProgress() {
+    const uid = authUid();
+    if (uid) { try { await fb.delete(`players/${uid}`); } catch (e) {} }
+    cloudSyncedFor.current = null;      // sonst laedt cloudPull nie wieder
+    cloudLastSent.current = "";
+    cloudPending.current = null;
+    if (cloudTimer.current) { clearTimeout(cloudTimer.current); cloudTimer.current = null; }
+    try {
+      for (const k of ["fortress_profile", "fortress_daily", "fortress_tasks",
+                       "fortress_ach_seen", "fortress_onboarded", "fortress_tutorial_done"]) {
+        localStorage.removeItem(k);
+      }
+    } catch (e) {}
+    setConfirmWipe(false);
+    setShowProfileEditor(false);
+    // Neu laden statt den Zustand von Hand zurueckzusetzen: das Spiel haelt
+    // seinen Fortschritt in Dutzenden Refs, und ein uebersehener waere genau
+    // der Fehler, den man erst Wochen spaeter bemerkt.
+    try { location.reload(); } catch (e) {}
   }
   // Stufe 2: Google-Konto verknuepfen. REDIRECT, nie Popup — ein Auth-Popup
   // bricht in der TWA (siehe CLAUDE.md, Store-Vorbereitung).
@@ -5462,7 +5490,7 @@ window.FortressApp = function Fortress() {
     const guest = online.current && myRole.current !== 1;
     pieces.current[player].cells = rotateCW(pieces.current[player].cells);
     setUiTick((t) => t + 1);
-    navigator.vibrate?.(30);
+    vibriere(30);
     if (guest) {
       sendAction({ type: "rotate" });
       return;
@@ -7686,7 +7714,7 @@ window.FortressApp = function Fortress() {
       React.createElement(Icon, { name: "hammer", size: 16 }),
       forgeReadyN > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fb923c", color: "#2b1204", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, forgeReadyN) : null
     )
-  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: { background: musicOn ? "rgba(52,211,153,0.16)" : "rgba(255,255,255,0.06)", border: musicOn ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(255,255,255,0.12)", color: musicOn ? "#6ee7b7" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), musicOn && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, justifyContent: "center", marginBottom: 12, padding: "0 26px" } },
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: { background: musicOn ? "rgba(52,211,153,0.16)" : "rgba(255,255,255,0.06)", border: musicOn ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(255,255,255,0.12)", color: musicOn ? "#6ee7b7" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { vibriere(20); } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), musicOn && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, justifyContent: "center", marginBottom: 12, padding: "0 26px" } },
     /* @__PURE__ */ React.createElement(Icon, { name: "music", size: 13, color: "#6ee7b7" }),
     /* @__PURE__ */ React.createElement("input", { type: "range", min: 0, max: 100, value: Math.round(musicVol * 100), "aria-label": "Musik-Lautst\u00e4rke",
       onChange: (e) => setMusicVol(parseInt(e.target.value, 10) / 100),
@@ -7744,7 +7772,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.75.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.76.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -8074,14 +8102,46 @@ window.FortressApp = function Fortress() {
         cloudState === "saved" ? h("span", { style: { fontSize: 9.5, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
       ),
       h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
-        gesichert ? t("cloudOnSub", { mail: F.mail || "" }) : t("cloudOffSub")),
-      gesichert ? null : h("button", { onClick: linkAccount, style: {
+        gesichert ? t("cloudOnSub", { mail: F.mail || "" })
+                  : kontoVerknuepfbar() ? t("cloudOffSub") : t("cloudOffSubApp")),
+      // In der App gibt es keinen Verknuepfungs-Knopf (ARCHITEKTUR.md E8) —
+      // Cloud-Save laeuft dort ueber die anonyme Kennung.
+      (gesichert || !kontoVerknuepfbar()) ? null : h("button", { onClick: linkAccount, style: {
         width: "100%", border: "none", cursor: "pointer", borderRadius: 10, padding: "9px",
         background: "linear-gradient(180deg,#fbbf24,#d97706)", color: "#2b1204",
         fontSize: 12, fontWeight: 900
-      } }, t("cloudLink"))
+      } }, t("cloudLink")),
+      // Loeschen steht bewusst unauffaellig: es ist unwiderruflich und darf
+      // nicht neben "Speichern" wie eine gleichwertige Wahl aussehen.
+      h("button", { onClick: () => setConfirmWipe(true), style: {
+        width: "100%", marginTop: 8, cursor: "pointer", borderRadius: 10, padding: "7px",
+        background: "transparent", border: "1px solid rgba(248,113,113,0.25)",
+        color: "#f87171", fontSize: 10.5, fontWeight: 700
+      } }, t("wipeButton"))
     );
   })(),
+  confirmWipe && /* @__PURE__ */ React.createElement("div", { onClick: () => setConfirmWipe(false), style: {
+    position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.8)",
+    display: "flex", alignItems: "center", justifyContent: "center", padding: 22,
+    backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)"
+  } }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: {
+    maxWidth: 330, width: "100%", background: "linear-gradient(180deg, rgba(48,14,14,0.99), rgba(14,11,20,0.99))",
+    border: "1px solid rgba(248,113,113,0.4)", borderRadius: 18, padding: "18px 16px",
+    textAlign: "center", boxShadow: "0 20px 55px rgba(0,0,0,0.75)"
+  } },
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 900, color: "#fca5a5", marginBottom: 6 } }, t("wipeTitle")),
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#fecaca", lineHeight: 1.45, marginBottom: 14 } }, t("wipeSub")),
+    /* @__PURE__ */ React.createElement("button", { onClick: wipeProgress, style: {
+      width: "100%", border: "none", cursor: "pointer", borderRadius: 12, padding: "12px",
+      background: "linear-gradient(180deg,#f87171,#b91c1c)", color: "#fff",
+      fontSize: 14, fontWeight: 900, marginBottom: 8
+    } }, t("wipeConfirm")),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmWipe(false), style: {
+      width: "100%", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
+      borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.05)",
+      color: "#cbd5e1", fontSize: 13, fontWeight: 700
+    } }, t("cancel"))
+  )),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
     width: "100%",
     background: "linear-gradient(135deg,#7c3aed,#0284c7)",

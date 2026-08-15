@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- app-store-connect: Auslieferung ueber TestFlight/App Store.
+       Fuer lokale Geraetetests waere hier "development" richtig. -->
+  <key>method</key>
+  <string>app-store-connect</string>
+  <key>teamID</key>
+  <string>$(APPLE_TEAM_ID)</string>
+  <!-- Signierung ueber das in der CI eingespielte Profil, nicht automatisch:
+       ein Runner hat keinen angemeldeten Xcode-Account, mit dem Apple
+       automatisch ein Profil erzeugen koennte. -->
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>uploadSymbols</key>
+  <true/>
+  <key>compileBitcode</key>
+  <false/>
+</dict>
+</plist>

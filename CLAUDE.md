@@ -322,6 +322,24 @@ node test_fortress.cjs
 
 ---
 
+## iOS (seit v3.76.0)
+
+Architektur-Entscheidungen mit Begruendung: **`ARCHITEKTUR.md`**. Kurz:
+
+- **Ein Build fuer beides.** `npm run build` → `dist/` geht an GitHub Pages
+  UND an Capacitor. Zwei Auslieferungswege wuerden Fehler erzeugen, die nur in
+  einem auftreten.
+- **Plattform-Weiche:** `src/platform.ts`, EINE Datei. Neue Unterschiede
+  zwischen App und Web gehoeren dorthin, nirgendwo sonst — sonst kann sie
+  niemand mehr aufzaehlen oder testen.
+- **Keine Konto-Verknuepfung in der App** (v1): spart Apple 5.1.1(v),
+  4.8 und Googles `disallowed_useragent` in WebViews.
+- **iOS bauen:** Actions-Tab → „iOS-Build (TestFlight)". Ohne Signierungs-
+  Geheimnisse laeuft er bis zum Bundle-Check durch — das beantwortet
+  „baut es ueberhaupt?" ohne jedes Zertifikat.
+- `ios/` ist eingecheckt (auch das geteilte Schema — ohne das findet
+  `xcodebuild` im CI kein Ziel).
+
 ## Langfristiges Ziel: App Store (Android zuerst)
 
 Das Spiel soll in den **Google Play Store** und danach weitere Stores. Das beeinflusst alle zukünftigen Entwicklungsentscheidungen.
