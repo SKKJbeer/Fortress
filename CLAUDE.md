@@ -306,19 +306,25 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 ## Automatisierter Test (IMMER nach jeder Änderung ausführen)
 
 ```bash
-# 1) Unit-Tests (Engine + i18n, ~0,2s — zuerst, schnellstes Feedback):
-node --test tests/engine.test.js tests/i18n.test.js
+# 1) Typen + Unit-Tests (schnellstes Feedback, ~1 s):
+npm run typecheck && npm run test:unit
 
-# 2) Server starten falls nicht läuft:
-python3 -m http.server 8765 &
+# 2) BAUEN — die E2E-Suite laeuft gegen dist/, nicht gegen die Quelle:
+npm run build
 
-# 3) E2E-Suite (Playwright, ~60s):
-node test_fortress.cjs
+# 3) dist/ ausliefern (NICHT die Wurzel! Dort liegt nur die Huelle):
+cd dist && python3 -m http.server 8765 & cd ..
+
+# 4) E2E-Suite (~70 s):
+npm run test:e2e
 ```
 
 - Test-Datei: `test_fortress.cjs` (Playwright, Chromium headless)
 - Prüft zuerst: Version in `index.html` auf Disk == Version vom Server (Mismatch → Abbruch)
-- React-CDN wird lokal gemockt aus `/tmp/react.min.js` + `/tmp/react-dom.min.js`
+- React und Firebase kommen seit v3.74.0 aus dem Bundle — nichts wird mehr vom CDN gemockt
+- **Riegel gegen die Produktivdatenbank**: `FB_SPERRE` setzt `window.__fb` VOR dem Seitenskript,
+  `firebase-boot.js` haelt sich dann heraus. Ohne das schreibt `pushLeaderboard` das Testprofil
+  in die ECHTE Bestenliste — Routen-Blockaden greifen bei der WebSocket-Verbindung nicht.
 - Firebase/gstatic werden abgeblockt
 - Alle Button-Clicks via `page.evaluate(() => btn.click())` — Overlay-Workaround
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)

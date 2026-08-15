@@ -50,6 +50,9 @@ jobs:
             echo "FEHLER: externe Skript-URL im Bundle — Apple 2.5.2"; exit 1
           fi
           test -d dist/sounds || { echo "sounds/ fehlt"; exit 1; }
+          # music/ lag bis v3.78.1 ausserhalb von public/ und fehlte still
+          # im Build — die Hintergrundmusik war tot, ohne dass etwas brach.
+          test "$(ls dist/music/*.mp3 2>/dev/null | wc -l)" -ge 8 || { echo "music/ fehlt"; exit 1; }
           echo "Bundle ist in sich geschlossen"
 
       - name: Capacitor synchronisieren

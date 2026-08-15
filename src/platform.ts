@@ -31,16 +31,28 @@ export function kontoVerknuepfbar(): boolean {
   return !istNativ();
 }
 
-/** Vibration. `navigator.vibrate` gibt es auf iOS nicht. */
-export function vibriere(ms: number): void {
+/**
+ * Vibration. `navigator.vibrate` gibt es auf iOS nicht.
+ *
+ * Der Parameter ist entweder eine Dauer ODER ein MUSTER — `SFX.destroy()`
+ * uebergibt `[30, 40, 60]`. Ein blosser Vergleich `ms >= 30` ist auf ein Feld
+ * blind (`[30,40,60] >= 30` ergibt false), womit ausgerechnet der staerkste
+ * Effekt des Spiels nativ als schwaechster Impuls ankaeme.
+ */
+export function vibriere(muster: number | number[]): void {
   if (typeof window === "undefined") return;
   const w = window as any;
   if (istNativ() && w.Capacitor?.Plugins?.Haptics) {
-    // Capacitor-Haptik kennt keine Dauer, sondern Staerkegrade.
+    // Capacitor-Haptik kennt keine Dauer, sondern Staerkegrade. Bei einem
+    // Muster zaehlt die Gesamtdauer — es ist als kraeftigeres Ereignis gemeint.
+    const gesamt = Array.isArray(muster)
+      ? muster.reduce((a, b) => a + (typeof b === "number" ? b : 0), 0)
+      : muster;
+    const stufe = gesamt >= 80 ? "HEAVY" : gesamt >= 25 ? "MEDIUM" : "LIGHT";
     try {
-      w.Capacitor.Plugins.Haptics.impact({ style: ms >= 30 ? "MEDIUM" : "LIGHT" });
+      w.Capacitor.Plugins.Haptics.impact({ style: stufe });
       return;
     } catch (e) { /* faellt unten auf den Browser-Weg zurueck */ }
   }
-  try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {}
+  try { navigator.vibrate && navigator.vibrate(muster as any); } catch (e) {}
 }

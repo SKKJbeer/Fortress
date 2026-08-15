@@ -34,7 +34,17 @@ export default defineConfig({
         // Store-Screenshots sind 4,7 MB und werden im Spiel NIE gebraucht —
         // sie stehen nur im Manifest fuer die Installationsansicht. Ohne diese
         // Ausnahme zahlt jeder Erstbesucher sie beim Vorladen mit.
-        globIgnores: ['screenshots/**', '**/workbox-*.js'],
+        // Musik (13 MB) und Store-Screenshots (4,7 MB) bleiben aus dem
+        // Vorladen heraus. Beides wird beim Start NICHT gebraucht — die Musik
+        // laedt erst beim Spielbeginn nach, die Screenshots nie. Ohne diese
+        // Ausnahme zahlt jeder Erstbesucher 18 MB, bevor das Menue erscheint.
+        globIgnores: ['screenshots/**', 'music/**', '**/workbox-*.js'],
+        // Trotzdem offlinefaehig: einmal gehoerte Stuecke bleiben im Cache.
+        runtimeCaching: [{
+          urlPattern: /\/music\/.*\.mp3$/,
+          handler: 'CacheFirst',
+          options: { cacheName: 'musik', expiration: { maxEntries: 10 } }
+        }],
         // Der Spielcode-Chunk ist gross; die Voreinstellung (2 MB) wuerde ihn
         // stillschweigend NICHT vorladen und damit den Offline-Start brechen.
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,

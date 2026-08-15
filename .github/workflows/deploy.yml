@@ -59,6 +59,9 @@ jobs:
           test -f dist/index.html || { echo "dist/index.html fehlt"; exit 1; }
           test -f dist/manifest.json || { echo "manifest.json fehlt"; exit 1; }
           test -d dist/sounds || { echo "sounds/ fehlt"; exit 1; }
+          # music/ lag bis v3.78.1 ausserhalb von public/ und fehlte still
+          # im Build — die Hintergrundmusik war tot, ohne dass etwas brach.
+          test "$(ls dist/music/*.mp3 2>/dev/null | wc -l)" -ge 8 || { echo "music/ fehlt"; exit 1; }
           # Apple 2.5.2 und Offline-Start: im Bundle darf keine fremde
           # Skript-Quelle mehr stehen.
           if grep -rqE "unpkg\.com|gstatic\.com/firebasejs" dist/index.html dist/assets/*.js; then

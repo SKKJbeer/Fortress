@@ -129,6 +129,28 @@ async function waitForPhase(page, keywords, waitMs = 6000) {
 }
 
 // Browser-Kontext mit CDN-Mocks + Speedup
+// Riegel gegen die PRODUKTIVDATENBANK (v3.78.1).
+//
+// Solange Firebase vom CDN kam, war es durch das Blockieren von gstatic
+// stillgelegt. Seit es mitgebuendelt ist, startet es in jedem Testkontext
+// wirklich — und pushLeaderboard schreibt dann das Testprofil in die ECHTE
+// Bestenliste. Aufgefallen ist es nur, weil der Browser in dieser Umgebung
+// ohnehin nicht ins Netz kommt; auf einem normalen Rechner wuerde es schreiben.
+//
+// Der Riegel setzt window.__fb VOR dem Seitenskript. firebase-boot.js prueft
+// genau darauf und haelt sich dann komplett heraus — es wird also gar keine
+// Verbindung aufgebaut, statt sie nachtraeglich abzufangen.
+const FB_SPERRE = `
+  window.__fb = window.__fb || {
+    __gesperrt: true, uid: null, anon: true, mail: null,
+    ref: () => ({}), set: async () => {}, update: async () => {}, remove: async () => {},
+    get: async () => ({ exists: () => false, val: () => null }),
+    onValue: () => () => {}, off: () => {},
+    runTransaction: async () => ({ committed: false, snapshot: { exists: () => false, val: () => null } }),
+    onDisconnect: () => ({ remove: () => {}, cancel: () => {} })
+  };
+`;
+
 async function makeCtx(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
     // Service Worker BLOCKIEREN (seit v3.75.0). Er hat in der Suite nichts
@@ -140,6 +162,10 @@ async function makeCtx(browser) {
   const page = await ctx.newPage();
   await page.addInitScript(PROFILE_INIT);
   await page.addInitScript(TIMER_SPEEDUP);
+  await page.addInitScript(FB_SPERRE);
+  // Die Routen sind nur noch die zweite Verteidigungslinie: die Realtime
+  // Database spricht ueber WebSocket mit *.firebasedatabase.app und laesst
+  // sich damit NICHT zuverlaessig abfangen. Entscheidend ist FB_SPERRE oben.
   await page.route('**firebase**',   r => r.abort());
   await page.route('**gstatic**',    r => r.abort());
   await page.route('**googleapis**', r => r.abort());
@@ -1584,6 +1610,9 @@ async function suitePlattform(browser) {
       // nach dem Neuladen, das auf das Loeschen folgt — und saet den alten
       // Stand sofort wieder ein. Der Merker ueberlebt das Loeschen bewusst,
       // weil wipeProgress nur die fortress_*-Schluessel entfernt.
+      // Riegel gegen die Produktivdatenbank — diese Suite legt sonst ein
+      // echtes Firebase an und arbeitete beim Loeschtest dagegen.
+      await page.addInitScript(FB_SPERRE);
       await page.addInitScript(`try{ if(!localStorage.getItem('__geimpft')){ ${PROFILE_INIT}
         localStorage.setItem('__geimpft','1'); } }catch(e){}`);
       await page.addInitScript(`window.__NATIVE__ = ${nativ};`);

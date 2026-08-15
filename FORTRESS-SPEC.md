@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5258,3 +5258,61 @@ als Liste blosser Kennungen — mit Strings wird nichts wiedererkannt und alles
 erneut freigeschaltet.
 
 Tests grün (Unit 70/70, E2E 345/345 zweimal in Folge, Typen 0 Fehler).
+
+---
+
+## v3.78.1 — Review vor dem Start: acht Befunde behoben
+
+Ein vollständiges Review über v3.73.0…v3.78.0 (Vite, TypeScript, iOS,
+Zerlegung). Zwei Funde waren ernst.
+
+### Die Musik war seit v3.74.0 tot
+
+Beim Verschieben der statischen Dateien nach `public/` wurde `music/`
+**übersehen** — acht Stücke, 13 MB, seither nicht mehr im Build. Alle Anfragen
+liefen ins Leere, und weil das Laden in einem `try` steckt, brach nichts: das
+Spiel war einfach stumm, in Web *und* App.
+
+Behoben, und der Deploy prüft es jetzt: fehlen die acht Dateien, wird nicht
+ausgeliefert. Die Musik bleibt dabei aus dem Vorladen des Service Workers
+heraus (13 MB, beim Start nicht gebraucht) und wird beim ersten Hören
+zwischengespeichert.
+
+### Die Testsuite hätte in die Produktivdatenbank geschrieben
+
+Solange Firebase vom CDN kam, war es im Test durch das Blockieren von `gstatic`
+stillgelegt — ein zufälliger Schutz. Seit v3.74.0 ist es **mitgebündelt** und
+startet in jedem Testkontext wirklich; `pushLeaderboard` schreibt dann das
+Testprofil in die **echte** Bestenliste. Routen-Blockaden helfen nicht, weil die
+Realtime Database über WebSocket spricht.
+
+Aufgefallen ist es nur, weil der Browser in dieser Umgebung ohnehin nicht ins
+Netz kommt. **Auf einem normalen Rechner hätte jeder Testlauf geschrieben.**
+Geprüft: in der Live-Bestenliste steht kein Testeintrag.
+
+`FB_SPERRE` setzt jetzt `window.__fb` **vor** dem Seitenskript;
+`firebase-boot.js` hält sich dann heraus — es wird also gar keine Verbindung
+aufgebaut, statt sie nachträglich abzufangen.
+
+### Sechs weitere
+
+| Fund | Behoben |
+|---|---|
+| `wipeProgress` löschte den **Ranglisten-Eintrag nicht**, obwohl der Text „auch in der Wolke" verspricht | beide Schlüsselformen werden entfernt |
+| `og:image` zeigte auf `store/…`, das nicht ausgeliefert wird → 404-Vorschau | `public/social-card.png`, absolute URL |
+| `vibriere()` verglich `ms >= 30` auf Werten, die oft **Muster** sind (`[30,40,60]`) — der stärkste Effekt kam nativ als schwächster an | Gesamtdauer, drei Stufen |
+| `diagnose.html` wartete das Aufräumen von `games/ping` nicht ab | abgewartet |
+| `CLAUDE.md` beschrieb noch den alten Testablauf (Wurzel ausliefern, React aus `/tmp`) | auf `dist/` umgestellt |
+| Impressum-Platzhalter | **offen — nur du kannst das** |
+
+### Und ein Fehler, den die Korrektur selbst erzeugte
+
+Die Ergänzung um die Ranglisten-Löschung machte `wipeProgress` zu einer Kette
+von `await`s auf Netzwerkaufrufe. Ohne Netz hängt das — der Nutzer tippt auf
+„löschen", und sichtbar passiert **nichts**, weil auch das Neuladen dahinter nie
+erreicht wird. Die Serverlöschung läuft jetzt gegen eine Zeitgrenze von 4 s; der
+lokale Stand verschwindet in jedem Fall.
+
+Gefunden hat das die E2E-Suite, sofort im nächsten Lauf.
+
+Tests grün (Unit 70/70, E2E 345/345 dreimal in Folge, Typen 0 Fehler).

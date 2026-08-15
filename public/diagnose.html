@@ -163,7 +163,10 @@ async function pruefe(apiKey) {
     // games/ping ist der Verbindungstest, den das Spiel selbst benutzt.
     try {
       await mitFrist(D.set(D.ref(db, "games/ping"), { createdAt: Date.now() }), "Schreiben");
-      D.remove(D.ref(db, "games/ping"));
+      // Aufraeumen ABWARTEN: kurz danach folgt deleteApp(), und eine nicht
+      // abgewartete Loeschung wird dabei verworfen — der Testknoten bliebe
+      // dauerhaft in der Datenbank stehen.
+      await mitFrist(D.remove(D.ref(db, "games/ping")), "Aufraeumen").catch(() => {});
       set("write", "ok", "Schreiben erlaubt — Spiele anlegen und Matchmaking funktionieren.");
     } catch (e) {
       const c = (e && e.code) || String(e);
