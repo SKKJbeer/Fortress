@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5316,3 +5316,32 @@ lokale Stand verschwindet in jedem Fall.
 Gefunden hat das die E2E-Suite, sofort im nächsten Lauf.
 
 Tests grün (Unit 70/70, E2E 345/345 dreimal in Folge, Typen 0 Fehler).
+
+---
+
+## v3.78.2 — Formulierung entschärft, bevor sie bindet
+
+Reine Textänderung. Kein Eingriff ins Spiel, keine Entscheidung über
+Monetarisierung — nur das Vermeiden einer Zusage, die später einen Rückzieher
+erzwingen würde.
+
+**Vorher** stand in AGB und Store-Text: *„FORTRESS ist kostenlos und bleibt es.
+Keine Käufe mit echtem Geld, keine Abonnements."*
+
+Das war für die damalige Haltung korrekt formuliert. Solange über
+Monetarisierung noch nachgedacht wird, ist es aber eine Festlegung, die sich
+nach dem Start nur mit Vertrauensverlust auflösen lässt — „war kostenlos, jetzt
+Bezahlschranke" ist die verlässlichste Quelle für Ein-Stern-Bewertungen.
+
+**Jetzt:** *„kostenlos spielbar: kein Kaufzwang, keine Werbung, kein
+Pay-to-Win. Der volle Spielumfang steht ohne Zahlung offen."*
+
+Dazu ein Satz, der die Grenze **vorab** zieht statt später: sollte es je
+freiwillige Käufe geben, betreffen sie ausschliesslich Kosmetik. Das hält die
+Aussage ehrlich und die Tür offen.
+
+Der Satz „Gold und Kosmetik haben keinen Gegenwert ausserhalb des Spiels"
+bleibt — er ist unabhängig von der Frage richtig und für die Store-Prüfung
+nützlich (kein Glücksspiel, keine handelbaren Güter).
+
+Tests grün (Unit 70/70, E2E 345/345, Typen 0 Fehler).

@@ -61,9 +61,9 @@ Seltene Materialien aus Online-Partien lassen sich in der Schmiede zu
 Stücken verarbeiten, die es im Shop nicht gibt.
 
 EHRLICH GESAGT
-FORTRESS ist kostenlos und bleibt es. Keine Werbung, keine Käufe mit
-echtem Geld, keine Abonnements. Gold und Kosmetik haben keinen Wert
-außerhalb des Spiels — sie sind Anerkennung, kein Verkaufsartikel.
+FORTRESS ist kostenlos spielbar. Keine Werbung, kein Kaufzwang, kein
+Pay-to-Win — der volle Spielumfang steht ohne Zahlung offen. Gold und
+Kosmetik sind Anerkennung für Gespieltes, kein Verkaufsartikel.
 ```
 
 ### Schlüsselwörter (max. 100, kommagetrennt, keine Leerzeichen)
