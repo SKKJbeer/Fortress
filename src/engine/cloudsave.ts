@@ -16,23 +16,25 @@
 // braeuchte serverseitige Validierung und damit einen kostenpflichtigen Plan.
 // Cloud-Save loest "nichts verlieren", nicht "nicht schummeln".
 
+import type { Profile, MatKey, Materials, Stats } from './const.ts';
+
 export const CLOUD_SCHEMA = 1;
 // Obergrenze fuer den hochgeladenen Profil-String. Deckt sich mit der
 // Validierung in den Security-Rules; ein normales Profil liegt bei ~1-2 KB.
 export const CLOUD_MAX_BYTES = 20000;
 
-const NUM = (v, d = 0) => (typeof v === "number" && isFinite(v) ? v : d);
-const OBJ = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
-const ARR = (v) => (Array.isArray(v) ? v : []);
+const NUM = (v: unknown, d = 0): number => (typeof v === "number" && isFinite(v) ? v : d);
+const OBJ = (v: any): any => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+const ARR = (v: any): any[] => (Array.isArray(v) ? v : []);
 
-function statsOf(p, key) {
+function statsOf(p: any, key: string): Stats {
   const s = OBJ(p && p[key]);
   return { wins: NUM(s.wins), losses: NUM(s.losses), games: NUM(s.games) };
 }
-function totalGames(p) {
+function totalGames(p: any): number {
   return statsOf(p, "stats").games + statsOf(p, "stats3").games;
 }
-function unite(a, b) {
+function unite(a: any, b: any): any[] {
   const out = [];
   const seen = new Set();
   for (const v of ARR(a).concat(ARR(b))) {
@@ -59,7 +61,7 @@ function unite(a, b) {
 // mit den MEHR gespielten Partien komplett — es ist nachweislich das weiter
 // fortgeschrittene. Peak-Werte sind davon ausgenommen: eine Bestmarke ist per
 // Definition ein Hoechststand und wird immer maximiert.
-export function mergeProfiles(a, b) {
+export function mergeProfiles(a: Profile | null | undefined, b: Profile | null | undefined): Profile | null {
   if (!a || typeof a !== "object") return b && typeof b === "object" ? b : null;
   if (!b || typeof b !== "object") return a;
 
@@ -67,8 +69,8 @@ export function mergeProfiles(a, b) {
   const neu = aNewer ? a : b;                 // juengeres Profil (Anzeige/Wahl)
   const fuehrend = totalGames(a) >= totalGames(b) ? a : b;  // mehr Partien
 
-  const maxNum = (k) => Math.max(NUM(a[k]), NUM(b[k]));
-  const mats = (k) => Math.max(NUM(OBJ(a.materials)[k]), NUM(OBJ(b.materials)[k]));
+  const maxNum = (k: keyof Profile) => Math.max(NUM(a[k]), NUM(b[k]));
+  const mats = (k: MatKey) => Math.max(NUM(OBJ(a.materials)[k]), NUM(OBJ(b.materials)[k]));
 
   // Level und XP gehoeren zusammen — sonst entstuende Level 12 mit dem XP-Rest
   // eines Level-3-Profils. Es gewinnt der hoehere Level, bei Gleichstand das
@@ -129,15 +131,21 @@ export function mergeProfiles(a, b) {
 // Serverfassung: nur echte Fortschrittsdaten. Geraetegebundene Einstellungen
 // (Sprache, Ton, Vibration) bleiben bewusst lokal — sie gehoeren zum Geraet,
 // nicht zum Spieler, und wuerden sonst zwischen Geraeten hin- und herspringen.
-export function profileForCloud(p, now) {
+export function profileForCloud(p: Profile | null | undefined, now?: number): Profile | null {
   if (!p || typeof p !== "object") return null;
+  // mergeProfiles kann null liefern, wenn BEIDE Seiten leer sind — hier
+  // ausgeschlossen, weil p oben geprueft wurde. Der Compiler kennt diesen
+  // Zusammenhang nicht, und die Annahme stand bis v3.75.0 nirgends. Statt
+  // einer Zusicherung eine echte Pruefung: sie kostet nichts und haelt auch
+  // dann, wenn sich mergeProfiles einmal aendert.
   const c = mergeProfiles(p, p);          // normalisiert + fuellt Luecken
+  if (!c) return null;
   c.updatedAt = NUM(now, NUM(p.updatedAt));
   return c;
 }
 
 // Prueft, ob ein hochzuladender Datensatz die Groessengrenze einhaelt.
-export function cloudPayload(p, now) {
+export function cloudPayload(p: Profile | null | undefined, now?: number) {
   const c = profileForCloud(p, now);
   if (!c) return null;
   const s = JSON.stringify(c);
@@ -146,7 +154,7 @@ export function cloudPayload(p, now) {
 }
 
 // Gegenstueck: Serverdatensatz zurueck ins Profil-Objekt.
-export function parseCloud(rec) {
+export function parseCloud(rec: any): Profile | null {
   if (!rec || typeof rec !== "object" || typeof rec.p !== "string") return null;
   if (rec.p.length > CLOUD_MAX_BYTES) return null;
   try {

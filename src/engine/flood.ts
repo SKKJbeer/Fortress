@@ -1,12 +1,13 @@
 // Auto-extrahiert aus index.html (Phase 1 der Modularisierung, v3.34.0).
 // Reine Logik/Daten — kein DOM, kein React, kein Firebase. Unit-testbar via node --test.
-import { ROWS, COLS, WALL_OF, CASTLE_OF, EMPTY, RUBBLE, RUBBLE_C } from './const.js';
+import { ROWS, COLS, WALL_OF, CASTLE_OF, EMPTY, RUBBLE, RUBBLE_C } from './const.ts';
+import type { Grid, Player, Pos, RC } from './const.ts';
 
-export function computeOutsideMap(g, player) {
+export function computeOutsideMap(g: Grid, player: Player): Uint8Array {
   const ownWall = WALL_OF[player];
   const ownCastle = CASTLE_OF[player];
   const visited = new Uint8Array(ROWS * COLS);
-  const stack = [];
+  const stack: number[] = [];
   for (let c = 0; c < COLS; c++) {
     stack.push(c);
     stack.push((ROWS - 1) * COLS + c);
@@ -16,7 +17,9 @@ export function computeOutsideMap(g, player) {
     stack.push(r * COLS + COLS - 1);
   }
   while (stack.length) {
-    const idx = stack.pop();
+    // Die Schleifenbedingung (stack.length) garantiert einen Wert; die
+    // Zusicherung ersetzt eine Pruefung, die nie zutreffen kann.
+    const idx = stack.pop()!;
     if (visited[idx]) continue;
     const r = Math.floor(idx / COLS), c = idx % COLS;
     const v = g[r][c];
@@ -33,10 +36,10 @@ export function computeOutsideMap(g, player) {
   }
   return visited;
 }
-export function computeOutsideMapForCannons(g, player) {
+export function computeOutsideMapForCannons(g: Grid, player: Player): Uint8Array {
   const ownWall = WALL_OF[player];
   const visited = new Uint8Array(ROWS * COLS);
-  const stack = [];
+  const stack: number[] = [];
   for (let c = 0; c < COLS; c++) {
     stack.push(c);
     stack.push((ROWS - 1) * COLS + c);
@@ -46,7 +49,9 @@ export function computeOutsideMapForCannons(g, player) {
     stack.push(r * COLS + COLS - 1);
   }
   while (stack.length) {
-    const idx = stack.pop();
+    // Die Schleifenbedingung (stack.length) garantiert einen Wert; die
+    // Zusicherung ersetzt eine Pruefung, die nie zutreffen kann.
+    const idx = stack.pop()!;
     if (visited[idx]) continue;
     const r = Math.floor(idx / COLS), c = idx % COLS;
     const v = g[r][c];
@@ -63,7 +68,7 @@ export function computeOutsideMapForCannons(g, player) {
   }
   return visited;
 }
-export function isObjectClosed(outsideMap, obj) {
+export function isObjectClosed(outsideMap: Uint8Array, obj: Pos): boolean {
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       const r = obj.r + dr, c = obj.c + dc;
@@ -75,11 +80,11 @@ export function isObjectClosed(outsideMap, obj) {
   }
   return true;
 }
-export function isCastleClosed(g, player, castle) {
+export function isCastleClosed(g: Grid, player: Player, castle: Pos): boolean {
   if (!castle) return true;
   return isObjectClosed(computeOutsideMap(g, player), castle);
 }
-export function closedCannons(g, player, cannonList) {
+export function closedCannons<T extends Pos>(g: Grid, player: Player, cannonList: T[]): T[] {
   const outside = computeOutsideMapForCannons(g, player);
   return cannonList.filter((cn) => isObjectClosed(outside, cn));
 }
@@ -90,7 +95,7 @@ export const isCannonClosed = isObjectClosed;
 // durch die Lücke bis zum Feldrand (8-Richtungen, konsistent zum Flood-Fill;
 // nur EIGENE Mauern blockieren). Liefert [[r,c], …] Burg→Rand oder null,
 // wenn die Burg dicht ist. Kosten: eine BFS — nur bei Grid-Änderung rufen.
-export function findLeakPath(g, player, castle) {
+export function findLeakPath(g: Grid, player: Player, castle: Pos): RC[] | null {
   if (!g || !castle) return null;
   const ownWall = WALL_OF[player];
   const start = castle.r * COLS + castle.c;
@@ -116,7 +121,7 @@ export function findLeakPath(g, player, castle) {
     }
   }
   if (exit < 0) return null; // dicht — kein Leck
-  const path = [];
+  const path: RC[] = [];
   for (let cur = exit; cur !== -1; cur = prev[cur]) path.push([(cur / COLS) | 0, cur - ((cur / COLS) | 0) * COLS]);
   path.reverse();
   return path;
@@ -132,7 +137,7 @@ export function findLeakPath(g, player, castle) {
 // Ohne eigenen Mauerring in Burg-Nähe: leere Liste (nur die Leck-Spur) —
 // eine Markierung ohne Ring hätte keinen Lehrwert. maxCells deckelt den
 // Aufwand (größerer Schnitt → keine Markierung).
-export function findSealCells(g, player, castle, maxCells = 12) {
+export function findSealCells(g: Grid, player: Player, castle: Pos, maxCells = 12): RC[] {
   if (!g || !castle) return [];
   const ownWall = WALL_OF[player];
   // Ring-Nähe-Check: ohne eigene Mauern im Umkreis nichts markieren
@@ -149,13 +154,13 @@ export function findSealCells(g, player, castle, maxCells = 12) {
   const INF = 1e9;
   // Kompakte Kantenlisten (Dinic): to[], cap[], next[], head[]
   const head = new Int32Array(2 * N + 1).fill(-1);
-  const to = [], cap = [], nxt = [];
-  const addEdge = (u, v, c) => {
+  const to: number[] = [], cap: number[] = [], nxt: number[] = [];
+  const addEdge = (u: number, v: number, c: number) => {
     to.push(v); cap.push(c); nxt.push(head[u]); head[u] = to.length - 1;
     to.push(u); cap.push(0); nxt.push(head[v]); head[v] = to.length - 1;
   };
-  const passable = (r, c) => g[r][c] !== ownWall;
-  const buildable = (r, c) => { const v = g[r][c]; return v === EMPTY || v === RUBBLE || v === RUBBLE_C; };
+  const passable = (r: number, c: number) => g[r][c] !== ownWall;
+  const buildable = (r: number, c: number) => { const v = g[r][c]; return v === EMPTY || v === RUBBLE || v === RUBBLE_C; };
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (!passable(r, c)) continue;
@@ -188,7 +193,7 @@ export function findSealCells(g, player, castle, maxCells = 12) {
     }
     return level[SINK] >= 0;
   };
-  const dfs = (u, f) => {
+  const dfs = (u: number, f: number): number => {
     if (u === SINK) return f;
     for (; iter[u] !== -1; iter[u] = nxt[iter[u]]) {
       const e = iter[u], v = to[e];
@@ -225,7 +230,7 @@ export function findSealCells(g, player, castle, maxCells = 12) {
       if (cap[f ^ 1] > 0 && !vis[w]) { vis[w] = 1; q2.push(w); }
     }
   }
-  const seal = [];
+  const seal: RC[] = [];
   for (let idx = 0; idx < N; idx++) {
     if (vis[2 * idx + 1] && !vis[2 * idx]) seal.push([(idx / COLS) | 0, idx % COLS]);
   }

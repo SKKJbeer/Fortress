@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.74.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.75.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5022,3 +5022,59 @@ vor dem Umbau durchging, liess sich nicht mehr rekonstruieren; die Anzeige selbs
 ist nachweislich vorhanden.
 
 Tests grün (Unit 60/60, E2E 330/330 gegen `dist/`).
+
+---
+
+## v3.75.0 — Generierter Service Worker, TypeScript in der Engine
+
+Schritte 2–4 des Architektur-Umbaus (`ARCHITEKTUR.md` E6/E4).
+
+### Deploy baut jetzt
+
+Der Workflow installiert, prüft Typen, lässt die Unit-Tests laufen, baut und
+kontrolliert das Ergebnis — **erst dann** wird deployt. Bricht ein Schritt,
+bleibt die Live-Version auf dem letzten funktionierenden Stand stehen, statt
+kaputt überschrieben zu werden. Eine Prüfung schlägt gezielt an, wenn im Bundle
+wieder eine externe Skript-URL auftaucht (Apple 2.5.2).
+
+### `sw.js` wird generiert
+
+Die handgepflegte `CORE`-Liste ist weg. In `CLAUDE.md` stand dazu die Warnung
+„neue Engine-Dateien in sw.js CORE eintragen!" — eine Falle, die man
+dokumentieren muss, weil sie zuverlässig zuschnappt: vergisst man einen Eintrag,
+fehlt die Datei offline, und der Fehler zeigt sich erst beim Nutzer ohne Netz.
+
+Store-Screenshots sind vom Vorladen ausgenommen. Sie sind **4,7 MB** und werden
+im Spiel nie gebraucht — ohne die Ausnahme hätte sie jeder Erstbesucher
+mitbezahlt. Vorabcache: 2,5 statt 7,3 MB.
+
+### Service Worker raus aus der Testsuite — bis auf einen Test
+
+Nach der Umstellung fielen Persistenz-Prüfungen reihenweise aus (Daily-Streak,
+Profil speichern, Käufe überleben Reload). Ursache: der Worker fängt Anfragen
+ab, liefert aus dem Cache und übernimmt die Seite **während** eines Tests.
+
+Alle Kontexte laufen jetzt mit `serviceWorkers: 'block'`. Dafür gibt es eine
+**eigene Offline-Suite**, in der er der Prüfling ist: Seite laden, Worker aktiv
+abwarten, Vorladen abwarten, **Netz kappen**, neu laden — und dann eine
+Bot-Partie starten. Damit ist die Zusage belegt, mit der die App bei Apple
+antritt (Richtlinie 4.2): einmal geladen, danach ohne Netz spielbar.
+
+### TypeScript in der Engine
+
+Alle sieben Engine-Module sind `.ts`, `strict` ist an, **null Typfehler**.
+Node 22 strippt Typen nativ — die Unit-Tests laufen weiterhin ohne Build.
+
+Eingeführt wurden die Domänentypen, die sich in einem 10.000-Zeilen-Spiel am
+leichtesten still vertauschen: `Player` (nie 0 oder 4), `Cell`, `Grid`, `Pos`,
+`Materials`, `Profile`. Dazu **`RC`** als eigener Typ für `[Zeile, Spalte]`-Paare
+neben `Pos` — beide Formen kommen im Bestand vor, und sie zu vermischen wäre
+genau die Verwechslung, die Typen verhindern sollen. (Erster Anlauf hatte
+`findLeakPath` fälschlich als `Pos[]` deklariert; der Compiler hat es gemeldet.)
+
+**Ein echter Fund:** `profileForCloud` verliess sich darauf, dass
+`mergeProfiles` kein `null` liefert. Das stimmt — aber die Annahme stand
+nirgends. Jetzt eine echte Prüfung statt einer Zusicherung: sie kostet nichts
+und hält auch dann, wenn sich `mergeProfiles` einmal ändert.
+
+Tests grün (Unit 60/60, E2E 336/336, Typen 0 Fehler).

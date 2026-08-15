@@ -1,7 +1,8 @@
+import type { Profile, MatKey, Materials } from './const.ts';
 // Auto-extrahiert aus index.html (Phase 1 der Modularisierung, v3.34.0).
 // Reine Logik/Daten — kein DOM, kein React, kein Firebase. Unit-testbar via node --test.
 // Kosmetik-Kataloge (Gold-Shop + Schmiede) und Profil-Normalisierer.
-const __spreadValues = (a, b) => Object.assign(a, b);
+const __spreadValues = (a: any, b: any) => Object.assign(a, b);
 
 export const COSMETICS = {
   trail: [
@@ -56,7 +57,7 @@ export const FRAME_STYLE = {
   frame_dragon: { c: "#a78bfa", glow: "rgba(167,139,250,0.7)", dick: 5,
     bg: "repeating-conic-gradient(#4c1d95 0deg 10deg, #a78bfa 10deg 14deg, #6d28d9 14deg 20deg, #c4b5fd 20deg 22deg)" }
 };
-export function cosOf(p) {
+export function cosOf(p: Profile | null | undefined) {
   const c = (p && p.cosmetics) || {};
   return {
     owned: Array.isArray(c.owned) ? c.owned : [],
@@ -68,7 +69,7 @@ export function cosOf(p) {
 // Rezepte sind fest (kein Glücksspiel/Lootbox — bewusste Design- und
 // Store-Entscheidung). Ergebnisse sind rein kosmetisch (kein Pay2Win) und
 // landen wie Shop-Käufe in profile.cosmetics.owned/equipped.
-export const MAT_ORDER = ["iron", "silver", "dragon", "star"];
+export const MAT_ORDER: MatKey[] = ["iron", "silver", "dragon", "star"];
 export const MAT_META = {
   iron:   { c: "#94a3b8" },  // Eisensplitter — jedes Online-Match
   silver: { c: "#e2e8f0" },  // Silbererz — Online-Siege + Tagesaufgaben
@@ -81,7 +82,7 @@ export const TASK_MAT = { iron: 3, silver: 1 };
 // Wie viele Rezepte koennte der Spieler JETZT schmieden? (v3.68.0)
 // Treibt das Abzeichen am Schmiede-Button — ohne Hinweis merkt niemand, dass
 // sich genug Material angesammelt hat.
-export function craftbar(p) {
+export function craftbar(p: Profile | null | undefined): number {
   const m = matOf(p);
   const owned = ((p && p.cosmetics) || {}).owned || [];
   let n = 0;
@@ -94,7 +95,7 @@ export function craftbar(p) {
   }
   return n;
 }
-export function matOf(p) {
+export function matOf(p: Profile | null | undefined): Materials {
   const m = (p && p.materials) || {};
   return { iron: m.iron || 0, silver: m.silver || 0, dragon: m.dragon || 0, star: m.star || 0 };
 }

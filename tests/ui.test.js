@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ICON_PATHS } from '../src/ui/icons.js';
-import { WIN_ICON } from '../src/engine/catalog.js';
+import { WIN_ICON } from '../src/engine/catalog.ts';
 
 test('ICON_PATHS: jeder Eintrag ist ein nicht-leeres Array von SVG-Pfad-Strings', () => {
   const names = Object.keys(ICON_PATHS);

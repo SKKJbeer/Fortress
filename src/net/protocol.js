@@ -1,6 +1,6 @@
 // Netz-Schicht (Phase 2 der Modularisierung, v3.35.0).
 // Pure Logik — kein DOM, kein Firebase. Unit-testbar via node --test.
-import { W, H } from '../engine/const.js';
+import { W, H } from '../engine/const.ts';
 // ── Sync-Protokoll zwischen Host und Gaesten ────────────────────────────
 // Der Host serialisiert den kompletten Spielzustand (serializeState in
 // index.html) und pusht ihn nach Firebase; Gaeste validieren mit

@@ -130,7 +130,13 @@ async function waitForPhase(page, keywords, waitMs = 6000) {
 
 // Browser-Kontext mit CDN-Mocks + Speedup
 async function makeCtx(browser) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+    // Service Worker BLOCKIEREN (seit v3.75.0). Er hat in der Suite nichts
+    // zu suchen: er faengt Anfragen ab, liefert aus dem Cache und uebernimmt
+    // die Seite waehrend eines Tests — damit wurden Persistenz-Pruefungen
+    // (Reload, Profil speichern, Daily-Streak) reihenweise unzuverlaessig.
+    // Das Offline-Verhalten bekommt eine eigene, gezielte Pruefung.
+    serviceWorkers: 'block' });
   const page = await ctx.newPage();
   await page.addInitScript(PROFILE_INIT);
   await page.addInitScript(TIMER_SPEEDUP);
@@ -823,7 +829,13 @@ function makeFbMock(port) {
 
 // Browser-Kontext mit Firebase-Mock (für Online-Tests)
 async function makeOnlineCtx(browser, fbPort, extraInit) {
-  const ctx  = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const ctx  = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+    // Service Worker BLOCKIEREN (seit v3.75.0). Er hat in der Suite nichts
+    // zu suchen: er faengt Anfragen ab, liefert aus dem Cache und uebernimmt
+    // die Seite waehrend eines Tests — damit wurden Persistenz-Pruefungen
+    // (Reload, Profil speichern, Daily-Streak) reihenweise unzuverlaessig.
+    // Das Offline-Verhalten bekommt eine eigene, gezielte Pruefung.
+    serviceWorkers: 'block' });
   const page = await ctx.newPage();
   await page.addInitScript(PROFILE_INIT);
   // extraInit läuft NACH PROFILE_INIT → kann Profil/Device-ID pro Client
@@ -1467,6 +1479,77 @@ async function suiteCloudSave(browser, fbPort) {
 
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
               : ok('Cloud-Save: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 0b: Offline-Start (v3.75.0)
+// Alle anderen Suiten blockieren den Service Worker, weil er Caching-
+// Nichtdeterminismus in jeden Test traegt. Hier laeuft er BEWUSST — und nur
+// hier. Geprueft wird die Zusage, mit der die App bei Apple antritt: einmal
+// geladen, danach ohne Netz spielbar (Richtlinie 4.2, Minimum Functionality).
+// ═══════════════════════════════════════════════════════════════
+async function suiteOffline(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Offline-Start\n' + '='.repeat(50));
+
+  // Bewusst OHNE serviceWorkers:'block' — hier ist er der Prueflingt.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await page.addInitScript(PROFILE_INIT);
+    await page.goto('http://localhost:8765/', { waitUntil: 'load' });
+
+    const aktiv = await page.waitForFunction(
+      () => navigator.serviceWorker && navigator.serviceWorker.controller !== null,
+      { timeout: 20000 }).then(() => true).catch(() => false);
+    aktiv ? ok('Offline: Service Worker uebernimmt die Seite ✓')
+          : fail('Offline: Service Worker wird nie aktiv');
+    if (!aktiv) return { res, errs };
+
+    // Vorladen abwarten: erst wenn der Cache gefuellt ist, ist der Test ehrlich.
+    await page.waitForTimeout(2500);
+    const dateien = await page.evaluate(async () => {
+      const namen = await caches.keys();
+      let n = 0;
+      for (const k of namen) n += (await (await caches.open(k)).keys()).length;
+      return n;
+    });
+    dateien > 10 ? ok(`Offline: ${dateien} Dateien vorgeladen ✓`)
+                 : fail(`Offline: nur ${dateien} Dateien im Cache`);
+
+    // ── Netz kappen und neu laden ──────────────────────────────
+    await ctx.setOffline(true);
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForTimeout(1200);
+
+    const st = await page.evaluate(() => ({
+      knoepfe: document.querySelectorAll('button').length,
+      lokal: /LOKAL SPIELEN|PLAY LOCAL/i.test(document.body.innerText),
+      titel: /FORTRESS/.test(document.body.innerText)
+    }));
+    (st.knoepfe > 5 && st.titel)
+      ? ok(`Offline: Menue laedt ohne Netz (${st.knoepfe} Schaltflaechen) ✓`)
+      : fail(`Offline: Menue fehlt ohne Netz (${JSON.stringify(st)})`);
+    st.lokal ? ok('Offline: lokales Spiel startbar ✓')
+             : fail('Offline: Startknopf fuer das lokale Spiel fehlt');
+
+    // Wirklich bis ins Spiel — nicht nur bis zum Menue.
+    await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+    await page.waitForTimeout(300);
+    await startBotGame(page);
+    const canvas = await page.waitForSelector('canvas', { timeout: 10000 })
+      .then(() => true).catch(() => false);
+    canvas ? ok('Offline: Bot-Partie startet ohne Netz ✓')
+           : fail('Offline: keine Partie ohne Netz — Zusage an Apple nicht haltbar');
+
+    await ctx.setOffline(false);
+    errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+                : ok('Offline: keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
   return { res, errs };
 }
 
@@ -3397,8 +3480,9 @@ async function suiteTutorial(browser) {
     const cs = await suiteCloudSave(browser, FB_PORT);
     return { mm, mm3, hb, cs };
   })();
-  const [rMenu, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
+    suiteOffline(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
     suiteMechanics(browser),
@@ -3426,9 +3510,9 @@ async function suiteTutorial(browser) {
   await browser.close();
   mockFbSrv.close();
 
-  const allRes  = [...rMenu.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+  const allRes  = [...rMenu.res, ...rOff.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
                    ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res];
-  const allErrs = [...rMenu.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+  const allErrs = [...rMenu.errs, ...rOff.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
                    ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));

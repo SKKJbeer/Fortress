@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { LANGS } from '../src/i18n.js';
-import { COSMETICS, RECIPES, MAT_ORDER } from '../src/engine/catalog.js';
+import { COSMETICS, RECIPES, MAT_ORDER } from '../src/engine/catalog.ts';
 
 test('i18n: de und en haben exakt dieselben Keys', () => {
   const de = new Set(Object.keys(LANGS.de));

@@ -36,13 +36,43 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Gefundene Version: $VERSION"
 
+      # Seit v3.74.0 wird gebaut (ARCHITEKTUR.md E2). Bricht einer dieser
+      # Schritte, wird NICHT deployed — die Live-Version bleibt auf dem letzten
+      # funktionierenden Stand stehen, statt kaputt ueberschrieben zu werden.
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Abhaengigkeiten installieren
+        run: npm ci
+
+      - name: Unit-Tests
+        run: npm run test:unit
+
+      - name: Bauen
+        run: npm run build
+
+      - name: Bauergebnis pruefen
+        run: |
+          test -f dist/index.html || { echo "dist/index.html fehlt"; exit 1; }
+          test -f dist/manifest.json || { echo "manifest.json fehlt"; exit 1; }
+          test -d dist/sounds || { echo "sounds/ fehlt"; exit 1; }
+          # Apple 2.5.2 und Offline-Start: im Bundle darf keine fremde
+          # Skript-Quelle mehr stehen.
+          if grep -rqE "unpkg\.com|gstatic\.com/firebasejs" dist/index.html dist/assets/*.js; then
+            echo "FEHLER: externe Skript-URL im Bauergebnis"; exit 1
+          fi
+          echo "Bauergebnis in Ordnung"
+
       - name: GitHub Pages konfigurieren
         uses: actions/configure-pages@v5
 
       - name: Dateien hochladen
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'dist'
 
       - name: Auf GitHub Pages deployen
         id: deployment

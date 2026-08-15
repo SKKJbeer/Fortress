@@ -2,7 +2,7 @@
 // Render-Schicht: Sprite-Cache + alle Canvas-Zeichenfunktionen.
 // PERF-REGELN (v3.15.5): Gradients/shadowBlur NUR beim einmaligen Backen
 // der Sprites, NIE pro Objekt pro Frame. Im Frame-Loop wird nur geblittet.
-import { CELL } from '../engine/const.js';
+import { CELL } from '../engine/const.ts';
 
 // Mauerblock mit Volumen (v3.41.0, AAA-Stufe 1: Licht & Tiefe).
 // Licht kommt global von OBEN LINKS (siehe SHADOW_DX/DY in index.html).

@@ -1,11 +1,12 @@
 // Auto-extrahiert aus index.html (Phase 1 der Modularisierung, v3.34.0).
 // Reine Logik/Daten — kein DOM, kein React, kein Firebase. Unit-testbar via node --test.
-import { ROWS, COLS } from './const.js';
+import { ROWS, COLS } from './const.ts';
+import type { Player } from './const.ts';
 
-const __spreadValues = (a, b) => Object.assign(a, b);
-const __spreadProps = (a, b) => Object.assign(a, b);
+const __spreadValues = (a: any, b: any) => Object.assign(a, b);
+const __spreadProps = (a: any, b: any) => Object.assign(a, b);
 
-export function makeRng(seed) {
+export function makeRng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
     s += 1831565813;
@@ -18,7 +19,7 @@ export function makeRng(seed) {
 export function castle3Positions() {
   const hubR = Math.floor(ROWS * 0.4);
   const hubC = Math.floor(COLS * 0.5);
-  const mk = (deg, dr, dc) => {
+  const mk = (deg: number, dr: number, dc: number) => {
     const rad = deg * Math.PI / 180;
     return {
       r: Math.max(4, Math.min(ROWS - 5, Math.round(hubR - Math.cos(rad) * dr))),
@@ -86,10 +87,10 @@ export const WORLD_THEMES = [
     mtn: ["#4c3a6b", "#1a1030"], mtnEdge: "rgba(196,181,253,0.5)", mtnCap: "rgba(233,213,255,0.92)",
     particles: ["rgba(240,171,252,0.5)", "rgba(129,140,248,0.5)", "rgba(255,255,255,0.45)"] }
 ];
-export function worldThemeOf(seed) {
+export function worldThemeOf(seed: number) {
   return WORLD_THEMES[(seed >>> 0) % WORLD_THEMES.length];
 }
-export function generateTerrainFromSeed(seed) {
+export function generateTerrainFromSeed(seed: number) {
   const rng = makeRng(seed);
   const t = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
   for (let r = 0; r < ROWS; r++)
@@ -133,20 +134,20 @@ export function generateTerrain() {
 }
 const HUB_R = Math.floor(ROWS * 0.4);
 const HUB_C = Math.floor(COLS * 0.5);
-function angleFromHub(r, c) {
+function angleFromHub(r: number, c: number): number {
   const dx = c - HUB_C;
   const dy = r - HUB_R;
   let a = Math.atan2(dx, -dy);
   if (a < 0) a += Math.PI * 2;
   return a;
 }
-export function sectorOf(r, c) {
+export function sectorOf(r: number, c: number): Player {
   const a = angleFromHub(r, c) * 180 / Math.PI;
   if (a >= 290 || a < 70) return 1;
   if (a >= 70 && a < 180) return 2;
   return 3;
 }
-export function generateTerrain3FromSeed(seed) {
+export function generateTerrain3FromSeed(seed: number) {
   const rng = makeRng(seed);
   const t = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
   for (let r = 0; r < ROWS; r++)
@@ -192,20 +193,22 @@ export function generateTerrain3FromSeed(seed) {
   }
   return { grid: t, mode3: true };
 }
-export function buildSectorMap(terObj, castlePos) {
+export function buildSectorMap(terObj: any, castlePos: any) {
   const t = terObj.grid;
   const map = new Int8Array(ROWS * COLS).fill(0);
   for (const p of [1, 2, 3]) {
     const cp = castlePos[p];
     if (!cp) continue;
-    const stack = [];
+    const stack: number[] = [];
     for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++) {
         const r = cp.r + dr, c = cp.c + dc;
         if (r >= 0 && r < ROWS && c >= 0 && c < COLS) stack.push(r * COLS + c);
       }
     while (stack.length) {
-      const idx = stack.pop();
+      // stack.length garantiert einen Wert — die Zusicherung ersetzt eine
+      // Pruefung, die nie zutreffen koennte.
+      const idx = stack.pop()!;
       if (map[idx]) continue;
       const r = Math.floor(idx / COLS), c = idx % COLS;
       if (t[r][c] === 3) continue;
@@ -218,7 +221,7 @@ export function buildSectorMap(terObj, castlePos) {
   }
   return map;
 }
-export function isBuildable(terrainObj, r, c, player) {
+export function isBuildable(terrainObj: any, r: number, c: number, player: Player): boolean {
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
   const t = terrainObj.grid;
   if (t[r][c] === 3) return false;

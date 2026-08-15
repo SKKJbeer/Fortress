@@ -3,12 +3,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ROWS, COLS, WALL_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, EMPTY, CANNON_HP } from '../src/engine/const.js';
-import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from '../src/engine/economy.js';
-import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain3FromSeed, buildSectorMap } from '../src/engine/terrain.js';
-import { computeOutsideMap, isObjectClosed, isCastleClosed, closedCannons } from '../src/engine/flood.js';
-import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, isLegacyKey, dropMigratedDupes } from '../src/engine/progression.js';
-import { COSMETICS, RECIPES, MASTER_TRAIL, CANNON_SKIN, IMPACT_FX, MAT_ORDER, cosOf, matOf } from '../src/engine/catalog.js';
+import { ROWS, COLS, WALL_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, EMPTY, CANNON_HP } from '../src/engine/const.ts';
+import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from '../src/engine/economy.ts';
+import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain3FromSeed, buildSectorMap } from '../src/engine/terrain.ts';
+import { computeOutsideMap, isObjectClosed, isCastleClosed, closedCannons } from '../src/engine/flood.ts';
+import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, isLegacyKey, dropMigratedDupes } from '../src/engine/progression.ts';
+import { COSMETICS, RECIPES, MASTER_TRAIL, CANNON_SKIN, IMPACT_FX, MAT_ORDER, cosOf, matOf } from '../src/engine/catalog.ts';
 
 // ── Progression ──────────────────────────────────────────────────────
 test('eloDelta: gleiche Stärke, Sieg → +16 (K=32, erwartet 0.5)', () => {
@@ -178,7 +178,7 @@ test('COSMETICS: pro Kategorie genau ein Gratis-Artikel (Standard)', () => {
 });
 
 // ── Leck-Pfad (v3.37.0) ──────────────────────────────────────────────
-import { findLeakPath } from '../src/engine/flood.js';
+import { findLeakPath } from '../src/engine/flood.ts';
 test('findLeakPath: dichte Burg → null', () => {
   const g = emptyGrid();
   g[CASTLE_P1.r][CASTLE_P1.c] = CASTLE_OF[1];
@@ -213,7 +213,7 @@ test('findLeakPath: GEGNER-Mauern blockieren den Pfad nicht (konsistent zu Regel
 });
 
 // ── Loch-Zellen per Probe-Zumauern (v3.37.3) ─────────────────────────
-import { findSealCells } from '../src/engine/flood.js';
+import { findSealCells } from '../src/engine/flood.ts';
 const cellSet = (cells) => new Set(cells.map(([r, c]) => r + '_' + c));
 test('findSealCells: 1er-Loch → markiert EXAKT diese eine Zelle', () => {
   const g = emptyGrid();
@@ -317,7 +317,7 @@ test('isLegacyKey: nur p_-Schluessel gelten als alt', () => {
 
 // ── Cloud-Save: Profil-Zusammenfuehrung (v3.72.0) ────────────────────────
 import { mergeProfiles, profileForCloud, cloudPayload, parseCloud, CLOUD_MAX_BYTES }
-  from '../src/engine/cloudsave.js';
+  from '../src/engine/cloudsave.ts';
 
 const prof = (o = {}) => Object.assign({
   id: 'p_x', name: 'Held', wappen: 'ritter', color: '#2563eb',
