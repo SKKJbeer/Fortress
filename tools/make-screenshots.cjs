@@ -17,9 +17,14 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const ZIELE = [
-  { name: 'ios-6.7', w: 430, h: 932, scale: 3, out: 'store/ios-6.7' },
-  { name: 'ios-6.5', w: 414, h: 896, scale: 3, out: 'store/ios-6.5' },
-  { name: 'play',    w: 360, h: 780, scale: 3, out: 'public/screenshots' }
+  { name: 'ios-6.7',  w: 430,  h: 932,  scale: 3, out: 'store/ios-6.7' },
+  { name: 'ios-6.5',  w: 414,  h: 896,  scale: 3, out: 'store/ios-6.5' },
+  // iPad ist PFLICHT, solange TARGETED_DEVICE_FAMILY "1,2" ist — Apple prueft
+  // dann auch auf dem iPad und verlangt eigene Bilder. Wer das nicht liefern
+  // will, muss die App auf iPhone beschraenken.
+  { name: 'ipad-13',  w: 1032, h: 1376, scale: 2, out: 'store/ipad-13' },
+  { name: 'ipad-12.9',w: 1024, h: 1366, scale: 2, out: 'store/ipad-12.9' },
+  { name: 'play',     w: 360,  h: 780,  scale: 3, out: 'public/screenshots' }
 ];
 
 const PROF = `try{localStorage.setItem('fortress_profile',JSON.stringify({

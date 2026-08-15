@@ -205,6 +205,26 @@ Nach jedem Schritt: beide Testsuiten grün, Web live.
 Schritt 1 ist der Prüfstein: Solange die E2E-Suite nicht gegen `dist/` grün ist,
 wird die Auslieferung **nicht** umgestellt.
 
+## Gemessene Ladezeit (v3.78.0)
+
+Mit Kompression, gedrosseltem Netz und vierfach gebremster Rechenleistung —
+also naeher an einem Mittelklasse-Telefon als am Schreibtisch:
+
+| | Menue bedienbar | vom Netz |
+|---|---|---|
+| 1. Besuch, langsames 4G | 3170 ms | 464 KB |
+| 2. Besuch (Cache warm) | **358 ms** | **0 KB** |
+| ohne Netz | 304 ms | 0 KB |
+
+**Firebase wird bewusst NICHT nachgeladen ausgelagert.** Es macht 74 KB von
+464 KB aus (16 %) — die Ersparnis traefe nur den ersten Browser-Besuch. In der
+iOS-App liegt ohnehin alles im Bundle, dort gibt es keinen Erstbesuch. Dem
+stuende ein Eingriff in den Firebase-Start gegenueber, also in den Pfad, an dem
+Matchmaking und Online-Spiel haengen. Schlechtes Verhaeltnis.
+
+Falls die Ladezeit im Web spaeter stoert, ist der groessere Hebel der Spielcode
+selbst (rund 355 KB gzip) — der zerfaellt mit der Zerlegung aus Schritt 8.
+
 ## Kosten
 
 GitHub Actions ist für öffentliche Repositories unbegrenzt frei — auch
