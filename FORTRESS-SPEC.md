@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7,7 +7,7 @@
 
 ## 1. SPIELKONZEPT
 
-Fortress ist ein 2-Spieler-Burgenspiel (Neuauflage des Flash-Klassikers “Festung”).
+Fortress ist ein eigenstaendiges 2-3-Spieler-Burgenspiel.
 Zwei Spieler bauen gleichzeitig geschlossene Burgmauern aus Tetris-artigen Teilen
 und beschiessen danach gegenseitig ihre Festungen.
 
@@ -5343,5 +5343,32 @@ Aussage ehrlich und die Tür offen.
 Der Satz „Gold und Kosmetik haben keinen Gegenwert ausserhalb des Spiels"
 bleibt — er ist unabhängig von der Frage richtig und für die Store-Prüfung
 nützlich (kein Glücksspiel, keine handelbaren Güter).
+
+Tests grün (Unit 70/70, E2E 345/345, Typen 0 Fehler).
+
+---
+
+## v3.78.3 — FORTRESS steht für sich
+
+Alle Verweise auf ein älteres Spiel als Vorlage sind entfernt — aus der
+Spezifikation, aus `CLAUDE.md` und aus der Vortragsseite. In den Store-Texten
+standen von vornherein keine.
+
+Zwei Gründe, beide tragen für sich:
+
+**Positionierung.** Ein Spiel, das sich über ein anderes erklärt, hat keine
+eigene Aussage. „Burgenduell" trägt, „Neuauflage von …" verschiebt die
+Aufmerksamkeit auf etwas, das nicht hier ist.
+
+**Rechtlich.** Bei einer Store-Einreichung ist die eigene schriftliche Aussage
+„Neuauflage von X" eine Angriffsfläche, sollte jemand Rechte am Original
+geltend machen. Apple und Google haben beide ein Beschwerdeverfahren, in dem
+genau solche Formulierungen als Beleg dienen.
+
+In `CLAUDE.md` steht die Entscheidung jetzt als Regel, damit sie nicht
+versehentlich zurückkommt.
+
+Nicht betroffen ist das Wort „Festung" als gewöhnliches Substantiv (die Burg im
+Spiel) — es beschreibt den Gegenstand, nicht die Herkunft.
 
 Tests grün (Unit 70/70, E2E 345/345, Typen 0 Fehler).

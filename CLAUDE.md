@@ -2,7 +2,10 @@
 
 ## Projekt-Übersicht
 
-**FORTRESS** ist ein 2–3-Spieler PWA-Burgenspiel (Neuauflage des Flash-Klassikers "Festung").
+**FORTRESS** ist ein eigenstaendiges 2–3-Spieler-PWA-Burgenspiel.
+> **Positionierung:** FORTRESS steht fuer sich. Verweise auf aeltere Spiele
+> gehoeren weder in den Code, noch in die Dokumentation, noch in Store-Texte —
+> weder als Herkunftsangabe noch als Werbeargument.
 Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre Festungen.
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
