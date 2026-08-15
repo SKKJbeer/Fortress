@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.76.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.77.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5139,3 +5139,65 @@ app-spezifischen Passworts: kein persönliches Apple-Passwort im Repository,
 jederzeit widerrufbar.
 
 Tests grün (Unit 60/60, E2E 345/345, Typen 0 Fehler).
+
+---
+
+## v3.77.0 — Store-Material und Rechtsseiten
+
+Kein Eingriff ins Spiel — alles, was für eine Einreichung danebenliegen muss.
+
+### Screenshots warten auf eine Bedingung, nicht auf eine Dauer
+
+Zwölf Bilder in den Pflichtmassen: 1290×2796 (Apple 6,7″), 1242×2688 (6,5″),
+1080×2340 (Play). Aus dem echten Spiel, nicht montiert.
+
+Beim Nachziehen zeigte sich eine Falle mit zwei Seiten:
+
+- **zu früh** → das Phasen-Banner („FEUER FREI!") verdeckt genau das Brett,
+  das man zeigen will
+- **zu spät** → die Rüstphase ist durch, der Shop zugeklappt, das Bild leer
+
+Eine feste Wartezeit trifft **nie beides**. Das Werkzeug wartet jetzt auf einen
+Zustand: richtige Phase, Banner weg, geforderte Elemente da — und **bricht hart
+ab**, statt still ein schlechtes Bild zu speichern.
+
+Beim Shop-Bild ist das Banner ausdrücklich zugelassen. Der Bot-Takt liesse sich
+zwar verlangsamen, damit ein bannerfreies Fenster entsteht — dann versiegelt er
+in der 25-Sekunden-Bauphase seine Burg nicht mehr und scheidet in Runde 1 aus,
+und es gibt überhaupt keine Schussphase aufzunehmen. Beim Shop trägt ohnehin
+das Panel unten die Aussage.
+
+### Feature-Grafik
+
+1024×500 für Google Play: Wortmarke links, echtes Spielgeschehen rechts
+angeschnitten. Kein aufgeblasener Screenshot — ein Hochkantbild wäre im
+Querformat entweder winzig oder beschnitten.
+
+Das Spielbild wird als Daten-URL eingebettet. Über `file://` blieb es
+**stillschweigend leer**: `setContent` lädt die Seite unter `about:blank`, und
+von dort ist der Dateizugriff gesperrt.
+
+### Impressum und Nutzungsbedingungen
+
+`public/impressum.html` (§ 5 DDG) und `public/agb.html`, im Stil der
+Datenschutzseite, im Spiel verlinkt.
+
+Das Impressum enthält **klar markierte Platzhalter**. Ein Impressum mit
+Platzhaltern ist schlechter als keines — es ist nachweislich unvollständig und
+damit abmahnfähig. Sie müssen vor der Veröffentlichung ersetzt werden; die
+Anschrift muss ladungsfähig sein.
+
+Die Nutzungsbedingungen benennen ausdrücklich, dass Spielstände auf dem Gerät
+berechnet und damit manipulierbar sind — die Rangliste ist ein Vergleich, kein
+belastbarer Wettbewerb. Das gehört dorthin, weil es stimmt.
+
+### `store/listing.md`
+
+Store-Texte mit eingehaltenen Zeichengrenzen, Data-Safety-Vorlage und dem
+Prüfungshinweis für Apple. Der zielt auf **Richtlinie 4.2** und führt die
+Offline-Fähigkeit an, weil sie der stärkste Beleg gegen „verpackte Website" ist.
+
+`LAUNCH-TODO.md` komplett neu — die alte Fassung stammte aus v3.39.1 und führte
+Erledigtes als offen.
+
+Tests grün (Unit 60/60, E2E 345/345).
