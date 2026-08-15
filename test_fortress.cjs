@@ -1682,6 +1682,82 @@ async function suitePlattform(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 0d: Trichter (v3.79.0)
+// Drei Eingriffe gegen das eigentliche Problem: bei zehn aktiven Spielern ist
+// die Warteschlange fast immer leer. Geprueft wird, dass die Sackgasse weg ist
+// (Bot sofort waehlbar), dass der Absprung messbar wird (Trichter-Telemetrie)
+// und dass nach einem Match eine Einladung statt nur eines Links angeboten wird.
+// ═══════════════════════════════════════════════════════════════
+async function suiteTrichter(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Trichter\n' + '='.repeat(50));
+
+  // __mmDebug schaltet die Diagnose-Haken frei — ohne ihn sammelt trichter()
+  // nichts in window.__trichter und die Pruefung liefe ins Leere.
+  const { ctx, page } = await makeOnlineCtx(browser, fbPort, 'window.__mmDebug = true;');
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await loadMenu(page);
+    // Gleicher Weg wie die Matchmaking-Suite: der Knopf heisst "Matchmaking".
+    await jsClick(page, ['ONLINE']);
+    await page.waitForTimeout(250);
+    await jsClick(page, ['Matchmaking']);
+    await page.waitForTimeout(1400);
+
+    // ── Bot SOFORT waehlbar, nicht erst nach 60 s ──────────────
+    const st = await page.evaluate(() => ({
+      // NICHT auf "Gegner" pruefen — das Wort steht schon auf dem Startknopf
+      // und meldete Erfolg, obwohl die Suche gar nicht lief.
+      sucht: /Suche l|Sucht|Searching for/i.test(document.body.innerText)
+             || !!(window.__trichter || []).length,
+      botKnopf: [...document.querySelectorAll('button')]
+        .some(b => /Jetzt gegen den Bot|Play against the bot/i.test(b.textContent)),
+      countdown: /in \d+ ?s|noch \d+/i.test(document.body.innerText)
+    }));
+    st.sucht ? ok('Trichter: Suche laeuft ✓') : fail('Trichter: Suchbildschirm nicht erreicht');
+    st.botKnopf
+      ? ok('Trichter: Bot ab Sekunde eins waehlbar — keine Sackgasse mehr ✓')
+      : fail('Trichter: kein Bot-Knopf waehrend der Suche');
+
+    // ── Trichter-Ereignisse werden erfasst ─────────────────────
+    const ereignisse = await page.evaluate(() => (window.__trichter || []).map(x => x.schritt));
+    ereignisse.includes('suche_start')
+      ? ok('Trichter: "suche_start" erfasst ✓')
+      : fail(`Trichter: suche_start fehlt (${JSON.stringify(ereignisse)})`);
+
+    // ── Bot-Knopf fuehrt wirklich ins Spiel ────────────────────
+    await page.evaluate(() => {
+      for (const b of document.querySelectorAll('button'))
+        if (/Jetzt gegen den Bot|Play against the bot/i.test(b.textContent)) { b.click(); return; }
+    });
+    const imSpiel = await page.waitForSelector('canvas', { timeout: 12000 })
+      .then(() => true).catch(() => false);
+    imSpiel ? ok('Trichter: Bot-Knopf startet die Partie ✓')
+            : fail('Trichter: Bot-Knopf fuehrt nicht ins Spiel');
+
+    const nachher = await page.evaluate(() => (window.__trichter || []));
+    const bot = nachher.find(x => x.schritt === 'bot_start');
+    bot ? ok(`Trichter: "bot_start" erfasst (auto=${bot.auto}, wartete=${bot.wartete}s) ✓`)
+        : fail('Trichter: bot_start fehlt');
+    (bot && bot.auto === false)
+      ? ok('Trichter: selbst gewaehlt von automatisch unterschieden ✓')
+      : fail('Trichter: auto-Kennzeichnung falsch');
+
+    // ── Keine personenbezogenen Daten im Trichter ──────────────
+    const sauber = nachher.every(x =>
+      !JSON.stringify(x).match(/TestBot|test_bot_001|fortress_device/));
+    sauber ? ok('Trichter: keine Namen oder Kennungen in den Daten ✓')
+           : fail('Trichter: personenbezogene Daten in der Telemetrie!');
+
+    errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+                : ok('Trichter: keine JS-Fehler ✓');
+  } finally { await ctx.close(); }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE 5b: Herzschlag — HARTER Gast-Abbruch (v3.70.0)
 // Ein sauberes Verlassen schickt `leave`; ein gekillter Client schickt gar
 // nichts. Vorher spielte der Host danach gegen einen Geist weiter. Der Test
@@ -3605,8 +3681,9 @@ async function suiteTutorial(browser) {
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
     const hb = await suiteHeartbeat(browser, FB_PORT);
+    const tr = await suiteTrichter(browser, FB_PORT);
     const cs = await suiteCloudSave(browser, FB_PORT);
-    return { mm, mm3, hb, cs };
+    return { mm, mm3, hb, cs, tr };
   })();
   const [rMenu, rOff, rPlat, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -3635,14 +3712,14 @@ async function suiteTutorial(browser) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

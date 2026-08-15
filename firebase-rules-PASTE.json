@@ -156,6 +156,19 @@
         ".write": "auth != null && !data.exists() && newData.exists()",
         ".validate": "newData.hasChildren(['ts','mode','rounds','per']) && newData.child('rounds').isNumber() && newData.child('rounds').val() <= 500"
       }
+    },
+    "funnel": {
+      ".read": true,
+      "$id": {
+        ".write": "auth != null && !data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['ts','schritt']) && newData.child('schritt').isString() && newData.child('schritt').val().length <= 30",
+        "ts": {
+          ".validate": "newData.isNumber()"
+        },
+        "wartete": {
+          ".validate": "newData.isNumber() && newData.val() <= 3600"
+        }
+      }
     }
   }
 }

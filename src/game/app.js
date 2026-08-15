@@ -1817,6 +1817,24 @@ window.FortressApp = function Fortress() {
   // (Dashboard: stats.html). Bewusst OHNE Namen/Profil-IDs — es geht um
   // Aggregate (wie viele Kanonen, wie viel Schrott, wie lange), nicht um
   // Einzelpersonen. Best-effort: Fehler dürfen das Spiel nie stören.
+  // ── Trichter-Telemetrie (v3.79.0) ─────────────────────────────────────
+  // Bisher wurde nur der AUSGANG von Matches erfasst — also ausschliesslich
+  // von Leuten, die es bis zum Ende geschafft haben. Wo die anderen
+  // abspringen, war unsichtbar; jede Aussage darueber war geraten.
+  //
+  // Erfasst wird NUR der Ablauf, nie wer: kein Name, keine Profil-ID, keine
+  // Geraetekennung — gleiche Linie wie die Match-Telemetrie.
+  function trichter(schritt, daten) {
+    try {
+      if (!MP_CONFIGURED || tutorialMode.current) return;
+      const id = Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+      const rec = __spreadValues({ ts: Date.now(), schritt, art: "funnel" }, daten || {});
+      if (typeof window !== "undefined" && window.__mmDebug) {
+        (window.__trichter = window.__trichter || []).push(rec);
+      }
+      if (window.__fb) fb.set("funnel/" + id, rec);
+    } catch (e) { /* Telemetrie darf nie das Spiel stoeren */ }
+  }
   function pushTelemetry(winner) {
     try {
       if (tutorialMode.current) return;           // Tutorial verfälscht die Daten
@@ -2092,6 +2110,26 @@ window.FortressApp = function Fortress() {
   function dbgBump(field, info) {
     dbg.current[field] = (dbg.current[field] || 0) + 1;
     if (info) dbg.current.lastInfo = info;
+  }
+  // Freund herausfordern (v3.79.0).
+  //
+  // Bis hierher verschickte das Teilen nach einem Match nur die nackte
+  // Adresse — der Empfaenger landete im Menue und musste selbst herausfinden,
+  // wie man zusammen spielt. Bei zehn aktiven Spielern ist die Einladung an
+  // einen KONKRETEN Menschen aber der einzige Weg, der ohne Spielerbasis
+  // funktioniert: er braucht niemanden in der Warteschlange.
+  //
+  // Deshalb wird hier erst eine Lobby geoeffnet und DANN deren Beitritts-Link
+  // geteilt. Der Empfaenger tippt einmal und steht neben dir.
+  async function challengeFriend() {
+    trichter("herausforderung");
+    const client = await getFirebase();
+    if (!client) { setMpError(MP_CONFIGURED ? t('warnVerbindung') : t('fbMissing')); return; }
+    setScreen("menu"); screenRef.current = "menu";
+    setMpScreen("online");
+    // hostCreateGame setzt mpCode und oeffnet die Lobby; das Teilen folgt
+    // danach, weil der Code vorher noch nicht existiert.
+    await hostCreateGame();
   }
   function shareResult(iWon, drawn) {
     const url = "https://skkjbeer.github.io/Fortress/";
@@ -3240,6 +3278,7 @@ window.FortressApp = function Fortress() {
     }, MM_CLAIM_HEAL_MS);
   }
   async function mmJoinMatchedGame(code, role, np) {
+    trichter("gegner_gefunden", { wartete: mmElapsed, np, rolle: role });
     // Tiefenverteidigung (v3.15.2): niemals als Gast in ein Spiel joinen,
     // das ich selbst hoste — und nur echte Gast-Rollen (2/3) akzeptieren.
     if (myRole.current === 1 && mpCodeRef.current === code) return;
@@ -3551,6 +3590,9 @@ window.FortressApp = function Fortress() {
     mmOnQueueUpdate();
   }
   function cancelMatchmaking() {
+    // Die Wartedauer ist hier die Kernzahl: sie sagt, ab wann Leute aufgeben —
+    // und damit, ob eine Wartezeit ueberhaupt zumutbar ist.
+    trichter("suche_abbruch", { wartete: mmElapsed, np: mmNp.current || 2 });
     mmActive.current = false;
     mmPendingCandidates.current = {};
     stopMatchmakingListeners(true);
@@ -3561,8 +3603,11 @@ window.FortressApp = function Fortress() {
   // beenden und nahtlos ein Bot-Match starten (gleicher Flow wie „Übung gegen
   // Bot", Stufe Mittel). Nur 2P — der Bot unterstützt keine 3-Spieler-Partien.
   // Niemals mitten in einem Claim/Match feuern (mmBusy / Ticket-Status-Guards).
-  function mmBotBackfill() {
+  function mmBotBackfill(automatisch) {
     if (!mmActive.current || mmBusy.current) return;
+    // Getrennt erfasst: wer den Knopf drueckt, hat sich ENTSCHIEDEN; wer nach
+    // Ablauf hineinfaellt, hat gewartet. Zwei sehr verschiedene Aussagen.
+    trichter("bot_start", { wartete: mmElapsed, auto: !!automatisch });
     const my = mmQueueSnapshot.current[SESSION_ID];
     if (my && my.status && my.status !== "waiting") return;
     mmActive.current = false;
@@ -3581,6 +3626,7 @@ window.FortressApp = function Fortress() {
     showWarn(t('mmBotFallback', { name: playerInfo.current[2].name }));
   }
   async function startMatchmaking(np) {
+    trichter("suche_start", { np });
     np = np === 3 ? 3 : 2;
     setMpError("");
     const client = await getFirebase();
@@ -3665,7 +3711,7 @@ window.FortressApp = function Fortress() {
       const el = Math.round((Date.now() - mmStartedAt.current) / 1e3);
       setMmElapsed(el);
       // Bot-Backfill nach 60s ohne Gegner (nur 2P-Queue)
-      if (el >= MM_BOT_BACKFILL_S && mmNp.current === 2) mmBotBackfill();
+      if (el >= MM_BOT_BACKFILL_S && mmNp.current === 2) mmBotBackfill(true);
     }, 1e3);
   }
   function startOnlineGame(role) {
@@ -7190,7 +7236,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.78.3"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.79.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -8444,7 +8490,20 @@ window.FortressApp = function Fortress() {
     justifyContent: "center",
     animation: "radarSpin 3s linear infinite",
     filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))"
-  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("p", { style: { color: "#475569", fontSize: 11, marginBottom: 14 } }, t('searchingBotHint', { s: Math.max(0, MM_BOT_BACKFILL_S - mmElapsed) })), (() => {
+  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("button", {
+    // Der Bot war bis v3.79.0 nur ein HINWEIS mit Countdown: "in 47 s spielst
+    // du gegen den Bot". Bei zehn aktiven Spielern ist die Schlange fast immer
+    // leer, und niemand sieht einem Suchbildschirm 60 Sekunden zu — die Suche
+    // war damit eine Sackgasse. Als KNOPF ab Sekunde eins wird daraus eine
+    // Wahl: die Suche laeuft weiter, aber niemand muss warten.
+    onClick: () => mmBotBackfill(),
+    style: {
+      width: "100%", maxWidth: 320, marginBottom: 14, cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+      background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.45)",
+      color: "#6ee7b7", borderRadius: 12, padding: "11px", fontSize: 13.5, fontWeight: 800
+    }
+  }, React.createElement(Icon, { name: "swords", size: 15 }), t('searchingBotNow')), (() => {
     // Tipps-Karussell (v3.26.0): nutzt den laufenden mmElapsed-Ticker —
     // alle 5s der nächste Tipp, kein zusätzlicher Timer.
     const tipIdx = Math.floor(mmElapsed / 5) % 8;
@@ -8762,6 +8821,21 @@ window.FortressApp = function Fortress() {
       )
     ),
     // ── TEILEN ────────────────────────────────────────────────
+    // Herausforderung steht VOR dem blossen Teilen und ist der auffaelligere
+    // der beiden Knoepfe: sie fuehrt zu einer Partie, das Teilen nur zu einem
+    // Link. Bei einem Zweipersonenspiel ohne Spielerbasis ist das der
+    // Unterschied zwischen Wachstum und Rauschen.
+    React.createElement("button", { onClick: challengeFriend, style: {
+      width: "100%", maxWidth: 320,
+      background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff",
+      border: "1px solid rgba(124,58,237,0.5)",
+      padding: "12px", fontSize: 14, fontWeight: 800,
+      borderRadius: 12, cursor: "pointer", marginBottom: 8,
+      display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+    }},
+      React.createElement(Icon, { name: "swords", size: 15 }),
+      t('challengeFriend')
+    ),
     React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
       width: "100%", maxWidth: 320,
       background: shareShared ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.79.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5372,3 +5372,66 @@ Nicht betroffen ist das Wort „Festung" als gewöhnliches Substantiv (die Burg 
 Spiel) — es beschreibt den Gegenstand, nicht die Herkunft.
 
 Tests grün (Unit 70/70, E2E 345/345, Typen 0 Fehler).
+
+---
+
+## v3.79.0 — Drei Eingriffe gegen die leere Warteschlange
+
+Ausgangslage aus den echten Daten: **34 Profile, davon 10 mit je einem
+beendeten Online-Match** (Partienzahl 34, 13, 8, 5, 3, 3, 3, 1, 1, 1). Bei
+dieser Grösse ist die Wahrscheinlichkeit, dass zwei gleichzeitig suchen,
+praktisch null.
+
+Neue Nutzer in diesen Trichter zu leiten, verbrennt sie: Wer einmal „da ist
+niemand" erlebt hat, kommt nicht wieder. Also erst das Leck, dann Zulauf.
+
+### Der Bot war ein Countdown, jetzt ist er eine Wahl
+
+Bisher stand auf dem Suchbildschirm ein **Hinweis**: „in 47 s spielst du gegen
+den Bot". Sechzig Sekunden Suchbildschirm am Telefon sieht sich niemand an —
+die Suche war eine Sackgasse mit Wartezeit.
+
+Jetzt ein Knopf ab Sekunde eins. Die Suche läuft weiter, aber niemand muss
+warten. Gemessen im Test: `bot_start` mit `wartete=1s` statt 60.
+
+### Trichter-Telemetrie
+
+Erfasst wurde bisher nur der **Ausgang** von Matches — also ausschliesslich von
+Leuten, die es bis zum Ende geschafft haben. Wo die anderen abspringen, war
+unsichtbar; jede Aussage darüber war geraten, auch meine.
+
+Vier Punkte, im Knoten `funnel`: `suche_start`, `suche_abbruch` (**mit
+Wartedauer** — die eigentliche Kernzahl), `bot_start` (getrennt nach selbst
+gewählt und automatisch nach Ablauf) und `gegner_gefunden`.
+
+Erfasst wird nur der Ablauf, **nie wer**: kein Name, keine Profil-ID, keine
+Gerätekennung — gleiche Linie wie die Match-Telemetrie, und im Test abgesichert.
+
+### „Freund herausfordern" statt eines nackten Links
+
+Das Teilen nach einem Match verschickte nur die Adresse; der Empfänger landete
+im Menü und musste selbst herausfinden, wie man zusammen spielt.
+
+Der neue Knopf öffnet eine Lobby **und** teilt deren Beitritts-Link. Ein Tipp,
+und der andere steht neben dir. Das ist die einzige Akquise, die ohne
+Spielerbasis funktioniert — sie braucht niemanden in der Warteschlange.
+
+Er steht bewusst **vor** dem Teilen und ist der auffälligere der beiden Knöpfe:
+die Herausforderung führt zu einer Partie, das Teilen nur zu einem Link.
+
+### Rules
+
+Neuer Knoten `funnel` in allen drei Rules-Dateien, gleiche Bauart wie
+`telemetry`: nur neue Einträge, kein Überschreiben. **Ohne diesen Eintrag wird
+jeder Schreibversuch abgelehnt** — genau der Fehler, der die Match-Telemetrie
+monatelang stillgelegt hatte.
+
+### Zwei Fehler in der eigenen Prüfung
+
+Die neue Suite meldete zuerst „Suche läuft ✓", obwohl gar nichts lief: das
+Suchmuster enthielt „Gegner", und dieses Wort steht bereits auf dem Startknopf.
+Und `window.__trichter` blieb leer, weil `__mmDebug` im Testkontext nicht
+gesetzt war. Beides behoben — eine Prüfung, die bei Nichtstun grün meldet, ist
+schlimmer als keine.
+
+Tests grün (Unit 70/70, E2E 353/353, Typen 0 Fehler).
