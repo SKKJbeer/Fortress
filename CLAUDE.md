@@ -17,7 +17,9 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 ### Dateien
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Hauptdatei — kompiliertes React (kein JSX). ~8300 Zeilen: UI, Rendering, Firebase-Sync, Matchmaking. Importiert die Engine-Module. |
+| `index.html` | Nur noch **Hülle** (125 Zeilen, seit v3.78.0): Stil, Splash, Wurzelknoten, zwei Modul-Verweise. |
+| `src/game/app.js` | Der Spielcode (~9500 Zeilen): UI, Rendering, Firebase-Sync, Matchmaking. Wird schrittweise nach aussen abgetragen — siehe `ARCHITEKTUR.md`. |
+| `src/audio.js`, `src/spread.js`, `src/platform.ts` | Ton/Musik, Objekt-Helfer, Plattform-Weiche |
 | `src/engine/*.js` | **Engine-Schicht (seit v3.34.0)**: pure Logik/Daten als native ES-Module — `const.js` (Grid/Zelltypen), `economy.js` (Schrott/SHOP), `terrain.js` (RNG, Welten, Generatoren), `flood.js` (Umschlossen-Regel), `progression.js` (ELO/XP/Gold-Formeln), `catalog.js` (Kosmetik/Rezepte). Kein DOM/React/Firebase → unit-testbar. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
 | `tests/*.test.js` | **Unit-Tests** (`node --test tests/engine.test.js tests/i18n.test.js`, ~0,2s). |
@@ -37,7 +39,10 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 - **Ökonomie-Mutationen als pure Funktionen** halten (Signatur `(state, …) → state`),
   damit eine spätere Cloud Function sie serverseitig validieren kann.
 - **Beide Testebenen müssen grün sein**: Unit (`node --test tests/…`) UND Playwright.
-- **Parallele KI-Sessions**: immer nur EINE Session an index.html-Features;
+- **Parallele KI-Sessions**: seit v3.78.0 liegt der Spielcode in `src/game/app.js`
+  statt inline in index.html — die frühere Regel „immer nur EINE Session an
+  index.html" gilt für diese Datei. Getrennte Module (`audio`, `engine/*`,
+  `render/*`) lassen sich parallel bearbeiten;
   jede Session startet mit `git fetch` + Abgleich mit `origin/main`.
 - `src/net/` (seit v3.35.0, Phase 2): `protocol.js` (PROTO_VERSION, sanitize,
   State-Schema-Doku — bei inkompatiblen Protokoll-Änderungen Version erhöhen!)

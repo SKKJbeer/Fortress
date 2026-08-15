@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.77.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.78.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5201,3 +5201,60 @@ Offline-Fähigkeit an, weil sie der stärkste Beleg gegen „verpackte Website" 
 Erledigtes als offen.
 
 Tests grün (Unit 60/60, E2E 345/345).
+
+---
+
+## v3.78.0 — Der Grossblock wird zerlegt (erster Schnitt)
+
+Schritt 8 des Architektur-Umbaus. **Kein Verhalten geändert** — nur Struktur.
+
+### index.html: von 10.118 auf 125 Zeilen
+
+Der Spielcode lag als 9.900-Zeilen-Skript **inline** in `index.html`. Das war
+der grösste Hemmschuh der Weiterentwicklung: kein brauchbarer Diff, keine
+Werkzeugunterstützung, und `CLAUDE.md` musste ausdrücklich vorschreiben „immer
+nur EINE Session an index.html".
+
+Er liegt jetzt in `src/game/app.js` — **unverändert**, nur die Importpfade
+wurden angezogen. Der Firebase-Start ging nach `src/firebase-boot.js`; er
+bleibt ein eigenes `async`-Modul, damit der Verbindungsaufbau nicht auf das
+Spielmodul wartet.
+
+### Vier Module herausgelöst
+
+| Neu | Was | Warum trennbar |
+|---|---|---|
+| `src/audio.js` | Ton und Musik | kein React, kein Spielzustand |
+| `src/engine/achievements.js` | Achievements + Ereignisbus | bekommt das Profil als Parameter |
+| `src/engine/shapes.js` | Tetromino-Formen, Drehung | ohne jeden Aussenbezug |
+| `src/spread.js` | Objekt-Helfer aus der esbuild-Ausgabe | s. u. |
+
+`src/game/app.js` ist damit von 9.907 auf 9.509 Zeilen geschrumpft.
+
+### Zwei Fallen beim Herausschneiden
+
+**Die esbuild-Helfer lagen mitten im Tonblock.** `__spreadValues` und
+`__spreadProps` standen zufällig zwischen `SFX` und `MUSIC` und wanderten beim
+Ausschneiden mit — der Spielcode brauchte sie an **über vierzig Stellen** und
+stand plötzlich ohne da. Ergebnis: weisser Bildschirm,
+`__spreadValues is not defined`. Sie liegen jetzt in einem eigenen Modul statt
+doppelt definiert.
+
+**`SFX` ruft die Vibration auf.** Der Import von `vibriere` blieb in `app.js`
+zurück; danach warf jeder Tastenton `vibriere is not defined` — 35 Prüfungen
+schlugen fehl. Beides fiel sofort auf, weil die E2E-Suite gegen `dist/` läuft.
+
+### Zehn neue Unit-Tests
+
+Die herausgelöste Logik war vorher **überhaupt nicht prüfbar** — genau darum
+ging es beim Zerlegen. Neu geprüft: vier Drehungen ergeben das Ausgangsteil,
+kein Driften ins Negative, `randomShape` liefert eine Kopie (sonst verbögen
+Drehungen die Vorlage für alle späteren Teile), eindeutige Achievement-Kennungen,
+keine doppelte Freischaltung.
+
+Der Test zur doppelten Freischaltung fiel im ersten Entwurf selbst herein:
+Achievements liegen im Profil als **Objekte** `{id, unlocked, progress}`, nicht
+als Liste blosser Kennungen — mit Strings wird nichts wiedererkannt und alles
+erneut freigeschaltet.
+
+Tests grün (Unit 70/70, E2E 345/345 zweimal in Folge, Typen 0 Fehler).

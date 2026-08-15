@@ -456,3 +456,88 @@ test('parseCloud: Muell ergibt null, nie eine Ausnahme', () => {
   assert.equal(parseCloud({ p: '"nur ein string"' }), null);
   assert.equal(parseCloud({ p: 'x'.repeat(CLOUD_MAX_BYTES + 1) }), null);
 });
+
+// ── Herausgeloest aus dem Grossblock (v3.78.0) ───────────────────────────
+// Diese Logik lag bis v3.77.0 inline in index.html und war damit ueberhaupt
+// nicht pruefbar. Genau darum ging es beim Zerlegen.
+import { SHAPES, rotateCW, randomShape } from '../src/engine/shapes.js';
+import { ACHIEVEMENTS, GAME_EVENTS, processAchievementEvents, createEventBus }
+  from '../src/engine/achievements.js';
+
+test('rotateCW: vier Drehungen ergeben das Ausgangsteil', () => {
+  // Der Kern der Drehlogik. Waere sie schief, driftete jedes Teil bei
+  // wiederholtem Drehen davon — im Spiel schwer zu sehen, hier trivial.
+  for (const form of SHAPES) {
+    let f = form.map(c => [...c]);
+    for (let i = 0; i < 4; i++) f = rotateCW(f);
+    const sortiert = (a) => a.map(c => c.join(',')).sort().join(' ');
+    assert.equal(sortiert(f), sortiert(form), 'Form driftet: ' + JSON.stringify(form));
+  }
+});
+
+test('rotateCW: Teil bleibt am Ursprung (keine negativen Koordinaten)', () => {
+  for (const form of SHAPES) {
+    const g = rotateCW(form);
+    assert.ok(g.every(([r, c]) => r >= 0 && c >= 0), 'negative Koordinate: ' + JSON.stringify(g));
+    assert.ok(g.some(([r]) => r === 0) && g.some(([, c]) => c === 0), 'nicht buendig: ' + JSON.stringify(g));
+  }
+});
+
+test('rotateCW: Zellenzahl bleibt gleich', () => {
+  for (const form of SHAPES) assert.equal(rotateCW(form).length, form.length);
+});
+
+test('randomShape: liefert eine KOPIE, keine Referenz', () => {
+  // Sonst wuerde das Drehen eines Teils die Vorlage im SHAPES-Feld veraendern
+  // und alle spaeteren Teile derselben Form mitverbiegen.
+  const a = randomShape();
+  a[0][0] = 999;
+  assert.ok(SHAPES.every(f => f.every(([r]) => r !== 999)), 'SHAPES wurde veraendert');
+});
+
+test('ACHIEVEMENTS: Kennungen sind eindeutig', () => {
+  const ids = ACHIEVEMENTS.map(a => a.id);
+  assert.equal(new Set(ids).size, ids.length, 'doppelte Achievement-Kennung');
+});
+
+test('ACHIEVEMENTS: jedes hat Ziel, XP und Gold', () => {
+  for (const a of ACHIEVEMENTS) {
+    assert.ok(typeof a.target === 'number' && a.target > 0, a.id + ': Ziel fehlt');
+    assert.ok(typeof a.xp === 'number' && a.xp >= 0, a.id + ': XP fehlt');
+    assert.ok(typeof a.gold === 'number' && a.gold >= 0, a.id + ': Gold fehlt');
+    assert.ok(a.cat && a.icon && a.title, a.id + ': Beschreibung unvollstaendig');
+  }
+});
+
+test('processAchievementEvents: erster Sieg schaltet frei und zahlt aus', () => {
+  const prof = { stats: { wins: 1, losses: 0, games: 1 }, achievements: [], elo: 1000 };
+  const r = processAchievementEvents(prof, [{ type: GAME_EVENTS.GAME_WON }]);
+  assert.ok(r.newlyUnlocked.some(a => a.id === 'first_win'), 'first_win nicht freigeschaltet');
+  assert.ok(r.xpGained > 0 && r.goldGained > 0, 'keine Belohnung');
+});
+
+test('processAchievementEvents: schaltet nie zweimal frei', () => {
+  // Doppelte Freischaltung waere eine Geldquelle aus dem Nichts.
+  // Achievements liegen im Profil als OBJEKTE {id, unlocked, progress} —
+  // eine Liste blosser Kennungen wuerde nicht wiedererkannt und alles erneut
+  // freischalten. (Genau darauf ist der erste Entwurf dieses Tests
+  // hereingefallen.)
+  const prof = { stats: { wins: 1, losses: 0, games: 1 }, elo: 1000,
+                 achievements: [{ id: 'first_win', unlocked: true, progress: 1 }] };
+  const r = processAchievementEvents(prof, [{ type: GAME_EVENTS.GAME_WON }]);
+  assert.ok(!r.newlyUnlocked.some(a => a.id === 'first_win'));
+  assert.equal(r.goldGained, 0, 'Gold trotz bereits freigeschaltetem Achievement');
+});
+
+test('processAchievementEvents: robust gegen leeres Profil', () => {
+  const r = processAchievementEvents({}, [{ type: GAME_EVENTS.GAME_PLAYED }]);
+  assert.ok(Array.isArray(r.achievements) && Array.isArray(r.newlyUnlocked));
+});
+
+test('createEventBus: meldet an Zuhoerer und laesst sich abmelden', () => {
+  const bus = createEventBus();
+  let n = 0;
+  const ab = bus.on('x', () => n++);
+  bus.emit('x'); assert.equal(n, 1);
+  if (typeof ab === 'function') { ab(); bus.emit('x'); assert.equal(n, 1, 'Abmeldung wirkungslos'); }
+});
