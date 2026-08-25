@@ -156,10 +156,17 @@ Actions → **iOS-Build (TestFlight)** → *Run workflow* → Haken bei
 **„Nach TestFlight hochladen"** setzen.
 
 Danach in App Store Connect unter *TestFlight*: die Verarbeitung dauert
-10–30 Minuten. Beim ersten Build fragt Apple nach der
-**Exportbestimmungs-Angabe** — FORTRESS nutzt nur HTTPS, also die
-Standardausnahme; die Frage nach eigener Verschlüsselung wird mit **nein**
-beantwortet.
+10–30 Minuten.
+
+Die **Exportbestimmungs-Angabe** ist bereits in der `Info.plist` beantwortet
+(`ITSAppUsesNonExemptEncryption` = `false`; FORTRESS nutzt nur HTTPS, also die
+Standardausnahme). Ohne diese Angabe bliebe **jeder** Build in „Missing
+Compliance" stehen, bis du die Frage von Hand beantwortest — bei jedem Upload
+aufs Neue.
+
+**Interne Tester** (bis 100 Personen aus deinem Team) können sofort laden.
+**Externe Tester** brauchen eine Beta-Prüfung durch Apple — die ist kürzer als
+die Store-Prüfung, aber sie findet statt.
 
 ---
 
