@@ -7,7 +7,7 @@
   <key>method</key>
   <string>app-store-connect</string>
   <key>teamID</key>
-  <string>$(APPLE_TEAM_ID)</string>
+  <string>APPLE_TEAM_ID_PLATZHALTER</string>
   <!-- Signierung ueber das in der CI eingespielte Profil, nicht automatisch:
        ein Runner hat keinen angemeldeten Xcode-Account, mit dem Apple
        automatisch ein Profil erzeugen koennte. -->

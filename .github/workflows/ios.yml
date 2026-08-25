@@ -58,6 +58,15 @@ jobs:
       - name: Capacitor synchronisieren
         run: npx cap sync ios
 
+      - name: Build-Nummer setzen
+        run: |
+          # TestFlight lehnt jeden Upload mit bereits bekannter Build-Nummer ab.
+          # Die Lauf-Nummer steigt monoton und ist damit die einfachste Quelle,
+          # die nie kollidiert — von Hand gepflegte Zahlen werden vergessen.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" \
+            ios/App/App/Info.plist 2>/dev/null || true
+          echo "Build-Nummer: ${{ github.run_number }}"
+
       - name: Signierung einrichten
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
@@ -80,8 +89,25 @@ jobs:
           echo "$PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/fortress.mobileprovision
           rm -f $RUNNER_TEMP/cert.p12
 
+      # Der SIGNIERUNGSFREIE Probelauf. Ohne diesen Schritt prueft ein Lauf ohne
+      # Geheimnisse gar keinen Xcode-Vorgang — er sagt dann nur, dass npm
+      # funktioniert, und beantwortet die eigentliche Frage nicht.
+      # CODE_SIGNING_ALLOWED=NO uebersetzt vollstaendig, ohne Zertifikat.
+      - name: Probe-Uebersetzung ohne Signierung
+        if: ${{ !inputs.upload && !startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj \
+            -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath $RUNNER_TEMP/Probe.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive
+          echo "Die App uebersetzt sauber."
+
       - name: Archivieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        env:
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # -project, NICHT -workspace: Capacitor 8 bindet die Plugins ueber
           # Swift Package Manager ein, es entsteht also kein .xcworkspace mehr
@@ -90,14 +116,21 @@ jobs:
             -scheme App -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath $RUNNER_TEMP/App.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROFILE_NAME }}" \
             archive
 
       - name: IPA exportieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        env:
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # Die Vorlage enthaelt einen Platzhalter: in einer plist findet KEINE
+          # Variablen-Ersetzung statt, die Kennung muss woertlich dort stehen.
+          sed "s/APPLE_TEAM_ID_PLATZHALTER/$TEAM/" ios/ExportOptions.plist > $RUNNER_TEMP/ExportOptions.plist
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
-            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
             -exportPath $RUNNER_TEMP/export
 
       - name: Nach TestFlight hochladen
