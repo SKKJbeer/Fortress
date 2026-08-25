@@ -11,6 +11,41 @@
 
 ---
 
+## Vorab: lokal in Xcode ausprobieren — ohne App-ID, ohne Zertifikat
+
+Für den **Simulator** brauchst du von den Schritten unten **nichts**. Kein
+Apple-Konto, keine App-ID, keine Signierung — der Simulator signiert nicht.
+
+```bash
+npm ci
+npm run build          # erzeugt dist/ — Capacitor liefert genau das aus
+npx cap sync ios       # kopiert dist/ ins Xcode-Projekt, loest die Plugins auf
+npx cap open ios       # oeffnet ios/App/App.xcodeproj
+```
+
+In Xcode oben ein **Simulator**-Ziel wählen (z. B. iPhone 17) und auf **Run**.
+Das ist derselbe Weg, den der Probelauf in der CI mitprüft — dort wird die
+Debug-Konfiguration für den Simulator eigens mitübersetzt, damit du nicht der
+erste bist, der einen Fehler in diesem Pfad findet.
+
+**Auf einem echten iPhone** brauchst du eine Signierung, aber immer noch keine
+der Registrierungen unten: in Xcode *App* → *Signing & Capabilities* → **Team**
+auswählen. `CODE_SIGN_STYLE` steht im Projekt bewusst auf `Automatic` — Xcode
+legt die App-ID dann selbst an. Nur die CI schaltet auf `Manual`, weil dort
+kein Xcode-Konto angemeldet ist; das geschieht auf der Kommandozeile und
+verändert das Projekt nicht.
+
+> Ändere die Signierungseinstellungen im Projekt **nicht** dauerhaft, um lokal
+> etwas zum Laufen zu bringen — sonst wandert dein persönliches Team ins
+> öffentliche Repository, und die CI-Signierung bricht.
+
+**Was lokal *nicht* geht:** Online-Partien nur, wenn die Firebase-Kette steht
+(siehe `LAUNCH-TODO.md` §1). Bot-Partie, Ton, Haptik und Safe-Areas kannst du
+sofort prüfen — das ist ohnehin der interessantere Teil, weil Apple genau
+danach fragt (Richtlinie 4.2).
+
+---
+
 ## 0. Was du am Ende hast
 
 Sieben Werte, die als **GitHub-Secrets** hinterlegt werden. Danach baut und lädt
