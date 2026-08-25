@@ -1,6 +1,6 @@
 # FORTRESS — Marktstart-Checkliste
 
-> Stand: v3.76.0. **iOS zuerst** — der Apple-Developer-Account ist in Prüfung,
+> Stand: v3.79.0. **iOS zuerst** — der Apple-Developer-Account ist in Prüfung,
 > und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
 > Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
 
@@ -20,10 +20,13 @@
 - [ ] **App Check** aktivieren (reCAPTCHA v3, kostenlos).
 - [ ] **Bundle-ID** in App Store Connect anlegen. Aktuell eingetragen:
       `de.skkjbeer.fortress` (in `capacitor.config.json`).
-- [ ] **Signierung**: Distribution-Zertifikat + Provisioning-Profil erzeugen,
-      als Secrets hinterlegen (`IOS_CERT_P12`, `IOS_CERT_PASSWORD`,
-      `IOS_PROVISIONING_PROFILE`, `ASC_KEY_ID`, `ASC_ISSUER_ID`,
-      `ASC_PRIVATE_KEY`).
+- [ ] **Signierung**: Distribution-Zertifikat + Provisioning-Profil erzeugen
+      und **sieben** Secrets hinterlegen — Schritt fuer Schritt in
+      `IOS-SETUP.md`: `APPLE_TEAM_ID`, `IOS_CERT_P12`, `IOS_CERT_PASSWORD`,
+      `IOS_PROVISIONING_PROFILE`, `IOS_PROFILE_NAME`, `ASC_KEY_ID`,
+      `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`.
+      Der Build nennt ein fehlendes Secret beim Namen, statt spaeter mit einer
+      unverstaendlichen codesign-Meldung abzubrechen.
 - [ ] **Impressum ausfüllen** — `public/impressum.html` enthält Platzhalter.
       Ein Impressum mit Platzhaltern ist **schlechter als keines**: nachweislich
       unvollständig und damit abmahnfähig. Die Anschrift muss ladungsfähig sein.
@@ -40,7 +43,13 @@
 - [x] **Fortschritt löschen** — Apple 5.1.1(v), löscht lokal *und* serverseitig
 - [x] **Plattform-Weiche** `src/platform.ts`, beide Zustände getestet
 - [x] **Capacitor + `ios/`** eingecheckt, geteiltes Schema angelegt
-- [x] **iOS-Workflow** auf `macos-14` (für öffentliche Repos kostenlos)
+- [x] **iOS-Workflow** auf `macos-15` (für öffentliche Repos kostenlos).
+      Die Toolchain wird nicht geraten: der Lauf waehlt das neueste
+      installierte Xcode und bricht unter 16 ab — mit `macos-14` und dessen
+      Xcode 15.4 uebersetzt Capacitor 8 nicht.
+- [x] **Die App uebersetzt** — signierungsfreier Probelauf am 25.08.,
+      `ARCHIVE SUCCEEDED` mit Xcode 26.3 und iOS-26.2-SDK. Damit ist belegt,
+      dass der Xcode-Teil traegt, bevor ein einziges Zertifikat existiert.
 - [x] **Screenshots** 1290×2796, 1242×2688, 1080×2340 — aus dem echten Spiel
 - [x] **Feature-Grafik** 1024×500 (Google Play)
 - [x] **App-Icon** 1024×1024 ohne Alphakanal
@@ -52,9 +61,9 @@
 
 ## 3. Nächste Schritte (iOS)
 
-- [ ] **Probelauf ohne Zertifikat**: Actions → „iOS-Build (TestFlight)" →
-      *Run workflow*, Haken bei „hochladen" **weglassen**. Beantwortet
-      „baut die App überhaupt?" ohne jedes Geheimnis.
+- [x] **Probelauf ohne Zertifikat** — grün (siehe oben). Jederzeit
+      wiederholbar: Actions → „iOS-Build (TestFlight)" → *Run workflow*,
+      Haken bei „hochladen" **weglassen**.
 - [ ] Erster TestFlight-Build
 - [ ] Auf einem echten Gerät prüfen: Online-Partie, Ton, Haptik, Safe-Areas
 - [ ] App Store Connect: Eintrag, Altersfreigabe, App-Privacy-Angaben
@@ -76,7 +85,7 @@
       Richtlinie 4.8 „Sign in with Apple" verlangt, sobald es Fremd-Login gibt.
       In der App über das native Firebase-Auth-Plugin — der Redirect-Flow
       scheitert in WebViews an Googles `disallowed_useragent`.
-- [ ] Grossblock `index.html` weiter zerlegen (`ARCHITEKTUR.md`, Schritt 8)
+- [ ] Grossblock `src/game/app.js` weiter zerlegen (`ARCHITEKTUR.md`, Schritt 8)
 - [ ] Trailer/GIF, Landing-Seite, Feedback-Kanal
 
 ---

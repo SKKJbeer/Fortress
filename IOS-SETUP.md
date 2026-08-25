@@ -4,6 +4,11 @@
 > braucht das Ergebnis des vorigen. Zusammen etwa 45 Minuten, davon die Hälfte
 > Wartezeit.
 
+> **Stand:** Der Xcode-Teil ist bereits belegt. Der signierungsfreie Probelauf
+> vom 25.08. endet mit `ARCHIVE SUCCEEDED` (Xcode 26.3, iOS-26.2-SDK) — die App
+> übersetzt vollständig, ohne dass ein Zertifikat existiert. Was hier folgt,
+> beschafft nur noch die Papiere für den Upload.
+
 ---
 
 ## 0. Was du am Ende hast
@@ -147,4 +152,6 @@ beantwortet.
 | `No profile matching` | `IOS_PROFILE_NAME` stimmt nicht wörtlich mit Schritt 5 überein |
 | `Bundle identifier mismatch` | App-ID aus Schritt 2 ≠ `capacitor.config.json` |
 | `redundant binary upload` | Build-Nummer schon vergeben — erneut laufen lassen, sie steigt automatisch |
+| `No profile for bundle identifier` | Profilname im Secret ≠ Profilname bei Apple, oder das Profil gilt für eine andere App-ID |
+| `FEHLER: Secret ... fehlt` | genau das — der Build nennt den fehlenden Wert und bricht ab, bevor daraus eine kryptische codesign-Meldung wird |
 | `has no member 'webView'` / `'reject'` (Capacitor-Plugins) | Xcode zu alt. Der Lauf waehlt das neueste installierte Xcode und bricht unter 16 ab — tritt das trotzdem auf, hat das Runner-Abbild nichts Neueres. |
