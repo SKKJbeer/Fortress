@@ -147,3 +147,4 @@ beantwortet.
 | `No profile matching` | `IOS_PROFILE_NAME` stimmt nicht wörtlich mit Schritt 5 überein |
 | `Bundle identifier mismatch` | App-ID aus Schritt 2 ≠ `capacitor.config.json` |
 | `redundant binary upload` | Build-Nummer schon vergeben — erneut laufen lassen, sie steigt automatisch |
+| `has no member 'webView'` / `'reject'` (Capacitor-Plugins) | Xcode zu alt. Der Lauf waehlt das neueste installierte Xcode und bricht unter 16 ab — tritt das trotzdem auf, hat das Runner-Abbild nichts Neueres. |
