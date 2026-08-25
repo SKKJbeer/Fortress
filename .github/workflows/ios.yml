@@ -96,6 +96,12 @@ jobs:
           CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
           PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
         run: |
+          # Fehlende Geheimnisse zuerst benennen. Ohne diese Pruefung
+          # entstuende ein leerer Schluesselbund, und der Fehler kaeme erst
+          # viel spaeter als unverstaendliche codesign-Meldung.
+          for v in CERT_P12 CERT_PASSWORD PROFILE; do
+            eval "[ -n \"\${$v}\" ]" || { echo "FEHLER: Secret fuer $v fehlt — siehe IOS-SETUP.md"; exit 1; }
+          done
           # Eigener Schluesselbund: der Standard-Bund des Runners ist gesperrt
           # und wuerde xcodebuild bei jedem Signieren nach einem Passwort fragen.
           KEYCHAIN=$RUNNER_TEMP/build.keychain
@@ -154,10 +160,19 @@ jobs:
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          PROFIL: ${{ secrets.IOS_PROFILE_NAME }}
         run: |
-          # Die Vorlage enthaelt einen Platzhalter: in einer plist findet KEINE
-          # Variablen-Ersetzung statt, die Kennung muss woertlich dort stehen.
-          sed "s/APPLE_TEAM_ID_PLATZHALTER/$TEAM/" ios/ExportOptions.plist > $RUNNER_TEMP/ExportOptions.plist
+          # Die Vorlage enthaelt Platzhalter: in einer plist findet KEINE
+          # Variablen-Ersetzung statt, die Werte muessen woertlich dort stehen.
+          [ -n "$TEAM" ]   || { echo "FEHLER: Secret APPLE_TEAM_ID fehlt"; exit 1; }
+          [ -n "$PROFIL" ] || { echo "FEHLER: Secret IOS_PROFILE_NAME fehlt"; exit 1; }
+          cp ios/ExportOptions.plist $RUNNER_TEMP/ExportOptions.plist
+          # PlistBuddy statt sed: Profilnamen enthalten fast immer Leerzeichen
+          # und duerfen jedes Zeichen tragen — ein Trennzeichen in einem
+          # sed-Ausdruck waere frueher oder spaeter genau das falsche.
+          /usr/libexec/PlistBuddy -c "Set :teamID $TEAM" $RUNNER_TEMP/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:de.skkjbeer.fortress $PROFIL" \
+            $RUNNER_TEMP/ExportOptions.plist
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \

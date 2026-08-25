@@ -13,6 +13,16 @@
        automatisch ein Profil erzeugen koennte. -->
   <key>signingStyle</key>
   <string>manual</string>
+  <!-- Bei manueller Signierung genuegt es NICHT, das Profil in den
+       Schluesselbund zu legen: exportArchive verlangt die ausdrueckliche
+       Zuordnung Bundle-ID -> Profilname, sonst bricht es mit
+       "No profile for bundle identifier" ab. Auch dieser Wert wird in der
+       CI eingesetzt, weil eine plist keine Variablen aufloest. -->
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>de.skkjbeer.fortress</key>
+    <string>PROFILNAME_PLATZHALTER</string>
+  </dict>
   <key>uploadSymbols</key>
   <true/>
   <key>compileBitcode</key>
