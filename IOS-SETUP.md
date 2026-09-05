@@ -48,25 +48,60 @@ danach fragt (Richtlinie 4.2).
 
 ## 0. Was du am Ende hast
 
-**Vier** Werte, die als **GitHub-Secrets** hinterlegt werden. Danach baut und
-lädt der Workflow selbständig hoch — du brauchst dafür **keinen Mac**.
+**Vier** Werte als **GitHub-Secrets**. Danach baut und lädt der Workflow
+selbständig hoch — du brauchst dafür **keinen Mac**.
 
 | Secret | Woher |
 |---|---|
 | `APPLE_TEAM_ID` | Schritt 1 |
 | `ASC_KEY_ID` · `ASC_ISSUER_ID` · `ASC_KEY_P8` | Schritt 4 |
 
-> **Kein Zertifikat, kein Provisioning-Profil.** Bis zum 5. September standen
-> hier sieben Werte, darunter ein aus dem Schlüsselbund exportiertes `.p12`
-> und eine Profildatei aus dem Entwicklerportal. Beides ist entbehrlich:
-> `xcodebuild` legt Zertifikat und Profil über den App-Store-Connect-Schlüssel
-> selbst an. Der Weg läuft im Schwesterprojekt auf demselben Apple-Konto.
+> ### Wenn schon eine App dieses Kontos im Store steht
 >
-> **Eine Falle, die dort gemessen wurde:** Ohne hinterlegtes Zertifikat legt
-> *jeder* Lauf ein neues an, und nach dem dritten ist die Grenze erreicht.
-> Fürs Erste reicht das; wenn die Meldung kommt, bauen wir die Wiederverwendung
-> ein — dann kommt ein `.p12` doch noch dazu, aber erzeugt aus der CI und nicht
-> von Hand.
+> Dann sind **alle vier Werte bereits vorhanden** und lassen sich unverändert
+> übernehmen. Der App-Store-Connect-Schlüssel ist ein **Team Key**: er gilt für
+> das ganze Konto, nicht für eine einzelne App. Die Team-ID ohnehin.
+>
+> Also: dieselben vier Werte aus dem anderen Repository hier eintragen,
+> Schritte 1 und 4 entfallen. Ein zweiter Schlüssel wäre nur nötig, wenn du die
+> Rechte trennen willst.
+>
+> Die `.p8`-Datei ist dabei die einzige Hürde — sie lässt sich bei Apple **nur
+> einmal** herunterladen. Hast du sie gesichert, nimm sie; hast du sie nicht
+> mehr, erzeuge in Schritt 4 einen neuen Schlüssel (der alte bleibt gültig).
+
+> ### Kein Zertifikat, kein Provisioning-Profil
+>
+> Bis zum 5. September standen hier sieben Werte, darunter ein aus dem
+> Schlüsselbund exportiertes `.p12` und eine Profildatei aus dem
+> Entwicklerportal. Beides ist entbehrlich: `xcodebuild` legt Zertifikat und
+> Profil über den App-Store-Connect-Schlüssel selbst an.
+>
+> **Eine Falle, die im Schwesterprojekt gemessen wurde:** Ohne hinterlegtes
+> Zertifikat legt *jeder* Lauf ein neues an, und nach dem dritten ist die
+> Grenze erreicht. Fürs Erste reicht das; wenn die Meldung kommt, bauen wir die
+> Wiederverwendung ein.
+
+### Was danach von selbst geht
+
+Mit denselben drei `ASC_*`-Werten bedient
+🔗 **Actions → „App Store (Stand / Eintragen)"** die Schnittstelle:
+
+| Modus | Was er tut |
+|---|---|
+| `stand` | fragt Apple und sagt, was steht, was ich eintragen kann und was nur du kannst |
+| `anlegen` | registriert die App-ID `de.skkjbeer.fortress` |
+| `fuellen` | trägt Untertitel, Datenschutz-Adresse, Beschreibung, Schlagworte, Werbetext und die Prüfhinweise ein, legt notfalls die Fassung 1.0 an |
+
+Die Texte kommen aus `store/listing.md` — eine Quelle, nicht zwei.
+
+**Drei Dinge kann die Schnittstelle nicht**, und der Lauf sagt es jedes Mal:
+den App-Eintrag anlegen (Schritt 3), den Datenschutz-Fragebogen, den
+Händlerstatus nach dem EU-Digitale-Dienste-Gesetz.
+
+Für den Kontakt zur Prüfung optional drei weitere Secrets —
+`ASC_KONTAKT_NAME`, `ASC_KONTAKT_MAIL`, `ASC_KONTAKT_TELEFON`. Apple nimmt den
+Kontakt nur **vollständig**; ohne Telefonnummer steht gar keiner hinterlegt.
 
 ---
 
