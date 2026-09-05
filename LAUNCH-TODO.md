@@ -1,8 +1,33 @@
 # FORTRESS — Marktstart-Checkliste
 
-> Stand: v3.79.0. **iOS zuerst** — der Apple-Developer-Account ist in Prüfung,
-> und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
+> Stand: v3.79.0, 05.09.2026. **iOS zuerst** — der Developer-Account steht
+> (Zählora ist seit dem 4. September im Store), und TestFlight hat keine
+> 12-Tester-über-14-Tage-Regel wie Google Play.
 > Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
+
+---
+
+## Der kürzeste Weg nach TestFlight
+
+Die Code-Seite ist fertig und belegt. Für einen Build in TestFlight fehlen
+**genau vier Handgriffe**, alle im Browser, zusammen etwa 20 Minuten:
+
+| # | Was | Wo |
+|---|---|---|
+| 1 | App-ID `de.skkjbeer.fortress` registrieren | `developer.apple.com` → Identifiers |
+| 2 | App anlegen (Name, Sprache, SKU) | `appstoreconnect.apple.com/apps` |
+| 3 | API-Schlüssel erzeugen (Rolle *App Manager*) | App Store Connect → Integrations |
+| 4 | Vier Secrets hinterlegen, Workflow mit Haken starten | GitHub → Settings → Secrets |
+
+Schritt für Schritt in **`IOS-SETUP.md`**. Kein Mac nötig, kein Zertifikat,
+kein Provisioning-Profil.
+
+**Das reicht für internes Testen.** Externe Tester brauchen zusätzlich eine
+Beta-Prüfung durch Apple; für den Verkauf kommt der ganze Abschnitt 1b dazu.
+
+**Was im TestFlight-Build noch NICHT geht:** Online-Partien, solange der
+Firebase-Schlüssel fehlt (Abschnitt 1). Bot-Partie, Tutorial, Ton, Haptik und
+der komplette Fortschritt laufen.
 
 ---
 
@@ -97,9 +122,17 @@ schwierig wären.
       Die Toolchain wird nicht geraten: der Lauf waehlt das neueste
       installierte Xcode und bricht unter 16 ab — mit `macos-14` und dessen
       Xcode 15.4 uebersetzt Capacitor 8 nicht.
-- [x] **Die App uebersetzt** — signierungsfreier Probelauf am 25.08.,
-      `ARCHIVE SUCCEEDED` mit Xcode 26.3 und iOS-26.2-SDK. Damit ist belegt,
-      dass der Xcode-Teil traegt, bevor ein einziges Zertifikat existiert.
+- [x] **Die App übersetzt** — signierungsfreier Probelauf, `ARCHIVE SUCCEEDED`
+      mit Xcode 26.3 und iOS-26.2-SDK, dazu Debug für den Simulator. Damit ist
+      belegt, dass der Xcode-Teil trägt, bevor ein einziges Zertifikat existiert.
+- [x] **Und im Bündel steckt wirklich das Spiel.** Der Probelauf öffnet das
+      erzeugte App-Paket: `index.html`, gebündelter Spielcode, acht
+      Musikstücke, Töne — dazu Bundle-ID, Build-Nummer und Ausfuhrangabe.
+      Ein Capacitor-Bau gelingt auch dann, wenn `cap sync` die Oberfläche nicht
+      mitgenommen hat; das Ergebnis wäre eine App, die startet und weiß bleibt.
+- [x] **E2E-Suite 353/353 grün** vor der ersten Auslieferung. Eine Prüfung
+      meldete seit Wochen grundlos rot (Tutorial-Pause) — nachgemessen, als
+      Testfehler erkannt, behoben.
 - [x] **Screenshots** — gegen Apples aktuelle Liste geprüft: 1290×2796 ist
       gültig für den **6,9-Zoll-Platz** (der einzige iPhone-Pflichtplatz),
       2064×2752 für den **13-Zoll-iPad-Platz**. iPad-Bilder sind Pflicht,
