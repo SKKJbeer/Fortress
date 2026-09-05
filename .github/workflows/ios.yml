@@ -154,6 +154,26 @@ jobs:
             archive
           echo "Release fuer das Geraet: uebersetzt."
 
+          # **Uebersetzen heisst nicht, dass etwas drin ist.** Ein Capacitor-Bau
+          # gelingt auch dann, wenn `cap sync` die Weboberflaeche nicht
+          # mitgenommen hat — das Ergebnis waere eine App, die startet und eine
+          # weisse Flaeche zeigt. Genau das faellt sonst erst dem Pruefer auf.
+          APP="$RUNNER_TEMP/Probe.xcarchive/Products/Applications/App.app"
+          test -d "$APP" || { echo "FEHLER: kein App-Bundle im Archiv"; exit 1; }
+          test -s "$APP/public/index.html" || { echo "FEHLER: public/index.html fehlt im Bundle"; exit 1; }
+          ls "$APP/public/assets/"*.js >/dev/null 2>&1 || { echo "FEHLER: kein Spielcode im Bundle"; exit 1; }
+          test "$(ls "$APP/public/music/"*.mp3 2>/dev/null | wc -l)" -ge 8 || { echo "FEHLER: Musik fehlt im Bundle"; exit 1; }
+          test -d "$APP/public/sounds" || { echo "FEHLER: Toene fehlen im Bundle"; exit 1; }
+          # Die Angaben, an denen ein Upload sonst still scheitert.
+          KENN=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          BAU=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Info.plist")
+          AUSFUHR=$(/usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$APP/Info.plist")
+          [ "$KENN" = "de.skkjbeer.fortress" ] || { echo "FEHLER: Bundle-ID ist $KENN"; exit 1; }
+          [ "$BAU" = "${{ github.run_number }}" ] || { echo "FEHLER: Build-Nummer ist $BAU statt ${{ github.run_number }}"; exit 1; }
+          [ "$AUSFUHR" = "false" ] || { echo "FEHLER: Ausfuhrangabe fehlt — jeder Build bliebe in Missing Compliance"; exit 1; }
+          echo "Im Bundle: Spielcode, $(ls "$APP/public/music/"*.mp3 | wc -l | tr -d ' ') Musikstuecke, Toene."
+          echo "Kennung $KENN, Bau $BAU, Ausfuhrangabe gesetzt."
+
       # Zweiter Durchgang fuer den Simulator, in der Debug-Konfiguration —
       # also genau das, was beim Druck auf "Run" in Xcode passiert. Der
       # Geraete-Bogen oben beweist das nicht mit: andere Architektur, andere
