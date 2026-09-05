@@ -48,17 +48,25 @@ danach fragt (Richtlinie 4.2).
 
 ## 0. Was du am Ende hast
 
-Sieben Werte, die als **GitHub-Secrets** hinterlegt werden. Danach baut und lädt
-der Workflow selbständig hoch — du brauchst dafür **keinen Mac**.
+**Vier** Werte, die als **GitHub-Secrets** hinterlegt werden. Danach baut und
+lädt der Workflow selbständig hoch — du brauchst dafür **keinen Mac**.
 
 | Secret | Woher |
 |---|---|
 | `APPLE_TEAM_ID` | Schritt 1 |
-| `IOS_CERT_P12` | Schritt 3 |
-| `IOS_CERT_PASSWORD` | Schritt 3 |
-| `IOS_PROVISIONING_PROFILE` | Schritt 5 |
-| `IOS_PROFILE_NAME` | Schritt 5 |
-| `ASC_KEY_ID` · `ASC_ISSUER_ID` · `ASC_PRIVATE_KEY` | Schritt 6 |
+| `ASC_KEY_ID` · `ASC_ISSUER_ID` · `ASC_KEY_P8` | Schritt 4 |
+
+> **Kein Zertifikat, kein Provisioning-Profil.** Bis zum 5. September standen
+> hier sieben Werte, darunter ein aus dem Schlüsselbund exportiertes `.p12`
+> und eine Profildatei aus dem Entwicklerportal. Beides ist entbehrlich:
+> `xcodebuild` legt Zertifikat und Profil über den App-Store-Connect-Schlüssel
+> selbst an. Der Weg läuft im Schwesterprojekt auf demselben Apple-Konto.
+>
+> **Eine Falle, die dort gemessen wurde:** Ohne hinterlegtes Zertifikat legt
+> *jeder* Lauf ein neues an, und nach dem dritten ist die Grenze erreicht.
+> Fürs Erste reicht das; wenn die Meldung kommt, bauen wir die Wiederverwendung
+> ein — dann kommt ein `.p12` doch noch dazu, aber erzeugt aus der CI und nicht
+> von Hand.
 
 ---
 
@@ -80,30 +88,7 @@ der Workflow selbständig hoch — du brauchst dafür **keinen Mac**.
   Center noch iCloud. Jede aktivierte Fähigkeit, die nicht genutzt wird, ist
   eine Frage mehr in der Prüfung.
 
-## 3. Verteilungs-Zertifikat
-
-Ohne Mac geht das über eine Signieranfrage (CSR). Der bequemste Weg **mit**
-Mac: Schlüsselbundverwaltung → *Zertifikatsassistent* → *Zertifikat von einer
-Zertifizierungsinstanz anfordern* → auf Festplatte sichern.
-
-Dann `developer.apple.com/account/resources/certificates` → **+** →
-**Apple Distribution** → CSR hochladen → `.cer` laden.
-
-**In `.p12` umwandeln:** `.cer` doppelklicken (landet im Schlüsselbund) → dort
-den **privaten Schlüssel** mit dem Zertifikat auswählen → Rechtsklick →
-*Exportieren* → `.p12` mit Passwort.
-
-```bash
-base64 -i Zertifikat.p12 | pbcopy      # macOS
-base64 -w0 Zertifikat.p12              # Linux
-```
-
-→ Secrets **`IOS_CERT_P12`** (der base64-Text) und **`IOS_CERT_PASSWORD`**
-
-> **Den Schlüssel niemals verlieren.** Ohne ihn kannst du nie wieder ein Update
-> für dieselbe App veröffentlichen. Leg eine Sicherung an einem zweiten Ort an.
-
-## 4. App in App Store Connect anlegen
+## 3. App in App Store Connect anlegen
 
 `appstoreconnect.apple.com/apps` → **+** → *Neue App*
 
@@ -113,20 +98,7 @@ base64 -w0 Zertifikat.p12              # Linux
 - **Bundle-ID:** `de.skkjbeer.fortress` (aus Schritt 2 auswählbar)
 - **SKU:** `fortress-ios` (nur intern, frei wählbar)
 
-## 5. Provisioning-Profil
-
-`developer.apple.com/account/resources/profiles` → **+** →
-**App Store Connect** → App-ID `de.skkjbeer.fortress` → Zertifikat aus
-Schritt 3 → Name vergeben, z. B. `FORTRESS AppStore`.
-
-```bash
-base64 -w0 FORTRESS_AppStore.mobileprovision
-```
-
-→ Secrets **`IOS_PROVISIONING_PROFILE`** (base64) und **`IOS_PROFILE_NAME`**
-(der Name, **wörtlich** wie vergeben — daran findet xcodebuild es)
-
-## 6. API-Schlüssel für den Upload
+## 4. API-Schlüssel für den Upload
 
 `appstoreconnect.apple.com/access/integrations/api` → **+**
 
@@ -140,17 +112,19 @@ base64 -w0 AuthKey_XXXXXXXXXX.p8
 ```
 
 → Secrets **`ASC_KEY_ID`** (die zehn Zeichen aus dem Dateinamen),
-**`ASC_ISSUER_ID`** (steht über der Tabelle) und **`ASC_PRIVATE_KEY`** (base64)
+**`ASC_ISSUER_ID`** (steht über der Tabelle) und **`ASC_KEY_P8`** — der
+**ganze Inhalt** der `.p8`-Datei, samt der `BEGIN`- und `END`-Zeilen. Nicht
+base64, sondern der Text selbst.
 
 > Ein API-Schlüssel statt eines app-spezifischen Passworts: kein persönliches
 > Apple-Passwort im Repository, und jederzeit einzeln widerrufbar.
 
-## 7. Secrets hinterlegen
+## 5. Secrets hinterlegen
 
 `github.com/SKKJbeer/Fortress/settings/secrets/actions` → *New repository
-secret*, für jeden der sieben Werte.
+secret*, für jeden der vier Werte.
 
-## 8. Hochladen
+## 6. Hochladen
 
 Actions → **iOS-Build (TestFlight)** → *Run workflow* → Haken bei
 **„Nach TestFlight hochladen"** setzen.
@@ -190,10 +164,9 @@ die Store-Prüfung, aber sie findet statt.
 
 | Meldung | Ursache |
 |---|---|
-| `No signing certificate` | `IOS_CERT_P12` oder das Passwort falsch |
-| `No profile matching` | `IOS_PROFILE_NAME` stimmt nicht wörtlich mit Schritt 5 überein |
 | `Bundle identifier mismatch` | App-ID aus Schritt 2 ≠ `capacitor.config.json` |
 | `redundant binary upload` | Build-Nummer schon vergeben — erneut laufen lassen, sie steigt automatisch |
-| `No profile for bundle identifier` | Profilname im Secret ≠ Profilname bei Apple, oder das Profil gilt für eine andere App-ID |
+| `your team has no devices from which to generate a provisioning profile` | Es wurde ein **Development**-Profil gesucht statt eines Verteilprofils. Der Lauf setzt dagegen `-configuration Release` und `CODE_SIGN_IDENTITY="Apple Distribution"` — tritt es trotzdem auf, hat einer der beiden Werte nicht gegriffen. |
+| `Maximum number of certificates generated` | Die Drei-Zertifikate-Grenze. Alte im Entwicklerportal widerrufen, oder die Wiederverwendung einbauen (siehe Abschnitt 0). |
 | `FEHLER: Secret ... fehlt` | genau das — der Build nennt den fehlenden Wert und bricht ab, bevor daraus eine kryptische codesign-Meldung wird |
 | `has no member 'webView'` / `'reject'` (Capacitor-Plugins) | Xcode zu alt. Der Lauf waehlt das neueste installierte Xcode und bricht unter 16 ab — tritt das trotzdem auf, hat das Runner-Abbild nichts Neueres. |

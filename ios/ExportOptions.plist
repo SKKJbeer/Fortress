@@ -11,18 +11,12 @@
   <!-- Signierung ueber das in der CI eingespielte Profil, nicht automatisch:
        ein Runner hat keinen angemeldeten Xcode-Account, mit dem Apple
        automatisch ein Profil erzeugen koennte. -->
+  <!-- automatic: xcodebuild besorgt sich Zertifikat und Profil ueber den
+       App-Store-Connect-Schluessel selbst (-allowProvisioningUpdates). Mit
+       "manual" muesste hier eine Zuordnung Bundle-ID -> Profilname stehen,
+       und die Profildatei muesste jemand von Hand im Portal erzeugen. -->
   <key>signingStyle</key>
-  <string>manual</string>
-  <!-- Bei manueller Signierung genuegt es NICHT, das Profil in den
-       Schluesselbund zu legen: exportArchive verlangt die ausdrueckliche
-       Zuordnung Bundle-ID -> Profilname, sonst bricht es mit
-       "No profile for bundle identifier" ab. Auch dieser Wert wird in der
-       CI eingesetzt, weil eine plist keine Variablen aufloest. -->
-  <key>provisioningProfiles</key>
-  <dict>
-    <key>de.skkjbeer.fortress</key>
-    <string>PROFILNAME_PLATZHALTER</string>
-  </dict>
+  <string>automatic</string>
   <key>uploadSymbols</key>
   <true/>
   <key>compileBitcode</key>

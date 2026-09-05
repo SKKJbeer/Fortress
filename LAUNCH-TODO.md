@@ -20,13 +20,12 @@
 - [ ] **App Check** aktivieren (reCAPTCHA v3, kostenlos).
 - [ ] **Bundle-ID** in App Store Connect anlegen. Aktuell eingetragen:
       `de.skkjbeer.fortress` (in `capacitor.config.json`).
-- [ ] **Signierung**: Distribution-Zertifikat + Provisioning-Profil erzeugen
-      und **sieben** Secrets hinterlegen — Schritt fuer Schritt in
-      `IOS-SETUP.md`: `APPLE_TEAM_ID`, `IOS_CERT_P12`, `IOS_CERT_PASSWORD`,
-      `IOS_PROVISIONING_PROFILE`, `IOS_PROFILE_NAME`, `ASC_KEY_ID`,
-      `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`.
-      Der Build nennt ein fehlendes Secret beim Namen, statt spaeter mit einer
-      unverstaendlichen codesign-Meldung abzubrechen.
+- [ ] **Vier Secrets hinterlegen** — Schritt für Schritt in `IOS-SETUP.md`:
+      `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`.
+      **Kein Zertifikat, kein Provisioning-Profil**: `xcodebuild` legt beides
+      über den App-Store-Connect-Schlüssel selbst an. Der Build nennt ein
+      fehlendes Secret beim Namen, statt später mit einer unverständlichen
+      codesign-Meldung abzubrechen.
 - [ ] **Impressum ausfüllen** — `public/impressum.html` enthält Platzhalter.
       Ein Impressum mit Platzhaltern ist **schlechter als keines**: nachweislich
       unvollständig und damit abmahnfähig. Die Anschrift muss ladungsfähig sein.
@@ -70,16 +69,17 @@ schwierig wären.
 - [x] **Xcode-26-Riegel im Build** — dieselbe Prüfung wie bei Zählora, und
       dort aus demselben Grund: Apple nimmt seit dem 28.04.2026 nur noch
       Uploads mit dem iOS-26-SDK.
-- [ ] **Signierung ohne Zertifikats-Export prüfen.** Zählora signiert **ohne**
-      `.p12` und **ohne** Profildatei: nur mit dem App-Store-Connect-Schlüssel
-      und `-allowProvisioningUpdates`, Zertifikat und Profil legt die
-      Schnittstelle selbst an. Das wären vier Geheimnisse statt sieben und
-      **kein Handgriff im Schlüsselbund**. Zwei dort gemessene Fallen:
-      `-configuration Release` ist Pflicht (sonst sucht Xcode ein
-      Development-Profil und meldet „your team has no devices"), und ohne
-      hinterlegtes Zertifikat legt **jeder Lauf ein neues an** — nach dem
-      dritten ist die Grenze erreicht.
-      → Entscheidung offen, siehe Abschnitt 3.
+- [x] **Signierung ohne Zertifikats-Export übernommen.** Vier Geheimnisse
+      statt sieben, kein Handgriff im Schlüsselbund: nur der
+      App-Store-Connect-Schlüssel und `-allowProvisioningUpdates`.
+      Zwei bei Zählora gemessene Fallen sind mit eingebaut: `-configuration
+      Release` **und** `CODE_SIGN_IDENTITY="Apple Distribution"` — das
+      eingecheckte Projekt schreibt „iPhone Developer" vor, und mit einer
+      Entwickler-Identität sucht Xcode ein Development-Profil, das ohne
+      registriertes Gerät nicht existiert („your team has no devices").
+      Offen bleibt die Drei-Zertifikate-Grenze: ohne hinterlegtes Zertifikat
+      legt jeder Lauf ein neues an. Fürs Erste tragbar, in `IOS-SETUP.md`
+      benannt.
 
 ## 2. Fertig und geprüft
 

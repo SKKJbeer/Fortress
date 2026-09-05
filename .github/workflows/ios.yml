@@ -95,33 +95,48 @@ jobs:
       - name: Capacitor synchronisieren
         run: npx cap sync ios
 
-      - name: Signierung einrichten
+      # **Vier Angaben, und keine davon verlangt einen Mac.**
+      #
+      # Frueher standen hier sieben Geheimnisse, darunter ein aus dem
+      # Schluesselbund ausgefuehrtes .p12 und eine Profildatei aus dem Portal.
+      # Beides ist entbehrlich: Mit einem App-Store-Connect-Schluessel legt
+      # xcodebuild Zertifikat und Profil selbst an (-allowProvisioningUpdates).
+      # Im Schwesterprojekt laeuft genau dieser Weg auf demselben Apple-Konto.
+      #
+      # Zuerst pruefen, ob ueberhaupt eingerichtet ist: sonst laeuft der Auftrag
+      # zwanzig Minuten und scheitert am Ende an einer Meldung, die nicht sagt,
+      # welche der vier Angaben fehlt.
+      - name: Zugang pruefen
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
-          CERT_P12: ${{ secrets.IOS_CERT_P12 }}
-          CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
-          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Fehlende Geheimnisse zuerst benennen. Ohne diese Pruefung
-          # entstuende ein leerer Schluesselbund, und der Fehler kaeme erst
-          # viel spaeter als unverstaendliche codesign-Meldung.
-          for v in CERT_P12 CERT_PASSWORD PROFILE; do
-            eval "[ -n \"\${$v}\" ]" || { echo "FEHLER: Secret fuer $v fehlt — siehe IOS-SETUP.md"; exit 1; }
-          done
-          # Eigener Schluesselbund: der Standard-Bund des Runners ist gesperrt
-          # und wuerde xcodebuild bei jedem Signieren nach einem Passwort fragen.
-          KEYCHAIN=$RUNNER_TEMP/build.keychain
-          security create-keychain -p "" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "" "$KEYCHAIN"
-          echo "$CERT_P12" | base64 --decode > $RUNNER_TEMP/cert.p12
-          security import $RUNNER_TEMP/cert.p12 -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
-            -T /usr/bin/codesign -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/fortress.mobileprovision
-          rm -f $RUNNER_TEMP/cert.p12
+          fehlt=""
+          [ -n "$ASC_KEY_ID" ]     || fehlt="$fehlt ASC_KEY_ID"
+          [ -n "$ASC_ISSUER_ID" ]  || fehlt="$fehlt ASC_ISSUER_ID"
+          [ -n "$ASC_KEY_P8" ]     || fehlt="$fehlt ASC_KEY_P8"
+          [ -n "$APPLE_TEAM_ID" ]  || fehlt="$fehlt APPLE_TEAM_ID"
+          if [ -n "$fehlt" ]; then
+            echo "::error::Diese Geheimnisse fehlen:$fehlt — siehe IOS-SETUP.md"
+            exit 1
+          fi
+          echo "Alle vier Angaben liegen vor."
+
+      # Der Schluessel muss an ZWEI Orten liegen: xcodebuild bekommt ihn ueber
+      # einen Pfad, altool sucht ihn von sich aus in ~/.appstoreconnect.
+      - name: Schluessel ablegen
+        if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/private_keys ~/.appstoreconnect/private_keys
+          printf '%s\n' "$ASC_KEY_P8" > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          cp ~/private_keys/AuthKey_$ASC_KEY_ID.p8 ~/.appstoreconnect/private_keys/
+          chmod 600 ~/private_keys/AuthKey_$ASC_KEY_ID.p8
 
       # Der SIGNIERUNGSFREIE Probelauf. Ohne diesen Schritt prueft ein Lauf ohne
       # Geheimnisse gar keinen Xcode-Vorgang — er sagt dann nur, dass npm
@@ -157,70 +172,74 @@ jobs:
       - name: Archivieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # -project, NICHT -workspace: Capacitor 8 bindet die Plugins ueber
           # Swift Package Manager ein, es entsteht also kein .xcworkspace mehr
           # (mit CocoaPods war das frueher anders).
           #
-          # CODE_SIGN_STYLE steht im Projekt auf Automatic — das ist der Wert,
-          # der beim Oeffnen in Xcode auf einem Entwicklerrechner gebraucht
-          # wird. Nur die CI braucht Manual, weil dort kein Xcode-Konto
-          # angemeldet ist, das automatisch ein Profil erzeugen koennte. Auf der
-          # Kommandozeile gesetzt gilt das genau hier und nirgends sonst.
+          # CODE_SIGN_IDENTITY="Apple Distribution" ist der Kern und keine
+          # Feinheit. Das eingecheckte Projekt schreibt "iPhone Developer" vor
+          # — mit einer ENTWICKLER-Identitaet sucht die automatische Signierung
+          # ein Development-Profil, und das gibt es nur zu einem registrierten
+          # Geraet. Ein Konto ohne Kabel hat keins; die Meldung lautet dann
+          # "your team has no devices from which to generate a provisioning
+          # profile" und nennt die Ursache nicht. Aus demselben Grund ist
+          # -configuration Release Pflicht, nicht Geschmack.
           #
           # CURRENT_PROJECT_VERSION ist die Build-Nummer: TestFlight lehnt jeden
           # Upload mit bereits bekannter Nummer ab. Die Lauf-Nummer steigt
-          # monoton und wird nie vergessen. Sie hier zu setzen statt die
-          # Info.plist umzuschreiben ist der Weg, der nicht still danebengehen
-          # kann — die plist verweist bereits auf genau diese Einstellung.
+          # monoton und wird nie vergessen.
           xcodebuild -project ios/App/App.xcodeproj \
             -scheme App -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath $RUNNER_TEMP/App.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_$ASC_KEY_ID.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="$TEAM" \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROFILE_NAME }}" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             archive
 
       - name: IPA exportieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
-          PROFIL: ${{ secrets.IOS_PROFILE_NAME }}
         run: |
-          # Die Vorlage enthaelt Platzhalter: in einer plist findet KEINE
-          # Variablen-Ersetzung statt, die Werte muessen woertlich dort stehen.
-          [ -n "$TEAM" ]   || { echo "FEHLER: Secret APPLE_TEAM_ID fehlt"; exit 1; }
-          [ -n "$PROFIL" ] || { echo "FEHLER: Secret IOS_PROFILE_NAME fehlt"; exit 1; }
+          # Die Vorlage enthaelt einen Platzhalter: in einer plist findet KEINE
+          # Variablen-Ersetzung statt, die Kennung muss woertlich dort stehen.
           cp ios/ExportOptions.plist $RUNNER_TEMP/ExportOptions.plist
-          # PlistBuddy statt sed: Profilnamen enthalten fast immer Leerzeichen
-          # und duerfen jedes Zeichen tragen — ein Trennzeichen in einem
-          # sed-Ausdruck waere frueher oder spaeter genau das falsche.
           /usr/libexec/PlistBuddy -c "Set :teamID $TEAM" $RUNNER_TEMP/ExportOptions.plist
-          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:de.skkjbeer.fortress $PROFIL" \
-            $RUNNER_TEMP/ExportOptions.plist
+          # Auch der Export braucht den Schluessel: er holt sich dasselbe Profil.
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath $RUNNER_TEMP/export
+            -exportPath $RUNNER_TEMP/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_$ASC_KEY_ID.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
       - name: Nach TestFlight hochladen
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
         run: |
           # API-Schluessel statt app-spezifischem Passwort: kein persoenliches
           # Apple-Passwort im Repository, jederzeit in App Store Connect
-          # widerrufbar.
-          mkdir -p ~/private_keys
-          echo "$ASC_PRIVATE_KEY" | base64 --decode > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          # widerrufbar. Er liegt bereits in ~/.appstoreconnect/private_keys,
+          # wo altool von sich aus nachsieht.
           xcrun altool --upload-app -f $RUNNER_TEMP/export/App.ipa -t ios \
             --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
-          rm -rf ~/private_keys
+          rm -rf ~/private_keys ~/.appstoreconnect
 
       # Ohne Signierung endet der Lauf hier — das ist der nuetzliche Fall
       # "baut die App ueberhaupt?", den man ohne jedes Geheimnis fahren kann.
