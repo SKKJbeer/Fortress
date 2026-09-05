@@ -20,7 +20,10 @@ on:
 # (Swift 5.10). Damit uebersetzt Capacitor 8 nicht — die Plugins finden dann
 # saemtliche Swift-Erweiterungen des Capacitor-Moduls nicht mehr und melden
 # reihenweise "has no member" (webView, viewController, reject, getString).
-# Unabhaengig davon verlangt der App Store ohnehin ein aktuelles SDK.
+#
+# Unabhaengig davon nimmt Apple seit dem 28.04.2026 nur noch Uploads an, die
+# mit dem iOS-26-SDK gebaut wurden. Deshalb ist Xcode 26 hier keine Kuer,
+# sondern Bedingung — und der Lauf prueft das, statt es zu hoffen.
 jobs:
   build:
     runs-on: macos-15
@@ -46,8 +49,11 @@ jobs:
             fi
           done
           [ -n "$BEST" ] || { echo "FEHLER: kein Xcode auf dem Runner gefunden"; exit 1; }
-          if [ "${BESTV%%.*}" -lt 16 ]; then
-            echo "FEHLER: neuestes Xcode ist $BESTV, Capacitor 8 braucht mindestens 16."
+          if [ "${BESTV%%.*}" -lt 26 ]; then
+            echo "FEHLER: neuestes Xcode ist $BESTV, gebraucht wird mindestens 26."
+            echo "Apple nimmt seit dem 28.04.2026 nur noch Uploads an, die mit dem"
+            echo "iOS-26-SDK gebaut wurden. Ein aelteres Xcode wuerde uebersetzen"
+            echo "und erst beim Hochladen abgelehnt - das faellt hier auf."
             exit 1
           fi
           sudo xcode-select -s "$BEST/Contents/Developer"
