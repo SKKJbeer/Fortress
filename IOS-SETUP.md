@@ -107,8 +107,10 @@ lädt der Workflow selbständig hoch — du brauchst dafür **keinen Mac**.
 
 Die `.p8`-Datei lässt sich **nur ein einziges Mal** laden. Sofort sichern.
 
+Sie wird **nicht** kodiert — der Dateiinhalt geht so, wie er ist, ins Secret:
+
 ```bash
-base64 -w0 AuthKey_XXXXXXXXXX.p8
+cat AuthKey_XXXXXXXXXX.p8
 ```
 
 → Secrets **`ASC_KEY_ID`** (die zehn Zeichen aus dem Dateinamen),
