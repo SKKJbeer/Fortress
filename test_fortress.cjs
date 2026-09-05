@@ -3623,11 +3623,31 @@ async function suiteTutorial(browser) {
     await page.waitForTimeout(900); // unter TIMER_SPEEDUP wären das viele Ticks
     const t2 = await page.evaluate(() => window.__readTimer && window.__readTimer());
     t1 != null && t1 === t2 ? ok(`Pause: Timer eingefroren (${t1}) ✓`) : fail(`Pause: Timer lief weiter (${t1}→${t2})`);
-    // OK → Spiel läuft weiter
-    await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /OK — weiter|OK — continue/.test(x.textContent || '')); b && b.click(); });
-    await page.waitForTimeout(900);
+    // OK → Spiel läuft weiter.
+    //
+    // Nach dem Bestätigen kann SOFORT die nächste Coach-Blase aufgehen: Das
+    // Tutorial pausiert bei jedem Phasenwechsel, und unter TIMER_SPEEDUP
+    // vergehen in einer Wartezeit von 900 ms mehrere Phasen. Gemessen am
+    // 05.09.: Beim Ablesen stand „3/4 Deine Kanone war beim START der
+    // Schussrunde…" auf dem Schirm, die Uhr stand also völlig zu Recht.
+    // Die Prüfung hat das als Fehler gemeldet und damit über Wochen einen
+    // falschen Alarm erzeugt — ein Test, der grundlos rot wird, ist schlimmer
+    // als keiner. Deshalb erst alle offenen Blasen wegklicken, dann messen.
+    let offen = true;
+    for (let i = 0; i < 6 && offen; i++) {
+      await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /OK — weiter|OK — continue/.test(x.textContent || '')); b && b.click(); });
+      await page.waitForTimeout(250);
+      offen = await page.evaluate(() => /SPIEL PAUSIERT|GAME PAUSED/.test(document.body.innerText));
+    }
     const t3 = await page.evaluate(() => window.__readTimer && window.__readTimer());
-    t3 != null && t3 < t2 ? ok(`Pause: OK setzt fort (${t2}→${t3}) ✓`) : fail(`Pause: Timer nach OK eingefroren (${t2}→${t3})`);
+    await page.waitForTimeout(600);
+    const t4 = await page.evaluate(() => window.__readTimer && window.__readTimer());
+    // „Verändert sich" statt „wird kleiner": Läuft die Uhr über einen
+    // Phasenwechsel, fängt sie mit einem HÖHEREN Wert neu an — auch das ist
+    // ein laufendes Spiel und darf nicht als Stillstand gelten.
+    !offen && t3 != null && t4 != null && t4 !== t3
+      ? ok(`Pause: OK setzt fort (${t3}→${t4}) ✓`)
+      : fail(`Pause: Uhr steht nach OK (${t3}→${t4}, Blase offen: ${offen})`);
 
     // ── Läuft über Phasen — jedes neue Popup mit OK bestätigen ──
     let reached = null;
