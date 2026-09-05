@@ -1,0 +1,73 @@
+name: App Store (Stand / Eintragen)
+
+# Fragt App Store Connect, was heute wirklich dort steht — und traegt auf
+# Wunsch ein, was aus dem Repository kommt.
+#
+# **Warum ueber einen Ablauf und nicht von Hand.** Der Schluessel liegt in den
+# Secrets und verlaesst sie nie. Wer das Skript lokal fahren will, braucht den
+# Schluessel auf der Platte; hier braucht es nur einen Knopf.
+on:
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'Was soll passieren?'
+        type: choice
+        default: stand
+        options:
+          - stand      # nur lesen und berichten
+          - anlegen    # zusaetzlich die App-ID registrieren
+          - fuellen    # zusaetzlich Texte und Pruefhinweise eintragen
+
+permissions:
+  contents: read
+
+jobs:
+  fragen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Zwei Laeufe gleichzeitig wuerden dieselben Felder gegeneinander schreiben.
+    concurrency:
+      group: appstore
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhaengigkeiten
+        run: pip install --quiet "pyjwt[crypto]" requests
+
+      - name: Zugang pruefen
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          fehlt=""
+          [ -n "$ASC_KEY_ID" ]    || fehlt="$fehlt ASC_KEY_ID"
+          [ -n "$ASC_ISSUER_ID" ] || fehlt="$fehlt ASC_ISSUER_ID"
+          [ -n "$ASC_KEY_P8" ]    || fehlt="$fehlt ASC_KEY_P8"
+          if [ -n "$fehlt" ]; then
+            echo "::error::Diese Geheimnisse fehlen:$fehlt — siehe IOS-SETUP.md"
+            exit 1
+          fi
+
+      - name: App Store Connect fragen
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          # Optional: ohne diese drei bleibt der Kontakt fuer die Pruefung leer.
+          # Private Kontaktdaten gehoeren in Secrets, nicht ins Repository.
+          ASC_KONTAKT_NAME: ${{ secrets.ASC_KONTAKT_NAME }}
+          ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
+          ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
+        run: |
+          case "${{ inputs.modus }}" in
+            anlegen) python3 scripts/asc.py --anlegen ;;
+            fuellen) python3 scripts/asc.py --fuellen ;;
+            *)       python3 scripts/asc.py --stand ;;
+          esac
