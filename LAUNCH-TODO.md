@@ -31,6 +31,56 @@
       Ein Impressum mit Platzhaltern ist **schlechter als keines**: nachweislich
       unvollständig und damit abmahnfähig. Die Anschrift muss ladungsfähig sein.
 
+## 1b. Erkenntnisse aus dem Zählora-Start (04.09.2026 live)
+
+Aus dem Schwesterprojekt, das den Weg schon gegangen ist. Die Punkte stehen
+hier, weil sie **Zeit kosten, wenn man sie spät entdeckt** — nicht weil sie
+schwierig wären.
+
+- [ ] **Händlerstatus nach dem EU-Digitale-Dienste-Gesetz — der einzige Punkt,
+      den man nicht durch Arbeit beschleunigen kann.** Solange unter
+      `Business → Agreements → Compliance` „In Prüfung" steht, scheitert jede
+      Einreichung an `appStoreVersions with id '…' is not in valid state` —
+      einer Meldung, die den Händlerstatus **mit keinem Wort erwähnt**. Bei
+      Zählora lagen zwischen Eintragen und „Aktiv" mehrere Tage.
+      Die Konto-Ebene ist durch Zählora vermutlich erledigt; **je App ist er
+      erneut zu setzen**: `App Information → Digital Services Act`.
+      Achtung: Anschrift, E-Mail und **Telefonnummer stehen danach öffentlich**
+      auf der Produktseite in der EU.
+- [ ] **Datenschutz-Fragebogen in App Store Connect** — etwas anderes als die
+      Datenschutz-URL, und **ohne ihn lässt sich nicht einreichen**. Bei
+      Zählora sind acht API-Pfade dafür gemessen worden, alle antworten „does
+      not exist": Das geht nur von Hand über
+      `App Store → App-Datenschutz → Bearbeiten` und dann veröffentlichen.
+      Für FORTRESS ist die Antwort **nicht** „keine Daten erfasst" — Name,
+      Spielstand und Spielverlauf liegen in Firebase. Vorlage in
+      `store/listing.md`.
+- [ ] **Telefonnummer für die Prüfung.** Apple nimmt den Kontakt nur
+      vollständig; ohne Nummer kommt
+      `You must provide a value for the attribute 'contactPhone'`, und dann
+      steht gar kein Kontakt hinterlegt.
+- [x] **Prüfhinweise auf Englisch, die sieben 2.1-Punkte vorweg beantwortet.**
+      Ein Entwicklerkonto ohne Prüfhistorie bekommt mit hoher
+      Wahrscheinlichkeit die Rückfrage „Information Needed" — bei Zählora am
+      3. September, zwei Tage Verzug, kein Mangel an der App. Der Text steht in
+      `store/listing.md` und beantwortet alle sieben Punkte im Voraus.
+      Kommt die Rückfrage doch, gehört er **zusätzlich ins Lösungscenter**.
+- [ ] **Bildschirmaufnahme auf einem echten Gerät** (Punkt 7 der Rückfrage).
+      Ablauf steht in `store/listing.md`; kein Skript erzeugt sie.
+- [x] **Xcode-26-Riegel im Build** — dieselbe Prüfung wie bei Zählora, und
+      dort aus demselben Grund: Apple nimmt seit dem 28.04.2026 nur noch
+      Uploads mit dem iOS-26-SDK.
+- [ ] **Signierung ohne Zertifikats-Export prüfen.** Zählora signiert **ohne**
+      `.p12` und **ohne** Profildatei: nur mit dem App-Store-Connect-Schlüssel
+      und `-allowProvisioningUpdates`, Zertifikat und Profil legt die
+      Schnittstelle selbst an. Das wären vier Geheimnisse statt sieben und
+      **kein Handgriff im Schlüsselbund**. Zwei dort gemessene Fallen:
+      `-configuration Release` ist Pflicht (sonst sucht Xcode ein
+      Development-Profil und meldet „your team has no devices"), und ohne
+      hinterlegtes Zertifikat legt **jeder Lauf ein neues an** — nach dem
+      dritten ist die Grenze erreicht.
+      → Entscheidung offen, siehe Abschnitt 3.
+
 ## 2. Fertig und geprüft
 
 - [x] **Ein Build für Web und App** (Vite) — `dist/` geht an Pages *und* Capacitor
@@ -50,7 +100,10 @@
 - [x] **Die App uebersetzt** — signierungsfreier Probelauf am 25.08.,
       `ARCHIVE SUCCEEDED` mit Xcode 26.3 und iOS-26.2-SDK. Damit ist belegt,
       dass der Xcode-Teil traegt, bevor ein einziges Zertifikat existiert.
-- [x] **Screenshots** 1290×2796, 1242×2688, 1080×2340 — aus dem echten Spiel
+- [x] **Screenshots** — gegen Apples aktuelle Liste geprüft: 1290×2796 ist
+      gültig für den **6,9-Zoll-Platz** (der einzige iPhone-Pflichtplatz),
+      2064×2752 für den **13-Zoll-iPad-Platz**. iPad-Bilder sind Pflicht,
+      solange die App auf dem iPad läuft — sie liegen vor.
 - [x] **Feature-Grafik** 1024×500 (Google Play)
 - [x] **App-Icon** 1024×1024 ohne Alphakanal
 - [x] **Hochkant erzwungen**, helle Statusleiste
