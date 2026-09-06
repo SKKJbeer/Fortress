@@ -1,0 +1,55 @@
+name: Geheimnisse aus dem Schwesterprojekt holen
+
+# **Warum es diesen Umweg gibt.**
+#
+# Die App-Store-Werte liegen als Secrets im Schwesterprojekt. LESEN kann sie
+# niemand — GitHub gibt Secret-Werte grundsaetzlich nicht zurueck, auch nicht
+# einem Zugriffsschluessel mit allen Rechten. Es gibt keinen Endpunkt dafuer.
+#
+# Uebertragen geht nur dort, wo die Werte als Umgebungsvariablen entstehen:
+# INNERHALB eines Laufs im Quell-Repository. Dieser Ablauf legt deshalb den
+# noetigen Ablauf drueben ab, stoesst ihn an, wartet auf sein Ergebnis und
+# raeumt ihn danach wieder weg.
+#
+# Der Klartext geht dabei nie ueber die Leitung: das Quell-Repository versiegelt
+# jeden Wert mit dem oeffentlichen Schluessel dieses Repositories (Sealed Box),
+# und nur die Box wird uebergeben.
+#
+# Voraussetzung: ein Secret GH_PAT in DIESEM Repository — ein fein
+# granulierter Zugriffsschluessel, der BEIDE Repositories abdeckt, mit
+# „Contents: Read and write", „Workflows: Write", „Secrets: Read and write"
+# und „Actions: Read and write".
+on:
+  workflow_dispatch:
+    inputs:
+      quelle:
+        description: 'Repository, aus dem die Werte kommen'
+        default: SKKJbeer/pulsemeter
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  holen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: geheimnisse
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install --quiet requests
+
+      - name: Uebertragung anstossen und abwarten
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          QUELLE: ${{ inputs.quelle }}
+          ZIEL: ${{ github.repository }}
+        run: python3 scripts/geheimnisse-holen.py
