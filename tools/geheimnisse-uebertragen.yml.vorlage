@@ -1,0 +1,114 @@
+# GEHOERT NACH pulsemeter, NICHT nach Fortress.
+#
+# Ablegen als:  .github/workflows/geheimnisse-uebertragen.yml
+# im Repository SKKJbeer/pulsemeter
+#
+# Die Endung .vorlage verhindert, dass GitHub die Datei hier ausfuehrt: in
+# Fortress liegen die Werte ja gerade NICHT, der Lauf haette nichts zu kopieren.
+#
+# ---
+#
+# **Was er tut.** Er liest die vier App-Store-Werte aus den Secrets von
+# pulsemeter und schreibt sie nach Fortress. Einmal druecken statt viermal
+# abtippen — vor allem wegen des .p8-Schluessels, der ueber zweihundert Zeichen
+# lang ist und beim Abtippen still kaputtgeht.
+#
+# **Was er NICHT tut: die Werte zeigen.** GitHub nimmt Geheimnisse nur
+# versiegelt entgegen. Der oeffentliche Schluessel des Zielrepositories wird
+# geholt, der Wert damit in eine Sealed Box gelegt, und nur die geht ueber die
+# Leitung. Im Protokoll steht kein Klartext.
+#
+# **Voraussetzung, und die kann dir niemand abnehmen.** GH_PAT muss auch
+# Fortress abdecken. Der vorhandene Schluessel ist fein granuliert und gilt nur
+# fuer pulsemeter. Also unter
+#   https://github.com/settings/personal-access-tokens
+# den vorhandenen bearbeiten (Repository access: beide Repositories) oder einen
+# zweiten anlegen mit der einen Berechtigung "Secrets: Read and write".
+#
+# GitHub verlangt diese ausdrueckliche Vollmacht mit Absicht: Ein Ablauf, der
+# ungefragt in fremde Repositories schreiben koennte, waere genau die Luecke,
+# die es hier nicht geben soll.
+#
+# **Danach loeschen.** Der Ablauf wird einmal gebraucht. Ein dauerhaft
+# vorhandener Knopf, der Geheimnisse zwischen Repositories schiebt, ist eine
+# Angriffsflaeche ohne laufenden Nutzen.
+
+name: Geheimnisse nach Fortress uebertragen
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  uebertragen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install --quiet pynacl requests
+
+      - name: Uebertragen
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          ZIEL: SKKJbeer/Fortress
+          # Links der Name drueben, rechts der Name hier.
+          APPLE_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          # Optional — nur wenn drueben hinterlegt.
+          ASC_KONTAKT_NAME: ${{ secrets.ASC_KONTAKT_NAME }}
+          ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
+          ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
+        run: |
+          python3 - <<'PY'
+          import os, sys, requests
+          from nacl import encoding, public
+
+          ziel = os.environ["ZIEL"]
+          pat  = os.environ.get("GH_PAT", "")
+          if not pat:
+              sys.exit("::error::GH_PAT fehlt.")
+
+          kopf = {"Authorization": f"Bearer {pat}",
+                  "Accept": "application/vnd.github+json"}
+
+          # Der oeffentliche Schluessel des ZIELS — mit ihm wird versiegelt.
+          a = requests.get(f"https://api.github.com/repos/{ziel}/actions/secrets/public-key",
+                           headers=kopf, timeout=30)
+          if a.status_code != 200:
+              sys.exit(f"::error::Zielrepository nicht erreichbar ({a.status_code}). "
+                       f"Deckt GH_PAT auch {ziel} ab, mit 'Secrets: Read and write'? "
+                       f"{a.text[:200]}")
+          schluessel = a.json()
+
+          namen = ["APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8",
+                   "ASC_KONTAKT_NAME", "ASC_KONTAKT_MAIL", "ASC_KONTAKT_TELEFON"]
+          fehler = 0
+          for name in namen:
+              wert = os.environ.get(name, "")
+              if not wert:
+                  print(f"  · {name}: drueben nicht hinterlegt, uebersprungen")
+                  continue
+              box = public.SealedBox(public.PublicKey(
+                  schluessel["key"].encode(), encoding.Base64Encoder()))
+              versiegelt = encoding.Base64Encoder().encode(
+                  box.encrypt(wert.encode())).decode()
+              b = requests.put(
+                  f"https://api.github.com/repos/{ziel}/actions/secrets/{name}",
+                  headers=kopf, timeout=30,
+                  json={"encrypted_value": versiegelt,
+                        "key_id": schluessel["key_id"]})
+              if b.status_code in (201, 204):
+                  # Nur die LAENGE, nie der Wert — so bleibt pruefbar, dass
+                  # etwas Sinnvolles ankam, ohne es zu verraten.
+                  print(f"  ✓ {name}: uebertragen ({len(wert)} Zeichen)")
+              else:
+                  print(f"  ✗ {name}: {b.status_code} {b.text[:150]}")
+                  fehler += 1
+          sys.exit(1 if fehler else 0)
+          PY
