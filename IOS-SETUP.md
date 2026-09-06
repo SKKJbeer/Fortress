@@ -55,6 +55,7 @@ selbständig hoch — du brauchst dafür **keinen Mac**.
 |---|---|
 | `APPLE_TEAM_ID` | Schritt 1 |
 | `ASC_KEY_ID` · `ASC_ISSUER_ID` · `ASC_KEY_P8` | Schritt 4 |
+| `DIST_P12_BASE64` · `DIST_P12_PASSWORD` | optional, siehe unten |
 
 > ### Wenn schon eine App dieses Kontos im Store steht
 >
@@ -77,10 +78,13 @@ selbständig hoch — du brauchst dafür **keinen Mac**.
 > Entwicklerportal. Beides ist entbehrlich: `xcodebuild` legt Zertifikat und
 > Profil über den App-Store-Connect-Schlüssel selbst an.
 >
-> **Eine Falle, die im Schwesterprojekt gemessen wurde:** Ohne hinterlegtes
-> Zertifikat legt *jeder* Lauf ein neues an, und nach dem dritten ist die
-> Grenze erreicht. Fürs Erste reicht das; wenn die Meldung kommt, bauen wir die
-> Wiederverwendung ein.
+> **Eine Falle, die im Schwesterprojekt gemessen wurde — und hier bereits
+> geschlossen ist:** Ohne hinterlegtes Zertifikat legt *jeder* Lauf ein neues
+> an, und nach dem dritten ist die Grenze des Kontos erreicht. Liegen
+> `DIST_P12_BASE64` und `DIST_P12_PASSWORD` als Secrets vor, führt jeder Bau
+> dasselbe Zertifikat mit sich. Ein Verteilzertifikat gilt für das **Team**,
+> nicht für eine App — dasselbe, mit dem das Schwesterprojekt signiert, signiert
+> auch dieses hier. Fehlen sie, läuft alles wie bisher, mit einem Hinweis.
 
 ### Was danach von selbst geht
 

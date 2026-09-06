@@ -290,11 +290,13 @@ def pruefangaben(apple: Apple, version: str, fuellen: bool):
         soll |= {"contactFirstName": vorname, "contactLastName": nachname or vorname,
                  "contactEmail": mail, "contactPhone": tel}
     else:
+        fehlt = [n for n, v in (("ASC_KONTAKT_NAME", name), ("ASC_KONTAKT_MAIL", mail),
+                                ("ASC_KONTAKT_TELEFON", tel)) if not v]
         handarbeit.append(
-            "Kontakt fuer die Pruefung: die Secrets ASC_KONTAKT_NAME, "
-            "ASC_KONTAKT_MAIL und ASC_KONTAKT_TELEFON fehlen. Apple nimmt den "
-            "Kontakt nur vollstaendig — ohne Telefonnummer steht gar keiner drin. "
-            "Private Kontaktdaten gehoeren in Secrets, nicht ins Repository.")
+            f"Kontakt fuer die Pruefung: {', '.join(fehlt)} fehlt. Apple nimmt "
+            "den Kontakt nur VOLLSTAENDIG — fehlt ein Teil, steht gar keiner "
+            "hinterlegt, nicht etwa ein halber. Private Kontaktdaten gehoeren in "
+            "Secrets, nicht in eine Datei, die oeffentlich stehen koennte.")
 
     if detail and all(feld(detail, k) == v for k, v in soll.items()):
         erledigt.append("Hinweise an die Pruefung stehen")

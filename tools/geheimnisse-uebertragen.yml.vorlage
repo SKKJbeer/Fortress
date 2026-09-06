@@ -60,6 +60,12 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          # Das Verteilzertifikat. Es gilt fuer das TEAM, nicht fuer eine App —
+          # dasselbe Zertifikat signiert beide Apps. Damit entfaellt die
+          # Drei-Zertifikate-Grenze: ohne hinterlegtes Zertifikat legt sonst
+          # jeder Lauf ein neues an, und nach dem dritten geht nichts mehr.
+          DIST_P12_BASE64: ${{ secrets.DIST_P12_BASE64 }}
+          DIST_P12_PASSWORD: ${{ secrets.DIST_P12_PASSWORD }}
           # Optional — nur wenn drueben hinterlegt.
           ASC_KONTAKT_NAME: ${{ secrets.ASC_KONTAKT_NAME }}
           ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
@@ -87,6 +93,7 @@ jobs:
           schluessel = a.json()
 
           namen = ["APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8",
+                   "DIST_P12_BASE64", "DIST_P12_PASSWORD",
                    "ASC_KONTAKT_NAME", "ASC_KONTAKT_MAIL", "ASC_KONTAKT_TELEFON"]
           fehler = 0
           for name in namen:

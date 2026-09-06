@@ -189,6 +189,45 @@ jobs:
             build
           echo "Debug fuer den Simulator: uebersetzt."
 
+      # **Das eigene Zertifikat, wenn es eines gibt.**
+      #
+      # Ohne diesen Schritt legt xcodebuild auf jedem frischen Laeufer ein neues
+      # Verteilzertifikat an, und nach dem dritten ist die Grenze des Kontos
+      # erreicht — dann steht man vor Handarbeit im Portal, ausgerechnet an dem
+      # Weg, der Handarbeit sparen soll. Ein Zertifikat gilt fuer das TEAM, nicht
+      # fuer eine App: dasselbe, mit dem das Schwesterprojekt signiert, signiert
+      # auch dieses hier.
+      #
+      # Der Schritt ist freiwillig. Liegt kein Zertifikat, laeuft alles wie
+      # bisher — mit einem Hinweis statt eines Abbruchs.
+      - name: Zertifikat einlesen
+        if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        env:
+          P12: ${{ secrets.DIST_P12_BASE64 }}
+          P12_PASS: ${{ secrets.DIST_P12_PASSWORD }}
+        run: |
+          if [ -z "$P12" ]; then
+            echo "::warning::Kein eigenes Zertifikat hinterlegt — xcodebuild legt eines an. Erlaubt sind drei."
+            exit 0
+          fi
+          # Eigener Schluesselbund: der Anmeldebund des Laeufers ist gesperrt und
+          # wuerde codesign nach einem Passwort fragen, das niemand eingibt.
+          BUND=$RUNNER_TEMP/signatur.keychain-db
+          BUND_PASS=$(openssl rand -base64 24)
+          security create-keychain -p "$BUND_PASS" "$BUND"
+          security set-keychain-settings -lut 3600 "$BUND"
+          security unlock-keychain -p "$BUND_PASS" "$BUND"
+          echo "$P12" | base64 --decode > $RUNNER_TEMP/signatur.p12
+          # -A statt einzelner -T: einzeln waere sauberer, fuehrt bei codesign
+          # aber zu einer Rueckfrage, die auf einem Laeufer niemand beantwortet.
+          security import $RUNNER_TEMP/signatur.p12 -k "$BUND" -P "$P12_PASS" -A -t cert -f pkcs12
+          security list-keychain -d user -s "$BUND" login.keychain-db
+          # Ohne diese Zeile wartet codesign auf das Kennwort des Bundes, bis
+          # der Auftrag in die Zeitgrenze laeuft.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$BUND_PASS" "$BUND" >/dev/null
+          rm -f $RUNNER_TEMP/signatur.p12
+          security find-identity -v -p codesigning "$BUND"
+
       - name: Archivieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
