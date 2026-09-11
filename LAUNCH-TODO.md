@@ -7,32 +7,46 @@
 
 ---
 
-## ⏸ Wartet auf dich (Stand 11.09.2026)
+## ⏸ Wartet auf dich (Stand 11.09.2026, 05:40 UTC)
 
-**Genau ein Handgriff, dann läuft der Rest ohne dich.** Du warst mit
-Rechtlichem beschäftigt und kommst später darauf zurück — hier steht es, damit
-es nicht im Gesprächsverlauf verlorengeht.
+**Ein einziger Handgriff, dann geht es ohne dich weiter.**
 
-> **Secret `GH_PAT` in diesem Repository hinterlegen**
-> 🔗 `https://github.com/SKKJbeer/Fortress/settings/secrets/actions/new`
-> Wert: derselbe fein granulierte Zugriffsschlüssel, der bereits alle
-> Repositories abdeckt. Nötige Rechte: *Contents: Read and write*,
-> *Workflows: Write*, *Actions: Read and write*, *Secrets: Read and write*.
+> **App-Eintrag in App Store Connect anlegen**
+> 🔗 `https://appstoreconnect.apple.com/apps` → **+** → *Neue App*
+>
+> | Feld | Wert |
+> |---|---|
+> | Plattform | iOS |
+> | Name | `FORTRESS – Burgenduell` |
+> | Primäre Sprache | Deutsch |
+> | Bundle-ID | `de.skkjbeer.fortress` — **ist registriert und auswählbar** |
+> | SKU | `fortress-ios` |
 
-Danach: Sag Bescheid. Ich stoße „Geheimnisse aus dem Schwesterprojekt holen"
-an — der Ablauf holt `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`,
-`ASC_KEY_P8` sowie das Verteilzertifikat aus dem anderen Repository herüber.
-Von da an fahre ich allein durch: App-ID registrieren, Fassung 1.0 anlegen,
-Texte und Prüfhinweise eintragen, Bau nach TestFlight hochladen.
+**Warum das nicht maschinell geht:** Apples Schnittstelle bietet kein
+`POST /v1/apps`. Registrieren lässt sich die App-ID, der Eintrag nicht.
 
-**Warum dieser eine Handgriff bleibt:** GitHub gibt Secret-*Werte* an niemanden
-zurück — es gibt keinen Lese-Endpunkt dafür, auch nicht für einen Schlüssel mit
-allen Rechten. Klartext entsteht nur *innerhalb* eines Laufs im
-Quell-Repository, und wer dort etwas ausführen will, braucht eine ausdrückliche
-Vollmacht. Genau diese Sperre soll es geben.
+### Erledigt am 11.09.
+- [x] **`GH_PAT` gesetzt**, Rechte geprüft (Contents, Actions, Secrets,
+      Workflows — alle vier bestätigt)
+- [x] **Alle Apple-Geheimnisse übertragen** aus dem Schwesterprojekt:
+      `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, dazu das
+      **Verteilzertifikat** (`DIST_P12_*`) — damit signiert FORTRESS mit
+      demselben Zertifikat wie das Schwesterprojekt, und die
+      Drei-Zertifikate-Grenze ist erledigt.
+- [x] **App-ID `de.skkjbeer.fortress` registriert** (über die Schnittstelle)
 
-Bei dir bleiben außerdem die drei Dinge, die Apples Schnittstelle nicht
-anbietet (Abschnitt 1b): App-Eintrag, Datenschutz-Fragebogen, Händlerstatus.
+### Danach übernehme ich wieder
+Fassung 1.0 anlegen, Untertitel, Datenschutz-Adresse, Beschreibung,
+Schlagworte, Werbetext und die englischen Prüfhinweise eintragen — dann den
+Bau nach TestFlight hochladen.
+
+### Was später trotzdem bei dir bleibt
+- **`ASC_KONTAKT_NAME`** fehlt (drüben gab es ihn nicht). Apple nimmt den
+  Prüfkontakt nur **vollständig** — ohne Namen bleibt er ganz leer. Für
+  TestFlight nicht nötig, für die Einreichung schon.
+- **Datenschutz-Fragebogen** und **Händlerstatus je App** (Abschnitt 1b):
+  keine Schnittstelle, nachgemessen.
+- **Impressum** — `public/impressum.html` steht live mit Platzhaltern.
 
 ---
 
