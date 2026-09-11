@@ -152,6 +152,70 @@ def nachsehen(gh: GitHub, ziel: str) -> int:
     return 0
 
 
+def pruefen(gh: GitHub, quelle: str, ziel: str) -> int:
+    """Geht die noetigen Rechte einzeln durch, ohne irgendetwas zu veraendern.
+
+    **Warum das lohnt.** Ein Schluessel, dem eine der vier Berechtigungen fehlt,
+    scheitert sonst mitten im Vorgang — und die Meldung von GitHub lautet
+    „Resource not accessible by personal access token", ohne zu sagen, WELCHE
+    Ressource. Hier steht es zeilenweise.
+
+    **Was diese Pruefung nicht kann:** Schreibrechte beweisen, ohne zu
+    schreiben. Wo GitHub nichts hergibt, steht das ausdruecklich dabei.
+    """
+    zeilen: list[tuple[bool, str]] = []
+
+    # 1) Wer bin ich ueberhaupt?
+    antwort = gh.get("/user")
+    if antwort.status_code != 200:
+        print(f"::error::Der Schluessel ist ungueltig oder abgelaufen "
+              f"({antwort.status_code}): {kurz(antwort)}")
+        return 1
+    print(f"Schluessel gehoert zu: {antwort.json().get('login')}\n")
+
+    # 2) Beide Repositories sichtbar? (Metadata)
+    for name in (quelle, ziel):
+        a = gh.get(f"/repos/{name}")
+        zeilen.append((a.status_code == 200,
+                       f"{name} sichtbar" if a.status_code == 200
+                       else f"{name} NICHT sichtbar ({a.status_code}) — deckt der "
+                            f"Schluessel dieses Repository ab?"))
+
+    # 3) Contents lesen im Quell-Repository (Schreiben braucht dieselbe
+    #    Berechtigung eine Stufe hoeher, das zeigt erst der Ernstfall).
+    a = gh.get(f"/repos/{quelle}/contents/README.md")
+    zeilen.append((a.status_code in (200, 404),
+                   "Contents lesbar" if a.status_code in (200, 404)
+                   else f"Contents NICHT lesbar ({a.status_code}) — 'Contents' fehlt"))
+
+    # 4) Actions: Ablaeufe auflisten
+    a = gh.get(f"/repos/{quelle}/actions/workflows", per_page=1)
+    zeilen.append((a.status_code == 200,
+                   "Actions lesbar" if a.status_code == 200
+                   else f"Actions NICHT lesbar ({a.status_code}) — 'Actions' fehlt"))
+
+    # 5) Secrets: das ist die Berechtigung, die am haeufigsten fehlt. Namen
+    #    auflisten setzt sie bereits voraus — Werte gibt GitHub ohnehin nie her.
+    a = gh.get(f"/repos/{ziel}/actions/secrets", per_page=1)
+    zeilen.append((a.status_code == 200,
+                   "Secrets schreibbar (Auflisten setzt die Berechtigung voraus)"
+                   if a.status_code == 200
+                   else f"Secrets NICHT zugaenglich ({a.status_code}) — "
+                        f"'Secrets: Read and write' fehlt"))
+
+    print("=== RECHTE " + "=" * 50)
+    for gut, satz in zeilen:
+        print(("  ✓ " if gut else "  ✗ ") + satz)
+    fehlend = [s for gut, s in zeilen if not gut]
+    print("\n  ! 'Workflows: Write' laesst sich nur durch Schreiben beweisen — "
+          "ohne sie scheitert das Ablegen der Ablaufdatei, nichts sonst.")
+    if fehlend:
+        print(f"\n::error::{len(fehlend)} Berechtigung(en) fehlen — siehe oben.")
+        return 1
+    print("\nAlles da. Der Modus „uebertragen\" kann laufen.")
+    return 0
+
+
 def main() -> int:
     token = os.environ.get("GH_PAT", "")
     if not token:
@@ -161,6 +225,9 @@ def main() -> int:
     quelle = os.environ["QUELLE"]
     ziel = os.environ["ZIEL"]
     gh = GitHub(token)
+
+    if os.environ.get("MODUS", "uebertragen") == "pruefen":
+        return pruefen(gh, quelle, ziel)
 
     # Der Standardzweig drueben — „main" ist nicht ueberall der Name.
     antwort = gh.get(f"/repos/{quelle}")

@@ -22,6 +22,13 @@ name: Geheimnisse aus dem Schwesterprojekt holen
 on:
   workflow_dispatch:
     inputs:
+      modus:
+        description: 'Erst pruefen, dann uebertragen'
+        type: choice
+        default: pruefen
+        options:
+          - pruefen       # nur die Rechte durchgehen, nichts veraendern
+          - uebertragen   # die Werte wirklich herueberholen
       quelle:
         description: 'Repository, aus dem die Werte kommen'
         default: SKKJbeer/pulsemeter
@@ -47,9 +54,10 @@ jobs:
 
       - run: pip install --quiet requests
 
-      - name: Uebertragung anstossen und abwarten
+      - name: Rechte pruefen bzw. uebertragen
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
           QUELLE: ${{ inputs.quelle }}
           ZIEL: ${{ github.repository }}
+          MODUS: ${{ inputs.modus }}
         run: python3 scripts/geheimnisse-holen.py
