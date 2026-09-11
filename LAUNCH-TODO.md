@@ -7,6 +7,35 @@
 
 ---
 
+## ⏸ Wartet auf dich (Stand 11.09.2026)
+
+**Genau ein Handgriff, dann läuft der Rest ohne dich.** Du warst mit
+Rechtlichem beschäftigt und kommst später darauf zurück — hier steht es, damit
+es nicht im Gesprächsverlauf verlorengeht.
+
+> **Secret `GH_PAT` in diesem Repository hinterlegen**
+> 🔗 `https://github.com/SKKJbeer/Fortress/settings/secrets/actions/new`
+> Wert: derselbe fein granulierte Zugriffsschlüssel, der bereits alle
+> Repositories abdeckt. Nötige Rechte: *Contents: Read and write*,
+> *Workflows: Write*, *Actions: Read and write*, *Secrets: Read and write*.
+
+Danach: Sag Bescheid. Ich stoße „Geheimnisse aus dem Schwesterprojekt holen"
+an — der Ablauf holt `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`,
+`ASC_KEY_P8` sowie das Verteilzertifikat aus dem anderen Repository herüber.
+Von da an fahre ich allein durch: App-ID registrieren, Fassung 1.0 anlegen,
+Texte und Prüfhinweise eintragen, Bau nach TestFlight hochladen.
+
+**Warum dieser eine Handgriff bleibt:** GitHub gibt Secret-*Werte* an niemanden
+zurück — es gibt keinen Lese-Endpunkt dafür, auch nicht für einen Schlüssel mit
+allen Rechten. Klartext entsteht nur *innerhalb* eines Laufs im
+Quell-Repository, und wer dort etwas ausführen will, braucht eine ausdrückliche
+Vollmacht. Genau diese Sperre soll es geben.
+
+Bei dir bleiben außerdem die drei Dinge, die Apples Schnittstelle nicht
+anbietet (Abschnitt 1b): App-Eintrag, Datenschutz-Fragebogen, Händlerstatus.
+
+---
+
 ## Der kürzeste Weg nach TestFlight
 
 Die Code-Seite ist fertig und belegt. Für einen Build in TestFlight fehlen

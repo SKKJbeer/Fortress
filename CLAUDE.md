@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.0.9
+- **Aktuelle Version**: v3.79.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -23,7 +23,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `index.html` | Nur noch **Hülle** (125 Zeilen, seit v3.78.0): Stil, Splash, Wurzelknoten, zwei Modul-Verweise. |
 | `src/game/app.js` | Der Spielcode (~9500 Zeilen): UI, Rendering, Firebase-Sync, Matchmaking. Wird schrittweise nach aussen abgetragen — siehe `ARCHITEKTUR.md`. |
 | `src/audio.js`, `src/spread.js`, `src/platform.ts` | Ton/Musik, Objekt-Helfer, Plattform-Weiche |
-| `src/engine/*.js` | **Engine-Schicht (seit v3.34.0)**: pure Logik/Daten als native ES-Module — `const.js` (Grid/Zelltypen), `economy.js` (Schrott/SHOP), `terrain.js` (RNG, Welten, Generatoren), `flood.js` (Umschlossen-Regel), `progression.js` (ELO/XP/Gold-Formeln), `catalog.js` (Kosmetik/Rezepte). Kein DOM/React/Firebase → unit-testbar. |
+| `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
 | `tests/*.test.js` | **Unit-Tests** (`node --test tests/engine.test.js tests/i18n.test.js`, ~0,2s). |
 | `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
@@ -32,13 +32,16 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 ### Stack
 - **Vite**-Build (seit v3.74.0): React + Firebase aus npm, `src/` als ES-Module gebündelt nach `dist/`. Statische Dateien (Sounds, Icons, Manifest, Nebenseiten) liegen in `public/` und behalten dort ihre Pfade.
-- **Firebase Realtime Database** für Online-Multiplayer (Web SDK v10.12.2, ES-Module via gstatic CDN)
+- **Firebase Realtime Database** für Online-Multiplayer (Web SDK v10.12.2,
+  **aus npm gebündelt** — nicht mehr vom gstatic-CDN. Apple 2.5.2 verbietet
+  nachgeladenen Code, und die CI bricht ab, wenn eine CDN-URL im Bundle steht.)
 - **GitHub Pages** für Hosting
 - **localStorage** für Spieler-Profile
 
 ### Architektur-Regeln (seit v3.34.0, Phase 1 des Architektur-Konzepts)
 - **Pure Logik gehört in `src/engine/`** — neue Balancing-Konstanten, Formeln,
-  Kataloge NIE wieder inline in index.html anlegen.
+  Kataloge NIE inline im Spielcode anlegen. Neue Engine-Dateien in
+  **TypeScript**; die Reihenfolge der Umstellung steht in `ARCHITEKTUR.md` (E4).
 - **Ökonomie-Mutationen als pure Funktionen** halten (Signatur `(state, …) → state`),
   damit eine spätere Cloud Function sie serverseitig validieren kann.
 - **Beide Testebenen müssen grün sein**: Unit (`node --test tests/…`) UND Playwright.
@@ -56,15 +59,19 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 - Phase 4 (optional, wenn Store-Build ansteht): esbuild-Bundling in der
   Deploy-Action — Entwicklung modular, Auslieferung eine Datei.
 
-### ⚠️ Kostenpolitik: ZERO laufende Kosten (aktuelle Phase)
-Solange das Spiel noch kein Einkommen generiert, bleiben alle Kosten bei null.
-Wenn das Spiel wächst und Mehrwert entsteht (App Store, Monetarisierung), können
-bezahlte Services eingeführt werden — aber erst dann.
+### ⚠️ Kostenpolitik: sparsam, aber nicht mehr bei null
+
+**Die frühere Null-Kosten-Regel ist aufgehoben** (Entscheidung des Gründers,
+August 2026): Kleine Beträge sind zulässig, wo sie nötig sind. Konkret bezahlt
+wird der **Apple-Developer-Account, 99 USD/Jahr**. macOS-Runner bei GitHub
+Actions bleiben kostenlos, weil das Repository öffentlich ist.
+
+Alles Übrige bleibt sparsam: kein eigener Server, kein Firebase Blaze, solange
+der Spark-Plan trägt.
 
 **Aktuell erlaubt (kostenlos):**
 - **GitHub Pages** — Hosting, kostenlos für Public Repos
 - **Firebase Spark Plan**: Realtime Database (1 GB, 100 simultane Verbindungen, 10 GB/Monat)
-- **CDNs** für React/Firebase SDK (unpkg, gstatic)
 
 **Aktuell nicht verwenden (kostenpflichtig):**
 - Firebase Blaze / Cloud Functions
@@ -86,9 +93,11 @@ also `npm run build` VOR `npm run test:e2e`. Der Server muss dist/ ausliefern.
 React und Firebase kommen aus node_modules, nicht mehr vom CDN (Apple 2.5.2).
 `test_fortress.cjs` heisst .cjs, weil die Wurzel-package.json `type: module` setzt.
 
-**Versionen immer an 2 Stellen hochsetzen:**
-1. `<title>FORTRESS vX.Y.Z</title>` (Zeile ~11)
-2. `"⚔️ FORTRESS · Version X.Y.Z"` (Versionsanzeige im Menü, Zeile ~2815ff)
+**Versionen immer an 4 Stellen hochsetzen:**
+1. `<title>FORTRESS vX.Y.Z</title>` in `index.html`
+2. Versionsanzeige im Menü — in `src/game/app.js`, nicht mehr in index.html
+3. `"version"` in `package.json`
+4. Kopfzeile von `FORTRESS-SPEC.md` + Changelog-Eintrag
 
 **SPEC immer mitpflegen:**
 1. `# FORTRESS — Spezifikation & Regelwerk (aktuell: vX.Y.Z)` (Zeile 1)
@@ -199,7 +208,9 @@ rückgängig machen — verhindert dass Gäste in alter Phase einfrieren.
 | `fortress_daily` | `{ lastCollect: timestamp, streak: number, lastStreakDay: "YYYY-MM-DD" }` |
 | `fortress_onboarded` | `'1'` = Tutorial/Onboarding gesehen (seit v3.12.1). Fehlt der Key → `OnboardingModal` zeigt sich automatisch beim ersten Menüstart. |
 | `fortress_sound` | `'1'`/`'0'` = Sound-Effekte an/aus (seit v3.12.2, Default an). Steuert `SFX.enabled`. |
-| — Sounds (seit v3.28.0) | CC0-Samples in `sounds/*.mp3` (Kenney.nl + OpenGameArt). `SFX._play` (Buffer+Gain), Laden beim 1. Pointer-Event, prozedurale Töne nur noch Fallback. Neue Sounds: Datei nach `sounds/` + in `SFX._load`-Liste + sw.js-CORE eintragen. |
+| — Sounds (seit v3.28.0) | CC0-Samples in `sounds/*.mp3` (Kenney.nl + OpenGameArt). `SFX._play` (Buffer+Gain), Laden beim 1. Pointer-Event, prozedurale Töne nur noch Fallback. Neue Sounds: Datei nach `public/sounds/` + in `SFX._load`-Liste. **Kein**
+sw.js-Eintrag mehr — der Service Worker wird seit v3.75.0 von
+`vite-plugin-pwa` erzeugt und kennt alle gebauten Dateien selbst. |
 | `fortress_ach_seen` | Anzahl der zuletzt gesehenen Achievements (seit v3.14.5). Button-Badge zeigt nur NEUE (unlocked − ach_seen), verschwindet beim Öffnen (`openAchievements`). |
 | `fortress_haptics` | `'1'`/`'0'` = Vibration an/aus (seit v3.12.2, Default an). Steuert `SFX.haptics`. |
 | `fortress_device_id` | Persistente Geräte-ID `d_...` (seit v3.14.12). Matchmaking-Ticket-Feld `dev` + `pid`-Fallback — verhindert Selbst-Matches über Reloads/fehlendes Profil hinweg. |
@@ -297,12 +308,15 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 
 ## Workflow für neue Features
 
-1. Direkt `index.html` editieren
-2. Version an 2 Stellen hochsetzen (X.Y.Z)
+1. **Nicht** `index.html` editieren — die ist seit v3.78.0 nur noch eine
+   124-Zeilen-Hülle. Der Spielcode liegt in `src/game/app.js`, reine Logik in
+   `src/engine/`.
+2. Version an 4 Stellen hochsetzen (siehe oben)
 3. `FORTRESS-SPEC.md` Header + Changelog aktualisieren
-4. **Test laufen lassen** (siehe unten) — erst wenn alle grün, commiten
-5. `git add index.html FORTRESS-SPEC.md && git commit -m "vX.Y.Z: ..."` 
-6. `git push origin main` → GitHub Actions deployt automatisch
+4. **Bauen, dann testen** — die E2E-Suite läuft gegen `dist/`:
+   `npm run typecheck && npm run test:unit && npm run build && npm run test:e2e`
+5. Erst wenn alles grün ist, commiten
+6. `git push origin main` → GitHub Actions baut, prüft und deployt
 
 ---
 
@@ -354,45 +368,45 @@ Architektur-Entscheidungen mit Begruendung: **`ARCHITEKTUR.md`**. Kurz:
 - `ios/` ist eingecheckt (auch das geteilte Schema — ohne das findet
   `xcodebuild` im CI kein Ziel).
 
-## Langfristiges Ziel: App Store (Android zuerst)
+## Store-Weg: iOS zuerst, Android danach
 
-Das Spiel soll in den **Google Play Store** und danach weitere Stores. Das beeinflusst alle zukünftigen Entwicklungsentscheidungen.
+**Reihenfolge umgedreht (August 2026).** Früher stand hier „Android zuerst".
+Google Play verlangt für neue Entwicklerkonten einen geschlossenen Test mit
+**12 Testern über 14 Tage** — TestFlight verlangt nichts dergleichen. Damit ist
+iOS der schnellere Weg zu echten Spielern, und der Apple-Account steht.
 
-### Geplanter Weg: TWA (Trusted Web Activity)
-- Google Play erlaubt PWAs als native Apps via TWA — kein React Native oder Flutter nötig
-- Tool: **Bubblewrap** (Google) konvertiert PWA → Android APK/AAB
-- Voraussetzungen für TWA:
-  - `manifest.json` mit korrekten Icons, `start_url`, `display: standalone`
-  - Service Worker (Offline-Unterstützung)
-  - HTTPS (✅ GitHub Pages)
-  - Digital Asset Links (`.well-known/assetlinks.json`) verknüpft Domain mit App
-- localStorage funktioniert in TWA (Chrome WebView teilt Storage) → Firebase & Profil bleiben
+- **iOS:** Capacitor, siehe Abschnitt oben und `IOS-SETUP.md`.
+  Stand und offene Punkte: `LAUNCH-TODO.md`.
+- **Android:** später über **Bubblewrap** (PWA → AAB). Dann ist
+  `public/.well-known/assetlinks.json` auszufüllen — dort stehen noch
+  `TODO_REPLACE_*`-Platzhalter, die ohne den Signierschlüssel nicht zu füllen
+  sind.
 
-### Was bei der Entwicklung zu beachten ist
-- **Kein `window.open()`** für wichtige Flows — funktioniert in TWA nicht zuverlässig
-- **Kein Clipboard-API** ohne User-Gesture — bereits korrekt (Copy-Button vorhanden)
-- **Safe-Area-Insets** bereits eingebaut (`env(safe-area-inset-*)`) ✅
-- **Touch-only-Controls** bereits optimiert ✅
-- **Kein externes Login-Popup** — Firebase Auth via Popup würde in TWA brechen; falls Auth nötig, Redirect-Flow nutzen
-- **Viewport** `user-scalable=no` bereits gesetzt ✅
-- **Icons**: aktuell nur inline SVG — für Play Store werden PNG-Icons (512×512, 192×192) benötigt
-- **Privacy Policy** wird für Play Store Pflicht (Firebase = Datenspeicherung)
-- **Content Rating** muss bei Google Play eingereicht werden
-- **Goldsystem** / ELO: kein echtes Geld → vereinfacht Store-Zulassung (kein IAP-Review)
+### Was dabei zu beachten bleibt (gilt für beide)
+- **Kein `window.open()`** für wichtige Abläufe — in TWA und WebView unzuverlässig
+- **Kein externes Login-Popup** — in der App ist die Konto-Verknüpfung ohnehin
+  aus (`src/platform.ts`, `kontoVerknuepfbar()`)
+- Safe-Area-Insets, Touch-Bedienung, `user-scalable=no`: eingebaut
+- **Goldsystem/ELO: kein echtes Geld** → kein IAP-Review, einfachere Zulassung
 
-### Noch nicht implementiert (für Store-Readiness)
-- [ ] `manifest.json` (PWA Manifest als separate Datei, nicht nur inline)
-- [ ] Service Worker für Offline-Fähigkeit
-- [ ] PNG App-Icons (512×512, 192×192, 96×96)
-- [ ] Privacy Policy Seite
-- [ ] `.well-known/assetlinks.json` (nach Bubblewrap-Setup)
+### Store-Readiness: erledigt
+`manifest.json`, generierter Service Worker, PNG-Icons (5 Größen),
+Datenschutzerklärung (`public/privacy.html`), Nutzungsbedingungen
+(`public/agb.html`), Screenshots und Store-Texte (`store/listing.md`) liegen
+vor. **Offen bleibt nur das Impressum** — `public/impressum.html` steht live
+mit Platzhaltern und braucht eine ladungsfähige Anschrift.
 
----
+## Was als nächstes ansteht
 
-## Was als nächstes geplant / offen ist
+Der verbindliche Stand steht in **`LAUNCH-TODO.md`** (Marktstart) und
+**`ARCHITEKTUR.md`** (Umbau). Kurz:
 
-- 3-Spieler-Online läuft jetzt grundsätzlich (v3.0.7 hat Phasen-Freeze gefixt)
-- ELO + Gold werden korrekt berechnet und angezeigt (v3.0.9/v3.1.0)
-- Drehen-Button für P3 vorhanden (v3.0.9)
-- **Noch zu testen**: Ob nach v3.0.7-Fix alle Phasen bei 3 Spielern online sauber durchlaufen
-- **Potenzielle nächste Features**: Heartbeat für Verbindungsabbrüche, Sound-Effekte, weitere Wappen/Farben, Store-Readiness
+- **iOS nach TestFlight.** Der Bau ist belegt — Release fürs Gerät und Debug
+  für den Simulator übersetzen, das Bündel wird auf Inhalt geprüft. Es fehlen
+  nur noch Zugänge, keine Arbeit.
+- **Firebase-Kette.** Ohne API-Schlüssel und aktivierte anonyme Anmeldung
+  läuft Online weder im Web noch in der App (`LAUNCH-TODO.md`, Abschnitt 1).
+- **Großblock zerlegen.** `src/game/app.js` hat noch ~9.600 Zeilen.
+  Reihenfolge und Begründung: `ARCHITEKTUR.md`, Schritt 8.
+- **v2:** Google- und Apple-Anmeldung zusammen (Richtlinie 4.8 verlangt „Sign
+  in with Apple", sobald es Fremd-Login gibt).
