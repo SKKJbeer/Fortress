@@ -69,8 +69,8 @@ def kurz(antwort) -> str:
         return antwort.text[:200]
 
 
-def ablegen(gh: GitHub, quelle: str, inhalt: str) -> str | None:
-    """Legt den Ablauf drueben ab. Gibt den sha zurueck, den das Loeschen braucht."""
+def ablegen(gh: GitHub, quelle: str, inhalt: str) -> None:
+    """Legt den Ablauf drueben ab (oder ueberschreibt eine Altlast)."""
     vorhanden = gh.get(f"/repos/{quelle}/contents/{PFAD}")
     koerper = {"message": "Geheimnisse einmalig nach Fortress uebertragen",
                "content": base64.b64encode(inhalt.encode()).decode()}
@@ -82,16 +82,46 @@ def ablegen(gh: GitHub, quelle: str, inhalt: str) -> str | None:
                f"({antwort.status_code}): {kurz(antwort)} — deckt GH_PAT dieses "
                f"Repository ab, mit 'Contents: Read and write' UND "
                f"'Workflows: Write'?")
-    return antwort.json()["content"]["sha"]
+    print(f"  ✓ abgelegt")
+
+
+def bekanntwerden(gh: GitHub, quelle: str) -> bool:
+    """Wartet, bis GitHub den frisch abgelegten Ablauf kennt.
+
+    Eine gerade erst angelegte Ablaufdatei ist NICHT sofort anstossbar: der
+    Dispatch-Endpunkt antwortet bis zur Indizierung mit 404 — also mit
+    derselben Zahl wie eine fehlende Berechtigung. Genau diese Verwechslung
+    hat den ersten Lauf gekostet, und die Meldung zeigte auf das falsche Recht.
+    """
+    for _ in range(12):                     # bis zu einer Minute
+        antwort = gh.get(f"/repos/{quelle}/actions/workflows", per_page=100)
+        if antwort.status_code == 200:
+            if any(w.get("path") == PFAD
+                   for w in antwort.json().get("workflows", [])):
+                return True
+        time.sleep(5)
+    return False
 
 
 def anstossen(gh: GitHub, quelle: str, zweig: str) -> None:
     datei = PFAD.rsplit("/", 1)[-1]
-    antwort = gh.post(f"/repos/{quelle}/actions/workflows/{datei}/dispatches",
-                      {"ref": zweig})
-    if antwort.status_code != 204:
-        fehler(f"Ablauf liess sich nicht anstossen ({antwort.status_code}): "
-               f"{kurz(antwort)} — braucht 'Actions: Read and write'.")
+    bekannt = bekanntwerden(gh, quelle)
+    # Auch wenn er gelistet ist, kann der erste Anstoss noch ins Leere gehen.
+    for versuch in range(6):
+        antwort = gh.post(f"/repos/{quelle}/actions/workflows/{datei}/dispatches",
+                          {"ref": zweig})
+        if antwort.status_code == 204:
+            return
+        if antwort.status_code != 404:
+            fehler(f"Ablauf liess sich nicht anstossen ({antwort.status_code}): "
+                   f"{kurz(antwort)} — braucht 'Actions: Read and write'.")
+        print(f"  … noch nicht anstossbar (404), Versuch {versuch + 1}")
+        time.sleep(5)
+    fehler("Der Ablauf ist auch nach einer Minute nicht anstossbar (404). "
+           + ("Er ist bei GitHub gelistet — dann fehlt 'Actions: Read and write'."
+              if bekannt else
+              "Er taucht nicht einmal in der Liste auf — die Datei ist zwar "
+              "abgelegt, aber GitHub hat sie nicht als Ablauf erkannt."))
 
 
 def abwarten(gh: GitHub, quelle: str, ab: float) -> tuple[str, str]:
@@ -122,7 +152,21 @@ def abwarten(gh: GitHub, quelle: str, ab: float) -> tuple[str, str]:
     fehler("Der Lauf drueben ist in fuenf Minuten nicht fertig geworden.")
 
 
-def aufraeumen(gh: GitHub, quelle: str, sha: str) -> None:
+def aufraeumen(gh: GitHub, quelle: str) -> None:
+    """Entfernt die Ablaufdatei wieder — mit frisch geholtem sha.
+
+    Der sha vom Ablegen taugt dafuer nicht zuverlaessig: liegt zwischen Ablegen
+    und Loeschen ein weiterer Commit auf der Datei, ist er veraltet, und das
+    Loeschen scheitert an einem Konflikt.
+    """
+    vorhanden = gh.get(f"/repos/{quelle}/contents/{PFAD}")
+    if vorhanden.status_code == 404:
+        return
+    if vorhanden.status_code != 200:
+        print(f"::warning::Ablaufdatei nicht auffindbar ({vorhanden.status_code}) "
+              f"— bitte {PFAD} in {quelle} von Hand loeschen.")
+        return
+    sha = vorhanden.json()["sha"]
     antwort = gh.delete(f"/repos/{quelle}/contents/{PFAD}",
                         {"message": "Uebertragung erledigt, Ablauf entfernt",
                          "sha": sha})
@@ -237,15 +281,20 @@ def main() -> int:
 
     inhalt = VORLAGE.read_text(encoding="utf-8").replace("SKKJbeer/Fortress", ziel)
     print(f"Lege {PFAD} in {quelle} ab (Zweig {zweig}) …")
-    sha = ablegen(gh, quelle, inhalt)
+    ablegen(gh, quelle, inhalt)
 
-    ab = time.time()
-    print("Stosse den Lauf an …")
-    anstossen(gh, quelle, zweig)
-    ergebnis, adresse = abwarten(gh, quelle, ab)
-    print(f"Lauf drueben: {ergebnis} — {adresse}")
-
-    aufraeumen(gh, quelle, sha)
+    # **Ab hier wird auf jeden Fall aufgeraeumt.** Der erste Lauf ist beim
+    # Anstossen gescheitert und hat die Datei drueben liegen lassen — ein
+    # Ablauf, der Geheimnisse schiebt, darf nicht als Altlast zurueckbleiben,
+    # nur weil ein Schritt davor schiefging.
+    try:
+        ab = time.time()
+        print("Stosse den Lauf an …")
+        anstossen(gh, quelle, zweig)
+        ergebnis, adresse = abwarten(gh, quelle, ab)
+        print(f"Lauf drueben: {ergebnis} — {adresse}")
+    finally:
+        aufraeumen(gh, quelle)
 
     if ergebnis != "success":
         fehler(f"Die Uebertragung drueben ist nicht durchgelaufen ({ergebnis}). "
