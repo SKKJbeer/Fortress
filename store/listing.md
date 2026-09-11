@@ -149,27 +149,34 @@ Lösungscenter** — Apple verlangt beides.
 NO ACCOUNT, NO LOGIN, NO CREDENTIALS. This build has no sign-in and no user
 accounts, and therefore no account deletion flow. Progress is stored on the
 device and, as a backup, under an anonymous identifier. The player can erase
-everything at any time: main menu, profile, "Fortschritt löschen" (delete
-progress) - it wipes the device and the backup.
+everything at any time: main menu, the avatar button at the top, then
+"Delete progress" / "Fortschritt löschen" - it wipes both the device and the
+backup.
+
+THE APP WILL BE IN ENGLISH ON YOUR DEVICE.
+The interface follows the device language: German on a German device, English
+everywhere else. On your device you will therefore see ENGLISH labels. Both
+are listed below so you can find them either way; a DE/EN switch sits in the
+main menu under the title.
 
 SEEING EVERYTHING TAKES ONE MINUTE, WITH NO NETWORK.
-Main menu, "LOKAL SPIELEN (1 Gerät)" (play locally), then "Übung gegen Bot"
-(practice against the bot) and a difficulty. A complete match runs offline.
-That is the shortest path to the whole game.
+Main menu → "PLAY LOCAL (1 Device)" (German: "LOKAL SPIELEN (1 Gerät)"), then
+"Practice vs Bot" (German: "Übung gegen Bot") and a difficulty. A complete
+match runs offline. That is the shortest path to the whole game.
 
 1. PURPOSE AND AUDIENCE
-FORTRESS is a German-language turn-based artillery game for two or three
-players. Each player walls in a castle from falling tetromino pieces during a
+FORTRESS is a turn-based artillery game for two or three players, available in
+German and English. Each player walls in a castle from falling tetromino pieces during a
 timed build phase, then fires cannons at the other castles. A castle that is
 not completely sealed when the build phase ends is lost. It is a game, not a
 utility; the audience is casual players.
 
 2. MAIN FEATURES AND WHERE THEY ARE
-- "LOKAL SPIELEN (1 Gerät)": two or three players share one device; also holds
-  "Übung gegen Bot" (single player against the computer) and the tutorial
-  "Wie spielt man?".
-- "ONLINE SPIELEN (2-3 Geräte)": matchmaking against another player, or a
-  six-character room code shared between friends.
+- "PLAY LOCAL (1 Device)" / "LOKAL SPIELEN (1 Gerät)": two or three players
+  share one device; also holds "Practice vs Bot" (single player against the
+  computer) and the tutorial "How to play?".
+- "PLAY ONLINE (2-3 Devices)" / "ONLINE SPIELEN (2-3 Geräte)": matchmaking
+  against another player, or a six-character room code shared between friends.
 - Profile (menu, top): name, crest, colour, level, achievements, daily tasks,
   and a cosmetics shop paid for with in-game gold that is earned by playing.
   Gold cannot be bought. There is no real money anywhere in this app.
@@ -183,8 +190,9 @@ processor. The app loads no executable code at runtime; everything ships in the
 bundle.
 
 4. REGIONAL DIFFERENCES
-None. The interface follows the device language and offers German and English;
-content and features are identical everywhere.
+None. Content and features are identical in every region. The interface follows
+the device language and offers German and English; that is a language setting,
+not a regional difference.
 
 5. REGULATED INDUSTRY OR PROTECTED MATERIAL
 Neither. No regulated service, no gambling, no licensed media. Sound effects

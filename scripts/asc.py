@@ -138,10 +138,18 @@ def zu_lang(texte: dict) -> list[str]:
 
 
 def pruefhinweis() -> str | None:
-    """Der englische Text fuer „App Review Information → Notes"."""
+    """Der englische Text fuer „App Review Information → Notes".
+
+    Gesucht wird der eingerahmte Block, der die Kennmarke ENTHAELT — nicht der,
+    der mit ihr BEGINNT. Der frueher gebundene Satzanfang haette beim ersten
+    Umstellen der Absaetze still ins Leere gegriffen, und das Feld waere leer
+    geblieben, ohne dass etwas bricht.
+    """
     text = (WURZEL / "store" / "listing.md").read_text(encoding="utf-8")
-    treffer = re.search(r"```\n(NO ACCOUNT, NO LOGIN.*?)\n```", text, re.S)
-    return treffer.group(1).strip() if treffer else None
+    for block in re.findall(r"```\n(.*?)\n```", text, re.S):
+        if "NO ACCOUNT, NO LOGIN" in block:
+            return block.strip()
+    return None
 
 
 # ── Die einzelnen Prüfungen ────────────────────────────────────────────────
