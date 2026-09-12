@@ -107,9 +107,12 @@ def main() -> int:
               f"(intern: {m.get('isInternalGroup')})")
     passend = [g for g in gruppen if g["attributes"].get("name") == GRUPPE]
 
+    alle_bauten = False
     if passend:
         gruppe = passend[0]["id"]
-        print(f"Gruppe „{GRUPPE}\" besteht bereits")
+        alle_bauten = bool(passend[0]["attributes"].get("hasAccessToAllBuilds"))
+        print(f"Gruppe „{GRUPPE}\" besteht bereits "
+              f"(Zugriff auf alle Bauten: {alle_bauten})")
     else:
         a = apple.post("betaGroups", {"data": {
             "type": "betaGroups",
@@ -121,7 +124,9 @@ def main() -> int:
                   f"({a.status_code}): {sagt(a)}")
             return 1
         gruppe = a.json()["data"]["id"]
-        print(f"Gruppe „{GRUPPE}\" angelegt ({gruppe})")
+        alle_bauten = bool(a.json()["data"]["attributes"].get("hasAccessToAllBuilds"))
+        print(f"Gruppe „{GRUPPE}\" angelegt ({gruppe}, "
+              f"Zugriff auf alle Bauten: {alle_bauten})")
 
     # ── Tester ─────────────────────────────────────────────────────────────
     # Interne Tester sind BENUTZER des Kontos. Deshalb wird nicht nach einer
@@ -160,15 +165,40 @@ def main() -> int:
             print(f"    ::warning::nicht eintragbar ({a.status_code}): {sagt(a)}")
 
     # ── Bau der Gruppe zuordnen ────────────────────────────────────────────
-    a = apple.post(f"betaGroups/{gruppe}/relationships/builds",
-                   {"data": [{"type": "builds", "id": bau["id"]}]})
-    if a.status_code in (201, 204):
-        print(f"Bau {bau['attributes'].get('version')} der Gruppe „{GRUPPE}\" zugeordnet")
-    elif a.status_code == 409:
-        print(f"Bau war der Gruppe „{GRUPPE}\" bereits zugeordnet")
+    #
+    # **Nur wenn die Gruppe NICHT ohnehin alle Bauten sieht.** Eine Gruppe mit
+    # `hasAccessToAllBuilds` bekommt jeden Bau automatisch, und eine einzelne
+    # Zuordnung lehnt Apple dann ab:
+    #
+    #     422 Builds cannot be assigned to this internal group.
+    #         Cannot add internal group to a build.
+    #
+    # Das las sich wie ein Fehlschlag, war aber die Folge der eigenen
+    # Einstellung — der Bau war in dem Moment laengst freigegeben.
+    if alle_bauten:
+        print(f"Gruppe „{GRUPPE}\" sieht alle Bauten — eine Zuordnung ist "
+              f"weder noetig noch erlaubt.")
     else:
-        print(f"::error::Zuordnung scheiterte ({a.status_code}): {sagt(a)}")
-        return 1
+        a = apple.post(f"betaGroups/{gruppe}/relationships/builds",
+                       {"data": [{"type": "builds", "id": bau["id"]}]})
+        if a.status_code in (201, 204):
+            print(f"Bau {bau['attributes'].get('version')} zugeordnet")
+        elif a.status_code == 409:
+            print("Bau war bereits zugeordnet")
+        else:
+            print(f"::error::Zuordnung scheiterte ({a.status_code}): {sagt(a)}")
+            return 1
+
+    # Gegenprobe: sieht die Gruppe den Bau wirklich? Gefragt, nicht gefolgert.
+    a = apple.get(f"betaGroups/{gruppe}/builds", limit=20)
+    if a.status_code == 200:
+        sichtbar = [b["attributes"].get("version")
+                    for b in a.json().get("data", [])]
+        print(f"Die Gruppe sieht die Bauten: {', '.join(sichtbar) or '(keine)'}")
+        if bau["attributes"].get("version") not in sichtbar:
+            print("::warning::Der neue Bau ist dort NICHT aufgefuehrt.")
+    else:
+        print(f"::warning::Bauten der Gruppe nicht lesbar ({a.status_code})")
 
     if not zugefuegt:
         print("::warning::Kein Tester in der Gruppe — dann sieht den Bau "
