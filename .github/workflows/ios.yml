@@ -327,6 +327,28 @@ jobs:
 
       # Ohne Signierung endet der Lauf hier — das ist der nuetzliche Fall
       # "baut die App ueberhaupt?", den man ohne jedes Geheimnis fahren kann.
+
+      # ABER: dieser Fall sieht im Actions-Tab genauso gruen aus wie ein
+      # geglueckter Upload. Genau daran ist Lauf 17 vorbeigelaufen — ohne
+      # `upload` uebersprang er Signieren, Archivieren und Hochladen, meldete
+      # Erfolg, und der Bau tauchte bei Apple nie auf. Ein uebersprungener
+      # Schritt laesst einen Lauf nicht scheitern; deshalb sagt der Lauf jetzt
+      # selbst, was er getan hat.
+      - name: Was dieser Lauf getan hat
+        if: always()
+        run: |
+          if [ "${{ inputs.upload }}" = "true" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "### Upload-Lauf — IPA ging an TestFlight" >> $GITHUB_STEP_SUMMARY
+            echo "Ob Apple ihn annimmt, sagt erst App Store Connect:" >> $GITHUB_STEP_SUMMARY
+            echo "Ablauf \"App Store (Stand / Eintragen)\", Modus \`testflight\`." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### NUR GEPRUEFT — nichts hochgeladen" >> $GITHUB_STEP_SUMMARY
+            echo "Dieser Lauf hat uebersetzt und das Buendel geprueft, aber weder" >> $GITHUB_STEP_SUMMARY
+            echo "signiert noch archiviert noch hochgeladen: \`upload\` stand auf false." >> $GITHUB_STEP_SUMMARY
+            echo "Fuer TestFlight den Ablauf mit **upload = true** starten." >> $GITHUB_STEP_SUMMARY
+          fi
+          cat $GITHUB_STEP_SUMMARY
+
       - name: Weboberflaeche als Artefakt sichern
         uses: actions/upload-artifact@v4
         with:
