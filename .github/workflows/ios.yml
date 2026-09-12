@@ -228,6 +228,25 @@ jobs:
           rm -f $RUNNER_TEMP/signatur.p12
           security find-identity -v -p codesigning "$BUND"
 
+      # **Das Verteilprofil selbst anlegen.**
+      #
+      # Ohne diesen Schritt sucht die automatische Signierung ein
+      # ENTWICKLUNGS-Profil, und das gibt es nur zu einem registrierten Geraet:
+      # „Your team has no devices from which to generate a provisioning
+      # profile." Daran sind die Laeufe 10 und 11 gescheitert. Die Profilart
+      # haengt nicht an der Konfiguration, deshalb half -configuration Release
+      # nicht, und -allowProvisioningUpdates auch nicht: es darf Profile
+      # anlegen, waehlt aber weiterhin die Entwicklungsart.
+      - name: Verteilprofil anlegen
+        if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          pip3 install --quiet --break-system-packages "pyjwt[crypto]" requests
+          python3 scripts/asc-profil.py
+
       - name: Archivieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
@@ -239,18 +258,12 @@ jobs:
           # Swift Package Manager ein, es entsteht also kein .xcworkspace mehr
           # (mit CocoaPods war das frueher anders).
           #
-          # **Keine CODE_SIGN_IDENTITY hier.** Ich hatte "Apple Distribution"
-          # vorgeschrieben — Xcode lehnt das bei automatischer Signierung ab:
-          # "App has conflicting provisioning settings. App is automatically
-          # signed for development, but a conflicting code signing identity
-          # Apple Distribution has been manually specified." Bei Automatic
-          # waehlt Xcode die Identitaet selbst; vorschreiben darf man sie nur
-          # bei Manual. Umsigniert auf Verteilung wird ohnehin erst beim
-          # Export, denn dort steht method=app-store-connect.
-          #
-          # -configuration Release bleibt Pflicht und nicht Geschmack: unter
-          # Debug sucht Xcode ein Development-Profil, und das gibt es nur zu
-          # einem registrierten Geraet.
+          # **Manuell signiert, mit dem Profil aus dem Schritt davor.**
+          # Zwei Anlaeufe haben den Weg dorthin gezeigt: Automatic PLUS
+          # vorgeschriebene Identitaet lehnt Xcode als Widerspruch ab; Automatic
+          # OHNE Identitaet sucht ein Entwicklungsprofil und scheitert am
+          # fehlenden Geraet. Manuell mit einem selbst angelegten
+          # App-Store-Profil umgeht beides.
           #
           # CURRENT_PROJECT_VERSION ist die Build-Nummer: TestFlight lehnt jeden
           # Upload mit bereits bekannter Nummer ab. Die Lauf-Nummer steigt
@@ -265,7 +278,9 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             DEVELOPMENT_TEAM="$TEAM" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFIL_NAME" \
             archive
 
       - name: IPA exportieren
@@ -275,10 +290,17 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Die Vorlage enthaelt einen Platzhalter: in einer plist findet KEINE
-          # Variablen-Ersetzung statt, die Kennung muss woertlich dort stehen.
+          # Die Vorlage enthaelt zwei Platzhalter: in einer plist findet KEINE
+          # Variablen-Ersetzung statt, die Werte muessen woertlich dort stehen.
+          [ -n "$TEAM" ] || { echo "FEHLER: Secret APPLE_TEAM_ID fehlt"; exit 1; }
+          [ -n "$PROFIL_NAME" ] || { echo "FEHLER: Profilname fehlt — lief „Verteilprofil anlegen\"?"; exit 1; }
           cp ios/ExportOptions.plist $RUNNER_TEMP/ExportOptions.plist
           /usr/libexec/PlistBuddy -c "Set :teamID $TEAM" $RUNNER_TEMP/ExportOptions.plist
+          # PROFIL_NAME kommt aus dem Schritt „Verteilprofil anlegen" ueber
+          # GITHUB_ENV — eine Quelle fuer Archiv und Export, damit beide
+          # garantiert dasselbe Profil meinen.
+          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:de.skkjbeer.stackandsiege $PROFIL_NAME" \
+            $RUNNER_TEMP/ExportOptions.plist
           # Auch der Export braucht den Schluessel: er holt sich dasselbe Profil.
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \

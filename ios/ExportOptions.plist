@@ -11,12 +11,19 @@
   <!-- Signierung ueber das in der CI eingespielte Profil, nicht automatisch:
        ein Runner hat keinen angemeldeten Xcode-Account, mit dem Apple
        automatisch ein Profil erzeugen koennte. -->
-  <!-- automatic: xcodebuild besorgt sich Zertifikat und Profil ueber den
-       App-Store-Connect-Schluessel selbst (-allowProvisioningUpdates). Mit
-       "manual" muesste hier eine Zuordnung Bundle-ID -> Profilname stehen,
-       und die Profildatei muesste jemand von Hand im Portal erzeugen. -->
+  <!-- manual: Das Archiv ist manuell mit einem App-Store-Profil signiert
+       (siehe scripts/asc-profil.py). Stuende hier „automatic", versuchte der
+       Export erneut automatisch zu signieren und liefe in denselben Fehler
+       wie das Archivieren: kein Entwicklungsprofil ohne registriertes Geraet.
+       Der Profilname wird in der CI eingesetzt — eine plist loest keine
+       Variablen auf. -->
   <key>signingStyle</key>
-  <string>automatic</string>
+  <string>manual</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>de.skkjbeer.stackandsiege</key>
+    <string>PROFILNAME_PLATZHALTER</string>
+  </dict>
   <key>uploadSymbols</key>
   <true/>
   <key>compileBitcode</key>
