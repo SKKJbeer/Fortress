@@ -55,21 +55,37 @@ done
 # right now" (gemessen). Ein Knopf dorthin waere dasselbe leere Versprechen wie
 # ein App-Store-Abzeichen ohne App im Store.
 #
+# Die Seite wirbt fuer die App — ohne Knopf haette sie also gar keinen
+# Handlungsaufruf. Deshalb gibt es ZWEI Bloecke, die einander ausschliessen:
+#
+#   TESTFLIGHT:ANFANG … TESTFLIGHT:ENDE            bleibt, wenn die Beta offen ist
+#   WARTEN:ANFANG … WARTEN:ENDE                    bleibt, wenn sie es nicht ist
+#
+# Zwei getrennte Namen statt „TESTFLIGHT" und „OHNE-TESTFLIGHT": Der eine waere
+# im anderen enthalten, und ein Muster, das beide unterscheiden muss, ist genau
+# die Art Feinheit, die beim naechsten Umbau stillschweigend bricht.
+#
 # Gefragt wird in `scripts/testflight-stand.py`; das Ergebnis kommt hier als
-# TESTFLIGHT_OFFEN an. Ohne Angabe wird der Block entfernt — die vorsichtige
+# TESTFLIGHT_OFFEN an. Ohne Angabe gilt „nicht offen" — die vorsichtige
 # Annahme ist die richtige, wenn niemand nachgesehen hat.
 if [ "${TESTFLIGHT_OFFEN:-nein}" = "ja" ]; then
-  echo "TestFlight-Knopf: bleibt (Beta nimmt Tester an)."
+  WEG="WARTEN"
 else
-  python3 - "$ZIEL/index.html" <<'PY'
-import re, sys, pathlib
-p = pathlib.Path(sys.argv[1])
-t = p.read_text(encoding="utf-8")
-neu, n = re.subn(r"[ \t]*<!-- TESTFLIGHT:ANFANG.*?TESTFLIGHT:ENDE -->\n?", "", t, flags=re.S)
-p.write_text(neu, encoding="utf-8")
-print(f"TestFlight-Knopf: entfernt ({n} Block).")
-PY
+  WEG="TESTFLIGHT"
 fi
+WEG="$WEG" python3 - "$ZIEL/index.html" <<'PYENDE'
+import os, re, sys, pathlib
+pfad = pathlib.Path(sys.argv[1])
+weg = os.environ["WEG"]
+text = pfad.read_text(encoding="utf-8")
+muster = rf"[ \t]*<!-- {weg}:ANFANG.*?{weg}:ENDE -->\n?"
+neu, n = re.subn(muster, "", text, flags=re.S)
+pfad.write_text(neu, encoding="utf-8")
+uebrig = "TestFlight-Knopf" if weg == "WARTEN" else "Hinweis auf die kommende Beta"
+print(f"  {weg}-Block entfernt ({n}×) — es bleibt: {uebrig}.")
+if n == 0:
+    print(f"::warning::Kein {weg}-Block gefunden — steht der Marker noch in index.html?")
+PYENDE
 
 echo "Website zusammengestellt in $ZIEL:"
 find "$ZIEL" -type f | sort | sed 's|^|  |'
