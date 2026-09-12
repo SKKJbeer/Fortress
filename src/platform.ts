@@ -32,6 +32,40 @@ export function kontoVerknuepfbar(): boolean {
 }
 
 /**
+ * Die Text-Lupe von iOS aus dem Spiel heraushalten — und nur dort zulassen,
+ * wo sie hingehoert: im Namensfeld.
+ *
+ * **Warum das CSS nicht reicht.** `-webkit-user-select:none` und
+ * `-webkit-touch-callout:none` stehen seit v3.32.1 global in index.html. Im
+ * Browser genuegt das; in Capacitors WebView nicht. Die Textbedienung von
+ * WebKit ist eine Eigenschaft der ANSICHT, keine des Dokuments — sie greift
+ * auch dort, wo nichts auswaehlbar ist, und die Lupe erscheint beim Ziehen
+ * ueber Kopfzeile und Shop. Abschalten laesst sie sich nur nativ:
+ * `WKPreferences.isTextInteractionEnabled`, gesetzt in
+ * `SpielViewController` (ios/App/App/SceneDelegate.swift).
+ *
+ * **Warum trotzdem eine Schaltung und kein dauerhaftes Aus.** Ohne
+ * Textbedienung laesst sich in einem Eingabefeld kein Wort markieren und die
+ * Schreibmarke nicht setzen. Fuers Spielfeld ist das erwuenscht, fuer die
+ * Eingabe des Spielernamens waere es eine Verschlechterung. Also: aus, solange
+ * niemand in einem Feld steht, an, sobald eines den Fokus hat.
+ *
+ * Im Browser tut die Funktion nichts — dort gibt es den Kanal nicht, und das
+ * CSS erledigt die Sache ohnehin.
+ */
+export function lupeNurInTextfeldern(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const kanal = (window as any).webkit?.messageHandlers?.textfeld;
+  if (!kanal) return;
+  const melden = (an: boolean) => { try { kanal.postMessage(an); } catch (e) {} };
+  const istFeld = (z: EventTarget | null) =>
+    !!z && typeof (z as Element).closest === "function" &&
+    !!(z as Element).closest("input:not([type=range]), textarea");
+  document.addEventListener("focusin", (e) => { if (istFeld(e.target)) melden(true); });
+  document.addEventListener("focusout", (e) => { if (istFeld(e.target)) melden(false); });
+}
+
+/**
  * Vibration. `navigator.vibrate` gibt es auf iOS nicht.
  *
  * Der Parameter ist entweder eine Dauer ODER ein MUSTER — `SFX.destroy()`

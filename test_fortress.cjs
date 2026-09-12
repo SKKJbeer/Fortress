@@ -1725,6 +1725,61 @@ async function suitePlattform(browser) {
     } finally { await ctx.close(); }
   }
 
+  // ── Die Text-Lupe: aus im Spiel, an im Namensfeld (v3.86.0) ────────────
+  //
+  // Abschalten kann sie nur die native Huelle; hier steht die Haelfte, die im
+  // Browser liegt und still kaputtgehen koennte: die Meldung, WANN ein Feld
+  // den Fokus hat. Der native Kanal wird dafuer nachgebaut — ohne ihn tut die
+  // Funktion absichtlich nichts, und die Pruefung waere gruen, ohne etwas zu
+  // pruefen.
+  for (const nativ of [true, false]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+      hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    try {
+      await page.addInitScript(FB_SPERRE);
+      await page.addInitScript(PROFILE_INIT);
+      await page.addInitScript(`window.__NATIVE__ = ${nativ};`);
+      if (nativ) {
+        await page.addInitScript(`
+          window.__lupe = [];
+          window.webkit = { messageHandlers: { textfeld: {
+            postMessage: (an) => window.__lupe.push(an) } } };
+        `);
+      }
+      await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+      await page.waitForTimeout(500);
+
+      // Profil-Editor oeffnen — dort steht das einzige Textfeld des Spiels.
+      await page.evaluate(() => {
+        for (const b of document.querySelectorAll('button')) {
+          if ((b.getAttribute('title') || '').startsWith('Profil')) { b.click(); return; }
+        }
+      });
+      await page.waitForTimeout(500);
+      const hatFeld = await page.evaluate(() => !!document.querySelector('input:not([type=range])'));
+      if (!hatFeld) {
+        fail('Lupe: kein Textfeld gefunden — die Pruefung greift ins Leere');
+      } else {
+        await page.evaluate(() => document.querySelector('input:not([type=range])').focus());
+        await page.waitForTimeout(120);
+        await page.evaluate(() => document.querySelector('input:not([type=range])').blur());
+        await page.waitForTimeout(120);
+        const gemeldet = await page.evaluate(() => window.__lupe || null);
+        if (nativ) {
+          JSON.stringify(gemeldet) === '[true,false]'
+            ? ok('Lupe (App): an beim Fokus, aus beim Verlassen ✓')
+            : fail(`Lupe (App): erwartet [true,false], bekam ${JSON.stringify(gemeldet)}`);
+        } else {
+          gemeldet === null
+            ? ok('Lupe (Web): kein nativer Kanal, nichts gemeldet ✓')
+            : fail(`Lupe (Web): meldet ins Leere (${JSON.stringify(gemeldet)})`);
+        }
+      }
+    } finally { await ctx.close(); }
+  }
+
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
               : ok('Plattform-Weiche: keine JS-Fehler ✓');
   return { res, errs };

@@ -23,7 +23,7 @@ import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainF
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from '../engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from '../engine/progression.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
-import { istNativ, kontoVerknuepfbar, vibriere } from '../platform.ts';
+import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern } from '../platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from '../engine/catalog.ts';
 import { LANGS } from '../i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from '../net/protocol.js';
@@ -7340,7 +7340,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.85.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.86.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -9741,6 +9741,9 @@ setTimeout(() => { const s = document.getElementById('splash'); if (s) { s.style
 //
 // Geprueft wird deshalb ueber die EINE Plattform-Weiche (ARCHITEKTUR.md E7),
 // nicht ueber ein weiteres selbstgebautes Merkmal.
+// Die iOS-Text-Lupe: aus im Spiel, an im Namensfeld. Siehe platform.ts.
+lupeNurInTextfeldern();
+
 const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 if (!istNativ() && _isIOS && !window.navigator.standalone && !localStorage.getItem('_fh')) {
   setTimeout(() => { document.getElementById('ios-hint').style.display='block'; localStorage.setItem('_fh','1'); }, 3500);

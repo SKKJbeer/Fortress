@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.85.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.86.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5698,3 +5698,47 @@ durch `overflow:hidden` gedeckelt ist und weil eine Leiste „innerhalb der
 Huelle" liegen kann, waehrend die Huelle selbst aus dem Bild ragt.
 
 Tests gruen (Unit 70/70, E2E 367/367, Typen 0 Fehler).
+
+---
+
+## v3.86.0 — Die Text-Lupe hat im Spielfeld nichts verloren
+
+Vom Geraet gemeldet: Beim Ziehen klappt die Lupe von iOS auf. Denselben Fehler
+hat v3.32.1 schon einmal behandelt — damals mit CSS, und im Browser genuegt das
+bis heute.
+
+**In Capacitors WebView genuegt es nicht.** `-webkit-user-select:none` und
+`-webkit-touch-callout:none` sagen etwas ueber das DOKUMENT. Die Textbedienung
+von WebKit ist aber eine Eigenschaft der ANSICHT: Sie greift auch dort, wo
+nichts auswaehlbar ist. Deshalb erschien die Lupe ueber Kopfzeile und Shop,
+obwohl das CSS seit vier Jahren richtig steht.
+
+Abgeschaltet wird sie jetzt nativ ueber
+`WKPreferences.isTextInteractionEnabled`, gesetzt an der KONFIGURATION, bevor
+die Ansicht entsteht. Capacitor sieht `webViewConfiguration(for:)` genau dafuer
+vor. Der neue `SpielViewController` steht in `SceneDelegate.swift` und nicht in
+einer eigenen Datei — eine neue Datei muesste in die Xcode-Projektdatei
+eingetragen werden, und ein falscher Eintrag dort faellt erst im CI auf.
+
+**Ein dauerhaftes Aus waere eine Verschlechterung.** Ohne Textbedienung laesst
+sich in einem Eingabefeld kein Wort markieren und die Schreibmarke nicht
+setzen. Fuers Spielfeld ist genau das erwuenscht, fuer die Eingabe des
+Spielernamens nicht. Die Weboberflaeche meldet deshalb ueber den Kanal
+`textfeld`, wenn ein Feld den Fokus bekommt oder verliert; der
+`SpielViewController` schaltet entsprechend um.
+
+Die Meldung sitzt in `src/platform.ts` — der EINEN Plattform-Weiche
+(ARCHITEKTUR.md E7) — und nicht verstreut im Spielcode.
+
+**Auch die Storyboard-Datei nennt jetzt `SpielViewController`.** Der
+SceneDelegate setzt die Ansicht ohnehin programmatisch und wirft die aus dem
+Storyboard weg; stuenden dort zwei verschiedene Klassen, haenge die Antwort auf
+„welche gewinnt" am Startweg. Zwei Stellen, eine Aussage.
+
+**Geprueft wird die Haelfte, die im Browser liegt:** dass bei Fokus `true` und
+beim Verlassen `false` gemeldet wird — mit nachgebautem nativem Kanal, sonst
+waere die Pruefung gruen, ohne etwas zu pruefen — und dass im Browser ohne
+diesen Kanal gar nichts gemeldet wird. Das Abschalten selbst kann nur das
+Geraet bestaetigen.
+
+Tests gruen (Unit 70/70, E2E 369/369, Typen 0 Fehler).

@@ -11,7 +11,12 @@
         <!--Bridge View Controller-->
         <scene sceneID="tne-QT-ifu">
             <objects>
-                <viewController id="BYZ-38-t0r" customClass="CAPBridgeViewController" customModule="Capacitor" sceneMemberID="viewController"/>
+                <!-- SpielViewController statt CAPBridgeViewController: die Ansicht mit
+                     abgeschalteter Text-Lupe (siehe SceneDelegate.swift). Der
+                     SceneDelegate setzt sie ohnehin programmatisch; hier steht sie
+                     trotzdem, weil sonst zwei Stellen zwei verschiedene Ansichten
+                     nennen und die Frage, welche gewinnt, vom Startweg abhaengt. -->
+                <viewController id="BYZ-38-t0r" customClass="SpielViewController" customModule="App" customModuleProvider="target" sceneMemberID="viewController"/>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
         </scene>
