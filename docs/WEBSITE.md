@@ -10,7 +10,7 @@ Pages getrennt: Das Spiel bleibt, wo es ist, die Website wirbt dafür.
 |---|---|
 | `docs/website/index.html` | Die Seite. Von Hand geschrieben, kein Bauwerkzeug. |
 | `docs/website/stil.css` | Eine Stildatei. Keine fremde Schrift, kein fremdes Skript. |
-| `docs/website/bilder/*.jpg` | 18 Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`) — siehe Abschnitt „Die Bilder". |
+| `docs/website/bilder/*.jpg` | Fuenf Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`). Alles Uebrige ist gezeichnet — siehe unten. |
 | `public/{impressum,privacy,agb}.html` | Die Rechtstexte. **Eine Quelle** — sie gehören zum Spiel und werden für die Website nur kopiert. |
 | `scripts/website-bauen.sh` | Stellt beides zum Auslieferordner zusammen. |
 | `scripts/check-website.mjs` | Sagt nein, wenn etwas fehlt. |
@@ -35,9 +35,8 @@ bewegt sich, so wie das Spiel sich bewegt.**
 - **Kugeln fliegen quer durchs Bild**, und alle paar Sekunden zittert die
   Überschrift, als sei etwas eingeschlagen. Gleichmässiges Wackeln wäre
   Zierrat; ein kurzer harter Stoss mit langer Ruhe liest sich als Treffer.
-- Die Bildschirmfotos ziehen als **endloses Band** durch und halten an, wenn
-  der Zeiger darauf liegt.
-- Die **sieben Welten** stehen als grosse Kacheln in einer eigenen Galerie.
+- Die **sieben Welten** stehen als grosse, gezeichnete Kacheln in einer eigenen
+  Galerie und heben sich beim Überfahren aus dem Rahmen.
 
 Alles aus CSS. Kein Skript, keine Bibliothek, keine fremde Anfrage.
 `prefers-reduced-motion` friert jede Bewegung ein.
@@ -52,22 +51,34 @@ Die anderen fünf Entwürfe bleiben in `docs/entwuerfe/` liegen. Sie werden
 **nicht** ausgeliefert (das Bauskript kopiert nur `docs/website/`) und sind die
 Begründung dafür, warum es diese Fassung geworden ist.
 
-## Die Bilder
+## Gezeichnet statt abfotografiert
 
-`tools/make-screenshots.cjs website` nimmt alles aus dem echten Spiel auf:
+Die Fassung davor war eine Bildschirmfoto-Galerie: achtzehn Aufnahmen aus dem
+Spiel, ordentlich aufgereiht. Das zeigt, was da ist, und macht keine Lust
+darauf.
 
-| Bilder | Was |
-|---|---|
-| `menu/game/shoot/shop` | Menü und die drei Phasen, aus einem Bot-Selbstspiel |
-| `zwei/drei` | lokale Partien zu zweit und zu dritt — die Bauteil-Felder unten tragen die Aussage |
-| `schmiede/goldshop/erfolge/aufgaben` | die Menüfenster, die man auf einem Spielfeld nie sieht |
-| `welt-*.jpg` | **nur das Brett**, je einmal pro Welt |
+Jetzt trägt die Seite **Zeichnungen**:
 
-Die Welt hängt am Terrain-Seed (`worldThemeOf(seed) = seed % 7`) und ist bei
-jedem lokalen Spiel zufällig. Einen Seed vorzugeben hiesse, dafür Spielcode zu
-ändern — für Werbebilder der falsche Preis. Also würfelt das Werkzeug, bis alle
-sieben einmal dran waren; die Welt verrät der gesicherte Haken
-`__waterTheme().name`.
+- Die **sieben Welten** sind gemalte Szenen — Himmel, Berge, ein glimmender
+  Fluss, zwei Burgen mit Zinnen, Requisiten je nach Welt: Kristalle, Bäume,
+  Kakteen, Glutpunkte. Eine Szene, sieben Farbsätze; die Werte stammen aus
+  `WORLD_THEMES` in `src/engine/terrain.ts`. Es ist also nicht erfunden, nur
+  nicht abfotografiert.
+- Ebenfalls gezeichnet: die **Landschaft im Anfang**, die **beiden Kanonen**
+  und die **vier Einblicke** (Amboss, Münzstapel, Pokal, Merkzettel).
+- Der **Zierrahmen** (`.rahmen`) setzt Zinnen auf die Oberkante und Nieten in
+  die vier Ecken; die Kleinüberschriften sitzen auf einem **Band** mit zwei
+  Zipfeln statt nackt in der Luft.
+
+Alles Inline-SVG und CSS: **null zusätzliche Anfragen, null Kilobyte
+Bilddaten**, und in jeder Grösse scharf.
+
+**Echte Aufnahmen stehen nur noch dort, wo sie die Aussage tragen:** bei „zu
+zweit und zu dritt an einem Gerät" sind die Bauteil-Felder unten im Bild der
+Beweis, dass zwei Leute gleichzeitig spielen — eine Zeichnung könnte das nur
+behaupten. Dazu ein kurzer Streifen „So sieht es wirklich aus". Macht fünf
+Bilder statt achtzehn, 512 kB statt 1097.
+
 
 ## Der TestFlight-Knopf
 
@@ -108,29 +119,31 @@ unter anderem:
   Nutzungsbedingungen.
 - **Bilder unter 400 kB**, mit Alternativtext und mit Maßen im Markup.
 
-## Was noch fehlt, damit sie online geht
+## Die Einrichtung — erledigt
 
-1. **Eine ladungsfähige Anschrift im Impressum.** `public/impressum.html` steht
-   mit `[VORNAME NACHNAME]`, `[STRASSE HAUSNUMMER]`, `[PLZ ORT]` und
-   `[E-MAIL-ADRESSE]` da. Solange das so ist, lehnt die Prüfung ab — ein
-   Impressum mit Textlücke ist in Deutschland abmahnfähig, und eine Seite ohne
-   Impressum ist es auch. Das ist der einzige inhaltliche Punkt.
+Beides steht seit dem 12.09.:
 
-2. **Zwei Geheimnisse für Cloudflare**, einmalig unter
-   *Settings › Secrets and variables › Actions*:
+1. **Die Anschrift im Impressum.** `public/impressum.html` stand bis dahin mit
+   vier Platzhaltern da, und die Prüfung lehnte ab — ein Impressum mit
+   Textlücke ist in Deutschland abmahnfähig, eine Seite ohne Impressum
+   ebenfalls.
+
+2. **Die zwei Cloudflare-Geheimnisse** unter *Settings › Secrets and variables
+   › Actions*:
 
    | Name | Woher |
    |---|---|
    | `CLOUDFLARE_API_TOKEN` | Cloudflare-Dashboard → *My Profile* → *API Tokens* → *Create Token* → Berechtigung **Cloudflare Pages: Edit** |
    | `CLOUDFLARE_ACCOUNT_ID` | steht in der Adresszeile des Dashboards: `dash.cloudflare.com/<hier>` |
 
-   Das Pages-Projekt `stack-and-siege` legt der Ablauf selbst an. Es von Hand
-   anzuklicken ist nicht nötig und führt leicht zu „Project not found", weil
-   Cloudflare dann seinen eigenen Bauschritt erwartet.
+   Sie kamen aus dem Schwesterprojekt — dasselbe Konto, dasselbe Token; „Pages:
+   Edit" gilt für jedes Pages-Projekt des Kontos. Das Projekt `stack-and-siege`
+   hat der Ablauf selbst angelegt; von Hand anzuklicken führt leicht zu
+   „Project not found", weil Cloudflare dann seinen eigenen Bauschritt erwartet.
 
-Fehlen die Geheimnisse, läuft der Ablauf trotzdem: Er prüft die Seite und sagt
-in seiner Zusammenfassung, dass nichts veröffentlicht wurde. Ein Lauf, der
-nichts getan hat, soll nicht wie einer aussehen, der etwas getan hat.
+Fehlen die Geheimnisse einmal, läuft der Ablauf trotzdem: Er prüft die Seite
+und sagt in seiner Zusammenfassung, dass nichts veröffentlicht wurde. Ein Lauf,
+der nichts getan hat, soll nicht wie einer aussehen, der etwas getan hat.
 
 ## Bilder erneuern
 
