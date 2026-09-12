@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.83.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.84.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5600,5 +5600,42 @@ und genau deshalb stehen beide Werte als benannte Konstanten beieinander in
 
 Ob die Verschiebung dem Spiel guttut, entscheidet das Spielen — nicht diese
 Datei. Eine Bot-gegen-Bot-Messreihe kann sie beziffern, wenn gewuenscht.
+
+Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).
+
+---
+
+## v3.84.0 — Sicherheitsbereiche: das Layout war nie fuer ein iPhone gebaut
+
+Zwei Bildschirmfotos vom Geraet zeigten es: Im Achievements-Fenster lag die
+Ueberschrift unter der Uhrzeit und der Schliessen-Knopf hinter der
+Batterieanzeige; im Menue klaffte oben eine Luecke und unten fehlte die
+Fusszeile. Beides hat DIESELBE Wurzel.
+
+**Der Grundfehler steckte im Geruest.** `html,body` hatte `height:100dvh` UND
+die Sicherheitsbereiche als Polsterung — ohne `box-sizing: border-box`. Der
+Koerper wurde dadurch hoeher als der Bildschirm, und `overflow:hidden` schnitt
+unten ab. Genau so verschwand die Fusszeile.
+
+**Der zweite Fehler ist eine Eigenheit von `position: fixed`:** Solche Elemente
+sitzen am SICHTFENSTER, nicht im Koerper — die Polsterung des Koerpers gilt fuer
+sie nicht. Alle dreizehn Vollbild-Fenster hatten deshalb keinen oberen Abstand.
+Sie bekommen ihn jetzt ueber die Polsterung, nicht ueber den Rahmen, damit die
+Abdunkelung weiterhin den ganzen Schirm bedeckt.
+
+Dafuer stehen die Werte einmal zentral als `--sa-top` bis `--sa-right` in
+`index.html`; vorher stand `env(safe-area-inset-*)` an fuenfzehn Stellen
+verstreut.
+
+**Das Menue rollt jetzt, statt abzuschneiden.** `height:100%` statt `100dvh`
+(der Koerper ist bereits verkuerzt), `overflowY:auto`, und zentriert wird ueber
+`margin:auto` am Kind statt `alignItems:center` am Rahmen — sonst waere der
+obere Teil in einem rollbaren Kasten unerreichbar. Bei 390x600 gemessen: Inhalt
+644 px in 600 px, der unterste Knopf bleibt erreichbar.
+
+**Die Rechtslinks sind in der App weg.** Impressum und Nutzungsbedingungen auf
+dem Startbildschirm sind dort fehl am Platz; Apple verlangt die
+Datenschutzadresse in den Store-Angaben, nicht in der App. Geprueft ueber
+`istNativ()`, die EINE Plattform-Weiche — im Browser stehen sie unveraendert.
 
 Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).

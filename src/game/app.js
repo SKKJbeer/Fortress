@@ -452,7 +452,11 @@ window.StackSiegeApp = function StackSiegeApp() {
       position: "fixed", inset: 0, zIndex: 3000,
       background: "rgba(2,6,15,0.85)", backdropFilter: "blur(18px)",
       display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "0 0 env(safe-area-inset-bottom,0)"
+      // **Oben MUSS der Sicherheitsabstand mit.** `position: fixed` sitzt am
+      // Sichtfenster, nicht im Koerper — die Polsterung des Koerpers gilt hier
+      // also nicht. Ohne diese Zeile lag die Ueberschrift unter der Uhrzeit und
+      // der Schliessen-Knopf hinter der Batterieanzeige.
+      padding: "var(--sa-top,0px) var(--sa-right,0px) var(--sa-bottom,0px) var(--sa-left,0px)"
     } },
       React.createElement("div", { style: {
         width: "100%", maxWidth: 480,
@@ -729,7 +733,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       position: "fixed", inset: 0, zIndex: 3000, cursor: "pointer", overflow: "hidden",
       background: "radial-gradient(ellipse at center 44%, rgba(" + rar.glow + ",0.14) 0%, rgba(2,4,10,0.95) 60%)",
       backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)",
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 24px) calc(var(--sa-right,0px) + 24px) calc(var(--sa-bottom,0px) + 24px) calc(var(--sa-left,0px) + 24px)"
     } },
       // Einmaliger Farbblitz
       h("div", { style: { position: "fixed", inset: 0, background: "rgba(" + rar.glow + ",0.55)", pointerEvents: "none", animation: "revealFlash 0.7s ease-out both" } }),
@@ -955,7 +959,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       );
     });
     return React.createElement("div", {
-      style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.94)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 20 }
+      style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.94)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
     },
       React.createElement("div", { style: {
         background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(251,191,36,0.3)",
@@ -1003,7 +1007,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     const cur = steps[i];
     const isLast = i >= steps.length - 1;
     return React.createElement("div", {
-      style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.95)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: 20 }
+      style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.95)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
     },
       React.createElement("div", { style: {
         background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(124,58,237,0.3)",
@@ -7125,15 +7129,26 @@ window.StackSiegeApp = function StackSiegeApp() {
   } }, "⚠ " + t('closeWarn'));
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
     background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
-    minHeight: "100dvh",
+    // **100% statt 100dvh.** Der Koerper ist bereits um die Sicherheitsbereiche
+    // verkuerzt; volle 100dvh machen das Menue hoeher als seinen Platz, und die
+    // Fusszeile verschwand unter dem Rand.
+    height: "100%",
+    // Rollbar, weil ein Menue auf einem kleinen Telefon laenger sein darf als
+    // der Schirm. Vorher wurde es schlicht abgeschnitten.
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
     display: "flex",
-    alignItems: "center",
+    // flex-start + margin:auto am Kind statt alignItems:center — zentriert,
+    // solange es passt, und schneidet oben NICHT ab, wenn es nicht passt.
+    // Mit alignItems:center waere der obere Teil in einem rollbaren Kasten
+    // unerreichbar.
+    alignItems: "flex-start",
     justifyContent: "center",
     fontFamily: "'Segoe UI',system-ui,sans-serif",
     color: "#eef2f9",
     padding: 16,
     boxSizing: "border-box"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
+  } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%", margin: "auto 0" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
     // v3.80.0: Der Name hat 13 Zeichen statt 8. Mit den alten 14vw lief er
     // auf einem schmalen Telefon rechts aus dem Bild. Gemessen, nicht geraten
     // — siehe Changelog.
@@ -7298,7 +7313,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.83.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.84.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+    // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
+    // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
+    // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
+    // Plattform-Weiche (ARCHITEKTUR.md E7).
+    !istNativ() && /* @__PURE__ */ React.createElement("div", { key: "recht" }, /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink')))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7330,7 +7350,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     return h("div", { key: "tutintro", style: {
       position: "fixed", inset: 0, zIndex: 1300, background: "rgba(2,6,15,0.93)",
       backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 16
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 16px) calc(var(--sa-right,0px) + 16px) calc(var(--sa-bottom,0px) + 16px) calc(var(--sa-left,0px) + 16px)"
     } },
       h("div", { style: {
         maxWidth: 440, width: "100%", maxHeight: "92vh", overflowY: "auto",
@@ -7648,7 +7668,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   })(),
   confirmWipe && /* @__PURE__ */ React.createElement("div", { onClick: () => setConfirmWipe(false), style: {
     position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.8)",
-    display: "flex", alignItems: "center", justifyContent: "center", padding: 22,
+    display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 22px) calc(var(--sa-right,0px) + 22px) calc(var(--sa-bottom,0px) + 22px) calc(var(--sa-left,0px) + 22px)",
     backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)"
   } }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: {
     maxWidth: 330, width: "100%", background: "linear-gradient(180deg, rgba(48,14,14,0.99), rgba(14,11,20,0.99))",
@@ -7788,7 +7808,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     return h("div", { onClick: () => setShowTasksModal(false), style: {
       position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
       backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 18
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)"
     } },
       h("div", { onClick: (e) => e.stopPropagation(), style: {
         maxWidth: 400, width: "100%",
@@ -7932,7 +7952,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     return h("div", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: {
       position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
       backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 18
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)"
     } },
       h("div", { onClick: (e) => e.stopPropagation(), style: {
         maxWidth: 420, width: "100%", maxHeight: "88vh", overflowY: "auto",
@@ -7971,7 +7991,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         return h("div", { onClick: (e) => { e.stopPropagation(); setConfirmBuy(null); }, style: {
           position: "fixed", inset: 0, zIndex: 1470, background: "rgba(2,6,15,0.75)",
           backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 24
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 24px) calc(var(--sa-right,0px) + 24px) calc(var(--sa-bottom,0px) + 24px) calc(var(--sa-left,0px) + 24px)"
         } },
           h("div", { onClick: (e) => e.stopPropagation(), style: {
             maxWidth: 320, width: "100%", textAlign: "center",
@@ -8190,7 +8210,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     return h("div", { key: "forgeModal", onClick: () => { setShowForge(false); setConfirmCraft(null); }, style: {
       position: "fixed", inset: 0, zIndex: 1150, background: "rgba(2,6,15,0.92)",
       backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 14
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 14px) calc(var(--sa-right,0px) + 14px) calc(var(--sa-bottom,0px) + 14px) calc(var(--sa-left,0px) + 14px)"
     } },
       h("div", { onClick: (e) => e.stopPropagation(), style: {
         maxWidth: 440, width: "100%", maxHeight: "90vh", overflowY: "auto",
@@ -8243,7 +8263,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           const rec = confirmCraft;
           return h("div", { onClick: () => setConfirmCraft(null), style: {
             position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.75)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 22,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 22px) calc(var(--sa-right,0px) + 22px) calc(var(--sa-bottom,0px) + 22px) calc(var(--sa-left,0px) + 22px)",
             backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)"
           } },
             h("div", { onClick: (e) => e.stopPropagation(), style: {
@@ -9368,7 +9388,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     return h("div", { key: "shopinfo", onClick: () => setShowShopInfo(false), style: {
       position: "fixed", inset: 0, zIndex: 1460, background: "rgba(2,6,15,0.9)",
       backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 18
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)"
     } },
       h("div", { onClick: (e) => e.stopPropagation(), style: {
         maxWidth: 420, width: "100%", maxHeight: "86vh", overflowY: "auto",
@@ -9543,7 +9563,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // v3.37.2: Pausierendes Coach-Popup OBEN. Der Vollbild-Container blockiert
     // alle Eingaben (Spiel pausiert: Timer/Bot/Kugeln stehen still); leichter
     // Dim-Hintergrund signalisiert die Pause. "OK" setzt fort.
-    style: { position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.35)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "calc(env(safe-area-inset-top, 0px) + 56px)", paddingLeft: 8, paddingRight: 8, pointerEvents: "auto" }
+    style: { position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.35)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "calc(env(safe-area-inset-top, 0px) + 56px)", paddingLeft: 8, paddingRight: 8, pointerEvents: "auto", padding: "var(--sa-top,0px) var(--sa-right,0px) var(--sa-bottom,0px) var(--sa-left,0px)" }
   }, /* @__PURE__ */ React.createElement("div", {
     key: "coach_" + coachMsg.key,
     style: { maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.97),rgba(8,145,178,0.97))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s" }
@@ -9560,7 +9580,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.32)", color: "#fff", borderRadius: 9, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, t('tutorialExit'))
     )
   )), showTutorialDone && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.9)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }
+    style: { position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.9)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
   }, /* @__PURE__ */ React.createElement("div", {
     style: { maxWidth: 380, width: "100%", textAlign: "center", background: "linear-gradient(160deg,#15082a,#0f1f2e)", border: "1px solid rgba(124,58,237,0.4)", borderRadius: 18, padding: 26, boxShadow: "0 20px 60px rgba(0,0,0,0.6)", animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both" }
   },
