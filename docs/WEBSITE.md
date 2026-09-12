@@ -25,6 +25,39 @@ node scripts/check-website.mjs build/website
 cd build/website && python3 -m http.server 8790   # nicht 8765/8766 — die belegt die Testsuite
 ```
 
+## Die Gestaltung
+
+Die erste Fassung sah aus wie jede Software-Produktseite: gläserne
+mitscrollende Kopfzeile, weiche Farbverläufe als „Licht", überall gerundete
+Karten zu dritt in einer Reihe, in jedem Abschnitt derselbe Takt aus
+Kleinüberschrift, Titel und Absatz. Für ein Spiel ist das die falsche Grammatik.
+
+Nachgesehen wurde in den Stylesheets von Threes, Alto's Odyssey, Mini Metro,
+Knotwords und Balatro. Die Begründungen stehen im Kopf von `stil.css`, hier nur
+die Kurzfassung:
+
+- **Die Wortmarke ist die Überschrift**, nicht ein Nutzenversprechen. Dazu eine
+  Zeile von höchstens sieben Wörtern.
+- **Grösste Schrift zu Fliesstext etwa 3:1**, und der Fliesstext gross (19 px).
+- **Versal, gesperrt, Zeilenhöhe unter eins** — das macht aus dem Namen einen
+  Block statt einer Textzeile.
+- **`ui-rounded` zuerst im Schriftstapel.** Alle Vorbilder benutzen geometrische
+  Rundschriften; iOS und macOS liefern eine mit, ohne dass etwas geladen wird.
+- **Jeder Abschnitt hat eine eigene flache Grundfarbe** — aus den sieben Welten
+  des Spiels (`src/engine/terrain.ts`), samt Weltnamen unten links wie im Spiel.
+- **Bildschirmfotos klein, viele, randlos**, ohne Geräte-Attrappe und ohne
+  Schatten. Die Zinnenkante oben ist eine Maske aus der Bildsprache des Spiels.
+- **Der Handlungsaufruf als Umriss-Pille**, die sich bei Überfahren von unten
+  füllt.
+
+Was bewusst **fehlt**, weil es nach Baukasten aussieht: Kopfnavigation mit fünf
+Punkten, Drei-Spalten-Karten mit Symbolen, „So funktioniert's" in drei
+Schritten, Zahlenreihen als Beleg, Kundenstimmen, Aufklapp-Fragen, ein zweiter
+schwächerer Knopf, weiche Verläufe, gekippte Telefon-Attrappen.
+
+**Pressezitate und Auszeichnungen** wären das nächste Mittel der Vorbilder. Die
+gibt es hier nicht, und erfunden werden sie nicht.
+
 ## Der TestFlight-Knopf
 
 Er steht **nur dann** auf der Seite, wenn die offene Beta wirklich Tester
@@ -35,8 +68,10 @@ accepting any new testers right now"; ein Knopf dorthin wäre dasselbe leere
 Versprechen wie ein App-Store-Abzeichen ohne App im Store.
 
 Entschieden wird das bei jedem Veröffentlichen: `testflight-stand.py` fragt
-Apple, `website-bauen.sh` schneidet den Block zwischen `TESTFLIGHT:ANFANG` und
-`TESTFLIGHT:ENDE` heraus, wenn die Antwort `nein` lautet. Ohne Apple-Zugang —
+Apple, `website-bauen.sh` behält einen von zwei Blöcken — `TESTFLIGHT:ANFANG …
+TESTFLIGHT:ENDE`, wenn die Beta offen ist, sonst `WARTEN:ANFANG … WARTEN:ENDE`
+mit dem Browser-Knopf und einem Satz zum Stand. Die Seite wirbt für die App;
+ohne Ersatzblock hätte sie solange gar keinen Handlungsaufruf. Ohne Apple-Zugang —
 also bei einem Bau von Hand — fällt er ebenfalls weg: Die vorsichtige Annahme
 ist die richtige, wenn niemand nachgesehen hat.
 
