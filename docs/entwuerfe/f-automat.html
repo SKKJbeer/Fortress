@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entwurf F — Automat</title>
+<style>
+/* ENTWURF F — „Automat"
+   Der Anfang SPIELT. Wie der Vorfuehrmodus eines Spielautomaten laufen oben
+   dauerhaft Steine herunter und stapeln sich zu einer Mauer, waehrend darunter
+   eine Kanone feuert. Alles aus CSS-Rechtecken — kein Video, kein Bild, kein
+   Skript, keine fremde Anfrage.
+   Dazu Neon-Kanten und eine Laufschrift. Laut und in Bewegung.
+   `prefers-reduced-motion` friert alles ein. */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --grund:#0a0a14; --feld:#10101f; --ink:#f5f6ff; --ink2:#9aa0c0;
+  --blau:#3b82f6; --rot:#ef4444; --gruen:#22c55e; --gold:#fbbf24; --pink:#e879f9;
+  --f:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--grund);color:var(--ink);font-family:var(--f);font-size:18px;
+  line-height:1.5;font-weight:700;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+.bahn{max-width:1040px;margin-inline:auto;padding-inline:24px}
+
+/* ── Laufschrift oben ─────────────────────────────────────────────────── */
+.marquee{background:var(--gold);color:#14100a;overflow:hidden;white-space:nowrap;
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase;font-weight:900;padding:7px 0}
+.marquee div{display:inline-block;animation:lauf 18s linear infinite}
+@keyframes lauf{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.marquee span{padding:0 26px}
+
+/* ── Der Automat: ein Brett, auf dem etwas passiert ───────────────────── */
+.anfang{display:grid;gap:clamp(28px,5vw,58px);grid-template-columns:1fr;
+  align-items:center;padding-block:clamp(40px,7vw,90px)}
+@media(min-width:880px){.anfang{grid-template-columns:1.05fr .95fr}}
+
+h1{margin:0;font-size:clamp(42px,10vw,92px);line-height:.88;font-weight:900;
+  letter-spacing:-.02em;text-transform:uppercase;
+  text-shadow:0 0 24px rgba(59,130,246,.55)}
+h1 .b{color:var(--blau)} h1 .r{color:var(--rot)} h1 .g{color:var(--gold)}
+.satz{font-size:clamp(19px,2.8vw,26px);font-weight:900;margin:24px 0 0;max-width:20ch}
+.klein{color:var(--ink2);margin:13px 0 0;max-width:36ch;font-size:17px;font-weight:600}
+
+.knopf{display:inline-flex;align-items:center;gap:11px;margin-top:28px;text-decoration:none;
+  background:var(--gold);color:#14100a;font-weight:900;font-size:16px;letter-spacing:.08em;
+  text-transform:uppercase;padding:15px 30px;border-radius:6px;
+  box-shadow:0 0 0 3px #14100a,0 0 26px rgba(251,191,36,.6);
+  animation:pochen 2.6s ease-in-out infinite}
+@keyframes pochen{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+.knopf:hover{animation:none;transform:scale(1.05)}
+.knopf svg{width:19px;height:19px}
+.neben{display:block;margin-top:14px;color:var(--ink2);font-size:15px;font-weight:600}
+
+/* Das Brett: 10 Spalten, Steine fallen herein und bleiben liegen. */
+.brett{position:relative;aspect-ratio:10/16;background:var(--feld);
+  border:3px solid #1e1e36;border-radius:6px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,.05),0 26px 60px -24px #000;
+  background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:10% 6.25%}
+.stein{position:absolute;width:10%;height:6.25%;border-radius:2px;
+  animation:runter 4.4s cubic-bezier(.4,0,.9,1) infinite}
+@keyframes runter{
+  0%{top:-8%;opacity:0}
+  6%{opacity:1}
+  60%{opacity:1}
+  62%,100%{opacity:1}
+}
+/* Jeder Stein bekommt sein Ziel und seinen Takt. */
+.s1{left:10%;background:var(--blau);animation-delay:0s;--z:81.25%}
+.s2{left:20%;background:var(--blau);animation-delay:.5s;--z:81.25%}
+.s3{left:30%;background:var(--rot);animation-delay:1s;--z:81.25%}
+.s4{left:40%;background:var(--gold);animation-delay:1.5s;--z:81.25%}
+.s5{left:50%;background:var(--gruen);animation-delay:2s;--z:81.25%}
+.s6{left:60%;background:var(--blau);animation-delay:2.5s;--z:81.25%}
+.s7{left:70%;background:var(--rot);animation-delay:3s;--z:81.25%}
+.stein{top:81.25%}
+.stein{animation-name:fallen}
+@keyframes fallen{
+  0%{transform:translateY(-1300%);opacity:0}
+  5%{opacity:1}
+  55%{transform:translateY(0);opacity:1}
+  58%{transform:translateY(-6%)}
+  61%{transform:translateY(0)}
+  92%{transform:translateY(0);opacity:1}
+  100%{transform:translateY(0);opacity:0}
+}
+/* Die liegende Mauer darunter. */
+.reihe{position:absolute;left:0;right:0;bottom:0;height:6.25%;display:flex}
+.reihe i{flex:1;background:#26304a;border-right:1px solid #10101f}
+.burg{position:absolute;left:30%;bottom:6.25%;width:40%;height:12.5%;background:#cbd5e1;border-radius:3px}
+/* Eine Kugel fliegt von unten links quer und schlaegt oben rechts ein. */
+.ball{position:absolute;width:5%;height:3.125%;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 14px 3px rgba(251,191,36,.8);animation:schuss 3.6s 1.2s linear infinite}
+@keyframes schuss{
+  0%{left:4%;bottom:10%;opacity:0}
+  8%{opacity:1}
+  70%{left:74%;bottom:74%;opacity:1}
+  76%{opacity:0;transform:scale(2.2)}
+  100%{opacity:0}
+}
+
+/* ── Kacheln, die auf Beruehrung reagieren ────────────────────────────── */
+.abschnitt{padding-block:clamp(46px,7vw,96px);border-top:2px solid #1b1b30}
+h2{margin:0 0 14px;font-size:clamp(28px,4.8vw,46px);line-height:1.04;font-weight:900;letter-spacing:-.02em}
+h2 em{font-style:normal;color:var(--rot)}
+.abschnitt p{color:var(--ink2);max-width:42ch;margin:0 0 10px;font-weight:600}
+.kacheln{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));margin-top:28px}
+.kacheln figure{margin:0;transition:transform .22s cubic-bezier(.34,1.56,.64,1)}
+.kacheln figure:hover{transform:translateY(-10px) rotate(-1.2deg)}
+.kacheln img{width:100%;border:3px solid #1e1e36;border-radius:4px}
+.kacheln figcaption{margin-top:12px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+.fuss{border-top:2px solid #1b1b30;padding:24px 0 44px;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink2)}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .stein{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<div class="marquee"><div>
+  <span>Kostenlos</span><span>·</span><span>Keine Werbung</span><span>·</span><span>Kein Pay-to-Win</span><span>·</span><span>1–3 Spieler</span><span>·</span><span>Zu zweit an einem Gerät</span><span>·</span>
+  <span>Kostenlos</span><span>·</span><span>Keine Werbung</span><span>·</span><span>Kein Pay-to-Win</span><span>·</span><span>1–3 Spieler</span><span>·</span><span>Zu zweit an einem Gerät</span><span>·</span>
+</div></div>
+
+<div class="bahn anfang">
+  <div>
+    <h1><span class="b">Stack</span> <span class="g">&amp;</span><br><span class="r">Siege</span></h1>
+    <p class="satz">Eine Lücke, und die Burg fällt.</p>
+    <p class="klein">Burgenduell fürs iPhone. Du baust deinen Wall aus fallenden Steinen, der Gegner schießt ihn dir wieder auf.</p>
+    <a class="knopf" href="#">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      Beta laden
+    </a>
+    <span class="neben">Oder sofort im Browser spielen.</span>
+  </div>
+
+  <div class="brett" role="img" aria-label="Schematische Darstellung: Steine fallen auf eine Mauer, eine Kugel fliegt quer über das Feld.">
+    <div class="stein s1"></div><div class="stein s2"></div><div class="stein s3"></div>
+    <div class="stein s4"></div><div class="stein s5"></div><div class="stein s6"></div>
+    <div class="stein s7"></div>
+    <div class="burg"></div>
+    <div class="reihe"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="ball"></div>
+  </div>
+</div>
+
+<section class="abschnitt"><div class="bahn">
+  <h2>Geschlossen heißt <em>geschlossen</em>.</h2>
+  <p>Am Ende der Bauphase lässt das Spiel Wasser von außen in dein Feld laufen. Erreicht es deine Burg, bist du raus. Diagonale zählen — und deine Kanonen sind keine Mauer.</p>
+  <div class="kacheln">
+    <figure><img src="../website/bilder/game.jpg" width="780" height="1688" alt="Bauphase"><figcaption>Bauen · 25 s</figcaption></figure>
+    <figure><img src="../website/bilder/shoot.jpg" width="780" height="1688" alt="Schussphase"><figcaption>Schießen · 20 s</figcaption></figure>
+    <figure><img src="../website/bilder/shop.jpg" width="780" height="1688" alt="Rüstphase"><figcaption>Rüsten · 15 s</figcaption></figure>
+    <figure><img src="../website/bilder/zwei.jpg" width="780" height="1688" alt="Zu zweit"><figcaption>Zu zweit</figcaption></figure>
+    <figure><img src="../website/bilder/drei.jpg" width="780" height="1688" alt="Zu dritt"><figcaption>Zu dritt</figcaption></figure>
+  </div>
+</div></section>
+
+<div class="bahn fuss">Stack &amp; Siege · Entwurf F „Automat"</div>
+
+</body>
+</html>

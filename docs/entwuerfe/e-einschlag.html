@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entwurf E — Einschlag</title>
+<style>
+/* ENTWURF E — „Einschlag"
+   Kinoreif und in Schichten: Der Anfang besteht aus drei Ebenen, die beim
+   Scrollen unterschiedlich schnell laufen (Parallaxe wie bei Alto's Odyssey,
+   dort neun Ebenen). Darueber fliegen Kugeln, die Ueberschrift zittert beim
+   Einschlag, und die Bildschirmfotos ziehen als Reihe seitlich durch.
+   Alles aus CSS, kein Skript, keine fremde Anfrage. */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --grund:#05060d; --ink:#fff; --ink2:#a9aec4;
+  --blau:#4d8dff; --rot:#ff4d4d; --gold:#ffc233;
+  --f:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--grund);color:var(--ink);font-family:var(--f);font-size:18px;
+  line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+.bahn{max-width:1080px;margin-inline:auto;padding-inline:26px}
+
+/* ── Anfang in Schichten ──────────────────────────────────────────────── */
+.buehne{position:relative;height:100vh;min-height:560px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center}
+.schicht{position:absolute;inset:-10% -5%;pointer-events:none}
+/* Hinten: ein weites Sternfeld, langsam. */
+.s1{background:
+  radial-gradient(2px 2px at 12% 22%,rgba(255,255,255,.55),transparent),
+  radial-gradient(2px 2px at 68% 14%,rgba(255,255,255,.4),transparent),
+  radial-gradient(1.5px 1.5px at 34% 68%,rgba(255,255,255,.45),transparent),
+  radial-gradient(2px 2px at 84% 74%,rgba(255,255,255,.35),transparent),
+  radial-gradient(1.5px 1.5px at 52% 44%,rgba(255,255,255,.3),transparent);
+  animation:treiben 26s linear infinite}
+/* Mitte: der Fluss als Band. */
+.s2{background:linear-gradient(180deg,transparent 46%,rgba(77,141,255,.22) 50%,transparent 56%);
+  animation:treiben2 18s ease-in-out infinite alternate}
+/* Vorn: ein dunkler Rahmen, der den Blick fuehrt. */
+.s3{background:radial-gradient(72% 62% at 50% 48%,transparent 40%,rgba(5,6,13,.92) 100%)}
+@keyframes treiben{from{transform:translate3d(0,0,0)}to{transform:translate3d(-40px,18px,0)}}
+@keyframes treiben2{from{transform:translateY(-14px)}to{transform:translateY(14px)}}
+
+@supports (animation-timeline: scroll()){
+  .s1{animation:tiefe1 linear both;animation-timeline:scroll(root block)}
+  .s2{animation:tiefe2 linear both;animation-timeline:scroll(root block)}
+}
+@keyframes tiefe1{to{transform:translateY(-70px) scale(1.06)}}
+@keyframes tiefe2{to{transform:translateY(-180px)}}
+
+.buehne .bahn{position:relative;z-index:2}
+h1{margin:0;font-size:clamp(46px,12vw,120px);line-height:.86;letter-spacing:-.035em;
+  font-weight:900;text-transform:uppercase;animation:zittern 6s 1.4s ease-in-out infinite}
+/* Der Einschlag: ein kurzes, hartes Zittern, dann lange Ruhe. */
+@keyframes zittern{
+  0%,86%,100%{transform:none}
+  87%{transform:translate(-6px,3px) rotate(-.5deg)}
+  89%{transform:translate(5px,-3px) rotate(.4deg)}
+  91%{transform:translate(-3px,2px)}
+  93%{transform:translate(2px,-1px)}
+  95%{transform:none}
+}
+h1 .b{color:var(--blau)} h1 .r{color:var(--rot)}
+.satz{font-size:clamp(19px,2.8vw,27px);font-weight:700;margin:26px auto 0;max-width:22ch}
+.klein{color:var(--ink2);margin:12px auto 0;max-width:38ch;font-size:16px}
+
+/* Kugeln, die quer durchs Bild fliegen. */
+.kugel{position:absolute;z-index:1;width:10px;height:10px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 16px 3px rgba(255,194,51,.8)}
+.k1{top:30%;animation:quer 5.2s .4s linear infinite}
+.k2{top:62%;width:7px;height:7px;animation:quer 6.8s 2.1s linear infinite}
+.k3{top:46%;width:12px;height:12px;background:var(--rot);box-shadow:0 0 18px 4px rgba(255,77,77,.7);
+  animation:quer 8s 4.4s linear infinite}
+@keyframes quer{
+  0%{left:-4%;opacity:0}
+  6%{opacity:1}
+  88%{opacity:1}
+  100%{left:104%;opacity:0}
+}
+
+.knopf{display:inline-flex;align-items:center;gap:11px;margin-top:30px;text-decoration:none;
+  background:var(--ink);color:#05060d;font-weight:800;font-size:16px;padding:16px 32px;border-radius:100px;
+  transition:transform .18s,box-shadow .18s}
+.knopf:hover{transform:translateY(-3px);box-shadow:0 14px 34px -10px rgba(255,255,255,.5)}
+.knopf svg{width:19px;height:19px}
+.neben{display:block;margin-top:14px;color:var(--ink2);font-size:15px}
+
+/* ── Laufband: die Bilder ziehen durch ────────────────────────────────── */
+.band{overflow:hidden;padding-block:clamp(44px,7vw,86px);border-block:1px solid #171a2b}
+.spur{display:flex;gap:18px;width:max-content;animation:ziehen 34s linear infinite}
+.band:hover .spur{animation-play-state:paused}
+@keyframes ziehen{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.spur img{width:176px;border:1px solid #222741;flex:0 0 auto}
+.bandtext{margin-bottom:26px}
+h2{margin:0 0 14px;font-size:clamp(28px,4.8vw,48px);line-height:1.04;font-weight:900;letter-spacing:-.025em}
+h2 em{font-style:normal;color:var(--rot)}
+p{margin:0 0 10px;color:var(--ink2);max-width:42ch}
+
+/* ── Regel mit berstender Mauer ───────────────────────────────────────── */
+.regel{padding-block:clamp(50px,8vw,104px)}
+.regel .bahn{display:grid;gap:clamp(26px,4vw,54px);grid-template-columns:1fr;align-items:center}
+@media(min-width:820px){.regel .bahn{grid-template-columns:1fr 250px}}
+.mauer{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:236px;margin-inline:auto}
+.mauer i{aspect-ratio:1;background:#141828;border-radius:2px}
+.mauer i.w{background:#b34a3c}
+.mauer i.k{background:#cbd5e1}
+.mauer i.l{background:transparent;outline:2px dashed var(--rot);outline-offset:-2px;animation:puls 1.6s ease-in-out infinite}
+/* Zwei Steine neben der Luecke wackeln, als sei gerade etwas eingeschlagen. */
+.mauer i.z{animation:wackel 3.4s ease-in-out infinite}
+.mauer i.z:nth-of-type(2n){animation-delay:.4s}
+@keyframes puls{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes wackel{0%,92%,100%{transform:none}94%{transform:translate(2px,-2px) rotate(3deg)}97%{transform:translate(-1px,1px) rotate(-2deg)}}
+
+.fuss{padding:26px 0 46px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6d7288;font-weight:800}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="buehne">
+  <div class="schicht s1"></div>
+  <div class="schicht s2"></div>
+  <div class="kugel k1"></div><div class="kugel k2"></div><div class="kugel k3"></div>
+  <div class="schicht s3"></div>
+  <div class="bahn">
+    <h1><span class="b">Stack</span><br>&amp; <span class="r">Siege</span></h1>
+    <p class="satz">Eine Lücke, und die Burg fällt.</p>
+    <p class="klein">Burgenduell fürs iPhone. Du baust deinen Wall aus fallenden Steinen, der Gegner schießt ihn dir wieder auf.</p>
+    <a class="knopf" href="#">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      Beta laden
+    </a>
+    <span class="neben">Oder sofort im Browser spielen.</span>
+  </div>
+</div>
+
+<section class="band">
+  <div class="bahn bandtext">
+    <h2>Bauen. Schießen. Rüsten.</h2>
+    <p>Einmal aufstellen, danach im Takt. Eine Minute pro Runde — ihr spielt gleichzeitig.</p>
+  </div>
+  <div class="spur">
+    <img src="../website/bilder/game.jpg" width="780" height="1688" alt="Bauphase">
+    <img src="../website/bilder/shoot.jpg" width="780" height="1688" alt="Schussphase">
+    <img src="../website/bilder/shop.jpg" width="780" height="1688" alt="Rüstphase">
+    <img src="../website/bilder/zwei.jpg" width="780" height="1688" alt="Zu zweit">
+    <img src="../website/bilder/drei.jpg" width="780" height="1688" alt="Zu dritt">
+    <img src="../website/bilder/game.jpg" width="780" height="1688" alt="Bauphase">
+    <img src="../website/bilder/shoot.jpg" width="780" height="1688" alt="Schussphase">
+    <img src="../website/bilder/shop.jpg" width="780" height="1688" alt="Rüstphase">
+    <img src="../website/bilder/zwei.jpg" width="780" height="1688" alt="Zu zweit">
+    <img src="../website/bilder/drei.jpg" width="780" height="1688" alt="Zu dritt">
+  </div>
+</section>
+
+<section class="regel"><div class="bahn">
+  <div>
+    <h2>Geschlossen heißt <em>geschlossen</em>.</h2>
+    <p>Am Ende der Bauphase lässt das Spiel Wasser von außen in dein Feld laufen. Erreicht es deine Burg, bist du raus.</p>
+    <p>Diagonale zählen. Zwei Steine, die sich nur an der Ecke berühren, halten nichts auf — und deine Kanonen sind keine Mauer.</p>
+  </div>
+  <div class="mauer" role="img" aria-label="Mauerring mit einer Lücke oben rechts">
+    <i class="w z"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w z"></i><i class="l"></i><i class="w z"></i>
+    <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+    <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+    <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+    <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+    <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+  </div>
+</div></section>
+
+<div class="bahn fuss">Stack &amp; Siege · Entwurf E „Einschlag"</div>
+
+</body>
+</html>
