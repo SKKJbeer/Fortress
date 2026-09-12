@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Ohne .html: Cloudflare Pages leitet /impressum.html dauerhaft auf
+     /impressum um (gemessen: 308). Eine Sitemap, die auf Umleitungen zeigt,
+     nennt Suchmaschinen absichtlich die zweitbeste Adresse. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://stack-and-siege.pages.dev/</loc>
@@ -6,17 +9,17 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://stack-and-siege.pages.dev/impressum.html</loc>
+    <loc>https://stack-and-siege.pages.dev/impressum</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://stack-and-siege.pages.dev/privacy.html</loc>
+    <loc>https://stack-and-siege.pages.dev/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://stack-and-siege.pages.dev/agb.html</loc>
+    <loc>https://stack-and-siege.pages.dev/agb</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
