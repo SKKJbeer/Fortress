@@ -15,7 +15,7 @@
 // ohne 10.000 Zeilen anzufassen.
 import React from "react";
 import * as ReactDOM from "react-dom/client";
-import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, FAN_SPREAD, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from '../engine/const.ts';
+import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME, SETUP_TIME, CANNON_HP, RELOAD_MS, KILL_BLAST, SLAYER_DMG, FAN_SPREAD, FAN_CHANCE, GRAV, EMPTY, WALL1, WALL2, CANNON1, CANNON2, RUBBLE, CASTLE1, CASTLE2, RIVER, MOUNTAIN, WALL3, CANNON3, CASTLE3, RUBBLE_C, WALL_OF, CANNON_OF, CASTLE_OF, CASTLE_P1, CASTLE_P2, C1, C2 } from '../engine/const.ts';
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from '../engine/economy.ts';
 const SHOP_SLAYER = SHOP.slayer.price;
 const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
@@ -4326,13 +4326,18 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Bezwinger BUENDELN auf ein Ziel (Fokusfeuer — bei 12 Trefferpunkten je
       // Kanone ist verteiltes Feuer verschenkt). Gemessen: Fokusfeuer macht
       // den Unterschied zwischen 19/24 und 9/24 entschiedenen Partien.
-      // ── Salvenform (v3.60.0) ────────────────────────────────────────────
+      // ── Salvenform (v3.60.0, geaendert v3.83.0) ─────────────────────────
       // Die ERSTE Kanone trifft garantiert die anvisierte Zelle — wer zielt,
-      // wird belohnt. Jede weitere streut zufaellig um bis zu FAN_SPREAD
-      // Zellen; sie darf dabei auch auf DERSELBEN Zelle landen wie die erste.
-      // So bleibt das Zielen verlaesslich, und die Salve reisst trotzdem eine
-      // breitere, unregelmaessige Bresche statt eines gestanzten Musters.
-      if (index > 0) {
+      // wird belohnt. Jede WEITERE traf bis v3.82.0 immer irgendwo im Quadrat
+      // ±FAN_SPREAD; bei Spannweite 2 sind das 25 Zellen, die anvisierte
+      // darunter genau eine. Auf dem Telefon fuehlte sich das an, als ginge
+      // die Salve auseinander statt dorthin, wohin man zeigt.
+      //
+      // Jetzt streut sie nur mit Wahrscheinlichkeit FAN_CHANCE — sonst trifft
+      // auch sie die anvisierte Zelle. Begruendung und Preis stehen bei der
+      // Konstante in engine/const.ts.
+      const streut = (XF && XF.faecherChance != null) ? XF.faecherChance : FAN_CHANCE;
+      if (index > 0 && Math.random() < streut) {
         const R2 = (XF && XF.faecherSpan) || FAN_SPREAD;
         const dc = Math.floor(Math.random() * (R2 * 2 + 1)) - R2;
         const dr = Math.floor(Math.random() * (R2 * 2 + 1)) - R2;
@@ -7293,7 +7298,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.82.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.83.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.

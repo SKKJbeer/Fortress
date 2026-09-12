@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.82.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.83.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5572,5 +5572,33 @@ Bild. Zwei Entscheidungen darin:
 Versteckt hinter fuenf Tipps, weil sie niemanden stoeren soll, der sie nicht
 sucht, und ohne Eintrag im Menue, weil sie kein Spiel-Merkmal ist, sondern ein
 Messgeraet.
+
+Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).
+
+---
+
+## v3.83.0 — Die Salve geht dahin, wohin man zeigt
+
+Vom Geraet gemeldet: „das geht bei iOS sehr weit auseinander". Nachgerechnet
+stimmt das auch fuer den Browser, es faellt dort nur weniger auf.
+
+Seit v3.60.0 traf die erste Kanone exakt die anvisierte Zelle, **jede weitere
+aber IMMER** irgendwo im Quadrat ±FAN_SPREAD. Bei Spannweite 2 sind das 25
+moegliche Zellen — die anvisierte darunter genau eine. Die zweite Kugel landete
+also **in 4 % der Faelle** dort, wohin gezielt wurde.
+
+Jetzt streut sie nur noch mit Wahrscheinlichkeit `FAN_CHANCE` (0,25). Gemessen
+ueber 200 000 Ziehungen: **76 % statt 4 %**.
+
+**Der Preis, offen benannt.** Eine normale Mauer faellt bei EINEM Treffer — sie
+wird zu Truemmern. Eine zweite Kugel auf dieselbe Zelle richtet gegen sie also
+nichts mehr aus. Gegen PANZERMAUERN, die zwei Treffer brauchen, ist gebuendeltes
+Feuer dagegen jetzt deutlich besser. Die Aenderung verschiebt das Spiel von
+Flaeche zu Durchschlag; genau dafuer war der Faecher 2026 eingefuehrt worden,
+und genau deshalb stehen beide Werte als benannte Konstanten beieinander in
+`engine/const.ts`, statt im Code verstreut zu sein.
+
+Ob die Verschiebung dem Spiel guttut, entscheidet das Spielen — nicht diese
+Datei. Eine Bot-gegen-Bot-Messreihe kann sie beziffern, wenn gewuenscht.
 
 Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).

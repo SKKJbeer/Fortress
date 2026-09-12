@@ -72,12 +72,27 @@ export const KILL_BLAST = 2;
 // Mauerbrechers, weil je Salve nur EINE Kanonenart feuert — gemessen bricht
 // das System bei Schaden 1 zusammen (5/32 entschiedene Partien statt 19/32).
 export const SLAYER_DMG = 3;
-// Streuung der Salve in Zellen (v3.60.0). Die ERSTE Kanone trifft immer exakt
-// die anvisierte Zelle; jede weitere streut zufaellig um bis zu FAN_SPREAD
-// Zellen in beide Richtungen — und darf dabei auch dieselbe Zelle treffen wie
-// die erste. Zielen bleibt damit verlaesslich, die Bresche wird trotzdem
-// breiter und unregelmaessiger.
+// Streuung der Salve in Zellen (v3.60.0, geaendert v3.83.0).
+//
+// Die ERSTE Kanone trifft immer exakt die anvisierte Zelle. Jede weitere traf
+// bis v3.82.0 IMMER irgendwo im Quadrat ±FAN_SPREAD — bei Spannweite 2 sind
+// das 25 moegliche Zellen, die anvisierte darunter genau eine. Auf dem Telefon
+// fuehlte sich das an, als ginge die Salve auseinander, statt dorthin zu
+// gehen, wohin man zeigt.
+//
+// Jetzt streut eine weitere Kugel nur noch MIT WAHRSCHEINLICHKEIT
+// FAN_CHANCE; sonst trifft auch sie die anvisierte Zelle. Zielen wird damit
+// verlaesslich, und die Salve reisst gelegentlich trotzdem eine breitere
+// Bresche.
+//
+// **Der Preis, offen benannt:** Eine normale Mauer faellt bei EINEM Treffer
+// (sie wird zu Truemmern). Eine zweite Kugel auf dieselbe Zelle richtet gegen
+// sie also nichts mehr aus — gegen PANZERMAUERN dagegen, die zwei Treffer
+// brauchen, ist gebuendeltes Feuer jetzt deutlich besser. Die Aenderung
+// verschiebt das Spiel also von Flaeche zu Durchschlag. Beide Werte stehen
+// hier, damit sich das ohne Suche nachjustieren laesst.
 export const FAN_SPREAD = 2;
+export const FAN_CHANCE = 0.25;
 export const GRAV = 0.07;
 export const EMPTY = 0, WALL1 = 1, WALL2 = 2, CANNON1 = 3, CANNON2 = 4, RUBBLE = 5, CASTLE1 = 6, CASTLE2 = 7, RIVER = 8, MOUNTAIN = 9, WALL3 = 10, CANNON3 = 11, CASTLE3 = 12
 // v3.31.1: Kanonen-Trümmer als EIGENER Typ — Reparatur (repairRubble) darf nur
