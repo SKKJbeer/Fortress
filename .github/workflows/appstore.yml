@@ -17,6 +17,7 @@ on:
           - stand      # nur lesen und berichten
           - anlegen    # zusaetzlich die App-ID registrieren
           - fuellen    # zusaetzlich Texte und Pruefhinweise eintragen
+          - testflight # internen Tester-Kreis einrichten, Bau zuordnen
 
 permissions:
   contents: read
@@ -67,7 +68,8 @@ jobs:
           ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
         run: |
           case "${{ inputs.modus }}" in
-            anlegen) python3 scripts/asc.py --anlegen ;;
-            fuellen) python3 scripts/asc.py --fuellen ;;
-            *)       python3 scripts/asc.py --stand ;;
+            anlegen)    python3 scripts/asc.py --anlegen ;;
+            fuellen)    python3 scripts/asc.py --fuellen ;;
+            testflight) python3 scripts/asc-testflight.py ;;
+            *)          python3 scripts/asc.py --stand ;;
           esac
