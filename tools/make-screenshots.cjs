@@ -157,18 +157,22 @@ async function fuerZiel(browser, ziel) {
   await ctx.close();
 }
 
-// Ein Bild vom Spiel zu DRITT an einem Geraet — nur fuer die Website.
+// Bilder vom Spiel zu ZWEIT und zu DRITT an EINEM Geraet — nur fuer die Website.
 //
-// Es entsteht in einem eigenen Durchgang, weil die Bot-Selbststeuerung hier
+// Sie entstehen in eigenen Durchgaengen, weil die Bot-Selbststeuerung hier
 // nicht greift: `botTick` laeuft nur im Bot-Modus und bewegt hoechstens zwei
-// Spieler. Ein lokales Dreierspiel hat keinen Bot, das Brett bliebe leer,
-// wenn man auf gespielte Zuege wartet.
+// Spieler. Eine lokale Partie hat keinen Bot, das Brett bliebe leer, wenn man
+// auf gespielte Zuege wartet.
 //
-// Das schadet nichts — die Aussage des Bildes ist eine andere: DREI Burgen und
-// ein Fluss, der sich in drei Arme teilt. Genau das unterscheidet die
-// Dreierpartie sichtbar von der zu zweit, und genau dafuer steht es auf der
-// Seite.
-async function dreiSpieler(browser, ziel) {
+// Das schadet nichts, denn die Aussage der Bilder ist eine andere: UNTEN steht
+// fuer jeden Mitspieler ein eigenes Bauteil-Feld. Genau das zeigt, dass hier
+// zwei oder drei Leute gleichzeitig an einem Geraet spielen und nicht
+// abwechselnd — und beim Dreier zusaetzlich der Fluss mit seinen drei Armen.
+//
+// Aufgenommen wird in TELEFON-Groesse. Ein Bild in Tablet-Format waere ein
+// Versprechen, das die Seite nicht halten soll: Es geht auf jedem Geraet, auf
+// dem das Spiel laeuft.
+async function lokalePartie(browser, ziel, spieler) {
   const out = path.join(ROOT, ziel.out);
   fs.mkdirSync(out, { recursive: true });
   const ctx = await browser.newContext({
@@ -183,11 +187,12 @@ async function dreiSpieler(browser, ziel) {
   await p.waitForTimeout(1200);
 
   await click(p, ['LOKAL']); await p.waitForTimeout(300);
-  await click(p, ['3 Spieler']);
+  await click(p, [spieler === 3 ? '3 Spieler' : '2 Spieler']);
   await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
 
-  // Auf die Bauphase OHNE Schild warten: das Banner deckt sonst den oberen
-  // Teil des Bretts ab, und dort steht eine der drei Burgen.
+  // Auf die Bauphase OHNE Schild warten: Erstens deckt das Banner den oberen
+  // Teil des Bretts ab, zweitens gibt es die Bauteil-Felder NUR in der
+  // Bauphase — und genau die sind die Aussage des Bildes.
   //
   // **Zwei Minuten, und das ist kein grosszuegiger Puffer.** Runde 1 hat GAR
   // KEINE Bauphase: Nach dem Aufstellen folgt sofort Schiessen, dann Ruesten,
@@ -197,9 +202,9 @@ async function dreiSpieler(browser, ziel) {
     if (await phase(p) !== 'build') return false;
     return await p.evaluate(() => !document.querySelector('div[style*="phasebanner"]'));
   }, 120000);
-  if (!ok) throw new Error('kein sauberes Bild fuer das Dreierspiel');
+  if (!ok) throw new Error('kein sauberes Bild fuer die Partie zu ' + spieler);
 
-  const datei = 'drei' + (ziel.jpeg ? '.jpg' : '.png');
+  const datei = (spieler === 3 ? 'drei' : 'zwei') + (ziel.jpeg ? '.jpg' : '.png');
   await p.screenshot(ziel.jpeg
     ? { path: path.join(out, datei), type: 'jpeg', quality: ziel.jpeg }
     : { path: path.join(out, datei) });
@@ -222,7 +227,10 @@ async function dreiSpieler(browser, ziel) {
     if (nur && ziel.name !== nur) continue;
     console.log(' ' + ziel.name + ' (' + (ziel.w * ziel.scale) + 'x' + (ziel.h * ziel.scale) + ')');
     await fuerZiel(browser, ziel);
-    if (ziel.name === 'website') await dreiSpieler(browser, ziel);
+    if (ziel.name === 'website') {
+      await lokalePartie(browser, ziel, 2);
+      await lokalePartie(browser, ziel, 3);
+    }
   }
   await browser.close();
   console.log('\n fertig');
