@@ -21,10 +21,16 @@ Schnittstelle es nicht anbietet (drueben im Schwesterprojekt nachgemessen):
 Diese drei bleiben Handarbeit und werden am Ende einzeln benannt.
 
 Umgebung: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (der Dateiinhalt, nicht
-kodiert). Fuer die Angaben zur Pruefung zusaetzlich ASC_KONTAKT_NAME,
-ASC_KONTAKT_MAIL, ASC_KONTAKT_TELEFON — die liegen bewusst NICHT im
-Repository, weil private Kontaktdaten in keine Datei gehoeren, die einmal
-oeffentlich stehen koennte.
+kodiert). Fuer die Angaben zur Pruefung zusaetzlich ASC_KONTAKT_TELEFON — die
+Nummer steht nirgends sonst und gehoert deshalb in ein Geheimnis.
+
+Name und E-Mail nimmt das Skript aus `public/impressum.html`, wenn kein
+ASC_KONTAKT_NAME beziehungsweise ASC_KONTAKT_MAIL gesetzt ist. Hier stand
+frueher, private Kontaktdaten gehoerten in keine Datei, die oeffentlich stehen
+koennte — fuer diese beiden traegt das seit dem 12.09. nicht mehr: Ein
+Impressum ist per Gesetz oeffentlich, und zwei Stellen mit demselben Wert
+laufen irgendwann auseinander. Ein gesetztes Geheimnis geht trotzdem vor, denn
+der Kontakt fuer die Pruefung darf ein anderer sein als der im Impressum.
 """
 
 import json
@@ -282,6 +288,29 @@ def texte_der_fassung(apple: Apple, version: str, texte: dict, fuellen: bool):
         else f"Fassungstexte nicht eintragbar ({stand}): {kurz(antwort)}")
 
 
+def impressum_kontakt() -> dict:
+    """Name und E-Mail aus dem Impressum — der einen Stelle, an der sie stehen.
+
+    Gelesen wird der fett gesetzte Name im Abschnitt „Diensteanbieter" und die
+    erste mailto-Adresse. Findet sich eines von beidem nicht, kommt ein leerer
+    Eintrag zurueck und der Aufrufer meldet den Punkt als Handarbeit — raten
+    waere hier schlechter als zugeben.
+    """
+    datei = pathlib.Path(__file__).resolve().parent.parent / "public" / "impressum.html"
+    try:
+        text = datei.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    # **Ab dem Abschnitt suchen, nicht von vorn.** Das erste <b> der Seite ist
+    # „Stand:" in der Kopfzeile — genau das kam beim ersten Versuch heraus.
+    ab = text.find("Diensteanbieter")
+    rest = text[ab:] if ab >= 0 else text
+    name = re.search(r"<b>([^<\[]{3,60})</b>", rest)
+    mail = re.search(r"mailto:([^\"'\s>\[]+@[^\"'\s>\[]+)", rest)
+    return {"name": (name.group(1).strip() if name else ""),
+            "mail": (mail.group(1).strip() if mail else "")}
+
+
 def pruefangaben(apple: Apple, version: str, fuellen: bool):
     """Hinweise an die Pruefung und der Kontakt.
 
@@ -296,8 +325,17 @@ def pruefangaben(apple: Apple, version: str, fuellen: bool):
         return
     soll = {"notes": hinweis, "demoAccountRequired": False}
 
-    name = os.environ.get("ASC_KONTAKT_NAME", "").strip()
-    mail = os.environ.get("ASC_KONTAKT_MAIL", "").strip()
+    # Name und Adresse stehen seit dem 12.09. im Impressum — und ein Impressum
+    # ist per Gesetz oeffentlich. Das alte Argument („private Kontaktdaten
+    # gehoeren in keine Datei, die oeffentlich stehen koennte") traegt fuer
+    # diese beiden also nicht mehr; sie hier noch einmal als Geheimnis zu
+    # verlangen, waere eine zweite Stelle mit demselben Wert. Ein gesetztes
+    # Secret geht trotzdem vor — der Kontakt fuer die Pruefung darf ein
+    # anderer sein als der im Impressum. Die Telefonnummer bleibt ein
+    # Geheimnis: die steht dort nicht.
+    aus_imp = impressum_kontakt()
+    name = os.environ.get("ASC_KONTAKT_NAME", "").strip() or aus_imp.get("name", "")
+    mail = os.environ.get("ASC_KONTAKT_MAIL", "").strip() or aus_imp.get("mail", "")
     tel = os.environ.get("ASC_KONTAKT_TELEFON", "").strip()
     if name and mail and tel:
         vorname, _, nachname = name.partition(" ")
