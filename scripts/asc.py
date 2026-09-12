@@ -168,9 +168,15 @@ def app_id(apple: Apple, anlegen: bool):
     if not anlegen:
         offen.append(f"App-ID {BUNDLE} fehlt — mit --anlegen wird sie registriert")
         return None
+    # **Ohne kaufmaennisches Und.** Das Namensfeld einer App-ID nimmt nur
+    # Buchstaben, Ziffern und Leerzeichen; Apple antwortet sonst mit 409 und
+    # „The attribute 'name' is invalid". Der Wert ist reine Beschriftung im
+    # Entwicklerportal und fuer niemanden ausser dem Entwickler sichtbar —
+    # der Anzeigename der App steht in der Info.plist, nicht hier.
     stand, antwort = apple.anlegen("v1/bundleIds", {"data": {
         "type": "bundleIds",
-        "attributes": {"identifier": BUNDLE, "name": "Stack & Siege", "platform": "IOS"}}})
+        "attributes": {"identifier": BUNDLE, "name": "Stack and Siege",
+                       "platform": "IOS"}}})
     if stand in (200, 201):
         erledigt.append(f"App-ID {BUNDLE} angelegt")
         return antwort.json()["data"]["id"]
@@ -189,7 +195,7 @@ def app_eintrag(apple: Apple):
         handarbeit.append(
             "App-Eintrag in App Store Connect anlegen — appstoreconnect.apple.com/apps, "
             f"Name „Stack & Siege – Burgenduell\", Sprache Deutsch, Bundle-ID {BUNDLE}, "
-            "SKU fortress-ios. Apples Schnittstelle bietet dafuer nichts an "
+            "SKU stack-and-siege. Apples Schnittstelle bietet dafuer nichts an "
             "(kein POST auf /v1/apps); ohne diesen Eintrag laeuft nichts weiter.")
         return None
     erledigt.append(f"App-Eintrag vorhanden: {feld(treffer[0], 'name')}")
