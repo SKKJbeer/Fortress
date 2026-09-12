@@ -9,19 +9,31 @@ sichtbar — auch nicht fuer den Kontoinhaber. Es braucht drei Dinge:
   3. die Zuordnung des Baus zu dieser Gruppe.
 
 Interne Tester brauchen KEINE Beta-Pruefung durch Apple; der Bau steht sofort
-nach der Verarbeitung bereit. Externe Tester waeren etwas anderes — das
-verlangt eine Pruefung und ist eine Entscheidung, keine Automatisierung.
-Dieses Skript ruehrt sie nicht an.
+nach der Verarbeitung bereit.
+
+**Mit `--oeffentlich` kommt der zweite Weg dazu:** eine EXTERNE Gruppe mit
+oeffentlichem Link, ueber den sich jeder selbst eintragen kann — ohne dass
+jemand seine E-Mail-Adresse einsammelt und von Hand hinzufuegt. Das verlangt
+mehr als die interne Gruppe, und zwar von Apple:
+
+  * Angaben zur Beta (Beschreibung, Rueckmeldeadresse, zwei Adressen im Netz),
+  * einen Kontakt fuer die Pruefung,
+  * „Was ist neu" am Bau,
+  * und eine **Beta-Pruefung** des Baus. Erst danach koennen externe Tester
+    installieren. Eintragen koennen sie sich vorher schon.
 
 Es ist absichtlich gespraechig: Bei jedem Schritt steht, was Apple geantwortet
 hat. Wo die Schnittstelle etwas nicht hergibt, soll das hier stehen und nicht
 als stiller Fehlschlag enden.
 
-Aus der Umgebung: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8
+Aus der Umgebung: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 — fuer `--oeffentlich`
+zusaetzlich ASC_KONTAKT_TELEFON. Name und E-Mail kommen aus dem Impressum.
 """
 
 import json
 import os
+import pathlib
+import re
 import sys
 import time
 
@@ -31,6 +43,11 @@ import requests
 BASIS = "https://api.appstoreconnect.apple.com/v1"
 BUNDLE = "de.skkjbeer.stackandsiege"
 GRUPPE = "Intern"
+GRUPPE_OEFFENTLICH = "Öffentlich"
+SPRACHE = "de-DE"
+WURZEL = pathlib.Path(__file__).resolve().parent.parent
+SEITE = "https://stack-and-siege.pages.dev/"
+DATENSCHUTZ = "https://skkjbeer.github.io/Fortress/privacy.html"
 
 
 def anmeldung() -> str:
@@ -54,6 +71,10 @@ class Apple:
         return requests.post(f"{BASIS}/{pfad}", headers=self.kopf,
                              data=json.dumps(koerper), timeout=30)
 
+    def patch(self, pfad: str, koerper: dict):
+        return requests.patch(f"{BASIS}/{pfad}", headers=self.kopf,
+                              data=json.dumps(koerper), timeout=30)
+
 
 def sagt(antwort) -> str:
     """Apples Fehlertext statt einer nackten Zahl."""
@@ -65,6 +86,247 @@ def sagt(antwort) -> str:
     except ValueError:
         pass
     return antwort.text[:300]
+
+
+def feld(eintrag, name: str):
+    return (eintrag or {}).get("attributes", {}).get(name)
+
+
+def block(ueberschrift: str) -> str:
+    """Einen eingerahmten Block aus store/listing.md — EINE Quelle fuer Texte.
+
+    Stuenden die Texte auch hier im Skript, liefen beide auseinander, und
+    niemand wuesste, welcher bei Apple steht.
+    """
+    text = (WURZEL / "store" / "listing.md").read_text(encoding="utf-8")
+    teil = text.split("## Google Play")[0]          # nur der Apple-Teil
+    m = re.search(rf"### {re.escape(ueberschrift)}[^\n]*\n+```\n(.*?)\n```",
+                  teil, re.S)
+    return m.group(1).strip() if m else ""
+
+
+def impressum_kontakt() -> dict:
+    """Name und E-Mail aus dem Impressum — siehe scripts/asc.py, gleiche Lage.
+
+    Ab dem Abschnitt suchen, nicht von vorn: Das erste <b> der Seite ist
+    „Stand:" in der Kopfzeile.
+    """
+    try:
+        text = (WURZEL / "public" / "impressum.html").read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    ab = text.find("Diensteanbieter")
+    rest = text[ab:] if ab >= 0 else text
+    name = re.search(r"<b>([^<\[]{3,60})</b>", rest)
+    mail = re.search(r"mailto:([^\"'\s>\[]+@[^\"'\s>\[]+)", rest)
+    return {"name": (name.group(1).strip() if name else ""),
+            "mail": (mail.group(1).strip() if mail else "")}
+
+
+def beta_angaben(apple: Apple, app: str) -> bool:
+    """Die Angaben zur Beta: Beschreibung, Rueckmeldeadresse, zwei Adressen.
+
+    Ohne sie lehnt Apple die Beta-Pruefung ab, und zwar erst am Ende — also
+    lieber vorher setzen als hinterher suchen.
+    """
+    soll = {
+        "description": block("Beschreibung") or block("Werbetext"),
+        "feedbackEmail": impressum_kontakt().get("mail", ""),
+        "marketingUrl": SEITE,
+        "privacyPolicyUrl": DATENSCHUTZ,
+    }
+    if not soll["description"] or not soll["feedbackEmail"]:
+        print("::error::Beschreibung oder Rueckmeldeadresse fehlen "
+              "(store/listing.md bzw. public/impressum.html)")
+        return False
+
+    a = apple.get(f"apps/{app}/betaAppLocalizations", limit=20)
+    vorhanden = {e["attributes"].get("locale"): e
+                 for e in (a.json().get("data", []) if a.status_code == 200 else [])}
+    eintrag = vorhanden.get(SPRACHE)
+
+    if eintrag:
+        offen = {k: v for k, v in soll.items() if feld(eintrag, k) != v}
+        if not offen:
+            print(f"  Beta-Angaben ({SPRACHE}) stehen")
+            return True
+        b = apple.patch(f"betaAppLocalizations/{eintrag['id']}",
+                        {"data": {"type": "betaAppLocalizations",
+                                  "id": eintrag["id"], "attributes": offen}})
+        ok = b.status_code == 200
+        print(f"  Beta-Angaben aktualisiert: {', '.join(offen)}" if ok
+              else f"::error::Beta-Angaben nicht aenderbar ({b.status_code}): {sagt(b)}")
+        return ok
+
+    b = apple.post("betaAppLocalizations", {"data": {
+        "type": "betaAppLocalizations", "attributes": {"locale": SPRACHE, **soll},
+        "relationships": {"app": {"data": {"type": "apps", "id": app}}}}})
+    ok = b.status_code == 201
+    print(f"  Beta-Angaben ({SPRACHE}) angelegt" if ok
+          else f"::error::Beta-Angaben nicht anlegbar ({b.status_code}): {sagt(b)}")
+    return ok
+
+
+def pruefkontakt(apple: Apple, app: str) -> bool:
+    """Kontakt und Hinweise fuer die Beta-Pruefung.
+
+    Apple nimmt den Kontakt nur VOLLSTAENDIG: Fehlt ein Teil, steht gar keiner
+    hinterlegt — nicht etwa ein halber.
+    """
+    kontakt = impressum_kontakt()
+    name = kontakt.get("name", "")
+    mail = os.environ.get("ASC_KONTAKT_MAIL", "").strip() or kontakt.get("mail", "")
+    tel = os.environ.get("ASC_KONTAKT_TELEFON", "").strip()
+    if not (name and mail and tel):
+        fehlt = [n for n, v in (("Name", name), ("E-Mail", mail),
+                                ("ASC_KONTAKT_TELEFON", tel)) if not v]
+        print(f"::error::Kontakt fuer die Pruefung unvollstaendig: {', '.join(fehlt)}")
+        return False
+
+    vorname, _, nachname = name.partition(" ")
+    soll = {"contactFirstName": vorname, "contactLastName": nachname or vorname,
+            "contactEmail": mail, "contactPhone": tel, "demoAccountRequired": False}
+    hinweis = block("Beschreibung")
+    for b in re.findall(r"```\n(.*?)\n```",
+                        (WURZEL / "store" / "listing.md").read_text(encoding="utf-8"), re.S):
+        if "NO ACCOUNT, NO LOGIN" in b:
+            hinweis = b.strip()
+            break
+    soll["notes"] = hinweis
+
+    a = apple.get(f"apps/{app}/betaAppReviewDetail")
+    detail = a.json().get("data") if a.status_code == 200 else None
+    if not detail:
+        print(f"::warning::Pruefangaben nicht lesbar ({a.status_code})")
+        return False
+    offen = {k: v for k, v in soll.items() if feld(detail, k) != v}
+    if not offen:
+        print("  Kontakt fuer die Pruefung steht")
+        return True
+    b = apple.patch(f"betaAppReviewDetails/{detail['id']}",
+                    {"data": {"type": "betaAppReviewDetails",
+                              "id": detail["id"], "attributes": offen}})
+    ok = b.status_code == 200
+    print(f"  Kontakt fuer die Pruefung gesetzt: {', '.join(offen)}" if ok
+          else f"::error::Kontakt nicht setzbar ({b.status_code}): {sagt(b)}")
+    return ok
+
+
+def was_ist_neu(apple: Apple, bau: dict) -> bool:
+    """„Was ist neu" am Bau — fuer externe Tester Pflicht."""
+    text = (f"Stack & Siege {feld(bau, 'version')}. Was sich lohnt zu pruefen: "
+            "Bauphase am Telefon, Schuss und Zielen, der Shop in der Ruestphase "
+            "und eine Online-Partie ueber die Schnellsuche. "
+            "Rueckmeldungen gern ueber den Knopf in TestFlight.")
+    a = apple.get(f"builds/{bau['id']}/betaBuildLocalizations", limit=20)
+    vorhanden = {e["attributes"].get("locale"): e
+                 for e in (a.json().get("data", []) if a.status_code == 200 else [])}
+    eintrag = vorhanden.get(SPRACHE)
+    if eintrag:
+        if feld(eintrag, "whatsNew") == text:
+            print("  „Was ist neu\" steht")
+            return True
+        b = apple.patch(f"betaBuildLocalizations/{eintrag['id']}",
+                        {"data": {"type": "betaBuildLocalizations",
+                                  "id": eintrag["id"], "attributes": {"whatsNew": text}}})
+        ok = b.status_code == 200
+    else:
+        b = apple.post("betaBuildLocalizations", {"data": {
+            "type": "betaBuildLocalizations",
+            "attributes": {"locale": SPRACHE, "whatsNew": text},
+            "relationships": {"build": {"data": {"type": "builds", "id": bau["id"]}}}}})
+        ok = b.status_code == 201
+    print("  „Was ist neu\" gesetzt" if ok
+          else f"::error::„Was ist neu\" nicht setzbar ({b.status_code}): {sagt(b)}")
+    return ok
+
+
+def oeffentliche_gruppe(apple: Apple, app: str, bau: dict) -> int:
+    """Externe Gruppe mit oeffentlichem Link — und der Bau in die Beta-Pruefung."""
+    print("\n=== OEFFENTLICHER TEST " + "=" * 38)
+
+    if not beta_angaben(apple, app):
+        return 1
+    if not pruefkontakt(apple, app):
+        return 1
+    if not was_ist_neu(apple, bau):
+        return 1
+
+    # ── Die Gruppe ─────────────────────────────────────────────────────────
+    a = apple.get(f"apps/{app}/betaGroups", limit=50)
+    gruppen = a.json().get("data", []) if a.status_code == 200 else []
+    passend = [g for g in gruppen
+               if g["attributes"].get("name") == GRUPPE_OEFFENTLICH]
+    if passend:
+        gruppe = passend[0]["id"]
+        print(f"  Gruppe „{GRUPPE_OEFFENTLICH}\" besteht bereits")
+        if not feld(passend[0], "publicLinkEnabled"):
+            b = apple.patch(f"betaGroups/{gruppe}", {"data": {
+                "type": "betaGroups", "id": gruppe,
+                "attributes": {"publicLinkEnabled": True}}})
+            print("  oeffentlicher Link eingeschaltet" if b.status_code == 200
+                  else f"::error::Link nicht einschaltbar ({b.status_code}): {sagt(b)}")
+    else:
+        # `isInternalGroup: False` ausdruecklich: Eine interne Gruppe kann
+        # keinen oeffentlichen Link haben, und der Unterschied laesst sich
+        # spaeter nicht mehr aendern.
+        b = apple.post("betaGroups", {"data": {
+            "type": "betaGroups",
+            "attributes": {"name": GRUPPE_OEFFENTLICH, "isInternalGroup": False,
+                           "publicLinkEnabled": True, "publicLinkLimitEnabled": False,
+                           "feedbackEnabled": True},
+            "relationships": {"app": {"data": {"type": "apps", "id": app}}}}})
+        if b.status_code != 201:
+            print(f"::error::Gruppe „{GRUPPE_OEFFENTLICH}\" nicht anlegbar "
+                  f"({b.status_code}): {sagt(b)}")
+            return 1
+        gruppe = b.json()["data"]["id"]
+        print(f"  Gruppe „{GRUPPE_OEFFENTLICH}\" angelegt")
+
+    # ── Bau zuordnen ───────────────────────────────────────────────────────
+    a = apple.post(f"betaGroups/{gruppe}/relationships/builds",
+                   {"data": [{"type": "builds", "id": bau["id"]}]})
+    if a.status_code in (201, 204):
+        print(f"  Bau {feld(bau, 'version')} der Gruppe zugeordnet")
+    elif a.status_code == 409:
+        print(f"  Bau {feld(bau, 'version')} war bereits zugeordnet")
+    else:
+        print(f"::warning::Zuordnung ({a.status_code}): {sagt(a)}")
+
+    # ── Beta-Pruefung ──────────────────────────────────────────────────────
+    a = apple.get(f"builds/{bau['id']}/betaAppReviewSubmission")
+    vorhanden = a.json().get("data") if a.status_code == 200 else None
+    if vorhanden:
+        zustand = feld(vorhanden, "betaReviewState")
+        print(f"  Beta-Pruefung laeuft bereits: {zustand}")
+    else:
+        b = apple.post("betaAppReviewSubmissions", {"data": {
+            "type": "betaAppReviewSubmissions",
+            "relationships": {"build": {"data": {"type": "builds", "id": bau["id"]}}}}})
+        if b.status_code == 201:
+            zustand = b.json()["data"]["attributes"].get("betaReviewState")
+            print(f"  Bau {feld(bau, 'version')} zur Beta-Pruefung eingereicht: {zustand}")
+        else:
+            zustand = None
+            print(f"::error::Einreichung scheiterte ({b.status_code}): {sagt(b)}")
+
+    # ── Der Link ───────────────────────────────────────────────────────────
+    a = apple.get(f"betaGroups/{gruppe}")
+    link = feld(a.json().get("data") if a.status_code == 200 else None, "publicLink")
+    if not link:
+        print("::warning::Apple nennt noch keinen oeffentlichen Link — "
+              "meist steht er nach wenigen Minuten. Spaeter erneut fragen.")
+        return 0
+
+    print(f"\n  OEFFENTLICHER LINK: {link}")
+    if zustand == "APPROVED":
+        print("  Der Bau ist freigegeben — wer dem Link folgt, kann sofort "
+              "installieren.")
+    else:
+        print(f"  Der Bau steht auf {zustand}. Eintragen kann sich ab sofort "
+              "jeder; INSTALLIEREN erst, wenn Apple die Beta freigegeben hat "
+              "(ueblicherweise binnen eines Tages).")
+    return 0
 
 
 def main() -> int:
@@ -234,6 +496,9 @@ def main() -> int:
     print(f"\nFertig: {zugefuegt} interne(r) Tester in „{GRUPPE}\", Bau "
           f"{bau['attributes'].get('version')} fuer sie sichtbar. "
           f"Er erscheint binnen weniger Minuten in der TestFlight-App.")
+
+    if "--oeffentlich" in sys.argv:
+        return oeffentliche_gruppe(apple, app, bau)
     return 0
 
 
