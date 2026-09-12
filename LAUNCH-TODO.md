@@ -7,9 +7,9 @@
 
 ---
 
-## ⏸ Wartet auf dich (Stand 11.09.2026, 05:40 UTC)
+## ⏸ Wartet auf dich (Stand 12.09.2026)
 
-**Ein einziger Handgriff, dann geht es ohne dich weiter.**
+**Ein Formular, dann geht es ohne dich weiter.**
 
 > **App-Eintrag in App Store Connect anlegen**
 > 🔗 `https://appstoreconnect.apple.com/apps` → **+** → *Neue App*
@@ -19,21 +19,22 @@
 > | Plattform | iOS |
 > | Name | `Stack & Siege – Burgenduell` |
 > | Primäre Sprache | Deutsch |
-> | Bundle-ID | `de.skkjbeer.fortress` — **ist registriert und auswählbar** |
-> | SKU | `fortress-ios` |
+> | Bundle-ID | `de.skkjbeer.stackandsiege` — **registriert und auswählbar** |
+> | SKU | `stack-and-siege` |
 
 **Warum das nicht maschinell geht:** Apples Schnittstelle bietet kein
-`POST /v1/apps`. Registrieren lässt sich die App-ID, der Eintrag nicht.
+`POST /v1/apps`. Die App-ID ließ sich registrieren, der Eintrag nicht.
 
-### Erledigt am 11.09.
-- [x] **`GH_PAT` gesetzt**, Rechte geprüft (Contents, Actions, Secrets,
-      Workflows — alle vier bestätigt)
-- [x] **Alle Apple-Geheimnisse übertragen** aus dem Schwesterprojekt:
-      `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, dazu das
-      **Verteilzertifikat** (`DIST_P12_*`) — damit signiert Stack & Siege mit
-      demselben Zertifikat wie das Schwesterprojekt, und die
-      Drei-Zertifikate-Grenze ist erledigt.
-- [x] **App-ID `de.skkjbeer.fortress` registriert** (über die Schnittstelle)
+### Erledigt
+- [x] **`GH_PAT` gesetzt**, Rechte geprüft (Contents, Actions, Secrets, Workflows)
+- [x] **Alle Apple-Geheimnisse übertragen** aus dem Schwesterprojekt, inklusive
+      **Verteilzertifikat** — die Drei-Zertifikate-Grenze ist damit erledigt
+- [x] **Umbenannt auf „Stack & Siege"** (v3.80.0, live). Bundle-ID zog mit,
+      weil sie nach dem App-Eintrag unveränderlich gewesen wäre. Speicher-
+      Schlüssel, PWA-Pfade und geteilte Links blieben unangetastet.
+- [x] **App-ID `de.skkjbeer.stackandsiege` registriert.** Das Namensfeld einer
+      App-ID nimmt kein `&` — dort steht „Stack and Siege".
+- [x] **Store-Bilder neu**: Play-Grafik und alle zwanzig Screenshots
 
 ### Danach übernehme ich wieder
 Fassung 1.0 anlegen, Untertitel, Datenschutz-Adresse, Beschreibung,
@@ -41,11 +42,10 @@ Schlagworte, Werbetext und die englischen Prüfhinweise eintragen — dann den
 Bau nach TestFlight hochladen.
 
 ### Was später trotzdem bei dir bleibt
-- **`ASC_KONTAKT_NAME`** fehlt (drüben gab es ihn nicht). Apple nimmt den
-  Prüfkontakt nur **vollständig** — ohne Namen bleibt er ganz leer. Für
-  TestFlight nicht nötig, für die Einreichung schon.
-- **Datenschutz-Fragebogen** und **Händlerstatus je App** (Abschnitt 1b):
-  keine Schnittstelle, nachgemessen.
+- **`ASC_KONTAKT_NAME`** fehlt. Apple nimmt den Prüfkontakt nur **vollständig**
+  — ohne Namen bleibt er ganz leer. Für TestFlight nicht nötig, für die
+  Einreichung schon.
+- **Datenschutz-Fragebogen** und **Händlerstatus je App** (Abschnitt 1b).
 - **Impressum** — `public/impressum.html` steht live mit Platzhaltern.
 
 ---
