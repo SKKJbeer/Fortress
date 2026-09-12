@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.81.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.82.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5532,5 +5532,45 @@ ist wahr. Geprueft wird jetzt ueber `istNativ()`, die EINE Plattform-Weiche
 Hinweis in KEINEM der beiden Faelle, und die Pruefung waere gruen, ohne etwas
 zu pruefen. Deshalb laufen beide Faelle mit gesetztem User-Agent: in der App
 darf er nicht erscheinen, im Browser MUSS er es.
+
+Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).
+
+---
+
+## v3.82.0 — Eine Bildraten-Anzeige, weil Messen hier nicht geht
+
+Der Gruender meldet vom Geraet: „fuehlt sich nicht ganz fluessig an". Statt zu
+raten, wurde gemessen — und das Ergebnis war vor allem lehrreich darin, was es
+AUSSCHLIESST.
+
+| Gemessen (Chromium, vierfach gebremst, 10 s Spielzeit) | |
+|---|---|
+| Zeichenzeit je Bild | Median 1 ms |
+| Skript gesamt | 604 ms von 10 000 |
+| Stil neu berechnen | 7 ms (53 mal) |
+| Layout | 12 ms (12 mal) |
+| Weichzeichner (Schattenbacken) | 3 Aufrufe, zusammen 1 ms |
+
+Die Vermutung, der weichgezeichnete Schattenpuffer koeste zu viel, war damit
+widerlegt: Er wird korrekt pro `gridVersion` gebacken und lief in zehn
+Sekunden dreimal.
+
+**Trotzdem kamen nur 30 statt 60 Bilder an** — und zwar auffaellig gleichmaessig
+(Median 33,3 ms, p95 33,4). Eine Kontrollmessung mit einer LEEREN Seite unter
+derselben Bremse hielt 60 Bilder: die Bremse allein erklaert es nicht. Was
+bleibt, ist die Rasterung, und die laeuft hier in Software ohne Grafikkarte.
+**Diese Zahl sagt ueber ein iPhone nichts aus.**
+
+Also wird dort gemessen. Fuenf Tipps auf die Versionszeile im Menue schalten
+eine kleine Anzeige ein: Bilder je Sekunde, Median, p95 und das langsamste
+Bild. Zwei Entscheidungen darin:
+
+- **Gesammelt wird im Zeichentakt, ohne React.** Eine Zustandsaenderung je Bild
+  waere genau die Last, die man messen will, und verfaelschte die Messung.
+- **Angezeigt wird zweimal je Sekunde**, nicht je Bild — aus demselben Grund.
+
+Versteckt hinter fuenf Tipps, weil sie niemanden stoeren soll, der sie nicht
+sucht, und ohne Eintrag im Menue, weil sie kein Spiel-Merkmal ist, sondern ein
+Messgeraet.
 
 Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).

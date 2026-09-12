@@ -1377,6 +1377,32 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Popup-Variante nur einmal gezeigt (coachShownRef).
   const [coachMsg, setCoachMsg] = useState(null);
   const tutPausedRef = useRef(false);
+  // Bildraten-Anzeige (v3.82.0): auf dem Geraet messen statt im Rechenzentrum
+  // raten. Im Browser war die Zeichenzeit 1 ms und trotzdem nur die halbe
+  // Bildrate — das lag an der Software-Rasterung ohne Grafikkarte und sagte
+  // ueber ein Telefon nichts aus.
+  const perfAn = useRef(false);
+  const perfPuffer = useRef([]);
+  const perfLetzt = useRef(0);
+  const perfTipps = useRef([]);
+  const [perfSichtbar, setPerfSichtbar] = useState(() => {
+    try { return localStorage.getItem('fortress_perf') === '1'; } catch (e) { return false; }
+  });
+  useEffect(() => { perfAn.current = perfSichtbar; }, [perfSichtbar]);
+  // Die Anzeige aktualisiert sich ZWEIMAL pro Sekunde, nicht pro Bild. Ein
+  // React-Rendern je Bild waere selbst die Last, die hier gemessen werden soll.
+  const [perfText, setPerfText] = useState("");
+  useEffect(() => {
+    if (!perfSichtbar) return;
+    const id = setInterval(() => {
+      const a = perfPuffer.current.slice().sort((x, y) => x - y);
+      if (!a.length) return;
+      const q = (pp) => a[Math.min(a.length - 1, Math.floor(a.length * pp))];
+      const med = q(0.5);
+      setPerfText(`${Math.round(1000 / med)} B/s · Median ${med.toFixed(1)} ms · p95 ${q(0.95).toFixed(1)} · max ${a[a.length - 1].toFixed(0)}`);
+    }, 500);
+    return () => clearInterval(id);
+  }, [perfSichtbar]);
   const coachShownRef = useRef({});
   const leakPathRef = useRef({}); // Leck-Spur-Cache je Spieler (Key: gridVersion, v3.37.0)
   const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem('fortress_sound') !== '0'; } catch (e) { return true; } });
@@ -5733,6 +5759,19 @@ window.StackSiegeApp = function StackSiegeApp() {
   const renderLoop = useCallback(() => {
     var _a2;
     if (typeof window !== "undefined" && window.__perfDbg) window.__frameT0 = performance.now();
+    // Bildabstand messen, wenn die Anzeige eingeschaltet ist (v3.82.0).
+    // KEIN React-Zustand hier: eine Zustandsaenderung pro Bild waere genau die
+    // Art Last, die man messen will, und verfaelschte die Messung.
+    if (perfAn.current) {
+      const jetzt = performance.now();
+      if (perfLetzt.current) {
+        const abstand = jetzt - perfLetzt.current;
+        const puffer = perfPuffer.current;
+        puffer.push(abstand);
+        if (puffer.length > 180) puffer.shift();
+      }
+      perfLetzt.current = jetzt;
+    }
     const canvas = canvasRef.current;
     if (!canvas || !running.current) return;
     const ctx = canvas.getContext("2d");
@@ -7239,7 +7278,22 @@ window.StackSiegeApp = function StackSiegeApp() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "Stack & Siege \xB7 Version 3.81.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { onClick: () => {
+    // Fuenfmal auf die Versionszeile: Bildraten-Anzeige an/aus. Versteckt,
+    // weil sie niemanden stoeren soll, der sie nicht sucht — und ohne
+    // Einstellungsmenue, weil sie kein Spiel-Merkmal ist, sondern ein
+    // Messgeraet.
+    const t = perfTipps.current;
+    t.push(Date.now());
+    while (t.length && Date.now() - t[0] > 3000) t.shift();
+    if (t.length >= 5) {
+      t.length = 0;
+      perfAn.current = !perfAn.current;
+      perfPuffer.current = []; perfLetzt.current = 0;
+      try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
+      setPerfSichtbar(perfAn.current);
+    }
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.82.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -9476,7 +9530,11 @@ window.StackSiegeApp = function StackSiegeApp() {
         pi.name && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: "#e2e8f0", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, pi.name)
       )
     );
-  })(), tutorialMode.current && coachMsg && /* @__PURE__ */ React.createElement("div", {
+  })(), perfSichtbar && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 4px)", left: 4, zIndex: 9999,
+      background: "rgba(0,0,0,0.72)", color: "#7dd3fc", font: "600 10px ui-monospace, Menlo, monospace",
+      padding: "3px 6px", borderRadius: 6, pointerEvents: "none", letterSpacing: "0.02em" }
+  }, perfText || "messe \u2026"), tutorialMode.current && coachMsg && /* @__PURE__ */ React.createElement("div", {
     // v3.37.2: Pausierendes Coach-Popup OBEN. Der Vollbild-Container blockiert
     // alle Eingaben (Spiel pausiert: Timer/Bot/Kugeln stehen still); leichter
     // Dim-Hintergrund signalisiert die Pause. "OK" setzt fort.
