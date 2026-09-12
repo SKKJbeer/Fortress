@@ -1,0 +1,150 @@
+name: Website veröffentlichen
+
+# **Die Website geht bei jeder Änderung von selbst online.**
+#
+# Sie liegt als fertige Dateien in `docs/website/` — kein Bauwerkzeug, keine
+# Abhängigkeiten, nichts zu übersetzen. Cloudflare Pages nimmt genau das
+# entgegen und legt es auf sein Netz.
+#
+# Warum ein Ablauf und nicht die Anbindung ans Repository, die Cloudflare
+# selbst anbietet: Dann läge der Auslöser bei Cloudflare, und die Prüfung hier
+# hätte kein Wort mitzureden. So geht nur online, was `check-website.mjs`
+# durchgelassen hat — und dieselbe Prüfung sagt „nein", solange noch eine
+# eckige Klammer im Impressum steht.
+#
+# ---
+#
+# **Einmalig einzurichten** (alles kostenlos):
+#
+#   1. Cloudflare-Konto anlegen, Bereich „Workers & Pages".
+#   2. Ein API-Token erzeugen mit der Berechtigung „Cloudflare Pages: Edit".
+#   3. Im Repository unter Settings › Secrets and variables › Actions zwei
+#      Geheimnisse anlegen:
+#        CLOUDFLARE_API_TOKEN    das Token aus Schritt 2
+#        CLOUDFLARE_ACCOUNT_ID   steht in der Adresszeile des Dashboards
+#
+# Das Pages-Projekt legt der Ablauf selbst an — ein Schritt, den ein Token
+# erledigen kann, gehört nicht auf eine Klickliste.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/website/**"
+      - "public/impressum.html"
+      - "public/privacy.html"
+      - "public/agb.html"
+      - "scripts/website-bauen.sh"
+      - "scripts/check-website.mjs"
+      - ".github/workflows/website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website
+  cancel-in-progress: true
+
+env:
+  PROJEKT: stack-and-siege
+
+jobs:
+  veroeffentlichen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Rechtstexte aus `public/` dazulegen — eine Quelle, zwei Ziele.
+      - name: Auslieferordner zusammenstellen
+        run: |
+          chmod +x scripts/website-bauen.sh
+          scripts/website-bauen.sh build/website
+
+      # **Erst prüfen, dann veröffentlichen.** Eine Seite mit einer offenen
+      # Textlücke im Impressum ist schlimmer als keine Seite.
+      - name: Website prüfen
+        id: pruefung
+        run: node scripts/check-website.mjs build/website
+
+      # Damit im Actions-Tab steht, WARUM nichts online ging, ohne dass jemand
+      # das Protokoll aufklappen muss. Der haeufigste Grund ist bekannt: Das
+      # Impressum steht mit Platzhaltern da und braucht eine ladungsfähige
+      # Anschrift.
+      - name: Warum die Seite nicht durchkam
+        if: failure() && steps.pruefung.outcome == 'failure'
+        run: |
+          echo "### Nicht veröffentlicht — die Prüfung hat abgelehnt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Die beanstandeten Punkte stehen im Protokoll des Schritts" >> $GITHUB_STEP_SUMMARY
+          echo "„Website prüfen\"." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Steht dort ein Platzhalter aus \`impressum.html\`: Die Seite" >> $GITHUB_STEP_SUMMARY
+          echo "braucht eine ladungsfähige Anschrift in \`public/impressum.html\`." >> $GITHUB_STEP_SUMMARY
+          echo "Bis dahin geht sie absichtlich nicht online." >> $GITHUB_STEP_SUMMARY
+
+      - name: Sind die Zugangsdaten da?
+        id: zugang
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KONTO: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$KONTO" ]; then
+            echo "bereit=nein" >> "$GITHUB_OUTPUT"
+          else
+            echo "bereit=ja" >> "$GITHUB_OUTPUT"
+          fi
+
+      # **Auch das Projekt legt der Ablauf an.** „Project not found" beim
+      # ersten Hochladen ist sonst der wahrscheinlichste Ausgang.
+      - name: Pages-Projekt sicherstellen
+        if: steps.zugang.outputs.bereit == 'ja'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Dieselbe Fassung, die `wrangler-action` unten benutzt. Stünde hier
+          # eine andere, wäre das eine zweite Version, die auseinanderlaufen kann.
+          WRANGLER="wrangler@3.90.0"
+          if npx --yes "$WRANGLER" pages project list 2>/dev/null \
+               | grep -qE "(^|[^a-z0-9-])${PROJEKT}([^a-z0-9-]|$)"; then
+            echo "Pages-Projekt „$PROJEKT\" steht."
+          else
+            echo "Pages-Projekt „$PROJEKT\" gibt es nicht — wird angelegt."
+            npx --yes "$WRANGLER" pages project create "$PROJEKT" --production-branch=main
+          fi
+
+      - name: Zu Cloudflare Pages hochladen
+        if: steps.zugang.outputs.bereit == 'ja'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # `--branch=main` macht daraus die Produktionsfassung, nicht eine
+          # Vorschau. `--commit-dirty` schweigt die Warnung, dass der
+          # Arbeitsordner Dateien enthält, die nicht im Repository stehen —
+          # das ist hier der frisch gebaute Ordner selbst.
+          command: pages deploy build/website --project-name=stack-and-siege --branch=main --commit-dirty=true
+
+      # Ein Lauf, der nur geprüft hat, sieht im Actions-Tab genauso grün aus
+      # wie einer, der veröffentlicht hat. Genau daran ist der iOS-Bau einmal
+      # vorbeigelaufen; deshalb sagt der Lauf hier selbst, was er getan hat.
+      - name: Was dieser Lauf getan hat
+        if: always()
+        run: |
+          if [ "${{ steps.zugang.outputs.bereit }}" = "ja" ]; then
+            echo "### Veröffentlicht" >> $GITHUB_STEP_SUMMARY
+            echo "Die Seite steht auf https://${PROJEKT}.pages.dev/" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### NUR GEPRÜFT — nichts veröffentlicht" >> $GITHUB_STEP_SUMMARY
+            echo "CLOUDFLARE_API_TOKEN oder CLOUDFLARE_ACCOUNT_ID fehlt in den" >> $GITHUB_STEP_SUMMARY
+            echo "Repository-Secrets. Die Seite ist geprüft, aber nicht hochgeladen." >> $GITHUB_STEP_SUMMARY
+            echo "::warning::Cloudflare ist noch nicht eingerichtet — die Seite wurde geprüft, aber nicht veröffentlicht."
+          fi
+          cat $GITHUB_STEP_SUMMARY

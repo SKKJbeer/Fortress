@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stack &amp; Siege — Burgen bauen, Festungen knacken</title>
+<meta name="description" content="Baue deine Burg aus fallenden Steinen, während der Gegner sie dir wegschießt. Eine Lücke in der Mauer entscheidet die Partie. Kostenlos im Browser, online oder gegen den Bot.">
+<meta name="theme-color" content="#05080f">
+<link rel="canonical" href="https://stack-and-siege.pages.dev/">
+<!-- Das Zeichen liegt als Datenadresse in der Seite und nicht als Datei:
+     eine Anfrage weniger, und es kann nicht verlorengehen. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1626'/%3E%3Crect x='5' y='9' width='6' height='6' rx='1.4' fill='%233b82f6'/%3E%3Crect x='12' y='9' width='6' height='6' rx='1.4' fill='%233b82f6'/%3E%3Crect x='21' y='9' width='6' height='6' rx='1.4' fill='%23ef4444'/%3E%3Crect x='5' y='17' width='13' height='8' rx='1.6' fill='%232456a8'/%3E%3Crect x='21' y='17' width='6' height='8' rx='1.6' fill='%23a83232'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stack &amp; Siege">
+<meta property="og:locale" content="de_DE">
+<meta property="og:title" content="Stack &amp; Siege — Burgen bauen, Festungen knacken">
+<meta property="og:description" content="Eine Lücke in der Mauer, und die Partie ist vorbei. Kostenlos im Browser, online gegen echte Gegner oder offline gegen den Bot.">
+<meta property="og:url" content="https://stack-and-siege.pages.dev/">
+<meta property="og:image" content="https://stack-and-siege.pages.dev/bilder/game.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="stil.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "Stack & Siege",
+  "alternateName": "Stack & Siege – Burgenduell",
+  "applicationCategory": "GameApplication",
+  "genre": ["Strategie", "Rundenbasiert", "Belagerung"],
+  "gamePlatform": ["Web-Browser", "iOS"],
+  "inLanguage": "de",
+  "numberOfPlayers": { "@type": "QuantitativeValue", "minValue": 1, "maxValue": 3 },
+  "description": "Zwei Burgen, ein Fluss dazwischen. Mauern aus fallenden Steinen bauen, die gegnerische Festung beschießen. Wessen Burg am Ende der Bauphase eine Lücke hat, verliert die Runde.",
+  "url": "https://stack-and-siege.pages.dev/",
+  "playMode": ["SinglePlayer", "MultiPlayer"],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR",
+    "description": "Vollständig kostenlos. Keine Werbung, keine Käufe, kein Abo."
+  }
+}
+</script>
+</head>
+<body>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<header class="kopf">
+  <div class="bahn kopf-innen">
+    <a class="marke" href="/">
+      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <rect x="4" y="8" width="6.4" height="6.4" rx="1.4" fill="#3b82f6"/>
+        <rect x="11.6" y="8" width="6.4" height="6.4" rx="1.4" fill="#3b82f6"/>
+        <rect x="21.2" y="8" width="6.4" height="6.4" rx="1.4" fill="#ef4444"/>
+        <rect x="4" y="16.4" width="14" height="8.6" rx="1.6" fill="#2456a8"/>
+        <rect x="21.2" y="16.4" width="6.4" height="8.6" rx="1.6" fill="#a83232"/>
+      </svg>
+      Stack &amp; Siege
+    </a>
+    <nav aria-label="Bereiche">
+      <a class="nur-breit" href="#runde">Ablauf</a>
+      <a class="nur-breit" href="#regel">Die Regel</a>
+      <a class="nur-breit" href="#gegner">Gegner</a>
+      <a class="kopf-spielen" href="https://skkjbeer.github.io/Fortress/">Spielen</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inhalt">
+
+  <div class="anfang">
+    <div class="bahn anfang-gitter">
+      <div>
+        <span class="marker">Kostenlos im Browser · <b>kein Download</b></span>
+        <h1>Eine Lücke in der Mauer, und die Partie ist vorbei.</h1>
+        <p class="vorspann">
+          Du baust deine Burg aus fallenden Steinen. Der Gegner schießt sie
+          dir wieder weg. Am Ende jeder Bauphase zählt nur eins:
+          <strong>Ist dein Wall geschlossen — auch diagonal?</strong>
+        </p>
+        <div class="knoepfe">
+          <a class="knopf knopf-voll" href="https://skkjbeer.github.io/Fortress/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="none"/>
+            </svg>
+            Sofort spielen
+          </a>
+          <a class="knopf knopf-rand" href="#runde">So läuft eine Runde</a>
+        </div>
+        <ul class="zusagen">
+          <li>Kein Konto</li>
+          <li>Keine Werbung</li>
+          <li>Kein Pay-to-Win</li>
+        </ul>
+        <!-- KEIN App-Store-Abzeichen, solange die App nicht im Store ist.
+             Ein Knopf „Laden im App Store", der auf eine Fehlseite fuehrt, ist
+             genau das Versprechen, das dieses Projekt sich verbietet. -->
+        <p class="notiz">
+          Läuft am Telefon genauso wie am Rechner. Auf dem iPhone legst du es
+          dir über <em>Teilen → Zum Home-Bildschirm</em> neben deine Apps.
+          Die iOS-Fassung ist in der Testphase.
+        </p>
+      </div>
+
+      <div class="geraete">
+        <div class="geraet geraet-zurueck">
+          <img src="bilder/menu.jpg" width="780" height="1688" loading="eager" decoding="async"
+               alt="Das Hauptmenü von Stack &amp; Siege: Spielerprofil mit Stufe und Punktzahl, darunter die Knöpfe für lokales und für Online-Spiel.">
+        </div>
+        <div class="geraet geraet-vorn">
+          <img src="bilder/game.jpg" width="780" height="1688" loading="eager" decoding="async"
+               alt="Die Bauphase: zwei Burgen über und unter einem Fluss, beide von Mauern umgeben, unten die Vorschau des nächsten Bauteils.">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Ablauf ────────────────────────────────────────────────────── -->
+  <section id="runde" class="abschnitt-tief">
+    <div class="bahn">
+      <div class="kopfzeile">
+        <p class="augbraue">Der Ablauf</p>
+        <h2>Vier Phasen, achtzig Sekunden, dann wieder von vorn</h2>
+        <p>
+          Keine Zugreihenfolge, kein Warten auf den anderen. Ihr baut
+          gleichzeitig, ihr schießt gleichzeitig. Die Uhr läuft für beide.
+        </p>
+      </div>
+
+      <ol class="ablauf">
+        <li style="--ton:#fbbf24">
+          <span class="sekunden">20 Sekunden</span>
+          <h3>Aufstellen</h3>
+          <p>
+            Zwei Kanonen rund um deine Burg setzen. Wo sie stehen, entscheidet,
+            was du im ganzen Spiel erreichst — und was der Gegner zuerst
+            umlegt.
+          </p>
+        </li>
+        <li style="--ton:#4ade80">
+          <span class="sekunden">25 Sekunden</span>
+          <h3>Bauen</h3>
+          <p>
+            Steine fallen dir zu, du drehst sie und legst sie ab. Erst das Loch
+            von letzter Runde schließen, dann erweitern. In dieser Reihenfolge,
+            nicht umgekehrt.
+          </p>
+        </li>
+        <li style="--ton:#ef4444">
+          <span class="sekunden">20 Sekunden</span>
+          <h3>Schießen</h3>
+          <p>
+            Von der eigenen Burg wegziehen, um zu zielen. Jede Kanone lädt
+            zweieinhalb Sekunden nach — mehr als acht Kugeln schafft keine in
+            einer Runde.
+          </p>
+        </li>
+        <li style="--ton:#22d3ee">
+          <span class="sekunden">15 Sekunden</span>
+          <h3>Rüsten</h3>
+          <p>
+            Beute ausgeben: noch eine Kanone, Panzermauern, schnelleres
+            Nachladen, Trümmer zurück in Mauern. Die Uhr läuft weiter, während
+            du überlegst.
+          </p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── Die Regel ─────────────────────────────────────────────────── -->
+  <section id="regel">
+    <div class="bahn regel">
+      <div>
+        <p class="augbraue">Die eine Regel</p>
+        <h2>Geschlossen heißt geschlossen</h2>
+        <p>
+          Wenn die Bauphase endet, lässt das Spiel Wasser von außen in dein
+          Feld laufen. Erreicht es deine Burg, bist du raus — durch welchen
+          Spalt auch immer.
+        </p>
+        <p>
+          <strong>Diagonale zählen.</strong> Zwei Mauersteine, die sich nur an
+          der Ecke berühren, halten nichts auf. Das ist die Lücke, die man
+          übersieht, und die der Gegner zuerst findet.
+        </p>
+        <p>
+          Und deine Kanonen sind keine Mauer. Sie stehen im Weg, sie schließen
+          aber nichts. Wer seinen Wall um eine Kanone herum plant, verliert die
+          Runde, in der sie fällt.
+        </p>
+      </div>
+
+      <div class="mauerbild" role="img"
+           aria-label="Schema: ein Mauerring um eine Burg, in dem oben rechts ein Stein fehlt — durch diese diagonale Lücke gilt die Burg als offen.">
+        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i>
+        <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+        <i class="w"></i><i></i><i class="b"></i><i class="b"></i><i class="b"></i><i></i><i class="w"></i>
+        <i class="w"></i><i></i><i class="b"></i><i class="b"></i><i class="b"></i><i></i><i class="w"></i>
+        <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+        <span class="mauerbild-text">Ein Stein fehlt — die Burg gilt als offen.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Kanonen ───────────────────────────────────────────────────── -->
+  <section class="abschnitt-tief">
+    <div class="bahn">
+      <div class="kopfzeile">
+        <p class="augbraue">Feuerkraft</p>
+        <h2>Zwei Kanonen, zwei Absichten</h2>
+        <p>
+          Beute verdienst du im Match: für jede Kugel, die trifft, für jede
+          überstandene Runde, für jede zerstörte Kanone des Gegners. Ausgeben
+          kannst du sie nur in der Rüstphase.
+        </p>
+      </div>
+
+      <div class="karten">
+        <div class="karte karte-brecher">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M3 20h18M6 20V9l6-5 6 5v11"/><path d="M9 20v-5h6v5"/>
+            </svg>
+            Mauerbrecher
+          </h3>
+          <p>
+            Die Standardkanone. Reißt Löcher in den Wall und macht dem Gegner
+            Arbeit für die nächste Bauphase. Jede weitere kostet achtzig Beute
+            mehr als die davor — irgendwann bezahlst du für Nachschub, was eine
+            Panzerung gekostet hätte.
+          </p>
+          <span class="preis">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+              <path d="M12 2 22 9l-10 13L2 9z"/>
+            </svg>
+            200 Beute, danach +80 je Kauf
+          </span>
+        </div>
+
+        <div class="karte karte-bezwinger">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+              <path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>
+            </svg>
+            Bezwinger
+          </h3>
+          <p>
+            Trifft ausschließlich Kanonen. Gegen Mauern richtet er nichts aus —
+            dafür schaltet er die Feuerkraft des Gegners aus, bevor sie deine
+            Burg erreicht. <strong>In Runde 1 ist er nicht zu bezahlen:</strong>
+            mit fehlerfreiem Spiel kommst du auf 530. Ab Runde 2 bekommt ihn,
+            wer vorher auf alles andere verzichtet hat.
+          </p>
+          <span class="preis">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+              <path d="M12 2 22 9l-10 13L2 9z"/>
+            </svg>
+            550 Beute
+          </span>
+        </div>
+
+        <div class="karte">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"
+                 style="color:var(--cyan)">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Und drei Ausbauten
+          </h3>
+          <p>
+            <b>Panzermauern</b> halten zwei Treffer statt einen — gekauft wird
+            das meist erst zur Spielmitte, vorher fehlt die Beute.
+            <b>Schnellladen</b> drückt die Nachladezeit in zwei Stufen.
+            <b>Reparatur</b> macht aus Trümmern wieder Mauern, wird aber mit
+            jedem Kauf teurer.
+          </p>
+          <span class="preis">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+              <path d="M12 2 22 9l-10 13L2 9z"/>
+            </svg>
+            450 · 250 / 500 · ab 150
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Gegner ────────────────────────────────────────────────────── -->
+  <section id="gegner">
+    <div class="bahn paar">
+      <div>
+        <p class="augbraue">Gegner</p>
+        <h2>Vier Arten, eine Partie anzufangen</h2>
+        <ul class="arten">
+          <li>
+            <b>Schnellsuche</b>
+            <span>
+              Ein Tipp, und du bist in der Warteschlange. Gepaart wird nach
+              Spielstärke; die Punktzahl startet bei 1000 und bewegt sich nach
+              jedem Online-Spiel.
+            </span>
+          </li>
+          <li>
+            <b>Code für Freunde</b>
+            <span>
+              Du bekommst einen kurzen Code, schickst ihn weiter, der andere
+              tippt ihn ein. Kein Konto, keine Freundesliste, kein Zwischenschritt.
+            </span>
+          </li>
+          <li>
+            <b>Zu zweit oder zu dritt</b>
+            <span>
+              An einem Gerät abwechselnd, oder online mit drei Burgen auf einem
+              Y-förmigen Feld — dann spielt jeder gegen jeden und der letzte mit
+              geschlossener Burg gewinnt.
+            </span>
+          </li>
+          <li>
+            <b>Gegen den Bot</b>
+            <span>
+              Drei Stufen. Der leichte streut beim Zielen und schießt seltener,
+              der schwere trifft fast genau und kauft ein wie jemand, der weiß,
+              was er tut.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="geraet">
+        <img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="Die Schussphase: unter der Kopfzeile steht die verbleibende Zeit, unten für beide Spieler die Zahl der schussbereiten Kanonen.">
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Fortschritt ───────────────────────────────────────────────── -->
+  <section class="abschnitt-tief">
+    <div class="bahn paar paar-gedreht">
+      <div>
+        <p class="augbraue">Danach</p>
+        <h2>Was von einer Partie übrig bleibt</h2>
+        <p>
+          Beute gilt nur innerhalb eines Matches. Was darüber hinaus bleibt,
+          ist Gold und Erfahrung: Gold für Spuren, Rahmen und Siegeseffekte,
+          Erfahrung für die nächste Stufe. Aus Online-Partien fallen seltene
+          Materialien, aus denen die Schmiede Stücke macht, die es im Shop
+          nicht gibt.
+        </p>
+        <p>
+          <strong>Nichts davon macht dich stärker.</strong> Kein Gegenstand
+          erhöht Schaden, Reichweite oder Nachladezeit. Wer zwei Jahre spielt,
+          trifft im selben Winkel wie jemand, der heute anfängt — er sieht nur
+          besser dabei aus.
+        </p>
+
+        <div class="zahlen">
+          <div><b>44 × 68</b><span>Felder auf dem Brett</span></div>
+          <div><b>7</b><span>Welten, vom Frostreich bis zum Vulkanschlund</span></div>
+          <div><b>2–3</b><span>Spieler pro Partie</span></div>
+          <div><b>80 s</b><span>für einen vollen Durchgang</span></div>
+        </div>
+      </div>
+
+      <div class="geraet">
+        <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="Die Rüstphase: eine Reihe Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur, jeweils mit Preis in Beute.">
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ehrlich gesagt ────────────────────────────────────────────── -->
+  <section>
+    <div class="bahn">
+      <div class="kopfzeile">
+        <p class="augbraue">Ehrlich gesagt</p>
+        <h2>Was das Spiel kostet und was es von dir weiß</h2>
+      </div>
+      <div class="karten">
+        <div class="karte">
+          <h3>Es kostet nichts</h3>
+          <p>
+            Keine Werbung, keine Käufe, kein Abo, keine Energie, die sich erst
+            wieder auflädt. Der volle Umfang steht vom ersten Start an offen.
+          </p>
+        </div>
+        <div class="karte">
+          <h3>Offline gehört dir</h3>
+          <p>
+            Gegen den Bot und am selben Gerät läuft alles im Browser. Dein
+            Fortschritt liegt in diesem Browser und sonst nirgends.
+          </p>
+        </div>
+        <div class="karte">
+          <h3>Online braucht wenig</h3>
+          <p>
+            Für Partien über das Netz gehen dein selbst gewählter Name, der
+            Spielstand und die Punktzahl an einen Server. Kein Klarname, keine
+            E-Mail-Adresse, keine Werbekennung. Löschen kannst du alles im
+            Spiel unter <em>Profil → Fortschritt löschen</em>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Abschluss ─────────────────────────────────────────────────── -->
+  <section class="abschluss">
+    <div class="bahn">
+      <h2>Der erste Durchgang dauert achtzig Sekunden.</h2>
+      <p>Danach weißt du, ob es deins ist.</p>
+      <div class="knoepfe">
+        <a class="knopf knopf-voll" href="https://skkjbeer.github.io/Fortress/">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <polygon points="6 3 20 12 6 21 6 3" fill="currentColor"/>
+          </svg>
+          Jetzt spielen
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <div class="bahn fuss-innen">
+    <span class="fuss-marke">Stack &amp; Siege</span>
+    <nav aria-label="Rechtliches">
+      <a href="https://skkjbeer.github.io/Fortress/">Spiel öffnen</a>
+      <a href="impressum.html">Impressum</a>
+      <a href="privacy.html">Datenschutz</a>
+      <a href="agb.html">Nutzungsbedingungen</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

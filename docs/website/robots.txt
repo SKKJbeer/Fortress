@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://stack-and-siege.pages.dev/sitemap.xml

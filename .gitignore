@@ -3,3 +3,4 @@ dist/
 dist-ios/
 ios/App/App/public/
 .DS_Store
+build/

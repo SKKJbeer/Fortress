@@ -24,7 +24,13 @@ const ZIELE = [
   // will, muss die App auf iPhone beschraenken.
   { name: 'ipad-13',  w: 1032, h: 1376, scale: 2, out: 'store/ipad-13' },
   { name: 'ipad-12.9',w: 1024, h: 1366, scale: 2, out: 'store/ipad-12.9' },
-  { name: 'play',     w: 360,  h: 780,  scale: 3, out: 'public/screenshots' }
+  { name: 'play',     w: 360,  h: 780,  scale: 3, out: 'public/screenshots' },
+  // Fuer die Website. JPEG statt PNG, und das ist keine Nachlaessigkeit: die
+  // vier PNG der Play-Groesse wiegen zusammen ueber 3 MB. Auf einer Seite, die
+  // jemand am Telefon im Zug aufmacht, entscheidet das darueber, ob er die
+  // Bilder ueberhaupt sieht. Zweimal so gross wie angezeigt (2x) bleibt auf
+  // einem scharfen Bildschirm scharf.
+  { name: 'website',  w: 390,  h: 844,  scale: 2, out: 'docs/website/bilder', jpeg: 82 }
 ];
 
 const PROF = `try{localStorage.setItem('fortress_profile',JSON.stringify({
@@ -91,9 +97,13 @@ async function fuerZiel(browser, ziel) {
   await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
   await p.waitForTimeout(1600);
 
+  const endung = ziel.jpeg ? '.jpg' : '.png';
   const shot = async (name) => {
-    await p.screenshot({ path: path.join(out, name) });
-    console.log('   ' + ziel.out + '/' + name);
+    const datei = name.replace(/\.png$/, endung);
+    await p.screenshot(ziel.jpeg
+      ? { path: path.join(out, datei), type: 'jpeg', quality: ziel.jpeg }
+      : { path: path.join(out, datei) });
+    console.log('   ' + ziel.out + '/' + datei);
   };
 
   await shot('menu.png');
@@ -138,7 +148,7 @@ async function fuerZiel(browser, ziel) {
   // Duplikate erkennen, statt sie stillschweigend auszuliefern
   const crypto = require('crypto');
   const gesehen = {};
-  for (const f of fs.readdirSync(out).filter(f => f.endsWith('.png'))) {
+  for (const f of fs.readdirSync(out).filter(f => f.endsWith(endung))) {
     const h = crypto.createHash('md5').update(fs.readFileSync(path.join(out, f))).digest('hex');
     if (gesehen[h]) throw new Error('Identische Screenshots: ' + gesehen[h] + ' == ' + f);
     gesehen[h] = f;
