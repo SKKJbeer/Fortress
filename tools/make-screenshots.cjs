@@ -157,11 +157,72 @@ async function fuerZiel(browser, ziel) {
   await ctx.close();
 }
 
+// Ein Bild vom Spiel zu DRITT an einem Geraet — nur fuer die Website.
+//
+// Es entsteht in einem eigenen Durchgang, weil die Bot-Selbststeuerung hier
+// nicht greift: `botTick` laeuft nur im Bot-Modus und bewegt hoechstens zwei
+// Spieler. Ein lokales Dreierspiel hat keinen Bot, das Brett bliebe leer,
+// wenn man auf gespielte Zuege wartet.
+//
+// Das schadet nichts — die Aussage des Bildes ist eine andere: DREI Burgen und
+// ein Fluss, der sich in drei Arme teilt. Genau das unterscheidet die
+// Dreierpartie sichtbar von der zu zweit, und genau dafuer steht es auf der
+// Seite.
+async function dreiSpieler(browser, ziel) {
+  const out = path.join(ROOT, ziel.out);
+  fs.mkdirSync(out, { recursive: true });
+  const ctx = await browser.newContext({
+    viewport: { width: ziel.w, height: ziel.h }, deviceScaleFactor: ziel.scale,
+    isMobile: true, hasTouch: true, serviceWorkers: 'block'
+  });
+  const p = await ctx.newPage();
+  await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
+  await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+  await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+  await p.waitForTimeout(1200);
+
+  await click(p, ['LOKAL']); await p.waitForTimeout(300);
+  await click(p, ['3 Spieler']);
+  await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
+
+  // Auf die Bauphase OHNE Schild warten: das Banner deckt sonst den oberen
+  // Teil des Bretts ab, und dort steht eine der drei Burgen.
+  //
+  // **Zwei Minuten, und das ist kein grosszuegiger Puffer.** Runde 1 hat GAR
+  // KEINE Bauphase: Nach dem Aufstellen folgt sofort Schiessen, dann Ruesten,
+  // und erst in Runde 2 wird gebaut. Gemessen lag die erste Bauphase bei 65 s;
+  // mit 60 s Frist lief der Aufnehmer genau davor ab.
+  const ok = await warteAuf(p, async () => {
+    if (await phase(p) !== 'build') return false;
+    return await p.evaluate(() => !document.querySelector('div[style*="phasebanner"]'));
+  }, 120000);
+  if (!ok) throw new Error('kein sauberes Bild fuer das Dreierspiel');
+
+  const datei = 'drei' + (ziel.jpeg ? '.jpg' : '.png');
+  await p.screenshot(ziel.jpeg
+    ? { path: path.join(out, datei), type: 'jpeg', quality: ziel.jpeg }
+    : { path: path.join(out, datei) });
+  console.log('   ' + ziel.out + '/' + datei);
+  await ctx.close();
+}
+
 (async () => {
+  // Ein Ziel allein aufnehmen: `node tools/make-screenshots.cjs website`.
+  // Alle fuenf dauern rund zehn Minuten — wer nur die Website-Bilder braucht,
+  // soll nicht auf die iPad-Groessen warten muessen.
+  const nur = process.argv[2];
+  if (nur && !ZIELE.some(z => z.name === nur)) {
+    console.error('Unbekanntes Ziel: ' + nur + ' — bekannt sind: '
+      + ZIELE.map(z => z.name).join(', '));
+    process.exit(1);
+  }
   const browser = await chromium.launch();
   for (const ziel of ZIELE) {
+    if (nur && ziel.name !== nur) continue;
     console.log(' ' + ziel.name + ' (' + (ziel.w * ziel.scale) + 'x' + (ziel.h * ziel.scale) + ')');
     await fuerZiel(browser, ziel);
+    if (ziel.name === 'website') await dreiSpieler(browser, ziel);
   }
   await browser.close();
   console.log('\n fertig');

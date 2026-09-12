@@ -252,6 +252,29 @@ p:last-child { margin-bottom: 0; }
 section { padding-block: clamp(48px, 7vw, 92px); }
 .abschnitt-tief { background: var(--raised); border-block: 1px solid var(--line); }
 
+/* Der Abschnitt zum Spiel an EINEM Geraet bricht den Wechsel aus hell und
+   dunkel absichtlich: Er ist kein weiterer Punkt in der Reihe, sondern der
+   zweite Grund, das Spiel ueberhaupt anzufassen. Die drei Lichter sind die
+   drei Spielerfarben — blau, rot, gruen. */
+.abschnitt-couch {
+  position: relative;
+  border-block: 1px solid var(--line);
+  background:
+    radial-gradient(42% 60% at 12% 18%, rgba(59,130,246,.16), transparent 70%),
+    radial-gradient(40% 58% at 88% 26%, rgba(239,68,68,.13), transparent 70%),
+    radial-gradient(46% 62% at 50% 96%, rgba(74,222,128,.10), transparent 72%),
+    var(--raised);
+}
+.abschnitt-couch .zusagen { margin-top: 26px; }
+
+.nachsatz {
+  margin-top: clamp(22px, 3vw, 32px);
+  color: var(--ink-2);
+  max-width: 58ch;
+  border-left: 2px solid var(--line-2);
+  padding-left: 16px;
+}
+
 .kopfzeile { max-width: 62ch; margin-bottom: clamp(28px, 4vw, 44px); }
 .kopfzeile p { color: var(--ink-2); margin-top: 14px; }
 .augbraue {
