@@ -239,14 +239,18 @@ jobs:
           # Swift Package Manager ein, es entsteht also kein .xcworkspace mehr
           # (mit CocoaPods war das frueher anders).
           #
-          # CODE_SIGN_IDENTITY="Apple Distribution" ist der Kern und keine
-          # Feinheit. Das eingecheckte Projekt schreibt "iPhone Developer" vor
-          # — mit einer ENTWICKLER-Identitaet sucht die automatische Signierung
-          # ein Development-Profil, und das gibt es nur zu einem registrierten
-          # Geraet. Ein Konto ohne Kabel hat keins; die Meldung lautet dann
-          # "your team has no devices from which to generate a provisioning
-          # profile" und nennt die Ursache nicht. Aus demselben Grund ist
-          # -configuration Release Pflicht, nicht Geschmack.
+          # **Keine CODE_SIGN_IDENTITY hier.** Ich hatte "Apple Distribution"
+          # vorgeschrieben — Xcode lehnt das bei automatischer Signierung ab:
+          # "App has conflicting provisioning settings. App is automatically
+          # signed for development, but a conflicting code signing identity
+          # Apple Distribution has been manually specified." Bei Automatic
+          # waehlt Xcode die Identitaet selbst; vorschreiben darf man sie nur
+          # bei Manual. Umsigniert auf Verteilung wird ohnehin erst beim
+          # Export, denn dort steht method=app-store-connect.
+          #
+          # -configuration Release bleibt Pflicht und nicht Geschmack: unter
+          # Debug sucht Xcode ein Development-Profil, und das gibt es nur zu
+          # einem registrierten Geraet.
           #
           # CURRENT_PROJECT_VERSION ist die Build-Nummer: TestFlight lehnt jeden
           # Upload mit bereits bekannter Nummer ab. Die Lauf-Nummer steigt
@@ -262,7 +266,6 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             DEVELOPMENT_TEAM="$TEAM" \
             CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
             archive
 
       - name: IPA exportieren
