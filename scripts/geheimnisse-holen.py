@@ -33,8 +33,15 @@ VORLAGE = pathlib.Path(__file__).resolve().parent.parent / "tools" / "geheimniss
 # Was am Ende dastehen soll. Der Kontaktname fehlt drueben bewusst (er kam dort
 # aus dem Impressum) — er wird deshalb erwartet, aber nicht verlangt.
 PFLICHT = ["APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8"]
+# Die Cloudflare-Werte stehen in der Kuer und nicht in der Pflicht: Ohne sie
+# faellt kein Bau aus, nur die Website bleibt unveroeffentlicht. Sie kommen aus
+# demselben Schwesterprojekt — dasselbe Cloudflare-Konto, dasselbe Token. Die
+# Berechtigung „Pages: Edit" gilt fuer JEDES Pages-Projekt dieses Kontos, also
+# auch fuer ein zweites; ein eigenes Token waere eine zweite Stelle, die beim
+# Ablaufen erneuert werden muss.
 KUER = ["DIST_P12_BASE64", "DIST_P12_PASSWORD",
-        "ASC_KONTAKT_NAME", "ASC_KONTAKT_MAIL", "ASC_KONTAKT_TELEFON"]
+        "ASC_KONTAKT_NAME", "ASC_KONTAKT_MAIL", "ASC_KONTAKT_TELEFON",
+        "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
 
 
 def fehler(satz: str) -> None:
@@ -193,6 +200,12 @@ def nachsehen(gh: GitHub, ziel: str) -> int:
         print(f"::error::Es fehlen noch: {', '.join(fehlend)}")
         return 1
     print("\nAlle Pflichtwerte stehen. Der iOS-Build kann hochladen.")
+    if {"CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"} <= da:
+        print("Cloudflare steht ebenfalls — die Website geht online, sobald das\n"
+              "Impressum ohne Platzhalter dasteht.")
+    else:
+        print("Cloudflare fehlt noch — die Website wird dann nur geprueft und\n"
+              "nicht veroeffentlicht.")
     return 0
 
 

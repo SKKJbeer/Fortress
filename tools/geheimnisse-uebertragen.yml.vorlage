@@ -8,8 +8,8 @@
 #
 # ---
 #
-# **Was er tut.** Er liest die vier App-Store-Werte aus den Secrets von
-# pulsemeter und schreibt sie nach Fortress. Einmal druecken statt viermal
+# **Was er tut.** Er liest die App-Store- und die Cloudflare-Werte aus den
+# Secrets von pulsemeter und schreibt sie nach Fortress. Einmal druecken statt
 # abtippen — vor allem wegen des .p8-Schluessels, der ueber zweihundert Zeichen
 # lang ist und beim Abtippen still kaputtgeht.
 #
@@ -70,6 +70,12 @@ jobs:
           ASC_KONTAKT_NAME: ${{ secrets.ASC_KONTAKT_NAME }}
           ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
           ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
+          # Cloudflare: dasselbe Konto, dasselbe Token. Die Berechtigung
+          # „Pages: Edit" gilt fuer JEDES Pages-Projekt des Kontos, also auch
+          # fuer ein zweites Projekt. Ein eigenes Token waere eine zweite
+          # Stelle, die beim Ablaufen erneuert werden muss.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           python3 - <<'PY'
           import os, sys, requests
@@ -94,7 +100,8 @@ jobs:
 
           namen = ["APPLE_TEAM_ID", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8",
                    "DIST_P12_BASE64", "DIST_P12_PASSWORD",
-                   "ASC_KONTAKT_NAME", "ASC_KONTAKT_MAIL", "ASC_KONTAKT_TELEFON"]
+                   "ASC_KONTAKT_NAME", "ASC_KONTAKT_MAIL", "ASC_KONTAKT_TELEFON",
+                   "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
           fehler = 0
           for name in namen:
               wert = os.environ.get(name, "")
