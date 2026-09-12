@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stack &amp; Siege — Burgenduell fürs iPhone</title>
-<meta name="description" content="Burgen aus fallenden Steinen bauen und die des Gegners aufschießen. Eine Lücke in der Mauer entscheidet. Zu zweit oder zu dritt an einem Gerät, online oder gegen den Bot.">
-<meta name="theme-color" content="#0b0616">
+<meta name="description" content="Burgen aus fallenden Steinen bauen und die des Gegners aufschießen. Eine Lücke in der Mauer entscheidet. Sieben Welten, zwei Kanonenarten, zu dritt an einem Gerät.">
+<meta name="theme-color" content="#05060d">
 <link rel="canonical" href="https://stack-and-siege.pages.dev/">
 <!-- Das Zeichen liegt als Datenadresse in der Seite und nicht als Datei:
      eine Anfrage weniger, und es kann nicht verlorengehen. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0616'/%3E%3Crect x='5' y='9' width='6' height='6' rx='1' fill='%234d8dff'/%3E%3Crect x='12' y='9' width='6' height='6' rx='1' fill='%234d8dff'/%3E%3Crect x='21' y='9' width='6' height='6' rx='1' fill='%23ff5a5a'/%3E%3Crect x='5' y='17' width='13' height='8' rx='1' fill='%232456a8'/%3E%3Crect x='21' y='17' width='6' height='8' rx='1' fill='%23a83232'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305060d'/%3E%3Crect x='5' y='9' width='6' height='6' rx='1' fill='%234d8dff'/%3E%3Crect x='12' y='9' width='6' height='6' rx='1' fill='%234d8dff'/%3E%3Crect x='21' y='9' width='6' height='6' rx='1' fill='%23ff4d4d'/%3E%3Crect x='5' y='17' width='13' height='8' rx='1' fill='%232456a8'/%3E%3Crect x='21' y='17' width='6' height='8' rx='1' fill='%23a83232'/%3E%3C/svg%3E">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Stack &amp; Siege">
 <meta property="og:locale" content="de_DE">
 <meta property="og:title" content="Stack &amp; Siege — Burgenduell fürs iPhone">
-<meta property="og:description" content="Eine Lücke in der Mauer, und die Burg fällt. Zu zweit oder zu dritt an einem Gerät.">
+<meta property="og:description" content="Eine Lücke in der Mauer, und die Burg fällt. Sieben Welten, zwei Kanonenarten, zu dritt an einem Gerät.">
 <meta property="og:url" content="https://stack-and-siege.pages.dev/">
 <meta property="og:image" content="https://stack-and-siege.pages.dev/bilder/game.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -34,9 +34,7 @@
   "url": "https://stack-and-siege.pages.dev/",
   "playMode": ["SinglePlayer", "MultiPlayer"],
   "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "EUR",
+    "@type": "Offer", "price": "0", "priceCurrency": "EUR",
     "description": "Vollständig kostenlos. Keine Werbung, keine Käufe, kein Abo."
   }
 }
@@ -46,21 +44,16 @@
 
 <a class="sprung" href="#inhalt">Zum Inhalt springen</a>
 
-<header class="kopf">
-  <div class="bahn">
-    <a class="kopf-marke" href="/">Stack &amp; Siege</a>
-    <a class="text" href="https://skkjbeer.github.io/Fortress/">Im Browser spielen</a>
-  </div>
-</header>
-
 <main id="inhalt">
 
-  <!-- ── Anfang ─────────────────────────────────────────────────────────
-       Die Wortmarke IST die Ueberschrift. Kein Nutzenversprechen-Satz —
-       ein Spiel wird nicht durch Argumente verkauft. -->
-  <section class="welt w-astral raster anfang">
+  <!-- ── Anfang: Schichten, Kugeln, Einschlag ──────────────────────────── -->
+  <div class="buehne">
+    <div class="schicht s1"></div>
+    <div class="schicht s2"></div>
+    <div class="kugel k1"></div><div class="kugel k2"></div><div class="kugel k3"></div>
+    <div class="schicht s3"></div>
     <div class="bahn">
-      <h1 class="marke"><span class="b">S</span>tack <span class="g">&amp;</span> <span class="r">S</span>iege</h1>
+      <h1 class="marke"><span class="b">Stack</span><br>&amp; <span class="r">Siege</span></h1>
       <p class="zeile">Eine Lücke, und die Burg fällt.</p>
       <p class="dazu">
         Burgenduell fürs iPhone. Du baust deinen Wall aus fallenden Steinen,
@@ -73,75 +66,81 @@
            Veroeffentlichen; `scripts/website-bauen.sh` tauscht sonst den
            WARTEN-Block ein. Ein TestFlight-Link EXISTIERT, sobald die Gruppe
            existiert — er FUNKTIONIERT erst nach der Freigabe. -->
-      <a class="pille pille-apfel" href="https://testflight.apple.com/join/hE2AdHwr">
+      <a class="knopf" href="https://testflight.apple.com/join/hE2AdHwr">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
           <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
         </svg>
-        <span>Beta laden</span>
+        Beta laden
       </a>
-      <p class="danach">
-        Kostenlos über TestFlight, Apples offizielle Test-App.
-        Lieber ohne Installieren? <a href="https://skkjbeer.github.io/Fortress/">Im Browser spielen.</a>
-      </p>
+      <span class="neben">Kostenlos über TestFlight. Oder <a href="https://skkjbeer.github.io/Fortress/">sofort im Browser spielen</a>.</span>
       <!-- TESTFLIGHT:ENDE -->
 
       <!-- WARTEN:ANFANG
            Solange Apple die Beta prueft, steht hier der Browser-Knopf und ein
            Satz, der den Stand nennt. Eine Seite, die fuer eine App wirbt,
            braucht einen Handlungsaufruf — aber keinen, der ins Leere fuehrt. -->
-      <a class="pille" href="https://skkjbeer.github.io/Fortress/">
-        <span>Sofort im Browser spielen</span>
-      </a>
-      <p class="danach">
-        Die iOS-Beta liegt bei Apple zur Prüfung. Sobald sie offen ist, steht
-        der TestFlight-Knopf an dieser Stelle.
-      </p>
+      <a class="knopf" href="https://skkjbeer.github.io/Fortress/">Sofort im Browser spielen</a>
+      <span class="neben">Die iOS-Beta liegt bei Apple zur Prüfung. Sobald sie offen ist, steht der TestFlight-Knopf hier.</span>
       <!-- WARTEN:ENDE -->
     </div>
-    <span class="weltname">Astralebene</span>
-  </section>
+  </div>
 
-  <!-- ── Bildstreifen ───────────────────────────────────────────────────
-       Klein, viele, randlos — keine Attrappe, kein Schatten. Die Zinnenkante
-       oben ist eine Maske aus der Bildsprache des Spiels. -->
-  <section class="welt w-frost">
+  <!-- ── Laufband ──────────────────────────────────────────────────────── -->
+  <section class="welt">
     <div class="bahn">
-      <h2 class="gross">Bauen. Schießen. Rüsten.</h2>
-      <div class="streifen">
-        <figure>
-          <img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Bauphase: zwei Burgen über und unter einem Fluss, beide von Mauern umgeben, unten die Vorschau des nächsten Bauteils.">
-          <figcaption>Bauen · 25 s</figcaption>
-        </figure>
-        <figure>
-          <img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Schussphase: oben läuft die Zeit, unten steht für beide Spieler die Zahl der schussbereiten Kanonen.">
-          <figcaption>Schießen · 20 s</figcaption>
-        </figure>
-        <figure>
-          <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Rüstphase: eine Reihe Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur, jeweils mit Preis in Beute.">
-          <figcaption>Rüsten · 15 s</figcaption>
-        </figure>
-        <figure>
-          <img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Das Hauptmenü: Spielerprofil mit Stufe und Punktzahl, darunter die Knöpfe für das lokale und das Online-Spiel.">
-          <figcaption>Profil · Rangliste</figcaption>
-        </figure>
-      </div>
-      <p class="dazu">
-        Einmal aufstellen, danach im Takt: bauen, schießen, rüsten. Ihr spielt
-        gleichzeitig, niemand wartet auf einen Zug.
+      <p class="vorsatz">Der Takt</p>
+      <h2>Bauen. Schießen. Rüsten.</h2>
+      <p>
+        Einmal aufstellen, danach im Takt: 25 Sekunden bauen, 20 schießen,
+        15 rüsten. Ihr spielt gleichzeitig — niemand wartet auf einen Zug.
       </p>
     </div>
-    <span class="weltname">Frostreich</span>
+    <div class="band"><div class="spur">
+      <img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Bauphase: zwei Burgen über und unter einem Fluss, unten die Vorschau des nächsten Bauteils.">
+      <img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Schussphase: oben läuft die Zeit, unten steht die Zahl der schussbereiten Kanonen.">
+      <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Rüstphase: Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur.">
+      <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Eine Partie zu zweit an einem Gerät, unten zwei Bauteil-Felder nebeneinander.">
+      <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Eine Partie zu dritt an einem Gerät, drei Burgen um einen dreiarmigen Fluss.">
+      <img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Das Hauptmenü mit Spielerprofil, Stufe und Punktzahl.">
+      <img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Bauphase, zweite Runde des Laufbands.">
+      <img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Schussphase, zweite Runde des Laufbands.">
+      <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Rüstphase, zweite Runde des Laufbands.">
+      <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Partie zu zweit, zweite Runde des Laufbands.">
+      <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Partie zu dritt, zweite Runde des Laufbands.">
+      <img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Das Hauptmenü, zweite Runde des Laufbands.">
+    </div></div>
   </section>
 
-  <!-- ── Die Regel ──────────────────────────────────────────────────────── -->
-  <section class="welt w-vulkan">
+  <!-- ── Sieben Welten ─────────────────────────────────────────────────── -->
+  <section class="welt welt-tief">
+    <div class="bahn">
+      <p class="vorsatz">Sieben Welten</p>
+      <h2>Vom Frostreich bis in den Vulkanschlund.</h2>
+      <p>
+        Jede Partie spielt in einer anderen Landschaft — eigener Fluss, eigene
+        Farben, eigener Boden. <strong>Niemand wählt sie aus:</strong> Die Welt
+        hängt an einer Zahl, die beide Geräte teilen. Ihr steht immer in
+        derselben.
+      </p>
+    </div>
+    <div class="welten">
+      <div class="kachel"><img src="bilder/welt-kristalltal.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Kristalltal: blaues Gestein, ein türkiser Fluss zwischen den beiden Burgen."><b>Kristalltal</b></div>
+      <div class="kachel"><img src="bilder/welt-frostreich.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Frostreich: verschneiter Boden mit Nadelbäumen und einem eisblauen Fluss."><b>Frostreich</b></div>
+      <div class="kachel"><img src="bilder/welt-glutwueste.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Glutwüste: rotbrauner Sand mit Kakteen und Dünen, quer ein türkiser Fluss."><b>Glutwüste</b></div>
+      <div class="kachel"><img src="bilder/welt-vulkanschlund.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Vulkanschlund: schwarzes Gestein, ein glühender Lavastrom statt eines Flusses."><b>Vulkanschlund</b></div>
+      <div class="kachel"><img src="bilder/welt-nebelmoor.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Nebelmoor: dunkelgrüner Boden mit Bäumen und einem giftgrünen Wasserlauf."><b>Nebelmoor</b></div>
+      <div class="kachel"><img src="bilder/welt-herbstwald.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Herbstwald: brauner Waldboden mit orangefarbenen Bäumen und blauem Fluss."><b>Herbstwald</b></div>
+      <div class="kachel"><img src="bilder/welt-astralebene.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Astralebene: violettes Sternenfeld mit schwebenden Kristallen und magentafarbenem Fluss."><b>Astralebene</b></div>
+    </div>
+    <div class="bahn welten-fuss"><p>Zum Blättern nach rechts ziehen.</p></div>
+  </section>
+
+  <!-- ── Die Regel ─────────────────────────────────────────────────────── -->
+  <section class="welt">
     <div class="bahn regel">
       <div>
-        <h2 class="gross">Geschlossen heißt <em>geschlossen</em>.</h2>
+        <p class="vorsatz">Die eine Regel</p>
+        <h2>Geschlossen heißt <em>geschlossen</em>.</h2>
         <p>
           Am Ende der Bauphase lässt das Spiel Wasser von außen in dein Feld
           laufen. Erreicht es deine Burg, bist du raus.
@@ -151,9 +150,8 @@
           halten nichts auf — und deine Kanonen sind keine Mauer.
         </p>
       </div>
-      <div class="mauer" role="img"
-           aria-label="Schema eines Mauerrings um eine Burg: oben rechts fehlt ein Stein, dadurch gilt die Burg als offen.">
-        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i>
+      <div class="mauer" role="img" aria-label="Schema eines Mauerrings um eine Burg, bei dem oben rechts ein Stein fehlt.">
+        <i class="w z"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w z"></i><i class="l"></i><i class="w z"></i>
         <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
         <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
         <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
@@ -161,83 +159,169 @@
         <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
       </div>
     </div>
-    <span class="weltname">Vulkanschlund</span>
   </section>
 
-  <!-- ── An einem Gerät ─────────────────────────────────────────────────── -->
-  <section class="welt w-moor">
+  <!-- ── Zwei Kanonen ──────────────────────────────────────────────────── -->
+  <section class="welt welt-tief">
     <div class="bahn">
-      <h2 class="gross">Legt das Telefon zwischen euch.</h2>
-      <p class="dazu">
-        Gespielt wird gleichzeitig, jeder mit eigenem Bauteil. Das Spiel
-        erkennt an der Stelle, die dein Finger berührt, wem er gehört.
+      <p class="vorsatz">Feuerkraft</p>
+      <h2>Zwei Kanonen, zwei Absichten.</h2>
+      <p>
+        Beute verdienst du im Match — für jede Kugel, die trifft, für jede
+        überstandene Runde, für jede zerstörte Kanone des Gegners. Ausgeben
+        kannst du sie nur in der Rüstphase.
       </p>
-      <div class="paar">
+      <div class="paar2">
+        <div class="kanone">
+          <h3>Mauerbrecher</h3>
+          <p>
+            Reißt Löcher in den Wall und macht dem Gegner Arbeit für die
+            nächste Bauphase. Jede weitere kostet achtzig Beute mehr als die
+            davor — irgendwann bezahlst du für Nachschub, was eine Panzerung
+            gekostet hätte.
+          </p>
+          <span class="preis">200 Beute, danach +80 je Kauf</span>
+        </div>
+        <div class="kanone violett">
+          <h3>Bezwinger</h3>
+          <p>
+            Trifft ausschließlich Kanonen. Gegen Mauern richtet er nichts aus —
+            dafür schaltet er die Feuerkraft des Gegners aus, bevor sie deine
+            Burg erreicht. <strong>In Runde 1 ist er nicht zu bezahlen:</strong>
+            mit fehlerfreiem Spiel kommst du auf 530.
+          </p>
+          <span class="preis">550 Beute</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Einblicke ─────────────────────────────────────────────────────── -->
+  <section class="welt">
+    <div class="bahn">
+      <p class="vorsatz">Was noch drinsteckt</p>
+      <h2>Vier Fenster, die man auf einem Spielfeld nicht sieht.</h2>
+      <div class="fenster">
         <figure>
-          <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Eine Partie zu zweit auf einem Gerät: die blaue Burg oben, die rote unten, dazwischen ein Lavastrom — und unten zwei Bauteil-Felder nebeneinander.">
+          <img src="bilder/schmiede.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Schmiede: Materialvorrat aus Eisen, Silber, Drachenschuppe und Sternenstaub, darunter Rezeptkarten.">
           <figcaption>
-            <b>Zu zweit</b>
-            <span>Du baust oben, dein Gegenüber unten. Zwei Bauteil-Felder, keine Zugreihenfolge.</span>
+            <b>Schmiede</b>
+            <span>Seltene Materialien fallen aus Online-Partien. Daraus entstehen Stücke, die es im Shop nicht gibt.</span>
           </figcaption>
         </figure>
         <figure>
-          <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Eine Partie zu dritt auf einem Gerät: drei Burgen in Blau, Grün und Rot rund um einen Fluss, der sich in drei Arme teilt — und unten drei Bauteil-Felder.">
+          <img src="bilder/goldshop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Der Gold-Shop: Karten für Kugelspuren, Profilrahmen, Kanonen-Anstriche und Siegeseffekte.">
           <figcaption>
-            <b>Zu dritt</b>
-            <span>Der Fluss teilt sich in drei Arme, jeder bekommt seinen Sektor. Jeder gegen jeden.</span>
+            <b>Gold-Shop</b>
+            <span>Spuren, Rahmen, Kanonen, Siegeseffekte. Jeder Rahmen hat eine eigene Machart — genietet, geschliffen, Zierkranz, Schuppenrand.</span>
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="bilder/erfolge.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Auszeichnungen: eine Liste erreichter und offener Erfolge mit Fortschrittsbalken.">
+          <figcaption>
+            <b>Auszeichnungen</b>
+            <span>Für Dinge, die man nicht nebenbei schafft. Wer sie sucht, spielt anders.</span>
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="bilder/aufgaben.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Tagesaufgaben: drei Aufträge mit Fortschritt und Goldbelohnung zum Abholen.">
+          <figcaption>
+            <b>Tagesaufgaben</b>
+            <span>Jeden Tag drei neue, aus dem Datum berechnet — bei allen Spielern dieselben.</span>
           </figcaption>
         </figure>
       </div>
     </div>
-    <span class="weltname">Nebelmoor</span>
   </section>
 
-  <!-- ── Ehrlich gesagt ─────────────────────────────────────────────────── -->
-  <section class="welt w-herbst">
+  <!-- ── Kleine Regeln ─────────────────────────────────────────────────── -->
+  <section class="welt welt-tief">
     <div class="bahn">
-      <h2 class="gross">Was es kostet und was es von dir weiß.</h2>
+      <p class="vorsatz">Kleine Regeln, große Wirkung</p>
+      <h2>Die Sachen, die man erst nach ein paar Partien merkt.</h2>
       <ul class="liste">
         <li>
-          <b>Es kostet nichts</b>
-          <span>Keine Werbung, keine Käufe, kein Abo, keine Energie, die sich erst wieder auflädt. Der volle Umfang steht vom ersten Start an offen.</span>
+          <b>Aufladen</b>
+          <span>Wer eine ganze Schussphase nicht feuert, sammelt Ladung — die nächste Salve schießt entsprechend mehr Kugeln. Aussetzen ist eine echte Alternative zum Dauerfeuer.</span>
         </li>
         <li>
-          <b>Kein Pay-to-Win</b>
-          <span>Gold und Kosmetik sind Anerkennung für Gespieltes. Kein Gegenstand erhöht Schaden, Reichweite oder Nachladezeit.</span>
+          <b>Kanonentod sprengt mit</b>
+          <span>Fällt eine Kanone, reißt sie die Mauern im Umkreis von drei mal drei Feldern mit. Wer seine Kanonen eng an den Wall stellt, verliert beides auf einmal.</span>
         </li>
         <li>
-          <b>Offline gehört dir</b>
-          <span>Gegen den Bot und am selben Gerät läuft alles auf dem Gerät. Dein Fortschritt liegt dort und sonst nirgends.</span>
+          <b>Kein Absaufen</b>
+          <span>Wer keine einsatzfähige Kanone mehr hat, bekommt doppelten Sold und die nächste Kanone zum Grundpreis. Ohne das wäre eine verlorene Runde das Ende der Partie.</span>
         </li>
         <li>
-          <b>Online braucht wenig</b>
-          <span>Für Partien über das Netz gehen dein selbst gewählter Name, der Spielstand und die Punktzahl an einen Server. Kein Klarname, keine E-Mail, keine Werbekennung.</span>
+          <b>Trümmer sind Rohstoff</b>
+          <span>Zerschossene Mauern bleiben als Trümmer liegen. Die Reparatur macht wieder Mauern daraus — und wird mit jedem Kauf teurer.</span>
+        </li>
+        <li>
+          <b>Drei Bot-Stufen</b>
+          <span>Der leichte streut beim Zielen und feuert seltener. Der schwere trifft fast genau und kauft ein wie jemand, der weiß, was er tut.</span>
         </li>
       </ul>
     </div>
-    <span class="weltname">Herbstwald</span>
   </section>
 
-  <!-- ── Abschluss ──────────────────────────────────────────────────────── -->
-  <section class="welt w-kristall mitte">
+  <!-- ── An einem Gerät ────────────────────────────────────────────────── -->
+  <section class="welt">
+    <div class="bahn">
+      <p class="vorsatz">An einem Gerät</p>
+      <h2>Legt das Telefon zwischen euch.</h2>
+      <p>
+        Gespielt wird gleichzeitig, jeder mit eigenem Bauteil. Das Spiel
+        erkennt an der Stelle, die dein Finger berührt, wem er gehört.
+      </p>
+      <div class="geraet">
+        <figure>
+          <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Partie zu zweit an einem Gerät: blaue Burg oben, rote unten, unten zwei Bauteil-Felder nebeneinander.">
+          <figcaption><b>Zu zweit</b><span>Du baust oben, dein Gegenüber unten. Zwei Bauteil-Felder, keine Zugreihenfolge.</span></figcaption>
+        </figure>
+        <figure>
+          <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Partie zu dritt an einem Gerät: drei Burgen in Blau, Grün und Rot um einen dreiarmigen Fluss.">
+          <figcaption><b>Zu dritt</b><span>Der Fluss teilt sich in drei Arme, jeder bekommt seinen Sektor. Jeder gegen jeden.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ehrlich gesagt ────────────────────────────────────────────────── -->
+  <section class="welt welt-tief">
+    <div class="bahn">
+      <p class="vorsatz">Ehrlich gesagt</p>
+      <h2>Was es kostet und was es von dir weiß.</h2>
+      <ul class="liste">
+        <li><b>Es kostet nichts</b><span>Keine Werbung, keine Käufe, kein Abo, keine Energie, die sich erst wieder auflädt. Der volle Umfang steht vom ersten Start an offen.</span></li>
+        <li><b>Kein Pay-to-Win</b><span>Gold und Kosmetik sind Anerkennung für Gespieltes. Kein Gegenstand erhöht Schaden, Reichweite oder Nachladezeit.</span></li>
+        <li><b>Offline gehört dir</b><span>Gegen den Bot und am selben Gerät läuft alles auf dem Gerät. Dein Fortschritt liegt dort und sonst nirgends.</span></li>
+        <li><b>Online braucht wenig</b><span>Für Partien über das Netz gehen dein selbst gewählter Name, der Spielstand und die Punktzahl an einen Server. Kein Klarname, keine E-Mail, keine Werbekennung.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── Abschluss ─────────────────────────────────────────────────────── -->
+  <section class="welt mitte">
     <div class="bahn">
       <p class="zeile">Zwei Burgen. Ein Fluss. Eine Regel.</p>
 
       <!-- TESTFLIGHT:ANFANG -->
-      <a class="pille pille-apfel" href="https://testflight.apple.com/join/hE2AdHwr">
+      <a class="knopf" href="https://testflight.apple.com/join/hE2AdHwr">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
           <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
         </svg>
-        <span>Beta laden</span>
+        Beta laden
       </a>
       <!-- TESTFLIGHT:ENDE -->
 
       <!-- WARTEN:ANFANG -->
-      <a class="pille" href="https://skkjbeer.github.io/Fortress/">
-        <span>Sofort im Browser spielen</span>
-      </a>
+      <a class="knopf" href="https://skkjbeer.github.io/Fortress/">Sofort im Browser spielen</a>
       <!-- WARTEN:ENDE -->
 
       <div class="angaben">
@@ -247,7 +331,6 @@
         <div><b>Deutsch</b><span>Sprache</span></div>
       </div>
     </div>
-    <span class="weltname">Kristalltal</span>
   </section>
 
 </main>

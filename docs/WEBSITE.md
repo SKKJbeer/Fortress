@@ -25,38 +25,49 @@ node scripts/check-website.mjs build/website
 cd build/website && python3 -m http.server 8790   # nicht 8765/8766 — die belegt die Testsuite
 ```
 
-## Die Gestaltung
+## Die Gestaltung: Entwurf „Einschlag"
 
-Die erste Fassung sah aus wie jede Software-Produktseite: gläserne
-mitscrollende Kopfzeile, weiche Farbverläufe als „Licht", überall gerundete
-Karten zu dritt in einer Reihe, in jedem Abschnitt derselbe Takt aus
-Kleinüberschrift, Titel und Absatz. Für ein Spiel ist das die falsche Grammatik.
+Aus sechs Entwürfen (`docs/entwuerfe/`) gewählt. Das Prinzip: **die Seite
+bewegt sich, so wie das Spiel sich bewegt.**
 
-Nachgesehen wurde in den Stylesheets von Threes, Alto's Odyssey, Mini Metro,
-Knotwords und Balatro. Die Begründungen stehen im Kopf von `stil.css`, hier nur
-die Kurzfassung:
+- Der Anfang besteht aus **Schichten**, die beim Scrollen unterschiedlich
+  schnell laufen — Parallaxe wie bei Alto's Odyssey (dort neun Ebenen).
+- **Kugeln fliegen quer durchs Bild**, und alle paar Sekunden zittert die
+  Überschrift, als sei etwas eingeschlagen. Gleichmässiges Wackeln wäre
+  Zierrat; ein kurzer harter Stoss mit langer Ruhe liest sich als Treffer.
+- Die Bildschirmfotos ziehen als **endloses Band** durch und halten an, wenn
+  der Zeiger darauf liegt.
+- Die **sieben Welten** stehen als grosse Kacheln in einer eigenen Galerie.
 
-- **Die Wortmarke ist die Überschrift**, nicht ein Nutzenversprechen. Dazu eine
-  Zeile von höchstens sieben Wörtern.
-- **Grösste Schrift zu Fliesstext etwa 3:1**, und der Fliesstext gross (19 px).
-- **Versal, gesperrt, Zeilenhöhe unter eins** — das macht aus dem Namen einen
-  Block statt einer Textzeile.
-- **`ui-rounded` zuerst im Schriftstapel.** Alle Vorbilder benutzen geometrische
-  Rundschriften; iOS und macOS liefern eine mit, ohne dass etwas geladen wird.
-- **Jeder Abschnitt hat eine eigene flache Grundfarbe** — aus den sieben Welten
-  des Spiels (`src/engine/terrain.ts`), samt Weltnamen unten links wie im Spiel.
-- **Bildschirmfotos klein, viele, randlos**, ohne Geräte-Attrappe und ohne
-  Schatten. Die Zinnenkante oben ist eine Maske aus der Bildsprache des Spiels.
-- **Der Handlungsaufruf als Umriss-Pille**, die sich bei Überfahren von unten
-  füllt.
+Alles aus CSS. Kein Skript, keine Bibliothek, keine fremde Anfrage.
+`prefers-reduced-motion` friert jede Bewegung ein.
 
-Was bewusst **fehlt**, weil es nach Baukasten aussieht: Kopfnavigation mit fünf
-Punkten, Drei-Spalten-Karten mit Symbolen, „So funktioniert's" in drei
-Schritten, Zahlenreihen als Beleg, Kundenstimmen, Aufklapp-Fragen, ein zweiter
-schwächerer Knopf, weiche Verläufe, gekippte Telefon-Attrappen.
+Was bewusst **fehlt**, weil es nach Software-Baukasten aussieht: Kopfnavigation
+mit fünf Punkten, Drei-Spalten-Karten mit Symbolen, „So funktioniert's" in drei
+Schritten, Zahlenreihen als Beleg, Kundenstimmen, Aufklapp-Fragen, gekippte
+Telefon-Attrappen. Pressezitate und Auszeichnungen wären das nächste Mittel
+echter Spieleseiten — die gibt es hier nicht, und erfunden werden sie nicht.
 
-**Pressezitate und Auszeichnungen** wären das nächste Mittel der Vorbilder. Die
-gibt es hier nicht, und erfunden werden sie nicht.
+Die anderen fünf Entwürfe bleiben in `docs/entwuerfe/` liegen. Sie werden
+**nicht** ausgeliefert (das Bauskript kopiert nur `docs/website/`) und sind die
+Begründung dafür, warum es diese Fassung geworden ist.
+
+## Die Bilder
+
+`tools/make-screenshots.cjs website` nimmt alles aus dem echten Spiel auf:
+
+| Bilder | Was |
+|---|---|
+| `menu/game/shoot/shop` | Menü und die drei Phasen, aus einem Bot-Selbstspiel |
+| `zwei/drei` | lokale Partien zu zweit und zu dritt — die Bauteil-Felder unten tragen die Aussage |
+| `schmiede/goldshop/erfolge/aufgaben` | die Menüfenster, die man auf einem Spielfeld nie sieht |
+| `welt-*.jpg` | **nur das Brett**, je einmal pro Welt |
+
+Die Welt hängt am Terrain-Seed (`worldThemeOf(seed) = seed % 7`) und ist bei
+jedem lokalen Spiel zufällig. Einen Seed vorzugeben hiesse, dafür Spielcode zu
+ändern — für Werbebilder der falsche Preis. Also würfelt das Werkzeug, bis alle
+sieben einmal dran waren; die Welt verrät der gesicherte Haken
+`__waterTheme().name`.
 
 ## Der TestFlight-Knopf
 
