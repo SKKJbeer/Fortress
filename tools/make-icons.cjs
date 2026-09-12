@@ -182,12 +182,17 @@ function feature(x, W, H) {
 }
 `;
 
+// **Die Icons gehoeren nach public/, nicht in die Wurzel.** Vor der
+// Vite-Umstellung wurde die Wurzel ausgeliefert, seither public/ — die Pfade
+// hier sind nie nachgezogen worden. Wer das Werkzeug laufen liess, bekam fuenf
+// Dubletten in die Wurzel gelegt, waehrend die wirklich ausgelieferten Icons
+// unberuehrt blieben. Aufgefallen ist es erst, als sie im Commit auftauchten.
 const JOBS = [
-  { file: 'icon-512.png', size: 512, pad: 0.10, rounded: true },
-  { file: 'icon-192.png', size: 192, pad: 0.10, rounded: true },
-  { file: 'icon-96.png', size: 96, pad: 0.10, rounded: true },
-  { file: 'icon-maskable-512.png', size: 512, pad: 0.20, rounded: false },
-  { file: 'icon-maskable-192.png', size: 192, pad: 0.20, rounded: false },
+  { file: 'public/icon-512.png', size: 512, pad: 0.10, rounded: true },
+  { file: 'public/icon-192.png', size: 192, pad: 0.10, rounded: true },
+  { file: 'public/icon-96.png', size: 96, pad: 0.10, rounded: true },
+  { file: 'public/icon-maskable-512.png', size: 512, pad: 0.20, rounded: false },
+  { file: 'public/icon-maskable-192.png', size: 192, pad: 0.20, rounded: false },
   { file: 'store/play-icon-512.png', size: 512, pad: 0.10, rounded: true }
 ];
 
