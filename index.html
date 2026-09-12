@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.84.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.85.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -37,18 +37,35 @@
     /* box-sizing ist hier KEINE Feinheit: ohne es addiert sich die
        Sicherheitspolsterung auf die vollen 100dvh, der Koerper wird
        hoeher als der Bildschirm, und overflow:hidden schneidet unten ab.
-       Genau so verschwand auf dem iPhone die Fusszeile des Menues. */
-    html,body{box-sizing:border-box;height:100dvh;background:#02060f;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;padding-top:var(--sa-top);padding-bottom:var(--sa-bottom);padding-left:var(--sa-left);padding-right:var(--sa-right);color:#eef2f9;font-family:'Segoe UI',system-ui,sans-serif}
+       Genau so verschwand auf dem iPhone die Fusszeile des Menues.
+
+       Die Polsterung steht an GENAU EINER Stelle: am Koerper. Als sie in
+       v3.84.0 noch fuer html UND body galt, zog jedes der beiden Elemente
+       denselben Rand ein — oben blieb ein toter Streifen von der Hoehe des
+       Sicherheitsbereichs stehen (auf dem iPhone 59 px), und unten ragte der
+       Koerper um dieselbe Strecke aus dem Bildschirm heraus. html traegt
+       deshalb nur noch Hoehe, Grund und Ueberlauf. */
+    html{box-sizing:border-box;height:100dvh;background:#02060f;overflow:hidden;touch-action:none}
+    body{box-sizing:border-box;height:100%;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;padding-top:var(--sa-top);padding-bottom:var(--sa-bottom);padding-left:var(--sa-left);padding-right:var(--sa-right);color:#eef2f9;font-family:'Segoe UI',system-ui,sans-serif}
     body{background:radial-gradient(ellipse 120% 80% at 50% -10%,#102036 0%,#081225 38%,#040a16 70%,#02060f 100%)}
     #root{height:100%}
     #splash{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse 120% 90% at 50% 12%,#13243f 0%,#081326 45%,#02060f 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s ease}
-    #splash h1{font-family:'Segoe UI',system-ui,sans-serif;font-size:54px;font-weight:900;letter-spacing:-2.5px;margin-top:16px;background:linear-gradient(120deg,#22d3ee 0%,#60a5fa 45%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 26px rgba(56,189,248,0.35))}
+    /* Die 54 px waren fuer einen kurzen Namen gewaehlt. „Stack & Siege" ist
+       deutlich laenger und stiess auf einem 402 px breiten Schirm links und
+       rechts an den Rand — auf schmaleren Geraeten haette es geschnitten.
+       Jetzt waechst der Schriftgrad mit der Breite und behaelt einen Rand. */
+    #splash h1{font-family:'Segoe UI',system-ui,sans-serif;font-size:clamp(30px,10.5vw,54px);font-weight:900;letter-spacing:-0.045em;margin-top:16px;padding:0 18px;max-width:100%;text-align:center;background:linear-gradient(120deg,#22d3ee 0%,#60a5fa 45%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 26px rgba(56,189,248,0.35))}
     #splash p{color:#64748b;font-family:system-ui;font-size:13px;margin-top:4px;letter-spacing:0.04em}
     #splash-bar{width:54px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:28px;overflow:hidden}
     #splash-bar span{display:block;height:100%;width:35%;background:linear-gradient(90deg,#22d3ee,#a78bfa);border-radius:2px;animation:sl 1s ease-in-out infinite;box-shadow:0 0 12px rgba(56,189,248,0.6)}
     @keyframes sl{0%{transform:translateX(-100%)}100%{transform:translateX(390%)}}
     @keyframes radarSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-    @keyframes phasebanner{0%{opacity:0;transform:translate(-50%,-50%) scale(0.75)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}20%{transform:translate(-50%,-50%) scale(1)}76%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.93)}}
+    /* Nur noch WAAGERECHT zentriert (v3.85.0). Das -50% in der Senkrechten
+       zog das Schild um seine halbe Hoehe nach oben — bei top:96px lag seine
+       Oberkante damit auf 52px und damit mitten in der Kopfzeile. Jetzt
+       haengt es an seiner Oberkante, und die setzt der Spielcode direkt
+       unter die gemessene Kopfzeile. */
+    @keyframes phasebanner{0%{opacity:0;transform:translateX(-50%) scale(0.75)}14%{opacity:1;transform:translateX(-50%) scale(1.04)}20%{transform:translateX(-50%) scale(1)}76%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(0.93)}}
     @keyframes glowpulse{0%,100%{opacity:0.6}50%{opacity:1}}
     @keyframes lvlUpFlash{0%{opacity:0;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}70%{transform:scale(0.96)}100%{opacity:1;transform:scale(1)}}
     @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}

@@ -359,7 +359,10 @@ window.StackSiegeApp = function StackSiegeApp() {
   const [round, setRound] = useState(1);
   const [scores, setScores] = useState({ 1: 0, 2: 0, 3: 0 });
   const [resultInfo, setResultInfo] = useState(null);
-  const [viewSize, setViewSize] = useState({ w: W, h: H, bar: 52 });
+  // `top` = gemessene Hoehe der Kopfzeile (bei 3 Spielern zwei Reihen). Alle
+  // ueberlagerten Meldungen haengen sich daran statt an eine geratene Zahl —
+  // vorher stand 52 an sieben Stellen, und bei drei Spielern stimmte keine davon.
+  const [viewSize, setViewSize] = useState({ w: W, h: H, bar: 52, top: 52 });
   const [warn, setWarn] = useState(null);
   const warnTimer = useRef(null);
   const [phaseBanner, setPhaseBanner] = useState(null);
@@ -2449,6 +2452,24 @@ window.StackSiegeApp = function StackSiegeApp() {
   // unterhalb des Spielfelds schwebt → Loslassen bricht die Platzierung ab.
   const cancelHover = useRef({ 1: false, 2: false, 3: false });
   const fitTimerRef = useRef(null);
+  // Der Platz, den die Spiel-Huelle wirklich hat — also der Bildschirm ABZUEGLICH
+  // der Sicherheitsbereiche. Bevorzugt am Element gemessen (clientHeight schliesst
+  // die Polsterung schon aus); solange es die Huelle nicht gibt (Menue, erster
+  // Lauf) aus den Polsterwerten des Koerpers gerechnet. Eine Quelle fuer beide
+  // Faelle, damit die Zahl nicht an zwei Stellen auseinanderlaufen kann.
+  function nutzRaum() {
+    const el = wrapRef.current;
+    if (el && el.clientHeight > 0 && el.clientWidth > 0) return { w: el.clientWidth, h: el.clientHeight };
+    let oben = 0, unten = 0, links = 0, rechts = 0;
+    try {
+      const cs = getComputedStyle(document.body);
+      oben = parseFloat(cs.paddingTop) || 0;
+      unten = parseFloat(cs.paddingBottom) || 0;
+      links = parseFloat(cs.paddingLeft) || 0;
+      rechts = parseFloat(cs.paddingRight) || 0;
+    } catch (e) { /* ohne Dokument: die vollen Masse */ }
+    return { w: window.innerWidth - links - rechts, h: window.innerHeight - oben - unten };
+  }
   useEffect(() => {
     function fit() {
       const topH = (scoreBarRef.current ? scoreBarRef.current.offsetHeight : 0) + (row3Ref.current ? row3Ref.current.offsetHeight + 4 : 0);
@@ -2458,12 +2479,18 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Resthöhe blieb als schwarzer Balken liegen. Jetzt reserviert `fit` nur
       // die MINDESThöhe und gibt den kompletten Rest an die Leiste weiter.
       const BAR_MIN = 52;
-      const vw = window.innerWidth - 2;
-      const vh = window.innerHeight - topH - BAR_MIN - 8;
+      // v3.85.0: NICHT window.innerHeight — das ist der ganze Bildschirm
+      // einschliesslich der Sicherheitsbereiche. Gerechnet werden muss mit dem
+      // Platz, den die Huelle wirklich hat; sonst faellt das Brett zu gross aus
+      // und die Unterleiste bekommt eine Hoehe, die es nicht gibt. Auf dem
+      // iPhone waren das 93 px zu viel — genau die fehlten unten.
+      const raum = nutzRaum();
+      const vw = raum.w - 2;
+      const vh = raum.h - topH - BAR_MIN - 8;
       const scale = Math.min(vw / W, vh / H, 1.4);
       const w = Math.floor(W * scale), h = Math.floor(H * scale);
-      const bar = Math.max(BAR_MIN, Math.min(150, window.innerHeight - topH - h - 8));
-      setViewSize((prev) => (prev.w === w && prev.h === h && prev.bar === bar) ? prev : { w, h, bar });
+      const bar = Math.max(BAR_MIN, Math.min(150, raum.h - topH - h - 8));
+      setViewSize((prev) => (prev.w === w && prev.h === h && prev.bar === bar && prev.top === topH) ? prev : { w, h, bar, top: topH });
       clearTimeout(fitTimerRef.current);
       fitTimerRef.current = setTimeout(() => {
         if (canvasRef.current) canvasRect.current = canvasRef.current.getBoundingClientRect();
@@ -7313,7 +7340,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.84.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.85.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7789,7 +7816,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Aufgabe oder der Tag-7-Kiste sichtbar ist.
   matToast && React.createElement("div", { style: {
     position: "fixed", left: "50%", transform: "translateX(-50%)",
-    bottom: "calc(env(safe-area-inset-bottom, 0px) + 26px)", zIndex: 1400,
+    bottom: "calc(var(--sa-bottom, 0px) + 26px)", zIndex: 1400,
     display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
     borderRadius: 999, pointerEvents: "none",
     background: "linear-gradient(180deg, rgba(48,30,12,0.97), rgba(14,11,20,0.97))",
@@ -8296,7 +8323,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       )
     );
   })(), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
+    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
     style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(30,16,8,0.94)", border: "1px solid rgba(251,146,60,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
   },
@@ -8319,7 +8346,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Vorrang — sonst stünden zwei Banner übereinander und das falsche würde
   // dem Gegner die Schuld geben.
   oppLost && !connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
+    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
   }, /* @__PURE__ */ React.createElement("div", {
     style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(40,10,10,0.94)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
   },
@@ -8729,11 +8756,18 @@ window.StackSiegeApp = function StackSiegeApp() {
     });
     const LABEL = { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 };
     return React.createElement("div", { style: {
-      background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",      minHeight: "100dvh",
+      background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",
+      // Siehe Spiel-Huelle: 100% des bereits verkuerzten Koerpers, nicht 100dvh.
+      // "safe center" zentriert nur, SOLANGE der Inhalt passt; wird er hoeher
+      // (3 Spieler, Level-Aufstieg, langer Name), rutscht er auf flex-start
+      // statt oben aus dem rollbaren Kasten heraus — bei schlichtem "center"
+      // waere der obere Teil unerreichbar.
+      height: "100%",
+      overflowY: "auto",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: "safe center",
       fontFamily: "'Segoe UI',system-ui,sans-serif",
       color: "#e2e8f0",
       padding: "14px 18px",
@@ -9002,6 +9036,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   // skaliert nach Breite), also füllt sie den Platz jetzt mit echtem Inhalt.
   const PANEL_COL = { 1: { a: "96,165,250", d: "#60a5fa" }, 2: { a: "248,113,113", d: "#f87171" }, 3: { a: "52,211,153", d: "#34d399" } };
   const barH = viewSize.bar || 52;
+  const hudH = viewSize.top || 52;
   const pieceBox = Math.max(24, Math.min(76, barH - 38));
   // Vorher drei fast identische Blöcke (nur Farbe + Spiegelung unterschiedlich);
   // eine gemeinsame Funktion hält sie garantiert in Deckung.
@@ -9075,7 +9110,12 @@ window.StackSiegeApp = function StackSiegeApp() {
   }
   return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
     background: "#04080d",
-    minHeight: "100dvh",
+    // **100% statt 100dvh** — dieselbe Falle wie im Menue (v3.84.0): Der
+    // Koerper ist bereits um die Sicherheitsbereiche verkuerzt. Volle 100dvh
+    // machten die Huelle um oberen PLUS unteren Bereich zu hoch (auf dem
+    // iPhone 93 px), und overflow:hidden schnitt genau das unten ab — die
+    // Bauteil-Leiste ragte aus dem Bildschirm.
+    height: "100%",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -9355,8 +9395,8 @@ window.StackSiegeApp = function StackSiegeApp() {
         key: "shopwrap" + sp,
         style: __spreadValues({ position: "fixed", zIndex: 1200, display: "flex", justifyContent: "center", pointerEvents: "none" },
           r.kind === "placehint"
-            ? { left: 0, right: 0, top: "calc(env(safe-area-inset-top, 0px) + 52px)" }
-            : { left: 6, right: 6, bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" })
+            ? { left: 0, right: 0, top: `calc(var(--sa-top,0px) + ${hudH + 2}px)` }
+            : { left: 6, right: 6, bottom: "calc(var(--sa-bottom, 0px) + 12px)" })
       }, r.el));
     }
     // Lokaler 2–3-Spieler-Hotseat (v3.40.2): alle Nicht-P1-Panels sauber in einer
@@ -9367,8 +9407,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       key, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, pointerEvents: "none" }, posStyle)
     }, list.map((x) => x.r.el)) : null;
     return [
-      stack(parts.filter((x) => x.sp !== 1), { top: "calc(env(safe-area-inset-top, 0px) + 54px)" }, "shopStackTop"),
-      stack(parts.filter((x) => x.sp === 1), { bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }, "shopStackBot")
+      stack(parts.filter((x) => x.sp !== 1), { top: `calc(var(--sa-top,0px) + ${hudH + 4}px)` }, "shopStackTop"),
+      stack(parts.filter((x) => x.sp === 1), { bottom: "calc(var(--sa-bottom, 0px) + 12px)" }, "shopStackBot")
     ];
   })(), showShopInfo && phase === "cannon" && (() => {
     const h = React.createElement;
@@ -9492,7 +9532,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       // 118px statt 58px (v3.64.0): Auf 58 lag der Schalter GENAU unter dem
       // Warnbanner ("Kanonen werden umgeruestet") und wurde davon verdeckt —
       // ausgerechnet von der Meldung, die zum Schalter gehoert.
-      position: "fixed", right: 8, top: "calc(env(safe-area-inset-top, 0px) + 118px)",
+      position: "fixed", right: 8, top: `calc(var(--sa-top,0px) + ${hudH + 66}px)`,
       zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5
     } },
       /* @__PURE__ */ React.createElement("span", { style: {
@@ -9514,7 +9554,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   })(),
   // ── Emotes (v3.25.0): Button + Leiste (nur online) ──
   online.current && /* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed", left: 8, bottom: "calc(env(safe-area-inset-bottom, 0px) + 118px)",
+    position: "fixed", left: 8, bottom: `calc(var(--sa-bottom,0px) + ${barH + 12}px)`,
     zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6
   } },
     emoteBarOpen && /* @__PURE__ */ React.createElement("div", { style: {
@@ -9541,7 +9581,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     const pi = playerInfo.current[emoteShow.p] || {};
     const col = pi.color || (emoteShow.p === 1 ? "#2563eb" : emoteShow.p === 2 ? "#dc2626" : "#059669");
     return /* @__PURE__ */ React.createElement("div", { key: "emote" + emoteShow.key, style: {
-      position: "fixed", left: 0, right: 0, top: "calc(env(safe-area-inset-top, 0px) + 92px)",
+      position: "fixed", left: 0, right: 0, top: `calc(var(--sa-top,0px) + ${hudH + 42}px)`,
       zIndex: 1240, display: "flex", justifyContent: "center", pointerEvents: "none"
     } },
       /* @__PURE__ */ React.createElement("div", { style: {
@@ -9556,14 +9596,17 @@ window.StackSiegeApp = function StackSiegeApp() {
       )
     );
   })(), perfSichtbar && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 4px)", left: 4, zIndex: 9999,
+    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 4px)", left: 4, zIndex: 9999,
       background: "rgba(0,0,0,0.72)", color: "#7dd3fc", font: "600 10px ui-monospace, Menlo, monospace",
       padding: "3px 6px", borderRadius: 6, pointerEvents: "none", letterSpacing: "0.02em" }
   }, perfText || "messe \u2026"), tutorialMode.current && coachMsg && /* @__PURE__ */ React.createElement("div", {
     // v3.37.2: Pausierendes Coach-Popup OBEN. Der Vollbild-Container blockiert
     // alle Eingaben (Spiel pausiert: Timer/Bot/Kugeln stehen still); leichter
     // Dim-Hintergrund signalisiert die Pause. "OK" setzt fort.
-    style: { position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.35)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "calc(env(safe-area-inset-top, 0px) + 56px)", paddingLeft: 8, paddingRight: 8, pointerEvents: "auto", padding: "var(--sa-top,0px) var(--sa-right,0px) var(--sa-bottom,0px) var(--sa-left,0px)" }
+    style: { position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.35)", display: "flex", alignItems: "flex-start", justifyContent: "center", pointerEvents: "auto", // EINE Kurzform. In v3.84.0 stand sie NACH paddingTop/Left/Right und hat die
+      // drei ueberschrieben — die Coach-Blase verlor damit ihren Abstand zur
+      // Kopfzeile und klebte oben am Rand.
+      padding: `calc(var(--sa-top,0px) + ${hudH + 8}px) calc(var(--sa-right,0px) + 8px) var(--sa-bottom,0px) calc(var(--sa-left,0px) + 8px)` }
   }, /* @__PURE__ */ React.createElement("div", {
     key: "coach_" + coachMsg.key,
     style: { maxWidth: 460, width: "100%", background: "linear-gradient(135deg,rgba(124,58,237,0.97),rgba(8,145,178,0.97))", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 14, padding: "10px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", textAlign: "left", animation: "coachPop 0.4s cubic-bezier(.36,1.5,.5,1) both, coachFlash 0.8s ease 0.1s" }
@@ -9588,7 +9631,11 @@ window.StackSiegeApp = function StackSiegeApp() {
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#94a3b8", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", marginBottom: 9, boxShadow: "0 4px 20px rgba(124,58,237,0.35)" } }, React.createElement(Icon, { name: "globe", size: 15, style: { verticalAlign: "-2px", marginRight: 6 } }), t('tutorialToOnline')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { width: "100%", background: "rgba(255,255,255,0.06)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
-  )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 96px)", left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", background: pb.bg, border: `1.5px solid ${pb.color}`, borderRadius: 14, padding: "9px 20px", boxShadow: `0 0 34px ${pb.glow}, 0 6px 24px rgba(0,0,0,0.6)`, maxWidth: "min(92vw,430px)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: pb.color, display: "flex", flexShrink: 0, filter: `drop-shadow(0 0 12px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 900, color: pb.color, letterSpacing: "0.04em", textShadow: `0 0 16px ${pb.glow}`, lineHeight: 1.15 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", marginTop: 2, fontWeight: 600, lineHeight: 1.3 } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: {
+  )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: `calc(var(--sa-top,0px) + ${hudH + 10}px)`, left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", // Ohne width:max-content bleibt das Schild auf der HALBEN Bildschirm-
+      // breite haengen: bei left:50% ohne right reicht der Platz eines fest
+      // positionierten Kastens nur noch bis zum rechten Rand. Der Text brach
+      // deshalb auf drei Zeilen um und deckte ein Drittel des Bretts zu.
+      width: "max-content", background: pb.bg, border: `1.5px solid ${pb.color}`, borderRadius: 14, padding: "9px 20px", boxShadow: `0 0 34px ${pb.glow}, 0 6px 24px rgba(0,0,0,0.6)`, maxWidth: "min(92vw,430px)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: pb.color, display: "flex", flexShrink: 0, filter: `drop-shadow(0 0 12px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 900, color: pb.color, letterSpacing: "0.04em", textShadow: `0 0 16px ${pb.glow}`, lineHeight: 1.15 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", marginTop: 2, fontWeight: 600, lineHeight: 1.3 } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: buildUrgencyOpen ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.07)",

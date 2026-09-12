@@ -1731,6 +1731,200 @@ async function suitePlattform(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 0c2: Sicherheitsbereiche im SPIEL (v3.85.0)
+//
+// Warum diese Suite noetig wurde: v3.84.0 hat die Sicherheitsbereiche im Menue
+// und in den Vollbild-Fenstern geradegezogen — das SPIEL blieb dabei aussen
+// vor, und zwei neue Fehler kamen dazu. Auf dem Geraet sah man einen toten
+// Streifen unter der Statusleiste und eine Bauteil-Leiste, die unten aus dem
+// Bildschirm ragte.
+//
+// Gemessen wird mit gesetzten Sicherheitsbereichen. Chromium kennt keine
+// echten env()-Werte; seit v3.84.0 laufen sie aber ueber --sa-*, und die lassen
+// sich als Inline-Stil am Wurzelelement vorgeben. Ohne diese Vorgabe waeren
+// alle Werte 0 — die Suite waere gruen, ohne irgendetwas zu pruefen.
+// ═══════════════════════════════════════════════════════════════
+const SA_OBEN = 59, SA_UNTEN = 34;
+const SA_STUB = `
+  (function () {
+    const setzen = () => {
+      const d = document.documentElement;
+      if (!d || !d.style) return false;
+      d.style.setProperty('--sa-top', '${SA_OBEN}px');
+      d.style.setProperty('--sa-bottom', '${SA_UNTEN}px');
+      return true;
+    };
+    if (!setzen()) document.addEventListener('DOMContentLoaded', setzen);
+  })();
+`;
+
+async function suiteSicherheitsbereiche(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Sicherheitsbereiche im Spiel\n' + '='.repeat(50));
+
+  // Die Lage aller Bausteine in EINEM Durchgang — jede Messung einzeln
+  // abzufragen hiesse, sie zu verschiedenen Zeitpunkten zu nehmen.
+  const lage = page => page.evaluate(() => {
+    const kasten = el => { if (!el) return null; const b = el.getBoundingClientRect();
+      return { t: Math.round(b.top), b: Math.round(b.bottom), h: Math.round(b.height) }; };
+    const huelle = document.querySelector('#root > div');
+    const kinder = huelle ? Array.from(huelle.children) : [];
+    const reihen = kinder.filter(c => ['static', 'relative'].includes(getComputedStyle(c).position))
+                         .map(c => kasten(c));
+    return {
+      vh: window.innerHeight,
+      dokument: document.documentElement.scrollHeight,
+      htmlOben: getComputedStyle(document.documentElement).paddingTop,
+      bodyOben: getComputedStyle(document.body).paddingTop,
+      wurzel: kasten(document.getElementById('root')),
+      huelle: kasten(huelle),
+      reihen,
+      schild: kasten(document.querySelector('div[style*="phasebanner"]'))
+    };
+  });
+
+  const starten = async (spieler) => {
+    const ctx = await browser.newContext({ viewport: { width: 402, height: 874 },
+      hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    // KEIN TIMER_SPEEDUP hier: der verkuerzt auch die 2,5 s des Phasen-Schildes
+    // auf 0,5 s — es waere beim Messen schon wieder verschwunden, und die
+    // Pruefung meldete „nicht gefunden" statt etwas ueber die Lage zu sagen.
+    await page.addInitScript(FB_SPERRE);
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(SA_STUB);
+    await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+    await page.waitForTimeout(400);
+    return { ctx, page };
+  };
+
+  // ── 1) Die Polsterung darf GENAU EINMAL zaehlen ────────────────────────
+  {
+    const { ctx, page } = await starten(2);
+    try {
+      const m = await lage(page);
+      (m.htmlOben === '0px' && m.bodyOben === `${SA_OBEN}px`)
+        ? ok(`Sicherheitsbereich zaehlt einmal (html ${m.htmlOben}, body ${m.bodyOben}) ✓`)
+        : fail(`Sicherheitsbereich doppelt: html ${m.htmlOben} + body ${m.bodyOben}`);
+      (m.wurzel && m.wurzel.t === SA_OBEN)
+        ? ok(`Inhalt beginnt am Sicherheitsbereich (${m.wurzel.t} px) ✓`)
+        : fail(`Toter Streifen oben: Inhalt beginnt bei ${m.wurzel && m.wurzel.t} statt ${SA_OBEN}`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 2) Spiel: nichts ragt heraus, nichts ueberdeckt die Kopfzeile ──────
+  for (const spieler of [2, 3]) {
+    const { ctx, page } = await starten(spieler);
+    try {
+      await jsClick(page, ['LOKAL']);
+      await page.waitForTimeout(250);
+      await jsClick(page, [spieler === 2 ? '2 Spieler' : '3 Spieler']);
+      await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
+      // Auf das Schild warten, statt eine Wartezeit zu raten.
+      await page.waitForSelector('div[style*="phasebanner"]', { timeout: 6000 }).catch(() => {});
+      const m = await lage(page);
+
+      // Gemessen wird gegen den BILDSCHIRM, nicht gegen die Huelle. Im
+      // Kontrollversuch mit wieder eingebautem Fehler war „Leiste innerhalb der
+      // Huelle" gruen — weil die Huelle selbst herausragte. Und
+      // document.scrollHeight taugt gar nicht: html hat overflow:hidden, der
+      // Wert ist gedeckelt und meldet nie einen Ueberlauf.
+      const schirmUnten = m.vh - SA_UNTEN;
+      (m.huelle && m.huelle.b <= schirmUnten)
+        ? ok(`${spieler}P: Huelle endet ueber dem unteren Sicherheitsbereich (${m.huelle.b} ≤ ${schirmUnten}) ✓`)
+        : fail(`${spieler}P: Huelle ragt ${m.huelle ? m.huelle.b - schirmUnten : '?'} px in den Sicherheitsbereich oder aus dem Bild`);
+
+      const unten = m.reihen.length ? m.reihen[m.reihen.length - 1] : null;
+      (unten && unten.b <= schirmUnten)
+        ? ok(`${spieler}P: Unterleiste bleibt im Bild (${unten.b} ≤ ${schirmUnten}) ✓`)
+        : fail(`${spieler}P: Unterleiste ragt ${unten ? unten.b - schirmUnten : '?'} px aus dem Bild`);
+
+      // Die Kopfzeile ist die erste Reihe; bei drei Spielern kommt eine zweite
+      // dazu. Das Phasen-Schild muss UNTER der letzten Kopfreihe liegen.
+      const kopfUnten = spieler === 3 && m.reihen.length > 1 ? m.reihen[1].b : (m.reihen[0] ? m.reihen[0].b : 0);
+      if (!m.schild) {
+        fail(`${spieler}P: Phasen-Schild nicht gefunden — die Pruefung greift ins Leere`);
+      } else if (m.schild.t >= kopfUnten) {
+        ok(`${spieler}P: Phasen-Schild unter der Kopfzeile (${m.schild.t} ≥ ${kopfUnten}) ✓`);
+      } else {
+        fail(`${spieler}P: Phasen-Schild ueberdeckt die Kopfzeile (${m.schild.t} < ${kopfUnten})`);
+      }
+    } finally { await ctx.close(); }
+  }
+
+  // ── 3) Ergebnis-Bildschirm: der unterste Knopf muss erreichbar sein ────
+  {
+    const ctx = await browser.newContext({ viewport: { width: 320, height: 568 },
+      hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await page.addInitScript(FB_SPERRE);
+      await page.addInitScript(PROFILE_INIT);
+      await page.addInitScript(TIMER_SPEEDUP);
+      await page.addInitScript(SA_STUB);
+      await page.addInitScript(`window.__mmDebug = true;`);
+      await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+      await jsClick(page, ['LOKAL']);
+      await page.waitForTimeout(250);
+      await jsClick(page, ['2 Spieler']);
+      await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
+      // Burg von P2 aufreissen → Verlust am Bauende → Ergebnis-Bildschirm.
+      await page.waitForFunction(() => /BAUEN|BUILD/.test(document.body.textContent), { timeout: 20000 });
+      await page.evaluate(() => window.__blastWall(2, 4));
+      const kam = await page.waitForFunction(() => !document.querySelector('canvas'), { timeout: 25000 })
+        .then(() => true).catch(() => false);
+      if (!kam) {
+        fail('Ergebnis: Bildschirm kam nicht — Pruefung nicht durchgefuehrt');
+      } else {
+        await page.waitForTimeout(500);
+        const m = await page.evaluate(() => {
+          const el = document.querySelector('#root > div');
+          const cs = getComputedStyle(el);
+          const knoepfe = Array.from(el.querySelectorAll('button'));
+          const letzter = knoepfe[knoepfe.length - 1];
+          return { rollbar: cs.overflowY, inhalt: el.scrollHeight, sicht: el.clientHeight,
+            oben: Math.round(el.getBoundingClientRect().top),
+            maxRoll: el.scrollHeight - el.clientHeight,
+            letzterText: letzter ? letzter.textContent.trim().slice(0, 20) : null };
+        });
+        // Der Kasten ist auf einem kleinen Schirm zu klein fuer den Inhalt —
+        // genau dann muss er rollen, sonst ist der unterste Knopf unerreichbar.
+        (m.inhalt > m.sicht)
+          ? ok(`Ergebnis (320×568): Inhalt ${m.inhalt} > Kasten ${m.sicht} — der Fall wird geprueft ✓`)
+          : fail(`Ergebnis: Inhalt passt (${m.inhalt} ≤ ${m.sicht}) — die Pruefung sagt nichts aus`);
+        (m.rollbar === 'auto' || m.rollbar === 'scroll')
+          ? ok(`Ergebnis: Kasten rollt (${m.rollbar}), unterster Knopf „${m.letzterText}" erreichbar ✓`)
+          : fail(`Ergebnis: kein Rollen (${m.rollbar}) — der untere Teil ist abgeschnitten`);
+        // Und der OBERE Teil darf dabei nicht wegrutschen (die Falle bei
+        // justify-content:center in einem rollbaren Kasten).
+        const obenSichtbar = await page.evaluate(() => {
+          const el = document.querySelector('#root > div');
+          el.scrollTop = 0;
+          // Nur Kinder IM FLUSS: der erste Knoten ist der Sieges-Effekt und
+          // haengt fest am Bildschirm — seine Lage sagt ueber das Rollen nichts.
+          const erstes = Array.from(el.children).find(
+            c => ['static', 'relative'].includes(getComputedStyle(c).position));
+          return erstes ? Math.round(erstes.getBoundingClientRect().top - el.getBoundingClientRect().top) : null;
+        });
+        (obenSichtbar !== null && obenSichtbar >= -1)
+          ? ok(`Ergebnis: oberer Rand erreichbar (${obenSichtbar} px) ✓`)
+          : fail(`Ergebnis: oberer Teil liegt ${obenSichtbar} px ausserhalb — unerreichbar`);
+      }
+    } finally { await ctx.close(); }
+  }
+
+  errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+              : ok('Sicherheitsbereiche: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE 0d: Trichter (v3.79.0)
 // Drei Eingriffe gegen das eigentliche Problem: bei zehn aktiven Spielern ist
 // die Warteschlange fast immer leer. Geprueft wird, dass die Sackgasse weg ist
@@ -3760,10 +3954,11 @@ async function suiteTutorial(browser) {
     const cs = await suiteCloudSave(browser, FB_PORT);
     return { mm, mm3, hb, cs, tr };
   })();
-  const [rMenu, rOff, rPlat, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, rPlat, rSA, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
     suitePlattform(browser),
+    suiteSicherheitsbereiche(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
     suiteMechanics(browser),
@@ -3791,9 +3986,9 @@ async function suiteTutorial(browser) {
   await browser.close();
   mockFbSrv.close();
 
-  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res,  ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
                    ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res];
-  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
                    ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.84.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.85.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5639,3 +5639,62 @@ Datenschutzadresse in den Store-Angaben, nicht in der App. Geprueft ueber
 `istNativ()`, die EINE Plattform-Weiche — im Browser stehen sie unveraendert.
 
 Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).
+
+---
+
+## v3.85.0 — Das Spielfeld hatte nie den Platz, den es beanspruchte
+
+Ein Bildschirmfoto vom Geraet zeigte im BAUEN-Zustand einen toten Streifen
+unter der Statusleiste und eine Bauteil-Leiste, die unten aus dem Bild ragte.
+v3.84.0 hatte Menue und Vollbild-Fenster geradegezogen — das Spiel selbst blieb
+aussen vor, und zwei neue Fehler kamen dazu.
+
+**Die Polsterung zaehlte doppelt.** `html,body{padding-top:var(--sa-top)}` zog
+den Rand an BEIDEN Elementen ein: html schob den Koerper um 59 px nach unten,
+der Koerper seinen Inhalt noch einmal. Gemessen bei 402x874 mit 59/34 px
+Sicherheitsbereich: der Inhalt begann bei 118 statt bei 59 px. html traegt jetzt
+nur noch Hoehe, Grund und Ueberlauf.
+
+**Die Spiel-Huelle stand auf 100dvh** — in einem Koerper, der um die
+Sicherheitsbereiche bereits verkuerzt ist. Sie geriet damit um 93 px zu hoch,
+und `overflow:hidden` schnitt genau das unten ab. Dieselbe Falle wie im Menue,
+gleiche Loesung: 100 % statt 100dvh. Der Ergebnis-Bildschirm hatte sie auch und
+rollt jetzt zusaetzlich (`justify-content: safe center`, damit bei zu hohem
+Inhalt der OBERE Teil nicht unerreichbar wird).
+
+**`fit()` rechnete mit `window.innerHeight`** — dem ganzen Bildschirm statt dem
+Platz, den die Huelle hat. Die Unterleiste bekam dadurch eine Hoehe, die es
+nicht gab (150 px statt 102). Gerechnet wird jetzt mit `nutzRaum()`: gemessen
+am Element, ersatzweise aus den Polsterwerten des Koerpers.
+
+**Sieben Ueberlagerungen hingen an der Zahl 52** — einer geratenen
+Kopfzeilenhoehe. Bei drei Spielern hat die Kopfzeile zwei Reihen, und keine der
+sieben stimmte. Sie haengen jetzt an `viewSize.top`, der GEMESSENEN Hoehe.
+Zugleich sind die letzten dreizehn `env(safe-area-inset-*)` auf `var(--sa-*)`
+umgestellt: env() ist im Testbrowser immer 0, die Werte waren dort also gar
+nicht pruefbar.
+
+**Zwei Folgefehler aus v3.84.0** sind mit weg: Die Kurzform `padding:` stand im
+Coach-Fenster NACH `paddingTop/Left/Right` und hat die drei ueberschrieben — die
+Blase verlor ihren Abstand zur Kopfzeile. Und das Phasen-Schild lag durch sein
+`translate(-50%,-50%)` mit der Oberkante auf 52 px, also mitten in der
+Kopfzeile.
+
+**Das Phasen-Schild war auf halbe Bildschirmbreite eingeklemmt.** Bei
+`left:50%` ohne `right` reicht der Platz eines fest positionierten Kastens nur
+bis zum rechten Rand; der Text brach auf drei Zeilen um und deckte ein Drittel
+des Bretts zu. Mit `width:max-content` sind es 57 statt 88 px Hoehe.
+
+**Der Titel auf dem Ladebildschirm passte nicht mehr.** Die 54 px stammen aus
+der Zeit eines kurzen Namens. Gemessen: bei 320 und 375 px brach „Stack &
+Siege" auf zwei Zeilen, bei 402 px blieben 6 px Rand. Jetzt waechst der
+Schriftgrad mit der Breite (`clamp`) — 38 bis 53 px Rand bei 320/375/402/440.
+
+**Neue Pruefungen** (`suiteSicherheitsbereiche`): Sie messen mit gesetzten
+Sicherheitsbereichen und gegen den BILDSCHIRM, nicht gegen die Huelle. Im
+Kontrollversuch mit wieder eingebauten Fehlern schlagen alle acht an — die
+ersten beiden Entwuerfe waren gruen geblieben, weil `document.scrollHeight`
+durch `overflow:hidden` gedeckelt ist und weil eine Leiste „innerhalb der
+Huelle" liegen kann, waehrend die Huelle selbst aus dem Bild ragt.
+
+Tests gruen (Unit 70/70, E2E 367/367, Typen 0 Fehler).
