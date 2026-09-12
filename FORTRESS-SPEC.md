@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.80.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.81.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5489,3 +5489,48 @@ Sucher ueberhaupt etwas findet. Ueber Apples Suche geprueft — den Namen traegt
 im deutschen App Store keine andere App.
 
 Tests gruen (Unit 70/70, E2E 353/353, Typen 0 Fehler).
+
+---
+
+## v3.81.0 — Zwei Fehler, die nur auf dem Geraet sichtbar waren
+
+Der erste TestFlight-Bau lief, und genau dafuer ist er da: Er hat zwei Dinge
+gezeigt, die kein Test und kein Blick in den Quelltext gefunden haetten.
+
+**Das App-Icon war ein schwarzes Quadrat.** In der Ecke stand das Zeichen fuer
+ein fehlendes Bild — jemand hatte einmal eine HTML-Seite fotografiert, in der
+die Grafik nicht geladen hat, und das Ergebnis eingecheckt. Es lag seit dem
+ersten Tag so im Projekt (5 KB fuer ein 1024er Icon haette stutzig machen
+muessen) und ist nie jemandem aufgefallen, weil niemand die Datei angesehen
+hat. **Das Startbild war Capacitors Standard-Logo auf WEISS** — bei einem
+Spiel, dessen Hintergrund #050d05 ist, blitzt beim Start also Weiss auf.
+
+Beide kommen jetzt aus DERSELBEN Zeichnung wie die Web-Icons, erzeugt von
+`tools/make-icons.cjs`. Zwei Dinge waren dafuer noetig:
+
+- **Ein PNG-Schreiber ohne Alphakanal.** Apple lehnt ein App-Icon ab, das einen
+  Alphakanal ENTHAELT, auch wenn jedes Pixel deckend ist. `toDataURL` schreibt
+  aber immer RGBA, und weder Pillow noch sharp liegen hier vor. Also wird
+  Farbtyp 2 direkt erzeugt: Signatur, IHDR, ein zlib-gepacktes IDAT mit
+  Filterbyte 0 je Zeile, IEND. Die Deckung entsteht beim Zusammenrechnen ueber
+  den Hintergrund.
+- **Keine abgerundeten Ecken fuers iOS-Icon.** iOS legt seine eigene Maske
+  darueber; wer hier rundet, bekommt einen doppelt beschnittenen Rand.
+
+**Der Hinweis „Zum Home-Bildschirm" erschien IN DER APP.** Sinnlos, denn die
+ist bereits installiert. Die Bedingung konnte das nicht erkennen:
+
+    const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (_isIOS && !window.navigator.standalone && …)
+
+In Capacitors WebView steht „iPhone" im Kennzeichen, und `navigator.standalone`
+gibt es dort gar nicht — das ist eine reine Safari-Eigenschaft. `!undefined`
+ist wahr. Geprueft wird jetzt ueber `istNativ()`, die EINE Plattform-Weiche
+(ARCHITEKTUR.md E7), statt ueber ein weiteres selbstgebautes Merkmal.
+
+**Die Pruefung dazu braucht ein iPhone-Kennzeichen.** Ohne das erschiene der
+Hinweis in KEINEM der beiden Faelle, und die Pruefung waere gruen, ohne etwas
+zu pruefen. Deshalb laufen beide Faelle mit gesetztem User-Agent: in der App
+darf er nicht erscheinen, im Browser MUSS er es.
+
+Tests gruen (Unit 70/70, E2E 355/355, Typen 0 Fehler).

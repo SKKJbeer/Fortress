@@ -5,8 +5,73 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const ROOT = path.join(__dirname, '..');
+
+// ── PNG OHNE Alphakanal schreiben ─────────────────────────────────────────
+//
+// **Warum von Hand.** Apple lehnt ein App-Icon ab, das einen Alphakanal
+// ENTHAELT — auch wenn jedes Pixel deckend ist. `canvas.toDataURL('image/png')`
+// schreibt aber immer RGBA. Pillow und sharp liegen hier nicht vor, also wird
+// der Farbtyp 2 (Echtfarbe, kein Alpha) direkt erzeugt: Signatur, IHDR, ein
+// zlib-gepacktes IDAT mit Filterbyte 0 je Zeile, IEND.
+//
+// Die Deckung entsteht beim Zusammenrechnen: jedes Pixel wird ueber den
+// Hintergrund gelegt, danach gibt es keine Transparenz mehr, die man
+// mitschreiben muesste.
+function crc32(buf) {
+  let c, tabelle = crc32.t;
+  if (!tabelle) {
+    tabelle = crc32.t = [];
+    for (let n = 0; n < 256; n++) {
+      c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      tabelle[n] = c >>> 0;
+    }
+  }
+  c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = tabelle[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function bloc(typ, daten) {
+  const laenge = Buffer.alloc(4);
+  laenge.writeUInt32BE(daten.length, 0);
+  const koerper = Buffer.concat([Buffer.from(typ, 'ascii'), daten]);
+  const pruef = Buffer.alloc(4);
+  pruef.writeUInt32BE(crc32(koerper), 0);
+  return Buffer.concat([laenge, koerper, pruef]);
+}
+
+function pngOhneAlpha(rgba, breite, hoehe, grund) {
+  // Ueber den Hintergrund legen — danach ist nichts mehr durchsichtig.
+  const zeilen = Buffer.alloc(hoehe * (1 + breite * 3));
+  let z = 0;
+  for (let y = 0; y < hoehe; y++) {
+    zeilen[z++] = 0;                       // Filterbyte: keiner
+    for (let x = 0; x < breite; x++) {
+      const i = (y * breite + x) * 4;
+      const a = rgba[i + 3] / 255;
+      zeilen[z++] = Math.round(rgba[i]     * a + grund[0] * (1 - a));
+      zeilen[z++] = Math.round(rgba[i + 1] * a + grund[1] * (1 - a));
+      zeilen[z++] = Math.round(rgba[i + 2] * a + grund[2] * (1 - a));
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(breite, 0);
+  ihdr.writeUInt32BE(hoehe, 4);
+  ihdr[8] = 8;      // 8 Bit je Kanal
+  ihdr[9] = 2;      // Farbtyp 2 = Echtfarbe OHNE Alpha
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    bloc('IHDR', ihdr),
+    bloc('IDAT', zlib.deflateSync(zeilen, { level: 9 })),
+    bloc('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+
 
 const DRAW = `
 // ── gemeinsame Bausteine, Licht von oben links ────────────────────────────
@@ -229,6 +294,58 @@ const JOBS = [
   fs.mkdirSync(path.join(ROOT, 'store'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'store/feature-graphic-1024x500.png'), Buffer.from(fb64, 'base64'));
   console.log('  ✓ store/feature-graphic-1024x500.png');
+
+  // ── iOS: App-Icon und Startbild ────────────────────────────────────────
+  //
+  // Beide lagen bis v3.81.0 als Capacitor-Vorgabe im Projekt und sind nie
+  // ersetzt worden. Das App-Icon war sogar KAPUTT: ein schwarzes Quadrat mit
+  // dem Zeichen fuer ein fehlendes Bild in der Ecke — jemand hatte eine Seite
+  // fotografiert, in der die Grafik nicht geladen hat. Aufgefallen ist es
+  // erst auf dem Geraet, weil niemand das Bild je angesehen hat.
+  //
+  // Deshalb kommen beide jetzt aus DERSELBEN Zeichnung wie die Web-Icons.
+  const GRUND = [5, 13, 5];     // #050d05 — der Hintergrund des Spiels
+
+  const IOS = [
+    // Kein abgerundeter Rahmen: iOS legt seine eigene Maske darueber. Wer hier
+    // rundet, bekommt auf dem Geraet einen doppelt beschnittenen Rand.
+    { file: 'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png',
+      size: 1024, pad: 0.06, rounded: false, anteil: 1 },
+    // Startbild: quadratisch, wird von Capacitor auf jede Bildschirmform
+    // zugeschnitten. Das Zeichen sitzt klein in der Mitte, der Rest ist der
+    // Hintergrund des Spiels — sonst blitzt beim Start Weiss auf.
+    { file: 'ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png',
+      size: 2732, pad: 0, rounded: false, anteil: 0.26 },
+  ];
+
+  for (const j of IOS) {
+    const roh = await page.evaluate((jj) => {
+      const c = document.getElementById('c');
+      c.width = jj.size; c.height = jj.size;
+      const x = c.getContext('2d');
+      x.clearRect(0, 0, jj.size, jj.size);
+      const s = Math.round(jj.size * jj.anteil);
+      x.save();
+      x.translate((jj.size - s) / 2, (jj.size - s) / 2);
+      // eslint-disable-next-line no-undef
+      icon(x, s, jj.pad, jj.rounded);
+      x.restore();
+      const d = x.getImageData(0, 0, jj.size, jj.size).data;
+      return Array.from(d);
+    }, j);
+    const out = path.join(ROOT, j.file);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, pngOhneAlpha(Uint8Array.from(roh), j.size, j.size, GRUND));
+    console.log('  ✓', j.file, j.size + 'px, ohne Alphakanal');
+  }
+
+  // Capacitor erwartet drei Dateinamen im Splash-Satz; alle drei zeigen
+  // dasselbe Bild (hell/dunkel/Standard — das Spiel ist immer dunkel).
+  const splash = path.join(ROOT, 'ios/App/App/Assets.xcassets/Splash.imageset');
+  for (const name of ['splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {
+    fs.copyFileSync(path.join(splash, 'splash-2732x2732.png'), path.join(splash, name));
+    console.log('  ✓ ' + name + ' (Kopie)');
+  }
 
   await browser.close();
 })();

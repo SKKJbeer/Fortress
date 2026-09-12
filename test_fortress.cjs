@@ -1689,6 +1689,42 @@ async function suitePlattform(browser) {
       }
     } finally { await ctx.close(); }
   }
+
+  // ── Der Hinweis „Zum Home-Bildschirm" gehoert NUR in den Browser ───────
+  //
+  // Auf dem Geraet war er in der APP sichtbar — sinnlos, denn die ist schon
+  // installiert. Die alte Bedingung konnte das nicht erkennen: In Capacitors
+  // WebView steht „iPhone" im Kennzeichen, und `navigator.standalone` gibt es
+  // dort nicht; `!undefined` ist wahr. Deshalb wird hier mit einem
+  // iPhone-Kennzeichen geprueft — ohne das erschiene der Hinweis in KEINEM der
+  // beiden Faelle, und die Pruefung waere gruen, ohne etwas zu pruefen.
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) '
+    + 'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  for (const nativ of [true, false]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+      hasTouch: true, serviceWorkers: 'block', userAgent: IPHONE });
+    const page = await ctx.newPage();
+    try {
+      await page.addInitScript(FB_SPERRE);
+      await page.addInitScript(PROFILE_INIT);
+      await page.addInitScript(`window.__NATIVE__ = ${nativ};`);
+      await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+      // Der Hinweis kommt mit 3,5 s Verzoegerung.
+      await page.waitForTimeout(4600);
+      const sichtbar = await page.evaluate(() => {
+        const h = document.getElementById('ios-hint');
+        return !!h && getComputedStyle(h).display !== 'none';
+      });
+      if (nativ) {
+        !sichtbar ? ok('Weiche (App): kein „Zum Home-Bildschirm"-Hinweis ✓')
+                  : fail('Weiche (App): Verknuepfungs-Hinweis erscheint in der App');
+      } else {
+        sichtbar ? ok('Weiche (Web, iPhone): Hinweis erscheint ✓')
+                 : fail('Weiche (Web, iPhone): Hinweis fehlt — dann prueft der Fall nichts');
+      }
+    } finally { await ctx.close(); }
+  }
+
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
               : ok('Plattform-Weiche: keine JS-Fehler ✓');
   return { res, errs };
