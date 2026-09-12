@@ -38,6 +38,11 @@ on:
       - "scripts/check-website.mjs"
       - ".github/workflows/website.yml"
   workflow_dispatch:
+    inputs:
+      nur_zugang:
+        description: 'Nur den Cloudflare-Zugang prüfen, nichts veröffentlichen'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -61,8 +66,40 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Sind die Zugangsdaten da?
+        id: zugang
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KONTO: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$KONTO" ]; then
+            echo "bereit=nein" >> "$GITHUB_OUTPUT"
+          else
+            echo "bereit=ja" >> "$GITHUB_OUTPUT"
+          fi
+
+      # **Taugt das Token überhaupt?** Diese Frage beantwortet sonst erst der
+      # erste echte Upload — und der steht hinter der Inhaltsprüfung. Wer das
+      # Impressum ausfüllt und dann an einem abgelaufenen Token scheitert, hat
+      # zwei Runden verloren statt einer. `project list` liest nur.
+      - name: Cloudflare-Zugang prüfen
+        if: inputs.nur_zugang && steps.zugang.outputs.bereit == 'ja'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "### Cloudflare-Zugang" >> $GITHUB_STEP_SUMMARY
+          if npx --yes wrangler@3.90.0 pages project list; then
+            echo "Token und Konto-Kennung sind gültig." >> $GITHUB_STEP_SUMMARY
+            echo "Veröffentlicht wurde nichts — dieser Lauf hat nur gefragt." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Token oder Konto-Kennung werden abgelehnt." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
       # Rechtstexte aus `public/` dazulegen — eine Quelle, zwei Ziele.
       - name: Auslieferordner zusammenstellen
+        if: ${{ !inputs.nur_zugang }}
         run: |
           chmod +x scripts/website-bauen.sh
           scripts/website-bauen.sh build/website
@@ -71,6 +108,7 @@ jobs:
       # Textlücke im Impressum ist schlimmer als keine Seite.
       - name: Website prüfen
         id: pruefung
+        if: ${{ !inputs.nur_zugang }}
         run: node scripts/check-website.mjs build/website
 
       # Damit im Actions-Tab steht, WARUM nichts online ging, ohne dass jemand
@@ -89,22 +127,10 @@ jobs:
           echo "braucht eine ladungsfähige Anschrift in \`public/impressum.html\`." >> $GITHUB_STEP_SUMMARY
           echo "Bis dahin geht sie absichtlich nicht online." >> $GITHUB_STEP_SUMMARY
 
-      - name: Sind die Zugangsdaten da?
-        id: zugang
-        env:
-          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          KONTO: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          if [ -z "$TOKEN" ] || [ -z "$KONTO" ]; then
-            echo "bereit=nein" >> "$GITHUB_OUTPUT"
-          else
-            echo "bereit=ja" >> "$GITHUB_OUTPUT"
-          fi
-
       # **Auch das Projekt legt der Ablauf an.** „Project not found" beim
       # ersten Hochladen ist sonst der wahrscheinlichste Ausgang.
       - name: Pages-Projekt sicherstellen
-        if: steps.zugang.outputs.bereit == 'ja'
+        if: ${{ !inputs.nur_zugang && steps.zugang.outputs.bereit == 'ja' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -121,7 +147,7 @@ jobs:
           fi
 
       - name: Zu Cloudflare Pages hochladen
-        if: steps.zugang.outputs.bereit == 'ja'
+        if: ${{ !inputs.nur_zugang && steps.zugang.outputs.bereit == 'ja' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -138,7 +164,10 @@ jobs:
       - name: Was dieser Lauf getan hat
         if: always()
         run: |
-          if [ "${{ steps.zugang.outputs.bereit }}" = "ja" ]; then
+          if [ "${{ inputs.nur_zugang }}" = "true" ]; then
+            echo "### Nur der Zugang wurde geprüft" >> $GITHUB_STEP_SUMMARY
+            echo "Weder gebaut noch veröffentlicht — so war der Lauf gemeint." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.zugang.outputs.bereit }}" = "ja" ]; then
             echo "### Veröffentlicht" >> $GITHUB_STEP_SUMMARY
             echo "Die Seite steht auf https://${PROJEKT}.pages.dev/" >> $GITHUB_STEP_SUMMARY
           else
