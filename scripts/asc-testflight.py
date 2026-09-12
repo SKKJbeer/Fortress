@@ -206,7 +206,12 @@ def main() -> int:
               "Interne Gruppe die eigene Adresse hinzufuegen.")
         return 0
 
-    print(f"\nFertig: {zugefuegt} interne(r) Tester, Bau zugeordnet. "
+    # „zugeordnet" waere hier falsch: bei einer Gruppe mit Zugriff auf alle
+    # Bauten ordnet niemand etwas zu, der Bau ist einfach da. Eine Meldung, die
+    # mehr behauptet als geschehen ist, fuehrt beim naechsten Fehler in die
+    # falsche Richtung.
+    print(f"\nFertig: {zugefuegt} interne(r) Tester in „{GRUPPE}\", Bau "
+          f"{bau['attributes'].get('version')} fuer sie sichtbar. "
           f"Er erscheint binnen weniger Minuten in der TestFlight-App.")
     return 0
 
