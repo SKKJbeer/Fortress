@@ -10,7 +10,7 @@ Pages getrennt: Das Spiel bleibt, wo es ist, die Website wirbt dafür.
 |---|---|
 | `docs/website/index.html` | Die Seite. Von Hand geschrieben, kein Bauwerkzeug. |
 | `docs/website/stil.css` | Eine Stildatei. Keine fremde Schrift, kein fremdes Skript. |
-| `docs/website/bilder/*.jpg` | Vier Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`). |
+| `docs/website/bilder/*.jpg` | 18 Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`) — siehe Abschnitt „Die Bilder". |
 | `public/{impressum,privacy,agb}.html` | Die Rechtstexte. **Eine Quelle** — sie gehören zum Spiel und werden für die Website nur kopiert. |
 | `scripts/website-bauen.sh` | Stellt beides zum Auslieferordner zusammen. |
 | `scripts/check-website.mjs` | Sagt nein, wenn etwas fehlt. |
