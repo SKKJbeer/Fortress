@@ -37,6 +37,12 @@ on:
       - "scripts/website-bauen.sh"
       - "scripts/check-website.mjs"
       - ".github/workflows/website.yml"
+  # **Taeglich, und das hat genau einen Grund.** Der TestFlight-Knopf haengt
+  # an einer Freigabe durch Apple — die passiert ausserhalb dieses
+  # Repositories, also aendert sich dabei keine Datei, also loest kein Push
+  # aus. Ohne diesen Takt bliebe der Knopf weg, bis jemand von Hand nachfragt.
+  schedule:
+    - cron: "17 6 * * *"
   workflow_dispatch:
     inputs:
       nur_zugang:
@@ -97,9 +103,33 @@ jobs:
             exit 1
           fi
 
+      # **Nimmt die offene Beta schon Tester an?** Davon haengt ab, ob der
+      # TestFlight-Knopf auf die Seite kommt. Gefragt wird bei Apple, nicht
+      # geraten: Der Link existiert ab dem Anlegen der Gruppe, funktioniert
+      # aber erst nach der Freigabe des Baus.
+      - name: TestFlight-Stand
+        id: testflight
+        if: ${{ !inputs.nur_zugang }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ]; then
+            echo "offen=nein" >> "$GITHUB_OUTPUT"
+            echo "Kein Apple-Zugang in diesem Lauf — Knopf bleibt weg."
+            exit 0
+          fi
+          pip install --quiet "pyjwt[crypto]" requests
+          # Das Skript endet auch mit 1, wenn die Frage selbst scheitert. Das
+          # darf die Website nicht aufhalten — dann eben ohne Knopf.
+          echo "offen=$(python3 scripts/testflight-stand.py || echo nein)" >> "$GITHUB_OUTPUT"
+
       # Rechtstexte aus `public/` dazulegen — eine Quelle, zwei Ziele.
       - name: Auslieferordner zusammenstellen
         if: ${{ !inputs.nur_zugang }}
+        env:
+          TESTFLIGHT_OFFEN: ${{ steps.testflight.outputs.offen }}
         run: |
           chmod +x scripts/website-bauen.sh
           scripts/website-bauen.sh build/website

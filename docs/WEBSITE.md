@@ -14,7 +14,8 @@ Pages getrennt: Das Spiel bleibt, wo es ist, die Website wirbt dafür.
 | `public/{impressum,privacy,agb}.html` | Die Rechtstexte. **Eine Quelle** — sie gehören zum Spiel und werden für die Website nur kopiert. |
 | `scripts/website-bauen.sh` | Stellt beides zum Auslieferordner zusammen. |
 | `scripts/check-website.mjs` | Sagt nein, wenn etwas fehlt. |
-| `.github/workflows/website.yml` | Prüft und veröffentlicht bei jedem Push auf `main`. |
+| `scripts/testflight-stand.py` | Fragt bei Apple, ob die offene Beta schon Tester annimmt. |
+| `.github/workflows/website.yml` | Prüft und veröffentlicht bei jedem Push auf `main` — und einmal täglich. |
 
 ## Örtlich ansehen
 
@@ -23,6 +24,30 @@ scripts/website-bauen.sh build/website
 node scripts/check-website.mjs build/website
 cd build/website && python3 -m http.server 8790   # nicht 8765/8766 — die belegt die Testsuite
 ```
+
+## Der TestFlight-Knopf
+
+Er steht **nur dann** auf der Seite, wenn die offene Beta wirklich Tester
+annimmt. Ein öffentlicher TestFlight-Link existiert nämlich schon, sobald die
+externe Gruppe existiert — er funktioniert aber erst, wenn Apple den Bau für
+die Beta freigegeben hat. Vorher zeigt dieselbe Adresse „This beta isn't
+accepting any new testers right now"; ein Knopf dorthin wäre dasselbe leere
+Versprechen wie ein App-Store-Abzeichen ohne App im Store.
+
+Entschieden wird das bei jedem Veröffentlichen: `testflight-stand.py` fragt
+Apple, `website-bauen.sh` schneidet den Block zwischen `TESTFLIGHT:ANFANG` und
+`TESTFLIGHT:ENDE` heraus, wenn die Antwort `nein` lautet. Ohne Apple-Zugang —
+also bei einem Bau von Hand — fällt er ebenfalls weg: Die vorsichtige Annahme
+ist die richtige, wenn niemand nachgesehen hat.
+
+Die Freigabe passiert außerhalb des Repositories, ändert also keine Datei und
+löst keinen Push aus. Deshalb läuft der Ablauf **einmal täglich** — sonst
+bliebe der Knopf weg, bis jemand von Hand nachfragt.
+
+Die Gruppe heißt `Öffentlich` und wird von
+`scripts/asc-testflight.py --oeffentlich` angelegt (Actions → „App Store (Stand
+/ Eintragen)" → Modus `oeffentlich`). Dasselbe Skript reicht den neuesten Bau
+zur Beta-Prüfung ein.
 
 ## Was die Prüfung verlangt
 
