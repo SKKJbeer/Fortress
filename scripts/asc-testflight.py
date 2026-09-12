@@ -320,12 +320,18 @@ def oeffentliche_gruppe(apple: Apple, app: str, bau: dict) -> int:
 
     print(f"\n  OEFFENTLICHER LINK: {link}")
     if zustand == "APPROVED":
-        print("  Der Bau ist freigegeben — wer dem Link folgt, kann sofort "
-              "installieren.")
+        print("  Der Bau ist freigegeben — wer dem Link folgt, kann eintreten "
+              "und installieren.")
     else:
-        print(f"  Der Bau steht auf {zustand}. Eintragen kann sich ab sofort "
-              "jeder; INSTALLIEREN erst, wenn Apple die Beta freigegeben hat "
-              "(ueblicherweise binnen eines Tages).")
+        # **Hier stand: „Eintragen kann sich ab sofort jeder."** Das war falsch.
+        # Der Link abgerufen, eine Minute nach dem Einreichen: HTTP 200 und
+        # „This beta isn't accepting any new testers right now". Solange der Bau
+        # nicht freigegeben ist, nimmt die Beta NIEMANDEN auf — auch nicht zum
+        # blossen Eintragen.
+        print(f"  Der Bau steht auf {zustand}. Bis zur Freigabe nimmt die Beta "
+              "noch keine Tester auf: Der Link antwortet, sagt aber „nimmt "
+              "derzeit keine neuen Tester an\". Deshalb steht der Knopf auf der "
+              "Website auch noch nicht (scripts/testflight-stand.py).")
     return 0
 
 
