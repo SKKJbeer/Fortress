@@ -5,33 +5,36 @@
  *
  * **Das ist die Pointe und keine Sparsamkeit.** Ohne fremde Anfragen entstehen
  * keine Cookies und keine Uebertragung an Dritte — diese Seite braucht deshalb
- * kein Zustimmungsfenster. Das Spiel wirbt damit, ohne Werbung und ohne
- * Auswertung auszukommen; eine Website, die als Erstes ein Cookie-Fenster
- * aufklappt, widerlegt das auf dem ersten Bildschirm.
+ * kein Zustimmungsfenster.
  *
- * ── Die Gestaltung: Entwurf „Einschlag" ───────────────────────────────────
+ * ── Gezeichnet statt abfotografiert ───────────────────────────────────────
  *
- * Vom Gruender aus sechs Entwuerfen gewaehlt. Das Prinzip: DIE SEITE BEWEGT
- * SICH, so wie das Spiel sich bewegt.
+ * Die Fassung davor war eine Bildschirmfoto-Galerie: achtzehn Aufnahmen aus
+ * dem Spiel, ordentlich aufgereiht. Das zeigt, was da ist, und macht keine
+ * Lust darauf.
  *
- *   · Der Anfang besteht aus Schichten, die beim Scrollen unterschiedlich
- *     schnell laufen — Parallaxe wie bei Alto's Odyssey (dort neun Ebenen).
- *   · Kugeln fliegen quer durchs Bild, und alle paar Sekunden zittert die
+ * Jetzt traegt die Seite ZEICHNUNGEN. Die sieben Welten sind gemalte Szenen —
+ * Himmel, Berge, Fluss, zwei Burgen, das Zierwerk drumherum — jede in den
+ * Farben, die dieselbe Welt im Spiel wirklich hat (`src/engine/terrain.ts`).
+ * Es ist also nicht erfunden, nur nicht abfotografiert: So sieht die Welt aus,
+ * wenn man sie zeichnet statt sie zu knipsen.
+ *
+ * Echte Aufnahmen stehen nur noch dort, wo sie die Aussage TRAGEN: bei „zu
+ * zweit und zu dritt an einem Geraet" sind die Bauteil-Felder unten der
+ * Beweis, und in einem kurzen Streifen „so sieht es wirklich aus".
+ *
+ * Alles Gezeichnete ist Inline-SVG und CSS: null zusaetzliche Anfragen, null
+ * Kilobyte Bilddaten, und es bleibt in jeder Groesse scharf.
+ *
+ * ── Bewegung (Entwurf „Einschlag", vom Gruender gewaehlt) ─────────────────
+ *
+ *   · Der Anfang liegt in Schichten, die beim Scrollen unterschiedlich
+ *     schnell laufen — Parallaxe wie bei Alto's Odyssey.
+ *   · Kugeln fliegen quer durchs Bild; alle paar Sekunden zittert die
  *     Ueberschrift, als sei etwas eingeschlagen.
- *   · Die Bildschirmfotos ziehen als endloses Band durch und halten an,
- *     wenn man mit dem Zeiger darauf geht.
- *   · Die Welten stehen als grosse Kacheln in einer eigenen Galerie — sie
- *     sind das Auffaelligste, was das Spiel zu zeigen hat.
+ *   · Die Welten-Kacheln heben sich beim Ueberfahren aus dem Rahmen.
  *
- * Alles aus CSS. Kein Skript, keine Bibliothek, keine fremde Anfrage.
- * `prefers-reduced-motion` friert JEDE Bewegung ein.
- *
- * Was bewusst fehlt, weil es nach Software-Baukasten aussieht: Kopfnavigation
- * mit fuenf Punkten, Drei-Spalten-Karten mit Symbolen, „So funktioniert's" in
- * drei Schritten, Zahlenreihen als Beleg, Kundenstimmen, Aufklapp-Fragen,
- * gekippte Telefon-Attrappen. Pressezitate und Auszeichnungen waeren das
- * naechste Mittel echter Spieleseiten — die gibt es hier nicht, und erfunden
- * werden sie nicht.
+ * `prefers-reduced-motion` friert jede Bewegung ein.
  */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -48,6 +51,7 @@
   --rot:   #ff4d4d;
   --gruen: #3ddc8a;
   --gold:  #ffc233;
+  --stein: #c8b28a;          /* Farbe des Zierwerks: heller Sandstein */
 
   --w-seite: 1120px;
   --f: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
@@ -69,18 +73,13 @@ p:last-child { margin-bottom: 0; }
 .sprung:focus { left: 0; top: 0; }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
-/* ── Anfang: Schichten, Kugeln, Einschlag ────────────────────────────────
-   Die Ebenen liegen uebereinander und laufen beim Scrollen unterschiedlich
-   schnell. `animation-timeline: scroll()` macht das ohne ein einziges
-   Skript; wo der Browser es nicht kennt, stehen die Ebenen still — der
-   Inhalt bleibt vollstaendig. */
+/* ── Anfang: Schichten, Kugeln, Einschlag ──────────────────────────────── */
 .buehne {
-  position: relative; min-height: 92vh; overflow: hidden;
+  position: relative; min-height: 94vh; overflow: hidden;
   display: flex; align-items: center; justify-content: center; text-align: center;
-  padding-block: clamp(48px, 8vw, 90px);
+  padding-block: clamp(44px, 7vw, 84px);
 }
 .schicht { position: absolute; inset: -12% -6%; pointer-events: none; }
-/* Hinten: ein weites Sternfeld. */
 .s1 {
   background:
     radial-gradient(2px 2px at 12% 22%, rgba(255,255,255,.55), transparent),
@@ -91,21 +90,18 @@ p:last-child { margin-bottom: 0; }
     radial-gradient(2px 2px at 22% 86%, rgba(255,255,255,.30), transparent);
   animation: treiben 26s linear infinite;
 }
-/* Mitte: der Fluss als Lichtband quer durchs Bild. */
-.s2 {
-  background: linear-gradient(180deg, transparent 46%, rgba(77,141,255,.22) 50%, transparent 56%);
-  animation: treiben2 18s ease-in-out infinite alternate;
-}
-/* Vorn: ein dunkler Rahmen, der den Blick in die Mitte fuehrt. */
-.s3 { background: radial-gradient(72% 62% at 50% 48%, transparent 38%, rgba(5,6,13,.94) 100%); }
+/* Die gezeichnete Landschaft des Anfangs sitzt als eigene Schicht unten. */
+.s2 { inset: auto -6% -2% -6%; height: 62%; animation: treiben2 18s ease-in-out infinite alternate; }
+.s2 svg { width: 100%; height: 100%; display: block; }
+.s3 { background: radial-gradient(76% 64% at 50% 42%, transparent 34%, rgba(5,6,13,.92) 100%); }
 @keyframes treiben  { from { transform: none } to { transform: translate3d(-40px, 18px, 0) } }
-@keyframes treiben2 { from { transform: translateY(-14px) } to { transform: translateY(14px) } }
+@keyframes treiben2 { from { transform: translateY(10px) } to { transform: translateY(-10px) } }
 @supports (animation-timeline: scroll()) {
   .s1 { animation: tiefe1 linear both; animation-timeline: scroll(root block); }
   .s2 { animation: tiefe2 linear both; animation-timeline: scroll(root block); }
 }
 @keyframes tiefe1 { to { transform: translateY(-80px) scale(1.08) } }
-@keyframes tiefe2 { to { transform: translateY(-200px) } }
+@keyframes tiefe2 { to { transform: translateY(-120px) } }
 
 .buehne .bahn { position: relative; z-index: 2; }
 
@@ -113,7 +109,7 @@ p:last-child { margin-bottom: 0; }
   font-size: clamp(46px, 12vw, 124px); line-height: .86; letter-spacing: -.035em;
   text-transform: uppercase; animation: zittern 7s 1.6s ease-in-out infinite;
 }
-/* Der Einschlag: ein kurzes, hartes Zittern, dann lange Ruhe. Gleichmaessiges
+/* Der Einschlag: ein kurzer harter Stoss, dann lange Ruhe. Gleichmaessiges
    Wackeln waere Zierrat — so liest es sich als Treffer. */
 @keyframes zittern {
   0%, 88%, 100% { transform: none }
@@ -125,21 +121,19 @@ p:last-child { margin-bottom: 0; }
 }
 .marke .b { color: var(--blau); }
 .marke .r { color: var(--rot); }
-
 .zeile { font-size: clamp(20px, 3vw, 30px); font-weight: 800; color: var(--ink);
   margin: 26px auto 0; max-width: 21ch; }
 .dazu { margin: 14px auto 0; max-width: 40ch; font-size: 17px; }
 
-/* Kugeln, die quer durch den Anfang fliegen. */
 .kugel { position: absolute; z-index: 1; width: 10px; height: 10px; border-radius: 50%;
   background: var(--gold); box-shadow: 0 0 16px 3px rgba(255,194,51,.8); }
-.k1 { top: 28%; animation: quer 5.2s .4s linear infinite; }
-.k2 { top: 64%; width: 7px; height: 7px; animation: quer 6.8s 2.1s linear infinite; }
-.k3 { top: 46%; width: 12px; height: 12px; background: var(--rot);
+.k1 { top: 26%; animation: quer 5.2s .4s linear infinite; }
+.k2 { top: 60%; width: 7px; height: 7px; animation: quer 6.8s 2.1s linear infinite; }
+.k3 { top: 42%; width: 12px; height: 12px; background: var(--rot);
   box-shadow: 0 0 18px 4px rgba(255,77,77,.7); animation: quer 8s 4.4s linear infinite; }
 @keyframes quer { 0% { left: -4%; opacity: 0 } 6% { opacity: 1 } 88% { opacity: 1 } 100% { left: 104%; opacity: 0 } }
 
-/* ── Knopf ───────────────────────────────────────────────────────────── */
+/* ── Knopf ─────────────────────────────────────────────────────────────── */
 .knopf {
   display: inline-flex; align-items: center; gap: 11px; margin-top: 30px;
   background: var(--ink); color: var(--grund); text-decoration: none;
@@ -151,61 +145,94 @@ p:last-child { margin-bottom: 0; }
 .neben { display: block; margin-top: 14px; color: var(--ink2); font-size: 15px; }
 .neben a { color: var(--ink); }
 
-/* ── Abschnitte ──────────────────────────────────────────────────────── */
-.welt { padding-block: clamp(52px, 8vw, 108px); border-top: 1px solid var(--strich); }
+/* ── Abschnitte ────────────────────────────────────────────────────────── */
+.welt { padding-block: clamp(52px, 8vw, 108px); border-top: 1px solid var(--strich); position: relative; }
 .welt-tief { background: var(--tiefer); }
 h2 { font-size: clamp(29px, 5vw, 52px); max-width: 17ch; margin-bottom: 18px; }
 h2 em { font-style: normal; color: var(--rot); }
-.vorsatz { font-size: 12px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase;
-  color: var(--ink3); margin-bottom: 14px; }
 
-/* ── Laufband ────────────────────────────────────────────────────────── */
-.band { overflow: hidden; margin-top: clamp(26px, 4vw, 40px); }
-.spur { display: flex; gap: 16px; width: max-content; animation: ziehen 42s linear infinite; }
-.band:hover .spur { animation-play-state: paused; }
-@keyframes ziehen { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-.spur img { width: 172px; border: 1px solid #232741; flex: 0 0 auto; }
+/* Die Kleinüberschrift sitzt auf einem Band, nicht nackt in der Luft.
+   Zwei Zipfel links und rechts machen daraus ein Schild. */
+.band {
+  display: inline-flex; align-items: center; position: relative;
+  font-size: 12px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase;
+  color: #14100a; background: var(--stein); padding: 6px 16px; margin-bottom: 18px;
+}
+.band::before, .band::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 9px; background: var(--stein);
+}
+.band::before { left: -9px; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.band::after  { right: -9px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
 
-/* ── Welten-Galerie: das Auffaelligste zuerst und gross ─────────────────
-   Waagerecht rollbar, damit alle sieben nebeneinander stehen koennen, ohne
-   die Seite zu einem Raster zu machen. Der Name liegt im Bild wie im Spiel. */
-.welten { display: flex; gap: 16px; overflow-x: auto; padding: 4px 24px 20px;
+/* ── Zierrahmen: Zinnen oben, Nieten in den Ecken ──────────────────────── */
+.rahmen { position: relative; padding: 13px 9px 9px; background: #0d1020; }
+.rahmen::before {                 /* die Zinnenkante */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 13px;
+  background: repeating-linear-gradient(90deg,
+    var(--stein) 0 11px, transparent 11px 22px);
+  opacity: .85;
+}
+.rahmen::after {                  /* der umlaufende Strich mit Eck-Nieten */
+  content: ""; position: absolute; inset: 13px 0 0; pointer-events: none;
+  border: 2px solid var(--stein); opacity: .55;
+  background:
+    radial-gradient(circle at 7px 7px, var(--stein) 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 7px) 7px, var(--stein) 2px, transparent 2.5px),
+    radial-gradient(circle at 7px calc(100% - 7px), var(--stein) 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), var(--stein) 2px, transparent 2.5px);
+}
+
+/* ── Gezeichnete Welten ────────────────────────────────────────────────
+   Eine Szene, sieben Farbsaetze. Die Werte stammen aus WORLD_THEMES in
+   src/engine/terrain.ts — dieselbe Welt, nur gemalt statt geknipst. */
+.welten { display: flex; gap: 18px; overflow-x: auto; padding: 6px 24px 22px;
   scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
 .welten::-webkit-scrollbar { height: 8px; }
 .welten::-webkit-scrollbar-thumb { background: #232741; border-radius: 8px; }
-.kachel { position: relative; flex: 0 0 auto; width: 218px; scroll-snap-align: center;
-  transition: transform .25s cubic-bezier(.34,1.4,.64,1); }
-.kachel:hover { transform: translateY(-8px); }
-.kachel img { width: 100%; border: 1px solid #232741; }
-.kachel b {
-  position: absolute; left: 10px; bottom: 10px;
-  font-size: 11px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase;
-  background: rgba(5,6,13,.72); padding: 5px 9px; color: var(--ink);
+.kachel { flex: 0 0 auto; width: 210px; scroll-snap-align: center;
+  transition: transform .3s cubic-bezier(.34,1.4,.64,1); }
+.kachel:hover { transform: translateY(-10px); }
+.szene {
+  position: relative; aspect-ratio: 3 / 4; overflow: hidden;
+  background: linear-gradient(180deg, var(--h1) 0%, var(--h2) 62%, var(--h3) 100%);
 }
-.welten-fuss { margin-top: 18px; }
+.szene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Der Fluss glimmt — in jeder Welt in seiner eigenen Farbe. */
+.szene .fluss { filter: drop-shadow(0 0 6px var(--fluss)); }
+.kachel b {
+  display: block; text-align: center; margin-top: 12px;
+  font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink2);
+}
+.w-kristall { --h1:#12304a; --h2:#0a1827; --h3:#060e1a; --berg:#3a4a63; --gipfel:#e0f2fe; --fluss:#22d3ee; --prop:#7dd3fc; }
+.w-frost    { --h1:#20355a; --h2:#111e34; --h3:#0a1322; --berg:#64748b; --gipfel:#ffffff; --fluss:#93c5fd; --prop:#b8c9dd; }
+.w-glut     { --h1:#4d3015; --h2:#2a1a0c; --h3:#160d05; --berg:#7a5a30; --gipfel:#fde68a; --fluss:#2dd4bf; --prop:#65803a; }
+.w-vulkan   { --h1:#3a1a12; --h2:#1c0d09; --h3:#0d0504; --berg:#511f14; --gipfel:#fb923c; --fluss:#f97316; --prop:#fb923c; }
+.w-moor     { --h1:#223a29; --h2:#121e16; --h3:#090f0b; --berg:#2e4522; --gipfel:#d9f99d; --fluss:#a3e635; --prop:#6f9440; }
+.w-herbst   { --h1:#3a2716; --h2:#20140b; --h3:#110a05; --berg:#4a2f18; --gipfel:#fde047; --fluss:#38bdf8; --prop:#d97b2e; }
+.w-astral   { --h1:#2e1b4d; --h2:#180e2a; --h3:#0b0616; --berg:#3b2360; --gipfel:#f0abfc; --fluss:#d946ef; --prop:#c084fc; }
 
-/* ── Zwei Kanonen ────────────────────────────────────────────────────── */
-.paar2 { display: grid; gap: clamp(20px, 3vw, 34px); grid-template-columns: 1fr;
-  margin-top: clamp(26px, 4vw, 40px); }
-@media (min-width: 760px) { .paar2 { grid-template-columns: 1fr 1fr; } }
-.kanone { border-top: 3px solid var(--rot); padding-top: 20px; }
-.kanone.violett { border-top-color: #a78bfa; }
-.kanone h3 { font-size: 22px; margin-bottom: 8px; }
-.preis { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 800;
+/* ── Streifen echter Aufnahmen ─────────────────────────────────────────── */
+.streifen { display: flex; gap: 16px; overflow-x: auto; padding: 6px 0 18px;
+  scroll-snap-type: x mandatory; margin-top: clamp(24px, 4vw, 38px); }
+.streifen figure { margin: 0; flex: 0 0 auto; width: 186px; scroll-snap-align: start; }
+.streifen img { width: 100%; }
+.streifen figcaption { margin-top: 11px; font-size: 12px; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); }
+
+/* ── Gezeichnete Karten (Kanonen, Einblicke) ──────────────────────────── */
+.karten { display: grid; gap: clamp(18px, 3vw, 28px);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: clamp(26px, 4vw, 42px); }
+.karte { position: relative; }
+.karte .bild { display: grid; place-items: center; aspect-ratio: 4 / 3; }
+.karte .bild svg { width: 72%; height: 72%; }
+.karte h3 { font-size: 20px; margin: 16px 0 7px; }
+.karte p { font-size: 16px; max-width: 34ch; }
+.preis { display: inline-block; margin-top: 12px; font-size: 13px; font-weight: 800;
   letter-spacing: .06em; color: var(--gold); border: 1px solid rgba(255,194,51,.35);
   padding: 4px 11px; font-variant-numeric: tabular-nums; }
 
-/* ── Einblicke: Fenster, die man sonst nicht sieht ──────────────────── */
-.fenster { display: grid; gap: clamp(20px, 3vw, 30px);
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-top: clamp(26px, 4vw, 42px); }
-.fenster figure { margin: 0; }
-.fenster img { width: 100%; border: 1px solid #232741; }
-.fenster figcaption { margin-top: 15px; }
-.fenster b { display: block; font-size: 14px; font-weight: 800; letter-spacing: .14em;
-  text-transform: uppercase; margin-bottom: 6px; }
-.fenster span { display: block; color: var(--ink2); font-size: 16px; max-width: 32ch; }
-
-/* ── Kleine Regeln: Haarstriche, keine Karten ───────────────────────── */
+/* ── Haarstrich-Listen ─────────────────────────────────────────────────── */
 .liste { margin: clamp(24px, 4vw, 38px) 0 0; padding: 0; list-style: none; }
 .liste li { border-top: 1px solid var(--strich); padding: 20px 0; display: grid; gap: 4px 28px; }
 @media (min-width: 720px) { .liste li { grid-template-columns: 230px 1fr; } }
@@ -213,36 +240,37 @@ h2 em { font-style: normal; color: var(--rot); }
 .liste b { font-size: 14px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .liste span { color: var(--ink2); font-size: 17px; max-width: 52ch; }
 
-/* ── Die Regel mit berstender Mauer ─────────────────────────────────── */
+/* ── Die Regel ─────────────────────────────────────────────────────────── */
 .regel { display: grid; gap: clamp(26px, 4vw, 56px); grid-template-columns: 1fr; align-items: center; }
-@media (min-width: 820px) { .regel { grid-template-columns: minmax(0,1fr) 250px; } }
-.mauer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 236px; margin-inline: auto; }
+@media (min-width: 820px) { .regel { grid-template-columns: minmax(0,1fr) 260px; } }
+.mauer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 232px; margin-inline: auto; }
 .mauer i { aspect-ratio: 1; background: #141828; border-radius: 2px; }
 .mauer i.w { background: #b34a3c; }
 .mauer i.k { background: #cbd5e1; }
 .mauer i.l { background: transparent; outline: 2px dashed var(--rot); outline-offset: -2px;
   animation: puls 1.6s ease-in-out infinite; }
-/* Zwei Steine neben der Luecke wackeln, als sei gerade etwas eingeschlagen. */
 .mauer i.z { animation: wackel 3.4s ease-in-out infinite; }
 .mauer i.z:nth-of-type(2n) { animation-delay: .4s; }
 @keyframes puls { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
 @keyframes wackel { 0%,92%,100% { transform: none }
   94% { transform: translate(2px,-2px) rotate(3deg) } 97% { transform: translate(-1px,1px) rotate(-2deg) } }
 
-/* ── Zu zweit / zu dritt ───────────────────────────────────────────── */
+/* ── Zu zweit / zu dritt: hier tragen echte Aufnahmen die Aussage ─────── */
 .geraet { display: grid; gap: clamp(24px, 4vw, 46px); grid-template-columns: 1fr;
   margin-top: clamp(26px, 4vw, 42px); }
-@media (min-width: 720px) { .geraet { grid-template-columns: 1fr 1fr; max-width: 780px; } }
+@media (min-width: 720px) { .geraet { grid-template-columns: 1fr 1fr; max-width: 800px; } }
 .geraet figure { margin: 0; }
-.geraet img { width: 100%; max-width: 240px; border: 1px solid #232741; }
+.geraet .rahmen { max-width: 252px; }
+.geraet img { width: 100%; }
 .geraet figcaption { margin-top: 15px; }
 .geraet b { display: block; font-size: 14px; font-weight: 800; letter-spacing: .15em;
   text-transform: uppercase; margin-bottom: 6px; }
 .geraet span { color: var(--ink2); font-size: 17px; display: block; max-width: 30ch; }
 
-/* ── Abschluss ─────────────────────────────────────────────────────── */
+/* ── Abschluss ─────────────────────────────────────────────────────────── */
 .mitte { text-align: center; }
 .mitte .zeile, .mitte p { margin-inline: auto; }
+.mitte .band { margin-inline: auto; }
 .angaben { display: flex; flex-wrap: wrap; justify-content: center;
   margin: clamp(32px, 5vw, 50px) auto 0; border-top: 1px solid var(--strich); max-width: 720px; }
 .angaben div { flex: 1 1 140px; padding: 20px 12px; border-bottom: 1px solid var(--strich); }

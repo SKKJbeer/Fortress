@@ -46,10 +46,25 @@
 
 <main id="inhalt">
 
-  <!-- ── Anfang: Schichten, Kugeln, Einschlag ──────────────────────────── -->
+  <!-- ── Anfang ─────────────────────────────────────────────────────────
+       Die Landschaft unten ist gezeichnet, kein Bildschirmfoto: zwei Burgen
+       am Fluss, dahinter Berge. Sie liegt als eigene Schicht und laeuft beim
+       Scrollen langsamer als der Rest. -->
   <div class="buehne">
     <div class="schicht s1"></div>
-    <div class="schicht s2"></div>
+    <div class="schicht s2">
+      <svg viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+        <path d="M0 300 L140 190 L250 300 L360 215 L470 300 L600 170 L740 300 L860 225 L980 300 L1090 200 L1200 300 L1200 420 L0 420Z" fill="#1a2540"/>
+        <path d="M140 190 L178 228 L102 228Z M600 170 L644 214 L556 214Z M1090 200 L1126 236 L1054 236Z" fill="#33436b"/>
+        <path d="M0 318 Q150 300 300 320 T600 318 T900 322 T1200 310 L1200 340 Q900 352 600 344 T0 348Z" fill="#1f4f8a" opacity=".85"/>
+        <path d="M0 318 Q150 300 300 320 T600 318 T900 322 T1200 310" fill="none" stroke="#5fd0ff" stroke-width="3" opacity=".55"/>
+        <g fill="#2456a8"><rect x="330" y="236" width="118" height="58" rx="3"/></g>
+        <g fill="#4d8dff"><rect x="326" y="228" width="10" height="14"/><rect x="346" y="228" width="10" height="14"/><rect x="366" y="228" width="10" height="14"/><rect x="386" y="228" width="10" height="14"/><rect x="406" y="228" width="10" height="14"/><rect x="426" y="228" width="10" height="14"/><rect x="442" y="228" width="10" height="14"/></g>
+        <g fill="#a83232"><rect x="760" y="236" width="118" height="58" rx="3"/></g>
+        <g fill="#ff4d4d"><rect x="756" y="228" width="10" height="14"/><rect x="776" y="228" width="10" height="14"/><rect x="796" y="228" width="10" height="14"/><rect x="816" y="228" width="10" height="14"/><rect x="836" y="228" width="10" height="14"/><rect x="856" y="228" width="10" height="14"/><rect x="872" y="228" width="10" height="14"/></g>
+        <path d="M470 214 Q604 120 742 208" fill="none" stroke="#ffc233" stroke-width="2.5" stroke-dasharray="7 9" opacity=".7"/>
+      </svg>
+    </div>
     <div class="kugel k1"></div><div class="kugel k2"></div><div class="kugel k3"></div>
     <div class="schicht s3"></div>
     <div class="bahn">
@@ -64,8 +79,7 @@
            Dieser Knopf steht nur auf der Seite, wenn Apple die Beta
            freigegeben hat. `scripts/testflight-stand.py` fragt das bei jedem
            Veroeffentlichen; `scripts/website-bauen.sh` tauscht sonst den
-           WARTEN-Block ein. Ein TestFlight-Link EXISTIERT, sobald die Gruppe
-           existiert — er FUNKTIONIERT erst nach der Freigabe. -->
+           WARTEN-Block ein. -->
       <a class="knopf" href="https://testflight.apple.com/join/hE2AdHwr">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
           <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
@@ -75,46 +89,19 @@
       <span class="neben">Kostenlos über TestFlight. Oder <a href="https://skkjbeer.github.io/Fortress/">sofort im Browser spielen</a>.</span>
       <!-- TESTFLIGHT:ENDE -->
 
-      <!-- WARTEN:ANFANG
-           Solange Apple die Beta prueft, steht hier der Browser-Knopf und ein
-           Satz, der den Stand nennt. Eine Seite, die fuer eine App wirbt,
-           braucht einen Handlungsaufruf — aber keinen, der ins Leere fuehrt. -->
+      <!-- WARTEN:ANFANG -->
       <a class="knopf" href="https://skkjbeer.github.io/Fortress/">Sofort im Browser spielen</a>
       <span class="neben">Die iOS-Beta liegt bei Apple zur Prüfung. Sobald sie offen ist, steht der TestFlight-Knopf hier.</span>
       <!-- WARTEN:ENDE -->
     </div>
   </div>
 
-  <!-- ── Laufband ──────────────────────────────────────────────────────── -->
-  <section class="welt">
-    <div class="bahn">
-      <p class="vorsatz">Der Takt</p>
-      <h2>Bauen. Schießen. Rüsten.</h2>
-      <p>
-        Einmal aufstellen, danach im Takt: 25 Sekunden bauen, 20 schießen,
-        15 rüsten. Ihr spielt gleichzeitig — niemand wartet auf einen Zug.
-      </p>
-    </div>
-    <div class="band"><div class="spur">
-      <img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Bauphase: zwei Burgen über und unter einem Fluss, unten die Vorschau des nächsten Bauteils.">
-      <img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Schussphase: oben läuft die Zeit, unten steht die Zahl der schussbereiten Kanonen.">
-      <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Rüstphase: Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur.">
-      <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Eine Partie zu zweit an einem Gerät, unten zwei Bauteil-Felder nebeneinander.">
-      <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Eine Partie zu dritt an einem Gerät, drei Burgen um einen dreiarmigen Fluss.">
-      <img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Das Hauptmenü mit Spielerprofil, Stufe und Punktzahl.">
-      <img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Bauphase, zweite Runde des Laufbands.">
-      <img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Schussphase, zweite Runde des Laufbands.">
-      <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Rüstphase, zweite Runde des Laufbands.">
-      <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Partie zu zweit, zweite Runde des Laufbands.">
-      <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Partie zu dritt, zweite Runde des Laufbands.">
-      <img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Das Hauptmenü, zweite Runde des Laufbands.">
-    </div></div>
-  </section>
-
-  <!-- ── Sieben Welten ─────────────────────────────────────────────────── -->
+  <!-- ── Sieben Welten, gezeichnet ──────────────────────────────────────
+       EINE Szene, sieben Farbsaetze aus WORLD_THEMES. Kein Bildschirmfoto:
+       So sieht die Welt aus, wenn man sie zeichnet statt sie zu knipsen. -->
   <section class="welt welt-tief">
     <div class="bahn">
-      <p class="vorsatz">Sieben Welten</p>
+      <p class="band">Sieben Welten</p>
       <h2>Vom Frostreich bis in den Vulkanschlund.</h2>
       <p>
         Jede Partie spielt in einer anderen Landschaft — eigener Fluss, eigene
@@ -123,23 +110,125 @@
         derselben.
       </p>
     </div>
+
     <div class="welten">
-      <div class="kachel"><img src="bilder/welt-kristalltal.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Kristalltal: blaues Gestein, ein türkiser Fluss zwischen den beiden Burgen."><b>Kristalltal</b></div>
-      <div class="kachel"><img src="bilder/welt-frostreich.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Frostreich: verschneiter Boden mit Nadelbäumen und einem eisblauen Fluss."><b>Frostreich</b></div>
-      <div class="kachel"><img src="bilder/welt-glutwueste.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Glutwüste: rotbrauner Sand mit Kakteen und Dünen, quer ein türkiser Fluss."><b>Glutwüste</b></div>
-      <div class="kachel"><img src="bilder/welt-vulkanschlund.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Vulkanschlund: schwarzes Gestein, ein glühender Lavastrom statt eines Flusses."><b>Vulkanschlund</b></div>
-      <div class="kachel"><img src="bilder/welt-nebelmoor.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Nebelmoor: dunkelgrüner Boden mit Bäumen und einem giftgrünen Wasserlauf."><b>Nebelmoor</b></div>
-      <div class="kachel"><img src="bilder/welt-herbstwald.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Herbstwald: brauner Waldboden mit orangefarbenen Bäumen und blauem Fluss."><b>Herbstwald</b></div>
-      <div class="kachel"><img src="bilder/welt-astralebene.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Welt Astralebene: violettes Sternenfeld mit schwebenden Kristallen und magentafarbenem Fluss."><b>Astralebene</b></div>
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-kristall" role="img" aria-label="Gezeichnete Welt Kristalltal: blaue Felsspitzen, ein türkis leuchtender Fluss zwischen zwei Burgen.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 92 L18 62 L34 92 L52 66 L68 92 L86 58 L104 92 L120 70 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path d="M18 62 L26 74 L10 74Z M86 58 L95 71 L77 71Z" fill="var(--gipfel)" opacity=".85"/>
+            <path class="fluss" d="M0 104 Q30 98 60 106 T120 102 L120 116 Q60 122 0 116Z" fill="var(--fluss)" opacity=".9"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".8"><path d="M14 134l3 6-3 6-3-6z"/><path d="M98 140l3 6-3 6-3-6z"/><path d="M24 52l2.5 5-2.5 5-2.5-5z"/></g>
+          </svg>
+        </div></div>
+        <b>Kristalltal</b>
+      </div>
+
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-frost" role="img" aria-label="Gezeichnete Welt Frostreich: verschneite Gipfel, ein eisblauer Fluss zwischen zwei Burgen.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 92 L18 62 L34 92 L52 66 L68 92 L86 58 L104 92 L120 70 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path d="M18 62 L26 74 L10 74Z M86 58 L95 71 L77 71Z" fill="var(--gipfel)" opacity=".85"/>
+            <path class="fluss" d="M0 104 Q30 98 60 106 T120 102 L120 116 Q60 122 0 116Z" fill="var(--fluss)" opacity=".9"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".85"><path d="M14 138l5 10h-10z"/><path d="M100 134l5 10h-10z"/><path d="M28 50l4 8h-8z"/></g>
+          </svg>
+        </div></div>
+        <b>Frostreich</b>
+      </div>
+
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-glut" role="img" aria-label="Gezeichnete Welt Glutwüste: ockerfarbene Dünen mit Kakteen und einem türkisen Fluss.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 96 Q22 76 44 94 T90 90 T120 96 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path class="fluss" d="M0 104 Q30 98 60 106 T120 102 L120 116 Q60 122 0 116Z" fill="var(--fluss)" opacity=".9"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".9"><rect x="14" y="132" width="3" height="14"/><rect x="10" y="136" width="4" height="3"/><rect x="17" y="138" width="4" height="3"/><rect x="100" y="130" width="3" height="16"/><rect x="96" y="135" width="4" height="3"/></g>
+          </svg>
+        </div></div>
+        <b>Glutwüste</b>
+      </div>
+
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-vulkan" role="img" aria-label="Gezeichnete Welt Vulkanschlund: schwarzes Gestein und ein glühender Lavastrom statt eines Flusses.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 92 L20 58 L38 92 L56 70 L74 92 L92 54 L110 92 L120 78 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path d="M92 54 L100 68 L84 68Z" fill="var(--gipfel)" opacity=".9"/>
+            <path class="fluss" d="M0 104 Q30 96 60 108 T120 100 L120 118 Q60 126 0 118Z" fill="var(--fluss)"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".75"><circle cx="16" cy="140" r="2"/><circle cx="104" cy="134" r="1.6"/><circle cx="30" cy="46" r="1.4"/></g>
+          </svg>
+        </div></div>
+        <b>Vulkanschlund</b>
+      </div>
+
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-moor" role="img" aria-label="Gezeichnete Welt Nebelmoor: dunkelgrüner Wald und ein giftgrüner Wasserlauf zwischen zwei Burgen.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 96 Q24 84 48 94 T96 92 T120 98 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path class="fluss" d="M0 104 Q30 98 60 106 T120 102 L120 116 Q60 122 0 116Z" fill="var(--fluss)" opacity=".85"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".9"><path d="M13 140l6 11H7z"/><path d="M26 144l5 9h-10z"/><path d="M101 138l6 11H95z"/></g>
+          </svg>
+        </div></div>
+        <b>Nebelmoor</b>
+      </div>
+
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-herbst" role="img" aria-label="Gezeichnete Welt Herbstwald: orangefarbene Baumkronen über braunem Boden, dazwischen ein blauer Fluss.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 94 Q26 80 52 92 T100 88 T120 96 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path class="fluss" d="M0 104 Q30 98 60 106 T120 102 L120 116 Q60 122 0 116Z" fill="var(--fluss)" opacity=".9"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".9"><circle cx="15" cy="140" r="6"/><circle cx="104" cy="136" r="5"/><circle cx="27" cy="147" r="4"/></g>
+          </svg>
+        </div></div>
+        <b>Herbstwald</b>
+      </div>
+
+      <div class="kachel">
+        <div class="rahmen"><div class="szene w-astral" role="img" aria-label="Gezeichnete Welt Astralebene: violettes Sternenfeld mit schwebenden Kristallen und magentafarbenem Fluss.">
+          <svg viewBox="0 0 120 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0 92 L18 64 L36 92 L54 68 L72 92 L90 60 L108 92 L120 74 L120 160 L0 160Z" fill="var(--berg)"/>
+            <path d="M90 60 L98 73 L82 73Z" fill="var(--gipfel)" opacity=".8"/>
+            <path class="fluss" d="M0 104 Q30 98 60 106 T120 102 L120 116 Q60 122 0 116Z" fill="var(--fluss)" opacity=".9"/>
+            <g fill="#2456a8"><rect x="34" y="74" width="34" height="17" rx="1"/></g>
+            <g fill="#4d8dff"><rect x="33" y="70" width="4" height="5"/><rect x="41" y="70" width="4" height="5"/><rect x="49" y="70" width="4" height="5"/><rect x="57" y="70" width="4" height="5"/><rect x="64" y="70" width="4" height="5"/></g>
+            <g fill="#a83232"><rect x="46" y="128" width="34" height="17" rx="1"/></g>
+            <g fill="#ff4d4d"><rect x="45" y="124" width="4" height="5"/><rect x="53" y="124" width="4" height="5"/><rect x="61" y="124" width="4" height="5"/><rect x="69" y="124" width="4" height="5"/><rect x="76" y="124" width="4" height="5"/></g>
+            <g fill="var(--prop)" opacity=".9"><path d="M14 136l3.5 7-3.5 7-3.5-7z"/><path d="M102 132l3 6-3 6-3-6z"/><path d="M30 44l2.5 5-2.5 5-2.5-5z"/><circle cx="70" cy="36" r="1.4"/><circle cx="20" cy="28" r="1.2"/></g>
+          </svg>
+        </div></div>
+        <b>Astralebene</b>
+      </div>
     </div>
-    <div class="bahn welten-fuss"><p>Zum Blättern nach rechts ziehen.</p></div>
+    <div class="bahn"><p>Zum Blättern nach rechts ziehen.</p></div>
   </section>
 
   <!-- ── Die Regel ─────────────────────────────────────────────────────── -->
   <section class="welt">
     <div class="bahn regel">
       <div>
-        <p class="vorsatz">Die eine Regel</p>
+        <p class="band">Die eine Regel</p>
         <h2>Geschlossen heißt <em>geschlossen</em>.</h2>
         <p>
           Am Ende der Bauphase lässt das Spiel Wasser von außen in dein Feld
@@ -161,34 +250,51 @@
     </div>
   </section>
 
-  <!-- ── Zwei Kanonen ──────────────────────────────────────────────────── -->
+  <!-- ── Zwei Kanonen, gezeichnet ──────────────────────────────────────── -->
   <section class="welt welt-tief">
     <div class="bahn">
-      <p class="vorsatz">Feuerkraft</p>
+      <p class="band">Feuerkraft</p>
       <h2>Zwei Kanonen, zwei Absichten.</h2>
       <p>
         Beute verdienst du im Match — für jede Kugel, die trifft, für jede
         überstandene Runde, für jede zerstörte Kanone des Gegners. Ausgeben
         kannst du sie nur in der Rüstphase.
       </p>
-      <div class="paar2">
-        <div class="kanone">
+      <div class="karten">
+        <div class="karte">
+          <div class="rahmen bild">
+            <svg viewBox="0 0 120 90" aria-hidden="true" focusable="false">
+              <rect x="10" y="58" width="100" height="8" fill="#b34a3c"/>
+              <rect x="10" y="48" width="16" height="10" fill="#b34a3c"/><rect x="34" y="48" width="16" height="10" fill="#b34a3c"/>
+              <rect x="58" y="48" width="16" height="10" fill="#8c3a2f"/><rect x="86" y="48" width="16" height="10" fill="#b34a3c"/>
+              <circle cx="36" cy="26" r="13" fill="#4b5570"/><rect x="46" y="20" width="34" height="10" rx="3" fill="#5d6884"/>
+              <circle cx="92" cy="24" r="5" fill="#ffc233"/>
+              <path d="M62 28 Q78 14 90 22" fill="none" stroke="#ffc233" stroke-width="2" stroke-dasharray="4 5" opacity=".75"/>
+            </svg>
+          </div>
           <h3>Mauerbrecher</h3>
           <p>
             Reißt Löcher in den Wall und macht dem Gegner Arbeit für die
             nächste Bauphase. Jede weitere kostet achtzig Beute mehr als die
-            davor — irgendwann bezahlst du für Nachschub, was eine Panzerung
-            gekostet hätte.
+            davor.
           </p>
           <span class="preis">200 Beute, danach +80 je Kauf</span>
         </div>
-        <div class="kanone violett">
+        <div class="karte">
+          <div class="rahmen bild">
+            <svg viewBox="0 0 120 90" aria-hidden="true" focusable="false">
+              <circle cx="34" cy="46" r="14" fill="#4b5570"/><rect x="44" y="40" width="32" height="10" rx="3" fill="#5d6884"/>
+              <circle cx="86" cy="44" r="16" fill="none" stroke="#a78bfa" stroke-width="3"/>
+              <circle cx="86" cy="44" r="7" fill="none" stroke="#a78bfa" stroke-width="3"/>
+              <path d="M86 22v8M86 58v8M64 44h8M100 44h8" stroke="#a78bfa" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="86" cy="44" r="2.5" fill="#a78bfa"/>
+            </svg>
+          </div>
           <h3>Bezwinger</h3>
           <p>
-            Trifft ausschließlich Kanonen. Gegen Mauern richtet er nichts aus —
-            dafür schaltet er die Feuerkraft des Gegners aus, bevor sie deine
-            Burg erreicht. <strong>In Runde 1 ist er nicht zu bezahlen:</strong>
-            mit fehlerfreiem Spiel kommst du auf 530.
+            Trifft ausschließlich Kanonen. Gegen Mauern richtet er nichts aus.
+            <strong>In Runde 1 ist er nicht zu bezahlen:</strong> mit
+            fehlerfreiem Spiel kommst du auf 530.
           </p>
           <span class="preis">550 Beute</span>
         </div>
@@ -196,44 +302,62 @@
     </div>
   </section>
 
-  <!-- ── Einblicke ─────────────────────────────────────────────────────── -->
+  <!-- ── Einblicke, gezeichnet ─────────────────────────────────────────── -->
   <section class="welt">
     <div class="bahn">
-      <p class="vorsatz">Was noch drinsteckt</p>
-      <h2>Vier Fenster, die man auf einem Spielfeld nicht sieht.</h2>
-      <div class="fenster">
-        <figure>
-          <img src="bilder/schmiede.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Schmiede: Materialvorrat aus Eisen, Silber, Drachenschuppe und Sternenstaub, darunter Rezeptkarten.">
-          <figcaption>
-            <b>Schmiede</b>
-            <span>Seltene Materialien fallen aus Online-Partien. Daraus entstehen Stücke, die es im Shop nicht gibt.</span>
-          </figcaption>
-        </figure>
-        <figure>
-          <img src="bilder/goldshop.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Der Gold-Shop: Karten für Kugelspuren, Profilrahmen, Kanonen-Anstriche und Siegeseffekte.">
-          <figcaption>
-            <b>Gold-Shop</b>
-            <span>Spuren, Rahmen, Kanonen, Siegeseffekte. Jeder Rahmen hat eine eigene Machart — genietet, geschliffen, Zierkranz, Schuppenrand.</span>
-          </figcaption>
-        </figure>
-        <figure>
-          <img src="bilder/erfolge.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Auszeichnungen: eine Liste erreichter und offener Erfolge mit Fortschrittsbalken.">
-          <figcaption>
-            <b>Auszeichnungen</b>
-            <span>Für Dinge, die man nicht nebenbei schafft. Wer sie sucht, spielt anders.</span>
-          </figcaption>
-        </figure>
-        <figure>
-          <img src="bilder/aufgaben.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Tagesaufgaben: drei Aufträge mit Fortschritt und Goldbelohnung zum Abholen.">
-          <figcaption>
-            <b>Tagesaufgaben</b>
-            <span>Jeden Tag drei neue, aus dem Datum berechnet — bei allen Spielern dieselben.</span>
-          </figcaption>
-        </figure>
+      <p class="band">Was noch drinsteckt</p>
+      <h2>Vier Dinge, die auf keinem Spielfeld stehen.</h2>
+      <div class="karten">
+        <div class="karte">
+          <div class="rahmen bild">
+            <svg viewBox="0 0 100 90" aria-hidden="true" focusable="false">
+              <path d="M18 62h64l-8 14H26z" fill="#5d6884"/>
+              <path d="M30 56h40v6H30z" fill="#4b5570"/>
+              <path d="M52 20l26 14-10 8-26-14z" fill="#c8b28a"/>
+              <rect x="28" y="30" width="22" height="7" rx="2" transform="rotate(28 28 30)" fill="#8c6b3f"/>
+              <circle cx="74" cy="18" r="3" fill="#ffc233"/><circle cx="84" cy="26" r="2" fill="#ffc233"/>
+            </svg>
+          </div>
+          <h3>Schmiede</h3>
+          <p>Seltene Materialien fallen aus Online-Partien. Daraus entstehen Stücke, die es im Shop nicht gibt.</p>
+        </div>
+        <div class="karte">
+          <div class="rahmen bild">
+            <svg viewBox="0 0 100 90" aria-hidden="true" focusable="false">
+              <ellipse cx="50" cy="30" rx="24" ry="9" fill="#ffc233"/>
+              <path d="M26 30v12c0 5 11 9 24 9s24-4 24-9V30" fill="#e0a616"/>
+              <ellipse cx="50" cy="42" rx="24" ry="9" fill="#ffc233"/>
+              <path d="M26 42v12c0 5 11 9 24 9s24-4 24-9V42" fill="#e0a616"/>
+              <ellipse cx="50" cy="54" rx="24" ry="9" fill="#ffc233"/>
+              <path d="M44 52l4 4 8-9" fill="none" stroke="#5a4108" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Gold-Shop</h3>
+          <p>Spuren, Rahmen, Kanonen, Siegeseffekte. Jeder Rahmen hat eine eigene Machart — genietet, geschliffen, Zierkranz, Schuppenrand.</p>
+        </div>
+        <div class="karte">
+          <div class="rahmen bild">
+            <svg viewBox="0 0 100 90" aria-hidden="true" focusable="false">
+              <path d="M34 18h32v20a16 16 0 0 1-32 0z" fill="#ffc233"/>
+              <path d="M34 22H24v6a10 10 0 0 0 10 10M66 22h10v6a10 10 0 0 1-10 10" fill="none" stroke="#c8b28a" stroke-width="3"/>
+              <rect x="44" y="54" width="12" height="12" fill="#e0a616"/>
+              <rect x="32" y="66" width="36" height="7" rx="2" fill="#c8b28a"/>
+            </svg>
+          </div>
+          <h3>Auszeichnungen</h3>
+          <p>Für Dinge, die man nicht nebenbei schafft. Wer sie sucht, spielt anders.</p>
+        </div>
+        <div class="karte">
+          <div class="rahmen bild">
+            <svg viewBox="0 0 100 90" aria-hidden="true" focusable="false">
+              <rect x="26" y="16" width="48" height="60" rx="4" fill="#1b2340" stroke="#c8b28a" stroke-width="2.5"/>
+              <path d="M36 34l5 5 10-11M36 50l5 5 10-11M36 66l5 5 10-11" fill="none" stroke="#3ddc8a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="56" y="32" width="12" height="3" fill="#6f7490"/><rect x="56" y="48" width="12" height="3" fill="#6f7490"/><rect x="56" y="64" width="12" height="3" fill="#6f7490"/>
+            </svg>
+          </div>
+          <h3>Tagesaufgaben</h3>
+          <p>Jeden Tag drei neue, aus dem Datum berechnet — bei allen Spielern dieselben.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -241,37 +365,25 @@
   <!-- ── Kleine Regeln ─────────────────────────────────────────────────── -->
   <section class="welt welt-tief">
     <div class="bahn">
-      <p class="vorsatz">Kleine Regeln, große Wirkung</p>
+      <p class="band">Kleine Regeln, große Wirkung</p>
       <h2>Die Sachen, die man erst nach ein paar Partien merkt.</h2>
       <ul class="liste">
-        <li>
-          <b>Aufladen</b>
-          <span>Wer eine ganze Schussphase nicht feuert, sammelt Ladung — die nächste Salve schießt entsprechend mehr Kugeln. Aussetzen ist eine echte Alternative zum Dauerfeuer.</span>
-        </li>
-        <li>
-          <b>Kanonentod sprengt mit</b>
-          <span>Fällt eine Kanone, reißt sie die Mauern im Umkreis von drei mal drei Feldern mit. Wer seine Kanonen eng an den Wall stellt, verliert beides auf einmal.</span>
-        </li>
-        <li>
-          <b>Kein Absaufen</b>
-          <span>Wer keine einsatzfähige Kanone mehr hat, bekommt doppelten Sold und die nächste Kanone zum Grundpreis. Ohne das wäre eine verlorene Runde das Ende der Partie.</span>
-        </li>
-        <li>
-          <b>Trümmer sind Rohstoff</b>
-          <span>Zerschossene Mauern bleiben als Trümmer liegen. Die Reparatur macht wieder Mauern daraus — und wird mit jedem Kauf teurer.</span>
-        </li>
-        <li>
-          <b>Drei Bot-Stufen</b>
-          <span>Der leichte streut beim Zielen und feuert seltener. Der schwere trifft fast genau und kauft ein wie jemand, der weiß, was er tut.</span>
-        </li>
+        <li><b>Aufladen</b><span>Wer eine ganze Schussphase nicht feuert, sammelt Ladung — die nächste Salve schießt entsprechend mehr Kugeln. Aussetzen ist eine echte Alternative zum Dauerfeuer.</span></li>
+        <li><b>Kanonentod sprengt mit</b><span>Fällt eine Kanone, reißt sie die Mauern im Umkreis von drei mal drei Feldern mit. Wer seine Kanonen eng an den Wall stellt, verliert beides auf einmal.</span></li>
+        <li><b>Kein Absaufen</b><span>Wer keine einsatzfähige Kanone mehr hat, bekommt doppelten Sold und die nächste Kanone zum Grundpreis. Ohne das wäre eine verlorene Runde das Ende der Partie.</span></li>
+        <li><b>Trümmer sind Rohstoff</b><span>Zerschossene Mauern bleiben als Trümmer liegen. Die Reparatur macht wieder Mauern daraus — und wird mit jedem Kauf teurer.</span></li>
+        <li><b>Drei Bot-Stufen</b><span>Der leichte streut beim Zielen und feuert seltener. Der schwere trifft fast genau und kauft ein wie jemand, der weiß, was er tut.</span></li>
       </ul>
     </div>
   </section>
 
-  <!-- ── An einem Gerät ────────────────────────────────────────────────── -->
+  <!-- ── An einem Gerät ────────────────────────────────────────────────
+       HIER stehen echte Aufnahmen, und zwar mit Grund: Die Bauteil-Felder
+       unten im Bild sind der Beweis, dass zwei oder drei Leute gleichzeitig
+       spielen. Eine Zeichnung koennte das nur behaupten. -->
   <section class="welt">
     <div class="bahn">
-      <p class="vorsatz">An einem Gerät</p>
+      <p class="band">An einem Gerät</p>
       <h2>Legt das Telefon zwischen euch.</h2>
       <p>
         Gespielt wird gleichzeitig, jeder mit eigenem Bauteil. Das Spiel
@@ -279,23 +391,49 @@
       </p>
       <div class="geraet">
         <figure>
-          <img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Partie zu zweit an einem Gerät: blaue Burg oben, rote unten, unten zwei Bauteil-Felder nebeneinander.">
+          <div class="rahmen"><img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Partie zu zweit an einem Gerät: blaue Burg oben, rote unten, unten zwei Bauteil-Felder nebeneinander."></div>
           <figcaption><b>Zu zweit</b><span>Du baust oben, dein Gegenüber unten. Zwei Bauteil-Felder, keine Zugreihenfolge.</span></figcaption>
         </figure>
         <figure>
-          <img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Partie zu dritt an einem Gerät: drei Burgen in Blau, Grün und Rot um einen dreiarmigen Fluss.">
+          <div class="rahmen"><img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Partie zu dritt an einem Gerät: drei Burgen in Blau, Grün und Rot um einen dreiarmigen Fluss."></div>
           <figcaption><b>Zu dritt</b><span>Der Fluss teilt sich in drei Arme, jeder bekommt seinen Sektor. Jeder gegen jeden.</span></figcaption>
         </figure>
       </div>
     </div>
   </section>
 
-  <!-- ── Ehrlich gesagt ────────────────────────────────────────────────── -->
+  <!-- ── So sieht es wirklich aus ──────────────────────────────────────── -->
   <section class="welt welt-tief">
     <div class="bahn">
-      <p class="vorsatz">Ehrlich gesagt</p>
+      <p class="band">Ohne Schönfärberei</p>
+      <h2>So sieht es wirklich aus.</h2>
+      <p>Drei Aufnahmen aus einer laufenden Partie — Bauen, Schießen, Rüsten.</p>
+      <div class="streifen">
+        <figure>
+          <div class="rahmen"><img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Bauphase: zwei Burgen über und unter einem Fluss, unten die Vorschau des nächsten Bauteils."></div>
+          <figcaption>Bauen · 25 s</figcaption>
+        </figure>
+        <figure>
+          <div class="rahmen"><img src="bilder/shoot.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Schussphase: oben läuft die Zeit, unten steht die Zahl der schussbereiten Kanonen."></div>
+          <figcaption>Schießen · 20 s</figcaption>
+        </figure>
+        <figure>
+          <div class="rahmen"><img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Rüstphase: Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur."></div>
+          <figcaption>Rüsten · 15 s</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ehrlich gesagt ────────────────────────────────────────────────── -->
+  <section class="welt">
+    <div class="bahn">
+      <p class="band">Ehrlich gesagt</p>
       <h2>Was es kostet und was es von dir weiß.</h2>
       <ul class="liste">
         <li><b>Es kostet nichts</b><span>Keine Werbung, keine Käufe, kein Abo, keine Energie, die sich erst wieder auflädt. Der volle Umfang steht vom ersten Start an offen.</span></li>
@@ -307,7 +445,7 @@
   </section>
 
   <!-- ── Abschluss ─────────────────────────────────────────────────────── -->
-  <section class="welt mitte">
+  <section class="welt welt-tief mitte">
     <div class="bahn">
       <p class="zeile">Zwei Burgen. Ein Fluss. Eine Regel.</p>
 
