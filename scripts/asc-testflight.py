@@ -86,6 +86,19 @@ def main() -> int:
     if not bauten:
         print("::error::Kein Bau vorhanden — erst hochladen.")
         return 1
+
+    # ALLE Bauten mit ihrem Zustand nennen, nicht nur den neuesten gueltigen.
+    # Vorher stand hier eine Zeile („Bau 16 (VALID)"), und nach einem frischen
+    # Upload liess sich daraus nicht ablesen, ob der neue Bau noch verarbeitet
+    # wird oder bei Apple gar nicht angekommen ist. Das sind zwei sehr
+    # verschiedene Lagen, und nur eine davon loest sich durch Warten.
+    print("Bauten bei Apple (neueste zuerst):")
+    for b in bauten:
+        m = b["attributes"]
+        print(f"  {str(m.get('version')):>4}  {m.get('processingState'):<10} "
+              f"hochgeladen {m.get('uploadedDate')}"
+              + (f"  abgelaufen" if m.get("expired") else ""))
+
     # Nur ein fertig verarbeiteter Bau laesst sich zuordnen.
     gueltig = [b for b in bauten
                if b["attributes"].get("processingState") == "VALID"]
@@ -95,7 +108,15 @@ def main() -> int:
               f"Apple ist noch nicht fertig. Spaeter erneut versuchen.")
         return 1
     bau = gueltig[0]
-    print(f"Bau {bau['attributes'].get('version')} "
+    # Steht etwas Neueres noch in der Verarbeitung, gehoert das gesagt — sonst
+    # liest sich „Bau 16 fuer sie sichtbar" wie ein Abschluss, obwohl der
+    # eigentlich erwartete Bau noch unterwegs ist.
+    neuer = [b["attributes"].get("version") for b in bauten
+             if b["attributes"].get("processingState") != "VALID"]
+    if neuer:
+        print(f"::notice::Noch in Verarbeitung: {', '.join(map(str, neuer))} — "
+              f"neuester fertiger Bau ist {bau['attributes'].get('version')}.")
+    print(f"Neuester fertiger Bau: {bau['attributes'].get('version')} "
           f"({bau['attributes'].get('processingState')})")
 
     # ── Testgruppe ─────────────────────────────────────────────────────────
