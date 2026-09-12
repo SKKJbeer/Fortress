@@ -7,7 +7,7 @@
 
 ---
 
-## Stand 12.09.2026 — der Bau ist bei Apple hochgeladen
+## Stand 12.09.2026 — **Bau 12 liegt in TestFlight (VALID)**
 
 **Die Kette läuft vollständig durch.** Lauf 12 des iOS-Builds: Zertifikat
 einlesen, Verteilprofil anlegen, archivieren, exportieren, hochladen — jeder
@@ -27,11 +27,15 @@ Schritt grün. Ohne Mac, ohne registriertes Gerät, ohne einen Klick im Portal.
 - [x] Fassung 1.0 (`PREPARE_FOR_SUBMISSION`)
 - [x] Untertitel, Datenschutz-Adresse, Beschreibung, Schlagworte, Werbetext
 - [x] **Prüfhinweise** — die sieben 2.1-Punkte vorab beantwortet, auf Englisch
+- [x] **Bau 12** — von Apple selbst bestätigt, Zustand `VALID`. Nicht aus dem
+      Exit-Code des Upload-Befehls geschlossen, sondern nachgefragt: der erste
+      Abgleich vier Minuten nach dem Upload meldete noch „kein Bau", der zweite
+      nach fünfzehn Minuten den fertig verarbeiteten.
 
 ## ⏸ Wartet auf dich
 
-**Für TestFlight:** nichts. Sobald Apple den Bau verarbeitet hat (10–30 Min),
-erscheint er in der TestFlight-App auf deinem iPhone.
+**Für TestFlight:** nichts. Der Bau ist verarbeitet und steht in der
+TestFlight-App auf deinem iPhone bereit.
 
 **Auf dem Gerät prüfen**, was sich maschinell nicht prüfen lässt: Haptik, Ton,
 Safe-Areas, Startbild — und ob das Spiel sich anfühlt wie eine App.
