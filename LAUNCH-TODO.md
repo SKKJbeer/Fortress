@@ -1,4 +1,4 @@
-# FORTRESS — Marktstart-Checkliste
+# Stack & Siege — Marktstart-Checkliste
 
 > Stand: v3.79.0, 05.09.2026. **iOS zuerst** — der Developer-Account steht
 > (Zählora ist seit dem 4. September im Store), und TestFlight hat keine
@@ -17,7 +17,7 @@
 > | Feld | Wert |
 > |---|---|
 > | Plattform | iOS |
-> | Name | `FORTRESS – Burgenduell` |
+> | Name | `Stack & Siege – Burgenduell` |
 > | Primäre Sprache | Deutsch |
 > | Bundle-ID | `de.skkjbeer.fortress` — **ist registriert und auswählbar** |
 > | SKU | `fortress-ios` |
@@ -30,7 +30,7 @@
       Workflows — alle vier bestätigt)
 - [x] **Alle Apple-Geheimnisse übertragen** aus dem Schwesterprojekt:
       `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, dazu das
-      **Verteilzertifikat** (`DIST_P12_*`) — damit signiert FORTRESS mit
+      **Verteilzertifikat** (`DIST_P12_*`) — damit signiert Stack & Siege mit
       demselben Zertifikat wie das Schwesterprojekt, und die
       Drei-Zertifikate-Grenze ist erledigt.
 - [x] **App-ID `de.skkjbeer.fortress` registriert** (über die Schnittstelle)
@@ -119,7 +119,7 @@ schwierig wären.
       Zählora sind acht API-Pfade dafür gemessen worden, alle antworten „does
       not exist": Das geht nur von Hand über
       `App Store → App-Datenschutz → Bearbeiten` und dann veröffentlichen.
-      Für FORTRESS ist die Antwort **nicht** „keine Daten erfasst" — Name,
+      Für Stack & Siege ist die Antwort **nicht** „keine Daten erfasst" — Name,
       Spielstand und Spielverlauf liegen in Firebase. Vorlage in
       `store/listing.md`.
 - [ ] **Telefonnummer für die Prüfung.** Apple nimmt den Kontakt nur

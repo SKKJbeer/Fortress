@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""App Store Connect fuer FORTRESS — fragen und eintragen, statt klicken.
+"""App Store Connect fuer Stack & Siege — fragen und eintragen, statt klicken.
 
 Drei Betriebsarten:
 
@@ -38,7 +38,7 @@ import jwt
 import requests
 
 BASIS = "https://api.appstoreconnect.apple.com"
-BUNDLE = "de.skkjbeer.fortress"
+BUNDLE = "de.skkjbeer.stackandsiege"
 SPRACHE = "de-DE"
 FASSUNG = "1.0"          # MARKETING_VERSION im Xcode-Projekt
 WURZEL = pathlib.Path(__file__).resolve().parent.parent
@@ -170,7 +170,7 @@ def app_id(apple: Apple, anlegen: bool):
         return None
     stand, antwort = apple.anlegen("v1/bundleIds", {"data": {
         "type": "bundleIds",
-        "attributes": {"identifier": BUNDLE, "name": "FORTRESS", "platform": "IOS"}}})
+        "attributes": {"identifier": BUNDLE, "name": "Stack & Siege", "platform": "IOS"}}})
     if stand in (200, 201):
         erledigt.append(f"App-ID {BUNDLE} angelegt")
         return antwort.json()["data"]["id"]
@@ -188,7 +188,7 @@ def app_eintrag(apple: Apple):
     if not treffer:
         handarbeit.append(
             "App-Eintrag in App Store Connect anlegen — appstoreconnect.apple.com/apps, "
-            f"Name „FORTRESS – Burgenduell\", Sprache Deutsch, Bundle-ID {BUNDLE}, "
+            f"Name „Stack & Siege – Burgenduell\", Sprache Deutsch, Bundle-ID {BUNDLE}, "
             "SKU fortress-ios. Apples Schnittstelle bietet dafuer nichts an "
             "(kein POST auf /v1/apps); ohne diesen Eintrag laeuft nichts weiter.")
         return None

@@ -1,4 +1,4 @@
-# FORTRESS — Spezifikation & Regelwerk (aktuell: v3.79.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.80.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7,7 +7,7 @@
 
 ## 1. SPIELKONZEPT
 
-Fortress ist ein eigenstaendiges 2-3-Spieler-Burgenspiel.
+Stack & Siege ist ein eigenstaendiges 2-3-Spieler-Burgenspiel.
 Zwei Spieler bauen gleichzeitig geschlossene Burgmauern aus Tetris-artigen Teilen
 und beschiessen danach gegenseitig ihre Festungen.
 
@@ -210,11 +210,11 @@ und beschiessen danach gegenseitig ihre Festungen.
 
 ### Build-Pipeline (NICHT ändern ohne Grund):
 
-- Quellcode: `fortress.jsx` (React, beginnt mit `export default function Fortress()`)
+- Quellcode: `fortress.jsx` (React, beginnt mit `export default function Stack & Siege()`)
 - JSX wird **vorab** mit esbuild kompiliert (aus tsx-Paket), NICHT live mit Babel
   (Babel im Browser = infinite load auf Handy)
 - Ausgabe: `index.html` (eigenständige PWA, ~88 KB)
-- Deployment: GitHub Pages, Repo `skkjbeer/Fortress`, URL `skkjbeer.github.io/Fortress/`
+- Deployment: GitHub Pages, Repo `skkjbeer/Stack & Siege`, URL `skkjbeer.github.io/Fortress/`
 - Datei MUSS `index.html` heissen (GitHub Pages braucht das)
 - React via unpkg CDN, Firebase SDK via gstatic CDN
 
@@ -253,7 +253,7 @@ und beschiessen danach gegenseitig ihre Festungen.
   per ellipsis gekürzt, flex 1 1 0 + min-width 0, damit lange Namen die mittlere
   Timer-Anzeige NICHT überlappen.
 - Online-Result zeigt “Du gewinnst/verlierst” je nach eigener Rolle
-- Versionsanzeige im Menü gut lesbar (#64748b), Format “⚔️ FORTRESS · Version X.Y.Z”
+- Versionsanzeige im Menü gut lesbar (#64748b), Format “⚔️ Stack & Siege · Version X.Y.Z”
 
 -----
 
@@ -1799,7 +1799,7 @@ Spieler-Feedback: der Bot wirkte willkürlich beim Bauen und traf beim Schießen
   Fallback, falls der Soll-Ring gerade keine passende Lücke bietet.
 - **Selbstspiel-Diagnose**: beide Bots tragen sich gegenseitig die Schutzmauern ab (verteilte
   Bresche) und reparieren ihre Ringe — das Spiel endet jetzt **entscheidend** (Sieger) statt im
-  Dauer-Patt. Fortress-Struktur im Screenshot klar rechteckig (Ring + eingemauerte Kanonen).
+  Dauer-Patt. Stack & Siege-Struktur im Screenshot klar rechteckig (Ring + eingemauerte Kanonen).
 
 178 Tests grün. SW-Cache `fortress-v3.14.8`.
 
@@ -5325,7 +5325,7 @@ Reine Textänderung. Kein Eingriff ins Spiel, keine Entscheidung über
 Monetarisierung — nur das Vermeiden einer Zusage, die später einen Rückzieher
 erzwingen würde.
 
-**Vorher** stand in AGB und Store-Text: *„FORTRESS ist kostenlos und bleibt es.
+**Vorher** stand in AGB und Store-Text: *„Stack & Siege ist kostenlos und bleibt es.
 Keine Käufe mit echtem Geld, keine Abonnements."*
 
 Das war für die damalige Haltung korrekt formuliert. Solange über
@@ -5348,7 +5348,7 @@ Tests grün (Unit 70/70, E2E 345/345, Typen 0 Fehler).
 
 ---
 
-## v3.78.3 — FORTRESS steht für sich
+## v3.78.3 — Stack & Siege steht für sich
 
 Alle Verweise auf ein älteres Spiel als Vorlage sind entfernt — aus der
 Spezifikation, aus `CLAUDE.md` und aus der Vortragsseite. In den Store-Texten
@@ -5435,3 +5435,57 @@ gesetzt war. Beides behoben — eine Prüfung, die bei Nichtstun grün meldet, i
 schlimmer als keine.
 
 Tests grün (Unit 70/70, E2E 353/353, Typen 0 Fehler).
+
+---
+
+## v3.80.0 — Das Spiel heisst jetzt Stack & Siege
+
+**Umbenannt, bevor es teuer wird.** Die App-ID war registriert, aber noch kein
+App-Eintrag angelegt — der letzte Moment, in dem die Bundle-Kennung frei
+waehlbar ist. Danach ist sie fuer die Lebensdauer der App unveraenderlich, und
+ein neuer Name haette eine neue Produktseite bedeutet, ohne Bewertungen und
+ohne Downloads. Deshalb zieht sie mit: `de.skkjbeer.stackandsiege` (ein
+kaufmaennisches Und ist in einer Bundle-Kennung nicht zulaessig).
+
+**Was ausdruecklich NICHT umbenannt wurde**, und das ist der wichtigere Teil:
+
+- **Die dreizehn Speicher-Schluessel** (`fortress_profile`, `fortress_daily`,
+  `fortress_device_id` …). Eine Umbenennung haette jedem bestehenden Spieler
+  ELO, Gold, Level, Abzeichen und gekaufte Kosmetik genommen — fuer ihn saehe
+  es aus wie eine Neuinstallation. Diese Schluessel sieht niemand; sie duerfen
+  fuer immer den alten Namen tragen.
+- **Die PWA-Pfade** `start_url`, `scope` und `id` (`/Fortress/`). Die haengen
+  am Repository-Namen, nicht am Spielnamen. Wer sie aendert, macht installierte
+  Apps zu Fremdlingen.
+- **Repository- und Live-Adresse.** Geteilte Links bleiben gueltig.
+
+Das Umbenennen lief als Skript mit Schutzmustern statt als Suchen-und-Ersetzen
+— 100 Vorkommen, HTML und plist mit `&amp;` statt `&`, weil beides XML ist.
+
+**Drei Fehler, die dabei entstanden und gefunden wurden:**
+
+1. `window.FortressApp = function Fortress()` — ein BEZEICHNER, kein
+   Anzeigename. Die Wortgrenze nahm ihn mit, und der Build brach ab
+   („Expression expected"). Jetzt `StackSiegeApp`, an beiden Stellen.
+2. Das Abzeichen „First Fortress Destroyed" meint die gegnerische BURG, nicht
+   den Spielnamen. Zurueckgenommen — ein Wort, das nicht zur Marke gehoert.
+3. Der Versionsabgleich der Testsuite stand ZWEIMAL im Code, und nur eine
+   Kopie wurde nachgezogen. Der Lauf brach mit „Server vnull" ab, obwohl beide
+   Seiten dieselbe Version trugen. Jetzt ein Muster, von beiden benutzt.
+
+**Der Menue-Titel war auf acht Zeichen gerechnet.** `clamp(50px,14vw,76px)`
+lief mit dreizehn Zeichen auf einem schmalen Telefon rechts aus dem Bild. Jetzt
+`clamp(30px,8.2vw,50px)`, Sperrung von -2.5 auf -1 px. Bei 360, 390 und 430 px
+Fensterbreite gemessen: die Seite scrollt an keiner davon waagerecht.
+
+**Eine Pruefung musste nachziehen.** Die Achievements-Kategorien werden gegen
+das deutsche Wort „Siege" geprueft — das steht seit heute im Spielnamen, und
+`innerText` liefert auch das Menue hinter dem Modal. Der Name wird jetzt aus
+dem Text geschnitten, bevor geprueft wird.
+
+Der App-Store-Name bleibt „Stack & Siege – Burgenduell": Der Zusatz war frueher
+noetig, weil das Hauptwort belegt war, und steht jetzt da, damit ein deutscher
+Sucher ueberhaupt etwas findet. Ueber Apples Suche geprueft — den Namen traegt
+im deutschen App Store keine andere App.
+
+Tests gruen (Unit 70/70, E2E 353/353, Typen 0 Fehler).

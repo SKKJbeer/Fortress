@@ -52,17 +52,30 @@ const PROFILE_INIT = `
 `;
 
 // ── Versions-Helfer ───────────────────────────────────────────
-function getExpectedVersion() {
-  const html = fs.readFileSync('/home/user/Fortress/index.html', 'utf8');
-  const m = html.match(/FORTRESS v(\d+\.\d+\.\d+)/);
+//
+// EIN Muster fuer beide Seiten des Abgleichs. Es stand zweimal da, und beim
+// Umbenennen auf „Stack & Siege" wurde nur die eine Kopie nachgezogen — der
+// Lauf brach dann mit „Server vnull" ab, obwohl beide Seiten dieselbe Version
+// trugen. Zwei Kopien einer Wahrheit driften, sobald man sie anfasst.
+//
+// `&(?:amp;)?`, weil hier ROHES HTML gelesen wird: dort steht das
+// kaufmaennische Und als Entitaet, im gerenderten Text dagegen als Zeichen.
+const VERSION_MUSTER = /Stack &(?:amp;)? Siege v(\d+\.\d+\.\d+)/;
+
+function versionAus(text) {
+  const m = text.match(VERSION_MUSTER);
   return m ? m[1] : null;
+}
+
+function getExpectedVersion() {
+  return versionAus(fs.readFileSync('/home/user/Fortress/index.html', 'utf8'));
 }
 function getServerVersion() {
   return new Promise((resolve, reject) => {
     http.get('http://localhost:8765/', (res) => {
       let d = '';
       res.on('data', c => d += c);
-      res.on('end', () => { const m = d.match(/FORTRESS v(\d+\.\d+\.\d+)/); resolve(m ? m[1] : null); });
+      res.on('end', () => resolve(versionAus(d)));
     }).on('error', reject);
   });
 }
@@ -1555,7 +1568,7 @@ async function suiteOffline(browser) {
     const st = await page.evaluate(() => ({
       knoepfe: document.querySelectorAll('button').length,
       lokal: /LOKAL SPIELEN|PLAY LOCAL/i.test(document.body.innerText),
-      titel: /FORTRESS/.test(document.body.innerText)
+      titel: /Stack & Siege/.test(document.body.innerText)
     }));
     (st.knoepfe > 5 && st.titel)
       ? ok(`Offline: Menue laedt ohne Netz (${st.knoepfe} Schaltflaechen) ✓`)
@@ -2540,7 +2553,7 @@ async function suiteOnboarding(browser) {
 
     // ── Auto-Popup bei Erstkontakt ────────────────────────────
     const appeared = await page.waitForFunction(
-      () => /Willkommen bei FORTRESS|Welcome to FORTRESS/.test(document.body.innerText),
+      () => /Willkommen bei Stack & Siege|Welcome to Stack & Siege/.test(document.body.innerText),
       { timeout: 4000 }
     ).then(() => true).catch(() => false);
     appeared ? ok('Onboarding erscheint automatisch bei Erstkontakt ✓') : fail('Onboarding-Auto-Popup fehlt');
@@ -2560,7 +2573,7 @@ async function suiteOnboarding(browser) {
     // ── Abschluss "Los geht's" schließt + setzt Flag ──────────
     await jsClick(page, ["Los geht", "Let's go"]);
     await page.waitForTimeout(200);
-    const closed = await page.evaluate(() => !/Willkommen bei FORTRESS|Ziel des Spiels|Welcome to FORTRESS|Goal of the game/.test(document.body.innerText));
+    const closed = await page.evaluate(() => !/Willkommen bei Stack & Siege|Ziel des Spiels|Welcome to Stack & Siege|Goal of the game/.test(document.body.innerText));
     closed ? ok('Tutorial schließt nach Abschluss ✓') : fail('Tutorial schließt nicht');
     const flag = await page.evaluate(() => { try { return localStorage.getItem('fortress_onboarded'); } catch { return null; } });
     flag === '1' ? ok('fortress_onboarded=1 in localStorage gesetzt ✓') : fail('Onboarding-Flag nicht gesetzt');
@@ -2693,7 +2706,13 @@ async function suiteI18n(browser) {
     await page.evaluate(() => { const b = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('title') === 'Achievements'); if (b) b.click(); });
     await page.waitForTimeout(300);
     const ach = await page.evaluate(() => {
-      const t = document.body.innerText;
+      // Der Spielname wird ENTFERNT, bevor geprueft wird. Das Modal liegt
+      // ueber dem Menue, und innerText liefert beides — seit „Stack & Siege"
+      // stuende das Wort „Siege" damit immer im Text, obwohl es hier die
+      // DEUTSCHE Kategorie meint (englisch: „Wins"). Ohne diesen Schnitt
+      // meldete die Pruefung „Kategorien noch deutsch", waehrend die
+      // Oberflaeche einwandfrei englisch war.
+      const t = document.body.innerText.split('Stack & Siege').join('');
       return {
         counter: /unlocked/i.test(t) && !/freigeschaltet/.test(t),
         cats: /Wins/.test(t) && /Streaks/.test(t) && /Destruction/.test(t) && !/Siege/.test(t) && !/Serien/.test(t) && !/Zerstörung/.test(t),

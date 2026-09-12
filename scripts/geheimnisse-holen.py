@@ -72,7 +72,7 @@ def kurz(antwort) -> str:
 def ablegen(gh: GitHub, quelle: str, inhalt: str) -> None:
     """Legt den Ablauf drueben ab (oder ueberschreibt eine Altlast)."""
     vorhanden = gh.get(f"/repos/{quelle}/contents/{PFAD}")
-    koerper = {"message": "Geheimnisse einmalig nach Fortress uebertragen",
+    koerper = {"message": "Geheimnisse einmalig nach Stack & Siege uebertragen",
                "content": base64.b64encode(inhalt.encode()).decode()}
     if vorhanden.status_code == 200:
         koerper["sha"] = vorhanden.json()["sha"]

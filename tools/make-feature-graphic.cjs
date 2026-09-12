@@ -40,7 +40,7 @@ const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>
   <div class="spiel"><img src="SPIELBILD"></div>
   <div class="vig"></div>
   <div class="text">
-    <h1>FORTRESS</h1>
+    <h1>Stack &amp; Siege</h1>
     <div class="unter">Bauen · Verteidigen · Zerstören</div>
     <div class="marken">
       <span class="marke">2–3 SPIELER</span>

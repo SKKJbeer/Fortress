@@ -1,4 +1,4 @@
-// FORTRESS — Spielcode.
+// Stack & Siege — Spielcode.
 //
 // Bis v3.77.0 lag dieser Block als 9.900-Zeilen-Skript INLINE in index.html.
 // Das war der groesste Hemmschuh der Weiterentwicklung: keine parallele Arbeit
@@ -346,7 +346,7 @@ const PHASE_BANNERS = {
   cannon: { title: "R\xDCSTPHASE", sub: "Kaufe Upgrades im Shop — Beute gibt es f\xFCrs Zerst\xF6ren",  color: "#fbbf24", bg: "rgba(48,30,2,0.95)",  glow: "rgba(245,158,11,0.5)"  },
 };
 // ── Game Event Bus ─────────────────────────────────────────────
-window.FortressApp = function Fortress() {
+window.StackSiegeApp = function StackSiegeApp() {
   var _a, _b;
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
@@ -2137,7 +2137,7 @@ window.FortressApp = function Fortress() {
     const outcome = drawn ? t('shareTextDraw') : iWon ? t('shareTextWin') : t('shareTextLose');
     const text = `${emoji} ${outcome} — ${t('shareTextInvite')}`;
     if (navigator.share) {
-      navigator.share({ title: "FORTRESS", text, url }).catch(() => {});
+      navigator.share({ title: "Stack & Siege", text, url }).catch(() => {});
     } else {
       const full = text + "\n" + url;
       const ta = document.createElement("textarea");
@@ -2192,7 +2192,7 @@ window.FortressApp = function Fortress() {
       } catch (e) {}
     };
     if (navigator.share) {
-      navigator.share({ title: "FORTRESS", text, url: link }).catch(() => {});
+      navigator.share({ title: "Stack & Siege", text, url: link }).catch(() => {});
     } else if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text + " " + link).then(done).catch(clipFallback);
     } else clipFallback();
@@ -7090,16 +7090,19 @@ window.FortressApp = function Fortress() {
     padding: 16,
     boxSizing: "border-box"
   } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
-    fontSize: "clamp(50px,14vw,76px)",
+    // v3.80.0: Der Name hat 13 Zeichen statt 8. Mit den alten 14vw lief er
+    // auf einem schmalen Telefon rechts aus dem Bild. Gemessen, nicht geraten
+    // — siehe Changelog.
+    fontSize: "clamp(30px,8.2vw,50px)",
     fontWeight: 900,
     margin: "0 0 4px",
     background: "linear-gradient(120deg,#22d3ee 0%,#60a5fa 45%,#a78bfa 100%)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
-    letterSpacing: "-2.5px",
-    lineHeight: 1,
+    letterSpacing: "-1px",
+    lineHeight: 1.05,
     filter: "drop-shadow(0 4px 28px rgba(56,189,248,0.35))"
-  } }, "FORTRESS"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#64748b", marginBottom: 6, letterSpacing: "0.04em" } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, "Stack & Siege"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#64748b", marginBottom: 6, letterSpacing: "0.04em" } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
     alignItems: "center",
     gap: 12,
@@ -7236,7 +7239,7 @@ window.FortressApp = function Fortress() {
     fontWeight: 700,
     borderRadius: 14,
     cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "FORTRESS \xB7 Version 3.79.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600 } }, "Stack & Siege \xB7 Version 3.80.0"), /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink'))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -9596,7 +9599,7 @@ window.FortressApp = function Fortress() {
 };
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));
-_root.render(React.createElement(window.FortressApp));
+_root.render(React.createElement(window.StackSiegeApp));
 setTimeout(() => { const s = document.getElementById('splash'); if (s) { s.style.opacity='0'; setTimeout(()=>s.remove(),500); } }, 600);
 const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 if (_isIOS && !window.navigator.standalone && !localStorage.getItem('_fh')) {

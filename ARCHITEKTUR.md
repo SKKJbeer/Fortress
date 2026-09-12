@@ -1,4 +1,4 @@
-# FORTRESS — Architektur
+# Stack & Siege — Architektur
 
 > Verbindliche Grundlage für den Umbau ab v3.73.0. Ersetzt den früheren
 > Entwurf `ARCHITEKTUR-IOS.md`, der nur die iOS-Verpackung betrachtete.

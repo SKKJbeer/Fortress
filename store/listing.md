@@ -1,4 +1,4 @@
-# Store-Texte — FORTRESS
+# Store-Texte — Stack & Siege
 
 Vorlage für App Store Connect und Google Play. Zeichengrenzen sind eingehalten
 und in Klammern vermerkt; sie sind bei beiden Anbietern **hart**.
@@ -13,10 +13,15 @@ auf, und keins davon verkauft ein Strategiespiel.
 
 ### Name (max. 30)
 ```
-FORTRESS – Burgenduell
+Stack & Siege – Burgenduell
 ```
-21 Zeichen. „Fortress" allein ist als Suchbegriff hoffnungslos belegt; der
-Zusatz macht sofort klar, worum es geht, und ist auffindbar.
+27 Zeichen von 30. **Die Begruendung hat sich mit dem Namen gedreht:** Beim
+alten Namen war der Zusatz noetig, weil das Hauptwort als Suchbegriff
+hoffnungslos belegt war. „Stack & Siege" ist dagegen eine erfundene Verbindung
+— am 12.09. ueber Apples Suche geprueft, im deutschen App Store traegt keine App
+diesen Namen. Der Zusatz steht jetzt aus einem anderen Grund da: Er sagt einem
+deutschen Sucher, worum es geht, und bringt ein Wort ins Feld, das jemand
+tatsaechlich eintippt. Ohne ihn faende die App nur, wer sie schon kennt.
 
 ### Untertitel (max. 30)
 ```
@@ -61,7 +66,7 @@ Seltene Materialien aus Online-Partien lassen sich in der Schmiede zu
 Stücken verarbeiten, die es im Shop nicht gibt.
 
 EHRLICH GESAGT
-FORTRESS ist kostenlos spielbar. Keine Werbung, kein Kaufzwang, kein
+Stack & Siege ist kostenlos spielbar. Keine Werbung, kein Kaufzwang, kein
 Pay-to-Win — der volle Spielumfang steht ohne Zahlung offen. Gold und
 Kosmetik sind Anerkennung für Gespieltes, kein Verkaufsartikel.
 ```
@@ -88,7 +93,7 @@ Blut, keine Schrift von Dritten im Spiel.
 
 ### Titel (max. 30)
 ```
-FORTRESS – Burgenduell
+Stack & Siege – Burgenduell
 ```
 
 ### Kurzbeschreibung (max. 80)
@@ -165,7 +170,7 @@ Main menu → "PLAY LOCAL (1 Device)" (German: "LOKAL SPIELEN (1 Gerät)"), then
 match runs offline. That is the shortest path to the whole game.
 
 1. PURPOSE AND AUDIENCE
-FORTRESS is a turn-based artillery game for two or three players, available in
+Stack & Siege is a turn-based artillery game for two or three players, available in
 German and English. Each player walls in a castle from falling tetromino pieces during a
 timed build phase, then fires cannons at the other castles. A castle that is
 not completely sealed when the build phase ends is lost. It is a game, not a

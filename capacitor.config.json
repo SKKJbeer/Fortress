@@ -1,6 +1,6 @@
 {
-  "appId": "de.skkjbeer.fortress",
-  "appName": "FORTRESS",
+  "appId": "de.skkjbeer.stackandsiege",
+  "appName": "Stack & Siege",
   "webDir": "dist",
   "ios": {
     "contentInset": "never",

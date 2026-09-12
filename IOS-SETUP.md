@@ -1,6 +1,6 @@
 # iOS-Einrichtung — Schritt für Schritt
 
-> Für FORTRESS mit `de.skkjbeer.fortress`. Reihenfolge einhalten: jeder Schritt
+> Für Stack & Siege mit `de.skkjbeer.fortress`. Reihenfolge einhalten: jeder Schritt
 > braucht das Ergebnis des vorigen. Zusammen etwa 45 Minuten, davon die Hälfte
 > Wartezeit.
 
@@ -120,7 +120,7 @@ Kontakt nur **vollständig**; ohne Telefonnummer steht gar keiner hinterlegt.
 
 `developer.apple.com/account/resources/identifiers` → **+** → *App IDs* → *App*
 
-- **Description:** `FORTRESS`
+- **Description:** `Stack & Siege`
 - **Bundle ID:** *Explicit* → **`de.skkjbeer.fortress`**
   (muss **exakt** so lauten — steht identisch in `capacitor.config.json`)
 - **Capabilities:** nichts ankreuzen. Das Spiel braucht weder Push noch Game
@@ -132,7 +132,7 @@ Kontakt nur **vollständig**; ohne Telefonnummer steht gar keiner hinterlegt.
 `appstoreconnect.apple.com/apps` → **+** → *Neue App*
 
 - **Plattform:** iOS
-- **Name:** `FORTRESS – Burgenduell` (muss store-weit eindeutig sein)
+- **Name:** `Stack & Siege – Burgenduell` (muss store-weit eindeutig sein)
 - **Primäre Sprache:** Deutsch
 - **Bundle-ID:** `de.skkjbeer.fortress` (aus Schritt 2 auswählbar)
 - **SKU:** `fortress-ios` (nur intern, frei wählbar)
@@ -174,7 +174,7 @@ Danach in App Store Connect unter *TestFlight*: die Verarbeitung dauert
 10–30 Minuten.
 
 Die **Exportbestimmungs-Angabe** ist bereits in der `Info.plist` beantwortet
-(`ITSAppUsesNonExemptEncryption` = `false`; FORTRESS nutzt nur HTTPS, also die
+(`ITSAppUsesNonExemptEncryption` = `false`; Stack & Siege nutzt nur HTTPS, also die
 Standardausnahme). Ohne diese Angabe bliebe **jeder** Build in „Missing
 Compliance" stehen, bis du die Frage von Hand beantwortest — bei jedem Upload
 aufs Neue.

@@ -168,7 +168,7 @@ jobs:
           KENN=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
           BAU=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Info.plist")
           AUSFUHR=$(/usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$APP/Info.plist")
-          [ "$KENN" = "de.skkjbeer.fortress" ] || { echo "FEHLER: Bundle-ID ist $KENN"; exit 1; }
+          [ "$KENN" = "de.skkjbeer.stackandsiege" ] || { echo "FEHLER: Bundle-ID ist $KENN"; exit 1; }
           [ "$BAU" = "${{ github.run_number }}" ] || { echo "FEHLER: Build-Nummer ist $BAU statt ${{ github.run_number }}"; exit 1; }
           [ "$AUSFUHR" = "false" ] || { echo "FEHLER: Ausfuhrangabe fehlt — jeder Build bliebe in Missing Compliance"; exit 1; }
           echo "Im Bundle: Spielcode, $(ls "$APP/public/music/"*.mp3 | wc -l | tr -d ' ') Musikstuecke, Toene."

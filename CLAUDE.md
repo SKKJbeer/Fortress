@@ -1,9 +1,9 @@
-# FORTRESS — Claude-Kontext für Weiterentwicklung
+# Stack & Siege — Claude-Kontext für Weiterentwicklung
 
 ## Projekt-Übersicht
 
-**FORTRESS** ist ein eigenstaendiges 2–3-Spieler-PWA-Burgenspiel.
-> **Positionierung:** FORTRESS steht fuer sich. Verweise auf aeltere Spiele
+**Stack & Siege** ist ein eigenstaendiges 2–3-Spieler-PWA-Burgenspiel.
+> **Positionierung:** Stack & Siege steht fuer sich. Verweise auf aeltere Spiele
 > gehoeren weder in den Code, noch in die Dokumentation, noch in Store-Texte —
 > weder als Herkunftsangabe noch als Werbeargument.
 Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre Festungen.
@@ -94,13 +94,13 @@ React und Firebase kommen aus node_modules, nicht mehr vom CDN (Apple 2.5.2).
 `test_fortress.cjs` heisst .cjs, weil die Wurzel-package.json `type: module` setzt.
 
 **Versionen immer an 4 Stellen hochsetzen:**
-1. `<title>FORTRESS vX.Y.Z</title>` in `index.html`
+1. `<title>Stack & Siege vX.Y.Z</title>` in `index.html`
 2. Versionsanzeige im Menü — in `src/game/app.js`, nicht mehr in index.html
 3. `"version"` in `package.json`
 4. Kopfzeile von `FORTRESS-SPEC.md` + Changelog-Eintrag
 
 **SPEC immer mitpflegen:**
-1. `# FORTRESS — Spezifikation & Regelwerk (aktuell: vX.Y.Z)` (Zeile 1)
+1. `# Stack & Siege — Spezifikation & Regelwerk (aktuell: vX.Y.Z)` (Zeile 1)
 2. Changelog-Eintrag am Ende von `FORTRESS-SPEC.md`
 
 ---

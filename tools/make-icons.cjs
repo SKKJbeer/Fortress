@@ -166,7 +166,7 @@ function feature(x, W, H) {
   var SANS = '"Segoe UI", system-ui, sans-serif', MONO = 'ui-monospace, Menlo, monospace';
   x.textBaseline = 'alphabetic';
 
-  var t1 = 'FORTRESS';
+  var t1 = 'Stack & Siege';
   fitText(t1, '900', H*0.21, SANS);
   x.fillStyle = '#f2f6ff'; x.fillText(t1, tx, H*0.44);
 

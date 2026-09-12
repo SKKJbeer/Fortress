@@ -1,6 +1,6 @@
 {
   "_README": [
-    "FORTRESS — Firebase Realtime Database Security Rules (Stufe 0, kostenlos / Spark-Plan).",
+    "Stack & Siege — Firebase Realtime Database Security Rules (Stufe 0, kostenlos / Spark-Plan).",
     "",
     "Diese Rules binden Schreibzugriffe an eine anonyme Firebase-Auth-Identität.",
     "Sie schliessen die schlimmsten Integritaetsloecher OHNE Server/Blaze:",

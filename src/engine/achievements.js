@@ -50,6 +50,8 @@ const ACHIEVEMENTS = [
 ];
 // Englische Übersetzungen der Achievements (DE bleibt im Array oben = Fallback).
 const ACH_EN = {
+  // „Fortress" meint hier die gegnerische BURG, nicht den Spielnamen —
+  // beim Umbenennen war das ein Wort, das nicht zur Marke gehoert.
   first_win:  { t:'First Fortress Destroyed', d:'Win your first online game' },
   wins_10:    { t:'10 Wins',   d:'Win 10 online games' },
   wins_50:    { t:'50 Wins',   d:'Win 50 online games' },
