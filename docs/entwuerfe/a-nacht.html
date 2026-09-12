@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entwurf A — Nacht</title>
+<style>
+/* ENTWURF A — „Nacht"
+   Das Spielfeld IST das Plakat. Vollbild-Artwork, Text darauf, fast kein
+   Chrome. Vorbild: Mini Metro (Vollbild-Video), Balatro (randloses Artwork),
+   Filmplakate. Wirkung: kinoreif, ernst, atmosphaerisch. */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --ink:#fff; --ink2:#b9b3c9; --blau:#4d8dff; --rot:#ff5a5a; --gold:#ffc233;
+  --f:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#06040c;color:var(--ink);font-family:var(--f);font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+.bahn{max-width:1100px;margin-inline:auto;padding-inline:24px}
+
+/* ── Anfang: randloses Brett, Text davor ───────────────────────────────── */
+.buehne{position:relative;min-height:92vh;display:flex;align-items:flex-end;overflow:hidden}
+.buehne .bild{position:absolute;inset:0}
+.buehne .bild img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:saturate(1.15)}
+/* Der Schleier macht den Text lesbar, ohne das Bild zu verstecken. */
+.buehne .bild::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(6,4,12,.72) 0%,rgba(6,4,12,.15) 38%,rgba(6,4,12,.88) 82%,#06040c 100%)}
+.buehne .bahn{position:relative;z-index:1;padding-block:0 clamp(48px,9vw,110px);width:100%}
+.titel{font-size:clamp(52px,13vw,132px);line-height:.82;letter-spacing:-.03em;font-weight:900;margin:0;text-transform:uppercase}
+.titel span{display:block}
+.titel .zwei{color:var(--ink)}
+.satz{font-size:clamp(19px,2.6vw,26px);font-weight:600;color:var(--ink);margin:24px 0 0;max-width:22ch}
+.klein{color:var(--ink2);font-size:16px;margin-top:10px;max-width:36ch}
+
+.knopf{display:inline-flex;align-items:center;gap:11px;margin-top:30px;
+  background:var(--ink);color:#06040c;text-decoration:none;font-weight:800;
+  font-size:16px;letter-spacing:.02em;padding:16px 30px;border-radius:100px}
+.knopf svg{width:19px;height:19px}
+.knopf:hover{background:var(--gold)}
+.neben{display:block;margin-top:14px;color:var(--ink2);font-size:15px}
+.neben a{color:var(--ink)}
+
+/* ── Streifen: grosse Bilder, waagerecht ───────────────────────────────── */
+.reihe{display:flex;gap:18px;overflow-x:auto;padding:0 24px 20px;scroll-snap-type:x mandatory}
+.reihe figure{margin:0;flex:0 0 auto;width:250px;scroll-snap-align:center}
+.reihe img{width:100%;border-radius:14px}
+.reihe figcaption{margin-top:12px;font-size:13px;color:var(--ink2);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.abschnitt{padding-block:clamp(56px,9vw,110px)}
+h2{font-size:clamp(30px,5vw,52px);line-height:1.05;letter-spacing:-.02em;margin:0 0 18px;font-weight:900}
+.abschnitt p{color:var(--ink2);max-width:40ch;margin:0}
+
+/* ── Die Regel als Zwischentitel ──────────────────────────────────────── */
+.zitat{padding-block:clamp(60px,10vw,130px);text-align:center;background:
+  radial-gradient(60% 80% at 50% 50%,rgba(255,90,90,.10),transparent 70%)}
+.zitat p{font-size:clamp(28px,5.4vw,58px);line-height:1.08;font-weight:900;
+  letter-spacing:-.02em;max-width:18ch;margin:0 auto;color:var(--ink)}
+.zitat em{font-style:normal;color:var(--rot)}
+.zitat small{display:block;margin-top:22px;color:var(--ink2);font-size:16px;font-weight:600;letter-spacing:.04em}
+.fuss{padding:34px 0 50px;color:#6f6880;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<div class="buehne">
+  <div class="bild">
+    <img src="../website/bilder/game.jpg" width="780" height="1688" alt="Spielfeld">
+  </div>
+  <div class="bahn">
+    <h1 class="titel"><span>Stack</span><span class="zwei">&amp; Siege</span></h1>
+    <p class="satz">Eine Lücke, und die Burg fällt.</p>
+    <p class="klein">Burgenduell fürs iPhone. Du baust deinen Wall aus fallenden Steinen, der Gegner schießt ihn dir wieder auf.</p>
+    <a class="knopf" href="#">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      Beta laden
+    </a>
+    <span class="neben">Oder <a href="#">sofort im Browser spielen</a> — ohne Installieren.</span>
+  </div>
+</div>
+
+<div class="zitat">
+  <div class="bahn">
+    <p>Geschlossen heißt <em>geschlossen</em>. Auch diagonal.</p>
+    <small>Am Ende der Bauphase läuft Wasser von außen in dein Feld. Erreicht es die Burg, bist du raus.</small>
+  </div>
+</div>
+
+<section class="abschnitt">
+  <div class="bahn"><h2>Bauen. Schießen. Rüsten.</h2>
+  <p>Einmal aufstellen, danach im Takt. Ihr spielt gleichzeitig, niemand wartet auf einen Zug.</p></div>
+  <div class="reihe" style="margin-top:34px">
+    <figure><img src="../website/bilder/game.jpg" width="780" height="1688" alt="Bauphase"><figcaption>Bauen · 25 s</figcaption></figure>
+    <figure><img src="../website/bilder/shoot.jpg" width="780" height="1688" alt="Schussphase"><figcaption>Schießen · 20 s</figcaption></figure>
+    <figure><img src="../website/bilder/shop.jpg" width="780" height="1688" alt="Rüstphase"><figcaption>Rüsten · 15 s</figcaption></figure>
+    <figure><img src="../website/bilder/zwei.jpg" width="780" height="1688" alt="Zu zweit"><figcaption>Zu zweit · ein Gerät</figcaption></figure>
+    <figure><img src="../website/bilder/drei.jpg" width="780" height="1688" alt="Zu dritt"><figcaption>Zu dritt · ein Gerät</figcaption></figure>
+  </div>
+</section>
+
+<div class="bahn fuss">Stack &amp; Siege · Entwurf A „Nacht"</div>
+
+</body>
+</html>

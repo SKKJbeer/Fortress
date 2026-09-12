@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entwurf C — Blöcke</title>
+<style>
+/* ENTWURF C — „Bloecke"
+   Die Seite wird aus demselben Material gebaut wie das Spiel: Steine. Dicke
+   Rahmen, harte versetzte Schatten statt weicher, satte Spielerfarben, ein
+   sichtbares Raster. Nichts ist rund, nichts ist weichgezeichnet.
+   Vorbild: Downwell, Balatro, Arcade-Automat — und das Spielfeld selbst.
+   Wirkung: laut, spielerisch, greifbar. */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --grund:#12182b; --tiefer:#0c1120; --hell:#1d2640;
+  --ink:#eef2ff; --ink2:#94a3c4;
+  --blau:#3b82f6; --rot:#ef4444; --gruen:#22c55e; --gold:#fbbf24;
+  --f:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--grund);color:var(--ink);font-family:var(--f);
+  font-size:18px;line-height:1.5;font-weight:600;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:28px 28px}
+img{max-width:100%;height:auto;display:block}
+.bahn{max-width:1020px;margin-inline:auto;padding-inline:22px}
+
+.kopf{border-bottom:4px solid #000;background:var(--tiefer)}
+.kopf .bahn{display:flex;justify-content:space-between;align-items:center;min-height:62px;gap:14px}
+.kopf b{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:900}
+.kopf a{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);text-decoration:none;font-weight:800}
+
+/* ── Titel mit hartem Versatz-Schatten in den Spielerfarben ───────────── */
+.anfang{padding-block:clamp(44px,8vw,96px);text-align:center}
+h1{margin:0;font-size:clamp(44px,11vw,104px);line-height:.9;letter-spacing:-.02em;
+  font-weight:900;text-transform:uppercase;
+  text-shadow:5px 5px 0 var(--blau),10px 10px 0 var(--rot)}
+.satz{font-size:clamp(19px,3vw,26px);font-weight:800;margin:30px auto 0;max-width:20ch}
+.klein{color:var(--ink2);font-size:17px;margin:14px auto 0;max-width:38ch;font-weight:600}
+
+/* Knopf als Stein: dicker Rahmen, harter Schatten, wird beim Druecken gedrueckt */
+.knopf{display:inline-flex;align-items:center;gap:11px;margin-top:32px;text-decoration:none;
+  background:var(--gold);color:#1a1206;border:4px solid #000;box-shadow:7px 7px 0 #000;
+  font-weight:900;font-size:16px;letter-spacing:.06em;text-transform:uppercase;padding:15px 30px;
+  transition:transform .08s,box-shadow .08s}
+.knopf:hover{transform:translate(3px,3px);box-shadow:4px 4px 0 #000}
+.knopf svg{width:19px;height:19px}
+.neben{display:block;margin-top:16px;color:var(--ink2);font-size:15px}
+.neben a{color:var(--ink)}
+
+/* ── Steinkasten als Abschnittsform ───────────────────────────────────── */
+.kasten{background:var(--hell);border:4px solid #000;box-shadow:8px 8px 0 #000;padding:clamp(24px,4vw,40px)}
+.reihe{display:grid;gap:26px;grid-template-columns:1fr;margin-block:clamp(40px,7vw,80px)}
+@media(min-width:820px){.reihe{grid-template-columns:1.2fr .8fr;align-items:center}}
+h2{margin:0 0 14px;font-size:clamp(28px,4.8vw,46px);line-height:1.04;font-weight:900;letter-spacing:-.02em}
+h2 em{font-style:normal;color:var(--rot)}
+.reihe p{margin:0 0 10px;color:var(--ink2);max-width:40ch}
+.mauer{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:230px;margin-inline:auto}
+.mauer i{aspect-ratio:1;background:#0c1120;border:2px solid #000}
+.mauer i.w{background:var(--rot)}
+.mauer i.k{background:#cbd5e1}
+.mauer i.l{background:#0c1120;border:2px dashed var(--gold)}
+
+/* ── Bilder als Steine im Raster ──────────────────────────────────────── */
+.gitter{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));margin-top:26px}
+.gitter figure{margin:0}
+.gitter img{width:100%;border:4px solid #000;box-shadow:6px 6px 0 #000}
+.gitter figcaption{margin-top:14px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:900;color:var(--ink2)}
+.mitte{text-align:center;padding-block:clamp(44px,7vw,90px)}
+.marken{display:flex;gap:10px;justify-content:center;margin-bottom:22px}
+.marken i{width:22px;height:22px;border:3px solid #000}
+.marken i:nth-child(1){background:var(--blau)}
+.marken i:nth-child(2){background:var(--rot)}
+.marken i:nth-child(3){background:var(--gruen)}
+.fuss{border-top:4px solid #000;background:var(--tiefer);padding:24px 0 44px;
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);font-weight:800}
+</style>
+</head>
+<body>
+
+<header class="kopf"><div class="bahn"><b>Stack &amp; Siege</b><a href="#">Im Browser spielen</a></div></header>
+
+<section class="anfang"><div class="bahn">
+  <h1>Stack<br>&amp; Siege</h1>
+  <p class="satz">Eine Lücke, und die Burg fällt.</p>
+  <p class="klein">Burgenduell fürs iPhone. Du baust deinen Wall aus fallenden Steinen, der Gegner schießt ihn dir wieder auf.</p>
+  <a class="knopf" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+    Beta laden
+  </a>
+  <span class="neben">Oder <a href="#">sofort im Browser spielen</a>.</span>
+</div></section>
+
+<div class="bahn">
+  <div class="reihe">
+    <div class="kasten">
+      <h2>Geschlossen heißt <em>geschlossen</em>.</h2>
+      <p>Am Ende der Bauphase lässt das Spiel Wasser von außen in dein Feld laufen. Erreicht es deine Burg, bist du raus.</p>
+      <p>Diagonale zählen. Zwei Steine, die sich nur an der Ecke berühren, halten nichts auf — und deine Kanonen sind keine Mauer.</p>
+    </div>
+    <div class="mauer" role="img" aria-label="Mauerring mit einer Lücke oben rechts">
+      <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i>
+      <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+      <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+      <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+      <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+      <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+    </div>
+  </div>
+
+  <h2>Bauen. Schießen. Rüsten.</h2>
+  <p style="color:var(--ink2);max-width:42ch;margin:0">Einmal aufstellen, danach im Takt. Eine Minute pro Runde — ihr spielt gleichzeitig.</p>
+  <div class="gitter">
+    <figure><img src="../website/bilder/game.jpg" width="780" height="1688" alt="Bauphase"><figcaption>Bauen · 25 s</figcaption></figure>
+    <figure><img src="../website/bilder/shoot.jpg" width="780" height="1688" alt="Schussphase"><figcaption>Schießen · 20 s</figcaption></figure>
+    <figure><img src="../website/bilder/shop.jpg" width="780" height="1688" alt="Rüstphase"><figcaption>Rüsten · 15 s</figcaption></figure>
+    <figure><img src="../website/bilder/drei.jpg" width="780" height="1688" alt="Zu dritt"><figcaption>Zu dritt · ein Gerät</figcaption></figure>
+  </div>
+</div>
+
+<section class="mitte"><div class="bahn">
+  <div class="marken"><i></i><i></i><i></i></div>
+  <h2>Zwei Burgen. Ein Fluss. Eine Regel.</h2>
+  <a class="knopf" href="#">Beta laden</a>
+</div></section>
+
+<div class="fuss"><div class="bahn">Stack &amp; Siege · Entwurf C „Blöcke"</div></div>
+
+</body>
+</html>

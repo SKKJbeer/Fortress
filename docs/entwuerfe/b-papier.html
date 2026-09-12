@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entwurf B — Papier</title>
+<style>
+/* ENTWURF B — „Papier"
+   Hell, editorial, wie die Anleitung eines gut gemachten Brettspiels. Die
+   Bildschirmfotos sind das einzig Bunte. Serifenschrift aus dem System, harte
+   Haarstriche, grosse Ziffern, viel Luft. Vorbild: Threes (heller Grund,
+   #FAFAFA), Buch- und Plakatsatz. Wirkung: ruhig, wertig, erwachsen —
+   und das genaue Gegenteil der ueblichen dunklen Spieleseite. */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --papier:#f2efe6; --papier2:#e7e2d5;
+  --tinte:#1c1a16; --tinte2:#5f5a50;
+  --rot:#b8352c; --blau:#23508c; --gruen:#2f6b46;
+  --serif:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;
+  --sans:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--papier);color:var(--tinte);font-family:var(--serif);
+  font-size:19px;line-height:1.58;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--rot)}
+.bahn{max-width:960px;margin-inline:auto;padding-inline:26px}
+
+.kopf{border-bottom:2px solid var(--tinte);padding:16px 0}
+.kopf .bahn{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.kopf b{font-family:var(--sans);font-size:14px;letter-spacing:.2em;text-transform:uppercase}
+.kopf a{font-family:var(--sans);font-size:13px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;color:var(--tinte2)}
+
+/* ── Anfang: Titel im Satzspiegel, Bild daneben, Haarstriche ───────────── */
+.anfang{padding-block:clamp(40px,7vw,86px);display:grid;gap:clamp(28px,5vw,56px);grid-template-columns:1fr}
+@media(min-width:860px){.anfang{grid-template-columns:1fr 270px;align-items:start}}
+h1{font-size:clamp(46px,9vw,92px);line-height:.94;letter-spacing:-.03em;margin:0;font-weight:400}
+h1 i{font-style:italic}
+.unter{font-family:var(--sans);font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--tinte2);margin:0 0 18px}
+.lead{font-size:clamp(20px,2.6vw,25px);line-height:1.42;margin:26px 0 0;max-width:30ch}
+.klein{color:var(--tinte2);font-size:17px;margin-top:16px;max-width:36ch}
+.anfang img{border:1px solid var(--tinte)}
+
+.knopf{display:inline-flex;align-items:center;gap:10px;margin-top:28px;font-family:var(--sans);
+  background:var(--tinte);color:var(--papier);text-decoration:none;font-weight:800;font-size:15px;
+  letter-spacing:.08em;text-transform:uppercase;padding:15px 28px;border-radius:2px}
+.knopf:hover{background:var(--rot);color:var(--papier)}
+.knopf svg{width:18px;height:18px}
+.neben{display:block;margin-top:12px;color:var(--tinte2);font-size:15px;font-family:var(--sans)}
+
+/* ── Regel-Tafel ──────────────────────────────────────────────────────── */
+.tafel{background:var(--papier2);border-block:2px solid var(--tinte);padding-block:clamp(40px,6vw,76px)}
+.tafel .bahn{display:grid;gap:clamp(26px,4vw,52px);grid-template-columns:1fr}
+@media(min-width:820px){.tafel .bahn{grid-template-columns:1fr 230px;align-items:center}}
+h2{font-size:clamp(28px,4.6vw,44px);line-height:1.08;letter-spacing:-.02em;margin:0 0 16px;font-weight:400}
+h2 i{font-style:italic;color:var(--rot)}
+.tafel p{margin:0 0 12px;max-width:42ch;color:var(--tinte2)}
+.mauer{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;width:210px;margin-inline:auto}
+.mauer i{aspect-ratio:1;background:var(--papier)}
+.mauer i.w{background:var(--tinte)}
+.mauer i.k{background:var(--blau)}
+.mauer i.l{background:transparent;outline:2px dashed var(--rot);outline-offset:-2px}
+
+/* ── Nummerierte Abfolge, editorial ───────────────────────────────────── */
+.takt{padding-block:clamp(44px,7vw,90px)}
+.takt ol{list-style:none;margin:26px 0 0;padding:0}
+.takt li{display:grid;grid-template-columns:74px 1fr;gap:6px 22px;padding:22px 0;border-top:1px solid rgba(28,26,22,.22)}
+.takt li:last-child{border-bottom:1px solid rgba(28,26,22,.22)}
+.nr{font-size:46px;line-height:1;color:var(--rot);font-variant-numeric:lining-nums}
+.takt b{font-family:var(--sans);font-size:14px;letter-spacing:.16em;text-transform:uppercase;display:block;margin-bottom:4px}
+.takt span{color:var(--tinte2);display:block;max-width:44ch}
+
+/* ── Bildbogen ────────────────────────────────────────────────────────── */
+.bogen{background:var(--papier2);border-top:2px solid var(--tinte);padding-block:clamp(40px,6vw,76px)}
+.gitter{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:26px}
+.gitter figure{margin:0}
+.gitter img{width:100%;border:1px solid var(--tinte)}
+.gitter figcaption{margin-top:10px;font-family:var(--sans);font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--tinte2)}
+.fuss{padding:26px 0 46px;font-family:var(--sans);font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--tinte2);border-top:2px solid var(--tinte)}
+</style>
+</head>
+<body>
+
+<header class="kopf"><div class="bahn">
+  <b>Stack &amp; Siege</b><a href="#">Im Browser spielen</a>
+</div></header>
+
+<div class="bahn anfang">
+  <div>
+    <p class="unter">Burgenduell · 1–3 Spieler · kostenlos</p>
+    <h1>Eine Lücke,<br>und die Burg <i>fällt</i>.</h1>
+    <p class="lead">Du baust deinen Wall aus fallenden Steinen. Der Gegner schießt ihn dir wieder auf.</p>
+    <p class="klein">Fürs iPhone. Zu zweit oder zu dritt auch an einem einzigen Gerät.</p>
+    <a class="knopf" href="#">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      Beta laden
+    </a>
+    <span class="neben">Oder ohne Installieren im Browser.</span>
+  </div>
+  <img src="../website/bilder/game.jpg" width="780" height="1688" alt="Bauphase">
+</div>
+
+<div class="tafel"><div class="bahn">
+  <div>
+    <h2>Geschlossen heißt <i>geschlossen</i>.</h2>
+    <p>Am Ende der Bauphase lässt das Spiel Wasser von außen in dein Feld laufen. Erreicht es deine Burg, bist du raus.</p>
+    <p>Diagonale zählen. Zwei Steine, die sich nur an der Ecke berühren, halten nichts auf — und deine Kanonen sind keine Mauer.</p>
+  </div>
+  <div class="mauer" role="img" aria-label="Mauerring mit einer Lücke oben rechts">
+    <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i>
+    <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+    <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+    <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+    <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+    <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+  </div>
+</div></div>
+
+<section class="takt"><div class="bahn">
+  <h2>Eine Minute pro Runde.</h2>
+  <ol>
+    <li><span class="nr">25</span><div><b>Bauen</b><span>Steine fallen dir zu, du drehst sie und legst sie ab. Erst das Loch von letzter Runde schließen.</span></div></li>
+    <li><span class="nr">20</span><div><b>Schießen</b><span>Von der eigenen Burg wegziehen, um zu zielen. Jede Kanone lädt zweieinhalb Sekunden nach.</span></div></li>
+    <li><span class="nr">15</span><div><b>Rüsten</b><span>Beute ausgeben: noch eine Kanone, Panzermauern, schnelleres Nachladen, Reparatur.</span></div></li>
+  </ol>
+</div></section>
+
+<div class="bogen"><div class="bahn">
+  <h2>Zu zweit oder zu dritt an einem Gerät.</h2>
+  <div class="gitter">
+    <figure><img src="../website/bilder/zwei.jpg" width="780" height="1688" alt="Zu zweit"><figcaption>Zu zweit</figcaption></figure>
+    <figure><img src="../website/bilder/drei.jpg" width="780" height="1688" alt="Zu dritt"><figcaption>Zu dritt</figcaption></figure>
+    <figure><img src="../website/bilder/shoot.jpg" width="780" height="1688" alt="Schussphase"><figcaption>Schießen</figcaption></figure>
+    <figure><img src="../website/bilder/shop.jpg" width="780" height="1688" alt="Rüstphase"><figcaption>Rüsten</figcaption></figure>
+  </div>
+</div></div>
+
+<div class="bahn fuss">Stack &amp; Siege · Entwurf B „Papier"</div>
+
+</body>
+</html>
