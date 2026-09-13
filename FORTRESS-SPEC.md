@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.87.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.88.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5830,3 +5830,91 @@ Store-Bilder fuer `ipad-13` und `ipad-12.9` neu aufgenommen — die alten zeigte
 den Zustand vorher.
 
 Tests gruen (Unit 70/70, E2E 384/384, Typen 0 Fehler).
+
+---
+
+## v3.88.0 — Auf dem iPad war die Haelfte des Schirms Dekoration
+
+v3.87.0 hat das iPad eingerichtet: Querformat gesperrt, Menue und Ergebnis
+vergroessert. Das SPIELFELD blieb, wie es war — mit der Begruendung, es fuelle
+hochkant ohnehin schon 68 %. Diese Zahl stimmte, die Schlussfolgerung nicht:
+Sie sagt, wie gross das BRETT ist, nicht wie gut der Schirm genutzt wird.
+Gemessen wurde jetzt beides.
+
+### Was danebenlag
+
+**Kopfzeile und Unterleiste waren nur so breit wie das Brett.** 782 von
+1024 px. Links und rechts standen je ~120 px schwarz — nicht nur neben dem
+Brett, wo das Seitenverhaeltnis es erzwingt, sondern auch oben und unten, wo
+gar nichts es erzwang.
+
+**Die Bauteil-Vorschau war auf dem iPad die kleinste im ganzen Geraetefeld.**
+`pieceBox = barH − 38`, nach unten bei 24 gedeckelt. Auf dem iPhone ist das
+Brett BREITEN-begrenzt, unten faellt viel Platz ab, die Leiste wird 94–150 px
+hoch und die Vorschau 57–76 px. Auf dem iPad ist das Brett HOEHEN-begrenzt und
+braucht den Rest auf: Leiste 52, Vorschau 24. Das grosse Geraet zeigte ein
+Viertel dessen, was das kleine zeigt.
+
+**Und die Formel log.** Neben dem Bild stehen in der Leiste noch ihre eigene
+Polsterung, die des Feldes, der Abstand und die Beschriftung — zusammen 42,
+nicht 38. Der Kasten bekam also vier Pixel mehr zugesagt, als vorhanden waren,
+und wurde vom Flexlayout flachgedrueckt: gemessene 58 × 54 statt 58 × 58.
+
+### Was jetzt gilt
+
+| | vorher | nachher |
+|---|---|---|
+| Kopfzeile iPad 12,9" | 782 px breit | **1024 px** |
+| Unterleiste iPad 12,9" | 782 × 52 | **1024 × 122** |
+| Bauteil-Vorschau iPad | 58 × 54 (gequetscht) | **76 × 76** |
+| Bauteil-Vorschau iPhone | 76 × 76 | 76 × 76 |
+| Brett iPad 12,9" | 782 × 1209 (68 %) | 726 × 1122 (58 %) |
+| Alles auf dem iPhone | — | **unveraendert** |
+
+Die Leiste bekommt auf einem Tablett 9,2 % der nutzbaren Hoehe statt des
+Mindestmasses — anteilig, weil ein iPad mini 1089 und ein 12,9-Zoll-iPad 1322
+Punkte hat und ein fester Wert auf einem von beiden falsch waere.
+
+**Das Brett wird dabei kleiner, und das ist der Handel.** 68 % → 58 % Flaeche,
+gut 7 % Kantenlaenge. Dafuer hat die Leiste eine Vorschau, die man ohne
+Hinsehen trifft. Wer die 68 % behalten will, behaelt eine 24-px-Vorschau auf
+einem 12,9-Zoll-Schirm; das ist kein Tausch, den man machen sollte.
+
+**Mehr als 81 % kann das Brett auf einem iPad ohnehin nie fuellen** — 616:952
+ist hoch, ein iPad ist 3:4, und diese 81 % gaebe es nur ohne jede Kopfzeile und
+ohne jede Leiste. Die verbleibenden Streifen NEBEN dem Brett sind seither keine
+Leere mehr, sondern Buehne: ein weicher Schein hinter dem Brett, nach aussen
+auslaufend. Das kostet kein Pixel pro Bild — es ist ein Verlauf auf einem
+Kasten, die Zeichenschleife merkt davon nichts.
+
+### Die Kopfzeile steht unter einer Zoomstufe
+
+Ueber die volle Breite gezogen sah sie gedehnt aus: zwei fast leere Farbbalken
+mit Telefonschrift darin. Sie steht auf einem Tablett deshalb unter `zoom: 1.3`
+— nicht unter der vollen Breitenrelation 1024/393 = 2,6: Ein Punkt ist auf
+einem iPad ohnehin rund ein Viertel groesser als auf einem iPhone, die volle
+Relation ergaebe dreifache Schrift.
+
+Damit das aufgeht, musste `fit()` umgestellt werden. **`offsetHeight` meldet
+unter einer Zoomstufe die Hoehe VOR dem Zoom** — im Versuch gemessene 50 gegen
+gezeichnete 80. Mit dem falschen Wert reserviert `fit` zu wenig, das Brett
+faellt zu gross aus und die Unterleiste rutscht aus dem Bild; also genau der
+Fehler von v3.84.0/v3.85.0, nur mit neuer Ursache. `getBoundingClientRect()`
+liefert den gezeichneten Kasten und wird jetzt benutzt. Die Breite der
+Kopfzeile wird durch die Zoomstufe geteilt, sonst laeuft sie um denselben
+Faktor ueber.
+
+### Geprueft
+
+`suiteIPad` waechst auf 17 Pruefungen: alle drei Reihen spannen ueber die volle
+Breite, die Unterleiste bleibt im Bild, das Spielfeld steht unter KEINER
+Zoomstufe (eine eigene Pruefung — dort waere sie der beschriebene Fehler), und
+die Bauteil-Vorschau auf dem iPad ist mindestens so gross wie auf dem iPhone.
+Verglichen wird gemessen gegen gemessen, nicht gegen einen geratenen Zahlenwert.
+
+Ein Fehler auf dem Weg dorthin gehoert in die Akte: `const BAR_MIN = raum.w …`
+stand eine Zeile ueber `const raum = …`. Das Bundle warf beim ersten Rendern
+„Cannot access 'k' before initialization", die Seite blieb leer. Kein Test
+schlug an, weil das Bauen gelingt — gefunden hat es der Blick auf die Seite.
+
+Tests gruen (Unit 70/70, E2E 386/386, Typen 0 Fehler).

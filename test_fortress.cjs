@@ -2077,14 +2077,23 @@ async function suiteIPad(browser) {
         const huelle = document.querySelector('#root > div');
         const reihen = Array.from(huelle.children)
           .filter(e => ['static', 'relative'].includes(getComputedStyle(e).position))
-          .map(e => Math.round(e.getBoundingClientRect().bottom));
+          .map(e => e.getBoundingClientRect());
         return { anteil: Math.round(100 * (c.width * c.height) / (window.innerWidth * window.innerHeight)),
                  brett: [Math.round(c.width), Math.round(c.height)],
-                 unten: reihen.length ? Math.max(...reihen) : 0, vh: window.innerHeight };
+                 breiten: reihen.map(r => Math.round(r.width)),
+                 unten: reihen.length ? Math.round(Math.max(...reihen.map(r => r.bottom))) : 0,
+                 vw: window.innerWidth, vh: window.innerHeight };
       });
-      (m.anteil >= 60)
+      (m.anteil >= 55)
         ? ok(`iPad 12,9": Brett fuellt ${m.anteil} % des Schirms (${m.brett[0]}x${m.brett[1]}) ✓`)
-        : fail(`iPad 12,9": Brett fuellt nur ${m.anteil} % des Schirms`);
+        : fail(`iPad 12,9": Brett fuellt nur ${m.anteil} % des Schirms (mindestens 55)`);
+      // Kopfzeile, Buehne und Unterleiste spannen bis an den Rand. Vorher waren
+      // sie nur so breit wie das Brett — links und rechts blieben je ~120 px
+      // schwarz, und der Schirm sah aus wie ein vergroessertes Telefonbild.
+      const gespannt = m.breiten.filter(b => Math.abs(b - m.vw) <= 2).length;
+      (gespannt === m.breiten.length)
+        ? ok(`iPad 12,9": alle ${gespannt} Reihen spannen ueber die volle Breite (${m.vw} px) ✓`)
+        : fail(`iPad 12,9": nur ${gespannt} von ${m.breiten.length} Reihen voll breit (${m.breiten.join('/')} bei ${m.vw})`);
       (m.unten <= m.vh)
         ? ok(`iPad 12,9": Unterleiste bleibt im Bild (${m.unten} ≤ ${m.vh}) ✓`)
         : fail(`iPad 12,9": Unterleiste ragt ${m.unten - m.vh} px aus dem Bild`);
@@ -2155,6 +2164,45 @@ async function suiteIPad(browser) {
         ? ok(`${gross ? 'iPad' : 'Telefon'}: alle ${m.fixAnzahl} bildfuellenden Ueberlagerungen mit kein-zoom ✓`)
         : fail(`${gross ? 'iPad' : 'Telefon'}: ${m.fixOhneKlasse} von ${m.fixAnzahl} Ueberlagerungen ohne kein-zoom`);
     } finally { await ctx.close(); }
+  }
+
+  // ── 6) Die Bauteil-Vorschau war auf dem iPad die KLEINSTE ─────────────
+  // `pieceBox` = barH − 38, nach unten bei 24 gedeckelt. Das Brett ist auf dem
+  // iPad hoehenbegrenzt und brauchte den ganzen Rest auf, also blieb die
+  // Leiste beim Mindestmass 52 → Vorschau 24 px, waehrend das iPhone 57 hat.
+  // Das groessere Geraet hatte die kleinere Vorschau. Geprueft wird der
+  // Vergleich selbst, nicht ein geratener Zahlenwert.
+  {
+    const messen = async (w, h) => {
+      const { ctx, page } = await starten(w, h);
+      try {
+        await jsClick(page, ['LOKAL']);
+        await page.waitForTimeout(250);
+        await jsClick(page, ['2 Spieler']);
+        await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
+        await page.waitForFunction(() => /BAUEN|BUILD/.test(document.body.textContent), { timeout: 20000 });
+        await page.waitForTimeout(300);
+        return await page.evaluate(() => {
+          const huelle = document.querySelector('#root > div');
+          const fluss = Array.from(huelle.children)
+            .filter(e => ['static', 'relative'].includes(getComputedStyle(e).position));
+          const leiste = fluss[fluss.length - 1];
+          let groesste = 0;
+          for (const e of leiste.querySelectorAll('div')) {
+            const r = e.getBoundingClientRect();
+            if (r.width > 20 && Math.abs(r.width - r.height) <= 1 && r.width > groesste) groesste = r.width;
+          }
+          return { box: Math.round(groesste), leiste: Math.round(leiste.getBoundingClientRect().height) };
+        });
+      } finally { await ctx.close(); }
+    };
+    const tel = await messen(393, 852);
+    const pad = await messen(1024, 1366);
+    (pad.box > 0 && tel.box > 0)
+      ? ((pad.box >= tel.box)
+          ? ok(`Bauteil-Vorschau: iPad ${pad.box} px ≥ iPhone ${tel.box} px (Leiste ${pad.leiste}/${tel.leiste}) ✓`)
+          : fail(`Bauteil-Vorschau: iPad ${pad.box} px KLEINER als iPhone ${tel.box} px — das groessere Geraet zeigt weniger`))
+      : fail(`Bauteil-Vorschau nicht gefunden (iPad ${pad.box}, iPhone ${tel.box})`);
   }
 
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
