@@ -30,7 +30,19 @@ const ZIELE = [
   // jemand am Telefon im Zug aufmacht, entscheidet das darueber, ob er die
   // Bilder ueberhaupt sieht. Zweimal so gross wie angezeigt (2x) bleibt auf
   // einem scharfen Bildschirm scharf.
-  { name: 'website',  w: 390,  h: 844,  scale: 2, out: 'docs/website/bilder', jpeg: 82 }
+  // `sa` = Sicherheitsbereiche. Nur fuer die Website-Bilder: Dort stehen sie in
+  // einem gezeichneten Geraeterahmen, und die Insel des iPhone liegt ueber dem
+  // oberen Rand der Anzeige. Ohne oberen Bereich beginnt die Kopfzeile bei 0
+  // und verschwindet unter der Insel — auf einem echten Geraet tut sie das nie.
+  // Die Store-Bilder bleiben ohne: Apple zeigt sie ohne Rahmen.
+  { name: 'website',  w: 390,  h: 844,  scale: 2, out: 'docs/website/bilder', jpeg: 82, sa: [59, 34] },
+  // Zwei iPad-Aufnahmen fuer die Website. Die Rahmen dort zeigen ein iPad; ohne
+  // Aufnahmen im Seitenverhaeltnis 3:4 waere das eine Behauptung mit einem
+  // gestreckten Telefonbild darin. Faktor 1,4 statt 2 und Guete 72 statt 82:
+  // Sie stehen rund 340-420 px breit, und die Seite hat eine harte
+  // Gewichtsgrenze von 1400 kB fuer alle Bilder zusammen.
+  { name: 'website-pad', w: 834, h: 1112, scale: 1.4, out: 'docs/website/bilder',
+    jpeg: 72, praefix: 'pad-', bilder: ['game', 'shoot'], sa: [24, 20] }
 ];
 
 const PROF = `try{localStorage.setItem('fortress_profile',JSON.stringify({
@@ -60,6 +72,14 @@ const SPEED = `
   window.setInterval=(f,m,...a)=>_osi(f, m===600?90 : m, ...a);
   window.__mmDebug=true; window.__botSelfPlay=true;
 `;
+
+// Die Sicherheitsbereiche als Initialskript — dieselbe Form wie in der
+// Testsuite: setzen, sobald es ein Dokument gibt.
+const saInit = (ziel) => `(function(){var s=function(){var d=document.documentElement;
+  if(!d||!d.style)return false;
+  d.style.setProperty('--sa-top','${ziel.sa[0]}px');
+  d.style.setProperty('--sa-bottom','${ziel.sa[1]}px');return true;};
+  if(!s())document.addEventListener('DOMContentLoaded',s);})();`;
 
 const click = (p, parts) => p.evaluate(pp => {
   for (const b of document.querySelectorAll('button')) {
@@ -91,6 +111,7 @@ async function fuerZiel(browser, ziel) {
   const errs = [];
   p.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  if (ziel.sa) await p.addInitScript(saInit(ziel));
   for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
 
   await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
@@ -99,7 +120,12 @@ async function fuerZiel(browser, ziel) {
 
   const endung = ziel.jpeg ? '.jpg' : '.png';
   const shot = async (name) => {
-    const datei = name.replace(/\.png$/, endung);
+    // `bilder` waehlt aus, `praefix` benennt um. Beides fuer die iPad-Bilder der
+    // Website: Der Ablauf zum Fuellen des Bretts ist derselbe, gebraucht werden
+    // aber nur zwei Bilder — und sie duerfen die Telefonaufnahmen nicht
+    // ueberschreiben, die im selben Ordner liegen.
+    if (ziel.bilder && !ziel.bilder.includes(name.replace(/\.png$/, ''))) return;
+    const datei = (ziel.praefix || '') + name.replace(/\.png$/, endung);
     await p.screenshot(ziel.jpeg
       ? { path: path.join(out, datei), type: 'jpeg', quality: ziel.jpeg }
       : { path: path.join(out, datei) });
@@ -181,6 +207,7 @@ async function lokalePartie(browser, ziel, spieler) {
   });
   const p = await ctx.newPage();
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  if (ziel.sa) await p.addInitScript(saInit(ziel));
   for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
   await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
@@ -235,6 +262,7 @@ async function welten(browser, ziel) {
   });
   const p = await ctx.newPage();
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  if (ziel.sa) await p.addInitScript(saInit(ziel));
   for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
 
   const gesehen = new Set();
@@ -276,6 +304,7 @@ async function fenster(browser, ziel) {
   });
   const p = await ctx.newPage();
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  if (ziel.sa) await p.addInitScript(saInit(ziel));
   await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
   await p.waitForTimeout(1400);
@@ -285,15 +314,43 @@ async function fenster(browser, ziel) {
       .find(x => (x.getAttribute('title') || '').startsWith(t));
     if (b) { b.click(); return true; } return false;
   }, teil);
-  const zu = () => p.keyboard.press('Escape');
 
-  for (const [titel, datei] of [['Schmiede', 'schmiede'], ['Gold-Shop', 'goldshop'],
-                                ['Achievements', 'erfolge'], ['Tagesaufgaben', 'aufgaben']]) {
-    if (!(await auf(titel))) { console.log('   ::warning::Knopf "' + titel + '" nicht gefunden'); continue; }
+  // **Zwischen den Fenstern wird neu geladen, nicht geschlossen.** Vorher stand
+  // hier `Escape` — und Escape schliesst diese Fenster nicht. Gemessen: Der
+  // Text der Seite wurde nach jedem Druck NICHT kuerzer, die vier Fenster
+  // stapelten sich also uebereinander, und aufgenommen wurde jeweils das mit
+  // der hoechsten Lage. So entstanden zwei Bilder mit demselben Inhalt
+  // („Auszeichnungen" auch dort, wo „Tagesaufgaben" stehen sollte) — ohne
+  // Fehlermeldung, denn ein Bildschirmfoto gelingt immer.
+  //
+  // Neu laden haengt nicht davon ab, WIE ein Fenster schliesst.
+  const frisch = async () => {
+    await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+    await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+    await p.waitForTimeout(1200);
+  };
+
+  // Jedes Fenster hat ein Merkmal, das NUR in ihm vorkommt. Ohne diese Probe
+  // koennte wieder viermal dasselbe Bild entstehen, ohne dass es auffaellt.
+  const FENSTER = [
+    ['Schmiede',      'schmiede', 'DEINE MATERIALIEN'],
+    ['Gold-Shop',     'goldshop', 'GESCHÜTZ-MODELL'],
+    ['Achievements',  'erfolge',  'freigeschaltet'],
+    ['Tagesaufgaben', 'aufgaben', 'Aufgaben jeden Tag']
+  ];
+  const gesehen = new Map();
+  for (const [titel, datei, merkmal] of FENSTER) {
+    await frisch();
+    if (!(await auf(titel))) { console.error('   FEHLER: Knopf "' + titel + '" nicht gefunden'); process.exit(1); }
     await p.waitForTimeout(900);
-    await p.screenshot({ path: path.join(out, datei + '.jpg'), type: 'jpeg', quality: 78 });
+    const da = await p.evaluate(m => document.body.innerText.includes(m), merkmal);
+    if (!da) { console.error('   FEHLER: "' + titel + '" zeigt nicht "' + merkmal + '"'); process.exit(1); }
+    const pfad = path.join(out, datei + '.jpg');
+    await p.screenshot({ path: pfad, type: 'jpeg', quality: 78 });
+    const summe = require('crypto').createHash('md5').update(fs.readFileSync(pfad)).digest('hex');
+    if (gesehen.has(summe)) { console.error('   FEHLER: ' + datei + '.jpg ist Bild fuer Bild dasselbe wie ' + gesehen.get(summe)); process.exit(1); }
+    gesehen.set(summe, datei);
     console.log('   ' + ziel.out + '/' + datei + '.jpg');
-    await zu(); await p.waitForTimeout(500);
   }
   await ctx.close();
 }
