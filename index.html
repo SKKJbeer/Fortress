@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.86.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.87.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -66,6 +66,39 @@
        haengt es an seiner Oberkante, und die setzt der Spielcode direkt
        unter die gemessene Kopfzeile. */
     @keyframes phasebanner{0%{opacity:0;transform:translateX(-50%) scale(0.75)}14%{opacity:1;transform:translateX(-50%) scale(1.04)}20%{transform:translateX(-50%) scale(1)}76%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(0.93)}}
+    /* ── Tablet-Massstab (v3.87.0) ────────────────────────────────────────
+       Menue und Ergebnis sind fuer ein Telefon gesetzt: eine Spalte von
+       440 px, Karten von 320 px, Schrift in festen Pixeln. Auf einem iPad
+       von 1024 px Breite strandet das als schmaler Streifen in der Mitte —
+       gemessen: die Spalte fuellt 43 %, die Ergebniskarten 31 % der Breite.
+       Das ist kein Fehler, es ist eine Telefon-Oberflaeche in einem grossen
+       Rahmen, und genau so sieht sie aus.
+
+       `zoom` vergroessert Spalte UND Schrift in einem Zug. Es wirkt — anders
+       als `transform: scale()` — auf das Layout: der rollbare Kasten weiss
+       weiterhin, wie hoch sein Inhalt ist, und was nicht mehr passt, bleibt
+       erreichbar. Mit einer Transformation waere der obere Rand eines zu
+       hohen Inhalts unerreichbar geworden.
+
+       NICHT auf das Spielfeld: `fit()` rechnet dort mit gemessenen Pixeln
+       (Brettgroesse, Kopfzeilenhoehe, Unterleiste). Eine Zoomstufe im Spiel
+       hiesse, dass gemessene und gezeichnete Pixel auseinanderlaufen — genau
+       der Fehler, der in v3.84.0/v3.85.0 die Unterleiste abgeschnitten hat.
+       Das Brett fuellt im Hochformat ohnehin schon 68-73 % des iPads, also
+       genauso viel wie auf dem iPhone; dort ist nichts zu holen.
+
+       Zwei Stufen statt stufenlos: So gibt es genau zwei Zustaende zu pruefen.
+       Die Hoehenbedingung haelt Telefone im Querformat heraus (852x393). */
+    @media (min-width:700px) and (min-height:900px){
+      .gross-spalte{zoom:1.34}
+      .gross-schirm > *{zoom:1.34}
+      .gross-schirm > .kein-zoom{zoom:1}
+    }
+    @media (min-width:960px) and (min-height:1200px){
+      .gross-spalte{zoom:1.5}
+      .gross-schirm > *{zoom:1.5}
+      .gross-schirm > .kein-zoom{zoom:1}
+    }
     @keyframes glowpulse{0%,100%{opacity:0.6}50%{opacity:1}}
     @keyframes lvlUpFlash{0%{opacity:0;transform:scale(0.8)}40%{opacity:1;transform:scale(1.1)}70%{transform:scale(0.96)}100%{opacity:1;transform:scale(1)}}
     @keyframes xpBarGlow{0%,100%{box-shadow:0 0 6px rgba(124,58,237,0.5)}50%{box-shadow:0 0 16px rgba(34,211,238,0.9)}}

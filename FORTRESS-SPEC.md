@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.86.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.87.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5742,3 +5742,91 @@ diesen Kanal gar nichts gemeldet wird. Das Abschalten selbst kann nur das
 Geraet bestaetigen.
 
 Tests gruen (Unit 70/70, E2E 369/369, Typen 0 Fehler).
+
+---
+
+## v3.87.0 — Das iPad war erlaubt, aber nie eingerichtet
+
+Die App laeuft seit dem ersten Bau auf dem iPad: `TARGETED_DEVICE_FAMILY` steht
+auf `"1,2"`, und die iPad-Bildschirmfotos liegen seit dem 12.09. im Store-Ordner.
+Nur *gesetzt* war dafuer nichts. Vorher gemessen, auf vier Geraetemassen:
+
+| Geraet | Brett | Anteil am Schirm | Menuespalte |
+|---|---|---|---|
+| iPhone 15 Pro 393×852 | 391×604 | **71 %** | 361 px (92 %) |
+| iPad mini 744×1133 | 631×975 | 73 % | 440 px (59 %) |
+| iPad 12,9" 1024×1366 | 782×1209 | 68 % | 440 px (**43 %**) |
+| iPad Air quer 1180×820 | 429×663 | **29 %** | — |
+| iPad 12,9" quer 1366×1024 | 561×867 | **35 %** | — |
+
+Daraus folgen zwei verschiedene Befunde, und sie brauchen zwei verschiedene
+Antworten.
+
+### Querformat: gesperrt, nicht repariert
+
+Im Querformat fuellt das Brett 29–35 % statt 68–73 %. Die Ursache ist nicht das
+Layout, sondern das Brett selbst: 44×68 Zellen sind 616×952 Punkte, also hoch.
+Auf einem querliegenden iPad ist die Hoehe die knappe Richtung, und links und
+rechts bleiben je ~400 px tot liegen. Ein Querformat-Layout mit Seitenspalten
+koennte auf ~48 % kommen — dafuer muessten Kopfzeile und Unterleiste ein zweites
+Mal gebaut und ein zweites Mal geprueft werden.
+
+Dagegen steht, wie das Spiel benutzt wird: zwei Spieler an einem Geraet sitzen
+sich an den *kurzen* Kanten gegenueber. Hochkant ist nicht die Notloesung,
+sondern die Haltung, fuer die das Spiel gemacht ist. `Info.plist` fuehrt fuer
+`~ipad` deshalb nur noch `Portrait` und `PortraitUpsideDown`. Ein
+hochformatgebundenes Spiel ist bei Apple zulaessig; `UIRequiresFullScreen`
+stand ohnehin schon auf `true`, Split View war also nie vorgesehen.
+
+### Hochformat: das Brett war richtig, die Oberflaeche nicht
+
+Das Brett fuellt hochkant schon 68–73 % — genauso viel wie auf dem iPhone.
+Dort war nichts zu holen. Menue und Ergebnis dagegen sind fuer ein Telefon
+gesetzt: eine Spalte von 440 px, Karten von 320 px, Schrift in festen Pixeln.
+Auf 1024 px Breite strandet das als Streifen in der Mitte (43 % bzw. 31 %).
+Das ist kein Fehler — es ist eine Telefon-Oberflaeche in einem grossen Rahmen,
+und genau so sieht sie aus.
+
+Zwei CSS-Regeln, gestaffelt nach Breite UND Hoehe (die Hoehe haelt Telefone im
+Querformat heraus), vergroessern Menue und Ergebnis mit `zoom`:
+
+| | vorher | nachher |
+|---|---|---|
+| Menuespalte iPad mini | 440 px (59 %) | 590 px (79 %) |
+| Menuespalte iPad 12,9" | 440 px (43 %) | 660 px (**64 %**) |
+| Ergebniskarten iPad 12,9" | 320 px (31 %) | 480 px (47 %) |
+| Menuespalte iPhone | 361 px | **361 px** |
+
+`zoom` statt `transform: scale()`, weil es auf das Layout wirkt: der rollbare
+Kasten weiss weiterhin, wie hoch sein Inhalt ist, und was nicht mehr passt,
+bleibt erreichbar. Eine Transformation haette den oberen Rand eines zu hohen
+Inhalts unerreichbar gemacht — denselben Fehler, den der Kommentar an der
+Menuespalte seit v3.85.0 ausdruecklich vermeidet.
+
+**Das Spielfeld bekommt keine Zoomstufe.** `fit()` rechnet dort mit gemessenen
+Pixeln — Brettgroesse, Kopfzeilenhoehe, Unterleiste. Eine Zoomstufe darueber
+liesse gemessene und gezeichnete Pixel auseinanderlaufen, und das ist genau der
+Fehler, der in v3.84.0/v3.85.0 die Unterleiste vom iPhone geschnitten hat. Eine
+eigene Pruefung haelt das fest.
+
+### Was die Pruefung leistet — und was nicht
+
+Neue Suite `suiteIPad` (15 Pruefungen): Querformat aus der `Info.plist`, Menue-
+und Brettanteil auf iPad mini und iPad 12,9", Unterleiste im Bild, Spielfeld
+ohne Zoomstufe, Ergebniskarten ohne Ueberlauf — und als Kontrollversuch, dass
+das **Telefon unveraendert** bleibt (361 px ≤ 440). Eine Regel, die ueberall
+greift, waere keine Tablet-Regel.
+
+Eine Pruefung wurde dabei wieder verworfen, weil sie leer war: dass die
+bildfuellenden Ueberlagerungen des Ergebnisschirms (Farbblitz, Sieges-Effekt)
+ihre Groesse behalten. Im Kontrollversuch — Ausnahme entfernt — blieb sie gruen,
+denn Chromium wendet `zoom` auf `position:fixed; inset:0` gar nicht erst an.
+Sie konnte nicht fehlschlagen. An ihrer Stelle steht jetzt die Frage, die hier
+beantwortbar ist und wirklich schuetzt: dass jede solche Ueberlagerung die
+Ausnahme `kein-zoom` traegt. Wer eine neue hinzufuegt und sie vergisst, faellt
+auf. Ob WebKit den Zoom anders rechnet als Chromium, kann nur das Geraet sagen.
+
+Store-Bilder fuer `ipad-13` und `ipad-12.9` neu aufgenommen — die alten zeigten
+den Zustand vorher.
+
+Tests gruen (Unit 70/70, E2E 384/384, Typen 0 Fehler).

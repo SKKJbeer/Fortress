@@ -1,5 +1,6 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
+const path = require('path');
 const http = require('http');
 
 // React kommt seit dem Vite-Umbau aus dem Bundle (Architektur E3), nicht mehr
@@ -1976,6 +1977,188 @@ async function suiteSicherheitsbereiche(browser) {
 
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
               : ok('Sicherheitsbereiche: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 0e: iPad (v3.87.0)
+// Die App laeuft seit je auf dem iPad (TARGETED_DEVICE_FAMILY "1,2"), aber sie
+// war nie dafuer gesetzt. Gemessen hatte das zwei Gesichter:
+//   - Querformat: das Brett fuellte 29-35 % des Schirms statt 68-73 %. Die
+//     Ursache ist das Brett selbst (616x952, also hoch) und nicht zu beheben —
+//     also ist das Querformat auf dem iPad jetzt gesperrt.
+//   - Hochformat: das Brett war schon richtig, aber Menue und Ergebnis
+//     standen als 440- bzw. 320-px-Streifen in einem 1024-px-Schirm.
+// Geprueft wird beides — und ausdruecklich auch, dass das TELEFON unveraendert
+// bleibt: eine Regel, die ueberall greift, waere keine Tablet-Regel.
+// ═══════════════════════════════════════════════════════════════
+async function suiteIPad(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: iPad\n' + '='.repeat(50));
+
+  // ── 1) Das Querformat ist gesperrt (Info.plist, ohne Browser) ──────────
+  {
+    const plist = fs.readFileSync(path.join(__dirname, 'ios/App/App/Info.plist'), 'utf8');
+    const block = (plist.split('UISupportedInterfaceOrientations~ipad')[1] || '').split('</array>')[0];
+    !/Landscape/.test(block)
+      ? ok('iPad: Querformat gesperrt (Info.plist) ✓')
+      : fail('iPad: Querformat steht wieder in Info.plist — das Brett fuellt dort nur ~30 %');
+    /Portrait/.test(block)
+      ? ok('iPad: Hochformat erlaubt ✓')
+      : fail('iPad: kein Hochformat in Info.plist');
+  }
+
+  const starten = async (w, h) => {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h },
+      hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    await page.addInitScript(FB_SPERRE);
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(TIMER_SPEEDUP);
+    await page.addInitScript(`window.__mmDebug = true;`);
+    await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+    await page.waitForTimeout(400);
+    return { ctx, page };
+  };
+
+  const spalte = page => page.evaluate(() => {
+    const el = document.querySelector('.gross-spalte');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const kasten = el.parentElement;
+    return { breite: Math.round(r.width), links: Math.round(r.left),
+             rechts: Math.round(window.innerWidth - r.right),
+             anteil: Math.round(100 * r.width / window.innerWidth),
+             rollbar: kasten.scrollHeight <= kasten.clientHeight + 1 ? 'passt' : 'rollt',
+             vw: window.innerWidth };
+  });
+
+  // ── 2) Telefon: unveraendert. Das ist der Kontrollversuch ──────────────
+  {
+    const { ctx, page } = await starten(393, 852);
+    try {
+      const m = await spalte(page);
+      (m && m.breite <= 440)
+        ? ok(`Telefon: Menuespalte unveraendert (${m.breite} px ≤ 440) ✓`)
+        : fail(`Telefon: Menuespalte auf ${m && m.breite} px vergroessert — die Tablet-Regel greift zu frueh`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 3) iPad hoch: Menue fuellt den Schirm, ohne herauszuragen ──────────
+  for (const [w, h, name] of [[744, 1133, 'iPad mini'], [1024, 1366, 'iPad 12,9"']]) {
+    const { ctx, page } = await starten(w, h);
+    try {
+      const m = await spalte(page);
+      if (!m) { fail(`${name}: Menuespalte nicht gefunden`); continue; }
+      (m.anteil >= 55)
+        ? ok(`${name}: Menue fuellt ${m.anteil} % der Breite (≥ 55) ✓`)
+        : fail(`${name}: Menue fuellt nur ${m.anteil} % — strandet als Streifen in der Mitte`);
+      (m.links >= 0 && m.rechts >= 0)
+        ? ok(`${name}: Menue bleibt im Bild (Rand ${m.links}/${m.rechts}) ✓`)
+        : fail(`${name}: Menue ragt seitlich heraus (Rand ${m.links}/${m.rechts})`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 4) iPad hoch: das Brett nutzt den Platz und nichts faellt heraus ───
+  {
+    const { ctx, page } = await starten(1024, 1366);
+    try {
+      await jsClick(page, ['LOKAL']);
+      await page.waitForTimeout(250);
+      await jsClick(page, ['2 Spieler']);
+      await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
+      await page.waitForTimeout(500);
+      const m = await page.evaluate(() => {
+        const c = document.querySelector('canvas').getBoundingClientRect();
+        const huelle = document.querySelector('#root > div');
+        const reihen = Array.from(huelle.children)
+          .filter(e => ['static', 'relative'].includes(getComputedStyle(e).position))
+          .map(e => Math.round(e.getBoundingClientRect().bottom));
+        return { anteil: Math.round(100 * (c.width * c.height) / (window.innerWidth * window.innerHeight)),
+                 brett: [Math.round(c.width), Math.round(c.height)],
+                 unten: reihen.length ? Math.max(...reihen) : 0, vh: window.innerHeight };
+      });
+      (m.anteil >= 60)
+        ? ok(`iPad 12,9": Brett fuellt ${m.anteil} % des Schirms (${m.brett[0]}x${m.brett[1]}) ✓`)
+        : fail(`iPad 12,9": Brett fuellt nur ${m.anteil} % des Schirms`);
+      (m.unten <= m.vh)
+        ? ok(`iPad 12,9": Unterleiste bleibt im Bild (${m.unten} ≤ ${m.vh}) ✓`)
+        : fail(`iPad 12,9": Unterleiste ragt ${m.unten - m.vh} px aus dem Bild`);
+      // Das Brett darf NICHT gezoomt sein: `fit()` rechnet mit gemessenen
+      // Pixeln. Eine Zoomstufe darueber liesse gemessene und gezeichnete
+      // Pixel auseinanderlaufen — genau der Fehler aus v3.84.0.
+      const zoom = await page.evaluate(() => {
+        const c = document.querySelector('canvas');
+        for (let e = c; e && e !== document.documentElement; e = e.parentElement) {
+          const z = getComputedStyle(e).zoom;
+          if (z && z !== 'normal' && parseFloat(z) !== 1) return z;
+        }
+        return '1';
+      });
+      (parseFloat(zoom) === 1)
+        ? ok('iPad 12,9": Spielfeld ohne Zoomstufe ✓')
+        : fail(`iPad 12,9": Spielfeld steht unter zoom:${zoom} — gemessene und gezeichnete Pixel laufen auseinander`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 5) Ergebnis: Karten wachsen mit, der Farbblitz bleibt bildfuellend ─
+  for (const [w, h, mindest] of [[393, 852, 0], [1024, 1366, 420]]) {
+    const { ctx, page } = await starten(w, h);
+    try {
+      await jsClick(page, ['LOKAL']);
+      await page.waitForTimeout(250);
+      await jsClick(page, ['2 Spieler']);
+      await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
+      // Burg von P2 aufreissen → Verlust am Bauende → Ergebnis-Bildschirm.
+      // (Derselbe Weg wie in der Sicherheitsbereich-Suite; `__blastWall` haengt
+      // an `__mmDebug`, ohne den Schalter gibt es still null zurueck.)
+      await page.waitForFunction(() => /BAUEN|BUILD/.test(document.body.textContent), { timeout: 20000 });
+      await page.evaluate(() => window.__blastWall(2, 4));
+      await page.waitForFunction(() => !document.querySelector('canvas'), { timeout: 25000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      const m = await page.evaluate(() => {
+        const s = document.querySelector('.gross-schirm');
+        if (!s) return null;
+        const kinder = Array.from(s.children);
+        const fluss = kinder.filter(e => getComputedStyle(e).position !== 'fixed');
+        const fix   = kinder.filter(e => getComputedStyle(e).position === 'fixed');
+        return {
+          breitestes: Math.max(...fluss.map(e => Math.round(e.getBoundingClientRect().width))),
+          ueberlauf: fluss.some(e => { const r = e.getBoundingClientRect();
+            return r.left < -1 || r.right > window.innerWidth + 1; }),
+          fixOhneKlasse: fix.filter(e => !e.classList.contains('kein-zoom')).length,
+          fixAnzahl: fix.length,
+          vw: window.innerWidth
+        };
+      });
+      const gross = w > 700;
+      if (!m) { fail(`${gross ? 'iPad' : 'Telefon'}: Ergebnisschirm nicht erreicht`); continue; }
+      (m.breitestes >= mindest && !m.ueberlauf)
+        ? ok(`${gross ? 'iPad' : 'Telefon'}: Ergebniskarten ${m.breitestes} px, kein Ueberlauf ✓`)
+        : fail(`${gross ? 'iPad' : 'Telefon'}: Ergebniskarten ${m.breitestes} px (mindestens ${mindest})${m.ueberlauf ? ', ragen heraus' : ''}`);
+      // Der Farbblitz und der Sieges-Effekt liegen INNERHALB des gezoomten
+      // Schirms und muessen die Ausnahme `kein-zoom` tragen.
+      //
+      // Gemessen: Chromium wendet `zoom` auf ein `position:fixed; inset:0`
+      // NICHT an — dort waere die Ausnahme folgenlos, und eine Pruefung auf
+      // die BREITE koennte gar nicht fehlschlagen. Sie waere leer gewesen.
+      // WebKit rechnet Zoom und feste Positionierung anders, und WebKit ist
+      // das, was auf dem iPad laeuft; nachmessen laesst es sich hier nicht.
+      // Geprueft wird deshalb, was hier pruefbar IST und wirklich schuetzt:
+      // dass jede bildfuellende Ueberlagerung die Klasse traegt. Wer eine neue
+      // hinzufuegt und sie vergisst, faellt auf.
+      (m.fixOhneKlasse === 0 && m.fixAnzahl > 0)
+        ? ok(`${gross ? 'iPad' : 'Telefon'}: alle ${m.fixAnzahl} bildfuellenden Ueberlagerungen mit kein-zoom ✓`)
+        : fail(`${gross ? 'iPad' : 'Telefon'}: ${m.fixOhneKlasse} von ${m.fixAnzahl} Ueberlagerungen ohne kein-zoom`);
+    } finally { await ctx.close(); }
+  }
+
+  errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+              : ok('iPad: keine JS-Fehler ✓');
   return { res, errs };
 }
 
@@ -4009,11 +4192,12 @@ async function suiteTutorial(browser) {
     const cs = await suiteCloudSave(browser, FB_PORT);
     return { mm, mm3, hb, cs, tr };
   })();
-  const [rMenu, rOff, rPlat, rSA, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, rPlat, rSA, rPad, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
     suitePlattform(browser),
     suiteSicherheitsbereiche(browser),
+    suiteIPad(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
     suiteMechanics(browser),
@@ -4041,9 +4225,9 @@ async function suiteTutorial(browser) {
   await browser.close();
   mockFbSrv.close();
 
-  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
                    ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res];
-  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
                    ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));

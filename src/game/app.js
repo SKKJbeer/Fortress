@@ -642,7 +642,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           animation: "fwBurst 1.6s " + delay + "s ease-out infinite", pointerEvents: "none"
         } });
       });
-      return React.createElement("div", { style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...bursts);
+      return React.createElement("div", { className: "kein-zoom", style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...bursts);
     }
     if (kind === "win_goldrain") {
       // Gezeichnete Münzen statt Emoji (v3.29.1): Gold-Verlauf + Prägerand
@@ -659,10 +659,10 @@ window.StackSiegeApp = function StackSiegeApp() {
           animation: "coinFall " + dur + "s " + delay + "s linear infinite", pointerEvents: "none"
         } });
       });
-      return React.createElement("div", { style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...coins);
+      return React.createElement("div", { className: "kein-zoom", style: { position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 5 } }, ...coins);
     }
     // Standard: Konfetti über die volle Breite
-    return React.createElement("div", { style: { position: "fixed", left: 0, right: 0, top: 0, pointerEvents: "none", zIndex: 5 } },
+    return React.createElement("div", { className: "kein-zoom", style: { position: "fixed", left: 0, right: 0, top: 0, pointerEvents: "none", zIndex: 5 } },
       React.createElement(ConfettiBurst, { active: true }));
   }
   // ── Schmiede-Enthüllung (v3.40.0): Rarität + episches Reveal-Overlay ──
@@ -7175,7 +7175,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     color: "#eef2f9",
     padding: 16,
     boxSizing: "border-box"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", maxWidth: 440, width: "100%", margin: "auto 0" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
+  } }, /* @__PURE__ */ React.createElement("div", { className: "gross-spalte", style: { textAlign: "center", maxWidth: 440, width: "100%", margin: "auto 0" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
     // v3.80.0: Der Name hat 13 Zeichen statt 8. Mit den alten 14vw lief er
     // auf einem schmalen Telefon rechts aus dem Bild. Gemessen, nicht geraten
     // — siehe Changelog.
@@ -7340,7 +7340,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.86.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.87.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8755,7 +8755,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       textAlign: "center"
     });
     const LABEL = { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 };
-    return React.createElement("div", { style: {
+    return React.createElement("div", { className: "gross-schirm", style: {
       background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",
       // Siehe Spiel-Huelle: 100% des bereits verkuerzten Koerpers, nicht 100dvh.
       // "safe center" zentriert nur, SOLANGE der Inhalt passt; wird er hoeher
@@ -8777,7 +8777,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // ── SIEGES-EFFEKT (v3.23.0): gekaufter Kosmetik-Effekt bei eigenem Sieg ──
     wonState && !drawn && React.createElement(WinFx, { kind: cosOf(profile).equipped.win }),
     // ── EINMALIGER FARBBLITZ (v3.40.0): dramatischer Einstieg Sieg/Niederlage ──
-    !drawn && React.createElement("div", { key: "resflash", style: {
+    !drawn && React.createElement("div", { key: "resflash", className: "kein-zoom", style: {
       position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none",
       background: wonState ? "rgba(251,191,36,0.55)" : "rgba(239,68,68,0.5)",
       animation: "revealFlash 0.8s ease-out both"
