@@ -60,8 +60,8 @@
       <h1 class="marke"><span class="b">Stack</span><br>&amp; <span class="r">Siege</span></h1>
       <p class="zeile">Eine Lücke, und die Burg fällt.</p>
       <p class="dazu">
-        Burgenduell fürs iPhone. Du baust deinen Wall aus fallenden Steinen,
-        der Gegner schießt ihn dir wieder auf.
+        Burgenduell für iPhone und iPad. Du baust deinen Wall aus fallenden
+        Steinen, der Gegner schießt ihn dir wieder auf.
       </p>
 
       <!-- TESTFLIGHT:ANFANG
@@ -84,9 +84,26 @@
       <!-- WARTEN:ENDE -->
       </div>
 
-      <div class="schirm">
-        <img src="bilder/shoot.jpg" width="780" height="1688" decoding="async"
-             alt="Eine laufende Partie in der Schussphase: zwei ummauerte Burgen mit Kanonen, dazwischen ein Fluss.">
+      <!-- Das Paar sagt ohne einen Satz, was die Seite bewirbt: eine App, und
+           zwar auf beiden Geraeten. Das iPad traegt eine echte iPad-Aufnahme
+           (3:4) — ein gestrecktes Telefonbild in einem iPad-Rahmen waere eine
+           Behauptung, die das Bild nicht deckt. -->
+      <div class="paar-geraete">
+        <div class="geraet pad gpad">
+          <div class="rahmen"><div class="glas">
+            <img src="bilder/pad-shoot.jpg" width="1168" height="1557" decoding="async"
+                 alt="Dieselbe Partie auf einem iPad: das Spielfeld füllt die Höhe, die Kopfzeile mit beiden Spielern reicht über die volle Breite.">
+          </div></div>
+          <span class="linse"></span><span class="taste r1"></span>
+        </div>
+        <div class="geraet gphone">
+          <div class="rahmen"><div class="glas">
+            <img src="bilder/shoot.jpg" width="780" height="1688" decoding="async"
+                 alt="Eine laufende Partie in der Schussphase auf einem iPhone: zwei ummauerte Burgen mit Kanonen, dazwischen ein Fluss.">
+            <span class="insel"></span>
+          </div></div>
+          <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -107,9 +124,10 @@
           nicht umgekehrt.
         </p>
       </div>
-      <div class="schirm">
-        <img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async"
-             alt="Die Bauphase: zwei Burgen über und unter einem Fluss, unten die Vorschau des nächsten Bauteils.">
+      <div class="geraet">
+        <div class="rahmen"><div class="glas"><img src="bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="Die Bauphase: zwei Burgen über und unter einem Fluss, unten die Vorschau des nächsten Bauteils."><span class="insel"></span></div></div>
+        <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
       </div>
     </div>
   </section>
@@ -193,9 +211,10 @@
           </div>
         </div>
       </div>
-      <div class="schirm">
-        <img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async"
-             alt="Die Rüstphase: Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur, jeweils mit Preis in Beute.">
+      <div class="geraet">
+        <div class="rahmen"><div class="glas"><img src="bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="Die Rüstphase: Karten mit Kanone, Bezwinger, Schnellladen, Panzerung und Reparatur, jeweils mit Preis in Beute."><span class="insel"></span></div></div>
+        <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
       </div>
     </div>
   </section>
@@ -211,15 +230,46 @@
       </p>
       <div class="zwei">
         <figure>
-          <div class="schirm"><img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Partie zu zweit an einem Gerät: blaue Burg oben, rote unten, unten zwei Bauteil-Felder nebeneinander."></div>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Partie zu zweit an einem Gerät: blaue Burg oben, rote unten, unten zwei Bauteil-Felder nebeneinander."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
           <figcaption><b>Zu zweit</b><span>Du baust oben, dein Gegenüber unten. Zwei Bauteil-Felder, keine Zugreihenfolge.</span></figcaption>
         </figure>
         <figure>
-          <div class="schirm"><img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Partie zu dritt an einem Gerät: drei Burgen in Blau, Grün und Rot um einen dreiarmigen Fluss."></div>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Partie zu dritt an einem Gerät: drei Burgen in Blau, Grün und Rot um einen dreiarmigen Fluss."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
           <figcaption><b>Zu dritt</b><span>Der Fluss teilt sich in drei Arme, jeder bekommt seinen Sektor. Jeder gegen jeden.</span></figcaption>
         </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Auf dem iPad ──────────────────────────────────────────────────
+       Die eine Stelle, an der die Seite eine Entscheidung begruendet statt
+       eine Eigenschaft aufzuzaehlen. Genau dafuer steht hier ein iPad. -->
+  <section class="welt">
+    <div class="bahn paar paar-gedreht paar-breit">
+      <div class="geraet pad">
+        <div class="rahmen"><div class="glas">
+          <img src="bilder/pad-game.jpg" width="1168" height="1557" loading="lazy" decoding="async"
+               alt="Die Bauphase auf einem iPad: das Spielfeld füllt die Höhe, unten die Vorschau des nächsten Bauteils über die volle Breite.">
+        </div></div>
+        <span class="linse"></span><span class="taste r1"></span>
+      </div>
+      <div>
+        <p class="label">Auf dem iPad</p>
+        <h2>Dasselbe Spiel, nur größer.</h2>
+        <p>
+          <strong>Hochkant — und das ist eine Entscheidung, keine
+          Auslassung.</strong> Zwei Leute an einem Gerät sitzen sich an den
+          kurzen Kanten gegenüber. Quer läge das Brett als schmaler Streifen in
+          der Mitte, und links und rechts bliebe Platz liegen, den niemand
+          braucht.
+        </p>
+        <p>
+          Kopfzeile und Bauteil-Leiste reichen bis an die Ränder, das Brett
+          steht dazwischen so groß, wie die Höhe es zulässt. Nichts daran ist
+          ein vergrößertes Telefonbild.
+        </p>
       </div>
     </div>
   </section>
@@ -231,23 +281,23 @@
       <h2>Vier Fenster, die auf keinem Spielfeld stehen.</h2>
       <div class="vier">
         <figure>
-          <div class="schirm"><img src="bilder/schmiede.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Schmiede: Materialvorrat aus Eisen, Silber, Drachenschuppe und Sternenstaub, darunter Rezeptkarten."></div>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="bilder/schmiede.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Schmiede: Materialvorrat aus Eisen, Silber, Drachenschuppe und Sternenstaub, darunter Rezeptkarten."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
           <figcaption><b>Schmiede</b><span>Seltene Materialien fallen aus Online-Partien. Daraus entstehen Stücke, die es im Shop nicht gibt.</span></figcaption>
         </figure>
         <figure>
-          <div class="schirm"><img src="bilder/goldshop.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Der Gold-Shop: Karten für Kugelspuren, Profilrahmen, Kanonen-Anstriche und Siegeseffekte."></div>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="bilder/goldshop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Der Gold-Shop: Karten für Kugelspuren, Profilrahmen, Kanonen-Anstriche und Siegeseffekte."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
           <figcaption><b>Gold-Shop</b><span>Spuren, Rahmen, Kanonen, Siegeseffekte. Jeder Rahmen hat eine eigene Machart.</span></figcaption>
         </figure>
         <figure>
-          <div class="schirm"><img src="bilder/erfolge.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Auszeichnungen: eine Liste erreichter und offener Erfolge mit Fortschrittsbalken."></div>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="bilder/erfolge.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Auszeichnungen: eine Liste erreichter und offener Erfolge mit Fortschrittsbalken."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
           <figcaption><b>Auszeichnungen</b><span>Für Dinge, die man nicht nebenbei schafft. Wer sie sucht, spielt anders.</span></figcaption>
         </figure>
         <figure>
-          <div class="schirm"><img src="bilder/aufgaben.jpg" width="780" height="1688" loading="lazy" decoding="async"
-               alt="Die Tagesaufgaben: drei Aufträge mit Fortschritt und Goldbelohnung zum Abholen."></div>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="bilder/aufgaben.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Die Tagesaufgaben: drei Aufträge mit Fortschritt und Goldbelohnung zum Abholen."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
           <figcaption><b>Tagesaufgaben</b><span>Jeden Tag drei neue, aus dem Datum berechnet — bei allen Spielern dieselben.</span></figcaption>
         </figure>
       </div>
@@ -281,9 +331,10 @@
           <li><b>Online braucht wenig</b><span>Dein selbst gewählter Name, der Spielstand und die Punktzahl. Kein Klarname, keine E-Mail, keine Werbekennung.</span></li>
         </ul>
       </div>
-      <div class="schirm">
-        <img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async"
-             alt="Das Hauptmenü: Spielerprofil mit Stufe und Punktzahl, darunter die Knöpfe für das lokale und das Online-Spiel.">
+      <div class="geraet">
+        <div class="rahmen"><div class="glas"><img src="bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="Das Hauptmenü: Spielerprofil mit Stufe und Punktzahl, darunter die Knöpfe für das lokale und das Online-Spiel."><span class="insel"></span></div></div>
+        <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
       </div>
     </div>
   </section>

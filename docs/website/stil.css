@@ -88,7 +88,7 @@ p:last-child { margin-bottom: 0; }
   padding-block: clamp(60px, 9vw, 110px);
 }
 .buehne-gitter { display: grid; gap: clamp(32px, 5vw, 72px); grid-template-columns: 1fr; align-items: center; width: 100%; }
-@media (min-width: 900px) { .buehne-gitter { grid-template-columns: minmax(0, 1fr) minmax(0, 340px); } }
+@media (min-width: 900px) { .buehne-gitter { grid-template-columns: minmax(0, 1fr) minmax(0, 470px); } }
 
 /* **Der Hintergrund ist ABSICHTLICH unscharf.** Die Aufnahme ist 485 px breit;
    ueber einen 1280er Bildschirm gezogen waere sie einfach hochskaliert und
@@ -143,7 +143,7 @@ p:last-child { margin-bottom: 0; }
 .marke .b { color: var(--blau); }
 .marke .r { color: var(--rot); }
 
-.buehne .schirm { max-width: 340px; margin-inline: auto; }
+.buehne .paar-geraete { max-width: 470px; margin-inline: auto; }
 .zeile { font-size: clamp(20px, 2.8vw, 29px); font-weight: 700; color: var(--ink);
   margin: 24px 0 0; max-width: 22ch; }
 .dazu { margin: 14px 0 0; max-width: 42ch; font-size: 17px; }
@@ -167,10 +167,11 @@ h2 { font-size: clamp(30px, 5.2vw, 56px); max-width: 16ch; margin-bottom: 20px; 
 h2 em { font-style: normal; color: var(--rot); }
 
 /* ── Die Darstellung der Aufnahmen ───────────────────────────────────────
-   Ein Haarstrich und ein weicher, tiefer Schatten. Keine Telefon-Attrappe:
-   die Aufnahme IST ein Telefonbildschirm, ein gezeichneter Rahmen drumherum
-   erzaehlte nur den Vertriebsweg. Der Radius ist derselbe, den die
-   Oberflaeche des Spiels benutzt. */
+   Ein Haarstrich und ein weicher, tiefer Schatten. `.schirm` bleibt fuer die
+   AUSSCHNITTE — die sieben Welten zeigen nur das Brett, kein ganzes Geraet.
+   Sie in einen Telefonrahmen zu setzen waere eine Behauptung, die das Bild
+   nicht deckt. Ganze Bildschirmfotos tragen dagegen `.geraet` (weiter
+   unten). Der Radius ist derselbe, den die Oberflaeche des Spiels benutzt. */
 .schirm {
   position: relative; overflow: hidden; border-radius: 14px;
   border: 1px solid rgba(255,255,255,.09);
@@ -178,6 +179,93 @@ h2 em { font-style: normal; color: var(--rot); }
   background: #0b0d14;
 }
 .schirm img { width: 100%; }
+
+/* ── Geraete-Rahmen ──────────────────────────────────────────────────────
+   Hier stand bis v3.88.0 das Gegenteil: keine Telefon-Attrappe, der Rahmen
+   erzaehle nur den Vertriebsweg. Das galt fuer eine Seite, die fuer die
+   Browser-Fassung warb — dort war das Geraet wirklich Beiwerk.
+
+   Die Seite wirbt inzwischen fuer eine App, und damit dreht sich das
+   Argument um: Ein Bildschirmfoto ohne Rahmen ist ein Bild. Mit Rahmen ist
+   es ein Geraet, das jemand in der Hand haelt. Der Rahmen erzaehlt nicht den
+   Vertriebsweg, er IST die Aussage — und er sagt in einem Blick, was Absaetze
+   sonst behaupten muessten: Das laeuft auf dem iPhone UND auf dem iPad.
+
+   Alles in Container-Einheiten (1cqw = 1 % der Rahmenbreite). Damit stimmen
+   die Verhaeltnisse in jeder Groesse; Steg, Rundung und Insel wachsen mit,
+   statt bei 250 px klobig und bei 500 px duenn zu wirken. Mit festen Pixeln
+   braeuchte jede Anzeigegroesse ihre eigene Klasse — und die erste, die
+   jemand vergisst, sieht falsch aus.
+
+   Die Verhaeltnisse sind von den echten Geraeten abgenommen: Beim iPhone ist
+   der Steg rund 3 % der Breite und die Ecke rund 14 %; beim iPad ist der Steg
+   breiter und die Ecke deutlich flacher. Genau daran erkennt man die beiden
+   auseinander — ohne ein Wort dazuzuschreiben. */
+/* `width: 100%` ist hier KEINE Redundanz. `container-type: inline-size` nimmt
+   dem Element die inhaltsabhaengige Breite — es traegt danach 0 zur
+   Groessenermittlung bei. Steht es dann als Rasterfeld mit `margin-inline:
+   auto` da, verbrauchen die automatischen Raender den freien Platz, das Feld
+   wird NICHT gestreckt und faellt auf genau diese 0 zusammen. Gemessen: der
+   Rahmen war 0 x 0, die ganze Aufnahme unsichtbar, ohne dass irgendetwas eine
+   Fehlermeldung ergeben haette. */
+.geraet { container-type: inline-size; position: relative; width: 100%; margin-inline: auto; }
+
+.geraet .rahmen {
+  padding: 3.1cqw;
+  border-radius: 14cqw;
+  /* Ein Verlauf ueber die Diagonale statt einer Farbe: So faengt die Kante
+     Licht, und der Rahmen sieht nach Metall aus statt nach grauem Kasten. */
+  background: linear-gradient(157deg,
+    #6e7381 0%, #3b404b 9%, #23262e 27%, #1b1e25 51%,
+    #363a45 73%, #22252c 87%, #131519 100%);
+  box-shadow:
+    inset 0 0 0 .3cqw rgba(255,255,255,.10),
+    inset 0 .28cqw .5cqw rgba(255,255,255,.22),
+    inset 0 -.28cqw .5cqw rgba(0,0,0,.6),
+    var(--schatten);
+}
+.geraet .glas {
+  position: relative; display: block; overflow: hidden;
+  border-radius: 11.1cqw; background: #05070c;
+  box-shadow: inset 0 0 0 .28cqw rgba(0,0,0,.9);
+}
+.geraet .glas img { display: block; width: 100%; }
+/* Die Insel liegt AUF dem Glas — sie ist Teil der Anzeige, nicht des Stegs.
+   Beim iPad ist es umgekehrt: Die Linse sitzt im Steg. */
+.geraet .insel {
+  position: absolute; top: 2.4cqw; left: 50%; transform: translateX(-50%);
+  width: 29cqw; height: 8cqw; border-radius: 4.6cqw; background: #04060a;
+}
+/* Tasten nur angedeutet. Mehr Einzelheiten machen daraus Modellbau. */
+.geraet .taste { position: absolute; background: linear-gradient(90deg, #2b2f38, #4a505d); }
+.geraet .taste.l1 { left: -.5cqw; top: 20cqw; width: .75cqw; height: 4.4cqw; border-radius: .4cqw 0 0 .4cqw; }
+.geraet .taste.l2 { left: -.5cqw; top: 27cqw; width: .75cqw; height: 8.4cqw; border-radius: .4cqw 0 0 .4cqw; }
+.geraet .taste.r1 { right: -.5cqw; top: 24cqw; width: .75cqw; height: 12cqw; border-radius: 0 .4cqw .4cqw 0; }
+
+.geraet.pad .rahmen { padding: 4.1cqw; border-radius: 6.2cqw; }
+.geraet.pad .glas   { border-radius: 2.5cqw; }
+.geraet.pad .taste.l1,
+.geraet.pad .taste.l2 { display: none; }
+.geraet.pad .taste.r1 { top: 8cqw; height: 7cqw; }
+.geraet.pad .linse {
+  position: absolute; top: 1.75cqw; left: 50%; transform: translateX(-50%);
+  width: 1.15cqw; height: 1.15cqw; border-radius: 50%;
+  background: #0a0d14; box-shadow: inset 0 0 0 .1cqw rgba(255,255,255,.16);
+}
+
+/* Dieselbe Hebung wie bei den Welten-Kacheln — ein Geraet, das auf den Zeiger
+   reagiert, liest sich als Gegenstand statt als Bild. */
+.zwei .geraet, .vier .geraet { transition: transform .35s cubic-bezier(.22,.8,.3,1); }
+.zwei figure:hover .geraet, .vier figure:hover .geraet { transform: translateY(-8px); }
+
+/* ── Das Paar im Anfang ──────────────────────────────────────────────────
+   iPad hinten, iPhone davor und leicht ueberlappend. Das ist die eine
+   Stelle, an der die Seite ohne einen einzigen Satz sagt: beide Geraete.
+   Unter 760 px steht nur noch das iPhone — zwei Geraete nebeneinander waeren
+   dort beide zu klein, um etwas zu zeigen. */
+.paar-geraete { position: relative; display: block; width: 100%; }
+.paar-geraete .gpad   { width: 78%; margin-left: 0; }
+.paar-geraete .gphone { width: 41%; position: absolute; right: 0; bottom: -6%; }
 
 /* ── Welten ────────────────────────────────────────────────────────────── */
 .welten {
@@ -205,14 +293,18 @@ h2 em { font-style: normal; color: var(--rot); }
   .paar { grid-template-columns: minmax(0, 1fr) minmax(0, 330px); }
   .paar-gedreht > :first-child { order: 2; }
 }
-.paar .schirm { max-width: 330px; margin-inline: auto; }
+.paar .schirm, .paar .geraet { max-width: 330px; margin-inline: auto; }
+/* Ein iPad im Zweispalter darf breiter stehen als ein Telefon — sonst sieht
+   das groessere Geraet auf der Seite kleiner aus als das kleinere. */
+.paar-breit .geraet.pad { max-width: 430px; }
+@media (min-width: 880px) { .paar-breit { grid-template-columns: minmax(0, 1fr) minmax(0, 430px); } }
 
 /* ── Zwei Aufnahmen nebeneinander ─────────────────────────────────────── */
 .zwei { display: grid; gap: clamp(26px, 4vw, 52px); grid-template-columns: 1fr;
   margin-top: clamp(30px, 4vw, 48px); }
 @media (min-width: 760px) { .zwei { grid-template-columns: 1fr 1fr; max-width: 860px; } }
 .zwei figure { margin: 0; }
-.zwei .schirm { max-width: 300px; }
+.zwei .schirm, .zwei .geraet { max-width: 300px; }
 .zwei figcaption { margin-top: 18px; }
 .zwei b { display: block; font-size: 13px; font-weight: 700; letter-spacing: .2em;
   text-transform: uppercase; margin-bottom: 8px; }

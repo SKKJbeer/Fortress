@@ -10,7 +10,7 @@ Pages getrennt: Das Spiel bleibt, wo es ist, die Website wirbt dafür.
 |---|---|
 | `docs/website/index.html` | Die Seite. Von Hand geschrieben, kein Bauwerkzeug. |
 | `docs/website/stil.css` | Eine Stildatei. Keine fremde Schrift, kein fremdes Skript. |
-| `docs/website/bilder/*.jpg` | 17 Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`) — siehe unten. |
+| `docs/website/bilder/*.jpg` | 19 Bildschirmfotos aus dem echten Spiel (17 vom iPhone, zwei vom iPad), erzeugt von `tools/make-screenshots.cjs` (Ziel `website`) — siehe unten. |
 | `public/{impressum,privacy,agb}.html` | Die Rechtstexte. **Eine Quelle** — sie gehören zum Spiel und werden für die Website nur kopiert. |
 | `scripts/website-bauen.sh` | Stellt beides zum Auslieferordner zusammen. |
 | `scripts/check-website.mjs` | Sagt nein, wenn etwas fehlt. |
@@ -89,6 +89,45 @@ jedem lokalen Spiel zufällig. Einen Seed vorzugeben hiesse, dafür Spielcode zu
 sieben einmal dran waren; die Welt verrät der gesicherte Haken
 `__waterTheme().name`.
 
+
+## Geräte-Rahmen statt nackter Bildschirmfotos
+
+Bis v3.87.0 stand an dieser Stelle das Gegenteil, und im Stylesheet steht die
+alte Begründung noch als Zitat: keine Telefon-Attrappe, der Rahmen erzähle nur
+den Vertriebsweg. Das galt für eine Seite, die für die **Browser-Fassung**
+warb — dort ist das Gerät wirklich Beiwerk.
+
+Die Seite wirbt für eine App. Damit dreht sich das Argument um: Ein
+Bildschirmfoto ohne Rahmen ist ein Bild. Mit Rahmen ist es ein Gerät, das
+jemand in der Hand hält — und der Anfang sagt ohne einen einzigen Satz, dass es
+das für **iPhone und iPad** gibt.
+
+- **Alles in Container-Einheiten** (`1cqw` = 1 % der Rahmenbreite). Steg,
+  Rundung, Insel und Tasten wachsen mit jeder Anzeigegröße mit. Mit festen
+  Pixeln bräuchte jede Größe ihre eigene Klasse, und die erste vergessene sieht
+  falsch aus.
+- **Die Verhältnisse sind abgenommen, nicht geschätzt.** Beim iPhone ist der
+  Steg rund 3 % der Breite und die Ecke rund 14 %; beim iPad ist der Steg
+  breiter und die Ecke deutlich flacher. Genau daran erkennt man die beiden
+  auseinander, ohne ein Wort dazuzuschreiben. Die Insel liegt AUF dem Glas (sie
+  ist Teil der Anzeige), die iPad-Linse IM Steg.
+- **Die sieben Welten bleiben ohne Rahmen.** Sie zeigen nur das Brett, nicht
+  einen ganzen Bildschirm. In einen Telefonrahmen gesetzt wären sie eine
+  Behauptung, die das Bild nicht deckt.
+- **Das iPad im Anfang trägt eine echte iPad-Aufnahme** (`pad-game.jpg`, `pad-shoot.jpg`, 3:4).
+  Ein gestrecktes Telefonbild in einem iPad-Rahmen wäre dasselbe Problem.
+
+**Die Website-Bilder werden mit Sicherheitsbereichen aufgenommen** (`sa` im
+Aufnehmer, iPhone 59/34, iPad 24/20). Ohne sie beginnt die Kopfzeile bei 0 und
+verschwindet hinter der gezeichneten Insel — auf einem echten Gerät tut sie das
+nie. Die Store-Bilder bleiben ohne: Apple zeigt sie ohne Rahmen.
+
+Eine Falle, die beim Bauen zweimal Zeit gekostet hat und deshalb im Stylesheet
+kommentiert steht: `container-type: inline-size` nimmt dem Element die
+inhaltsabhängige Breite. Steht es dann als Rasterfeld mit `margin-inline: auto`
+da, verbrauchen die automatischen Ränder den freien Platz, das Feld wird nicht
+gestreckt — und fällt auf Breite 0 zusammen. Gemessen: Rahmen 0 × 0, Aufnahme
+unsichtbar, **ohne jede Fehlermeldung**. Deshalb `width: 100%` an `.geraet`.
 
 ## Der TestFlight-Knopf
 
