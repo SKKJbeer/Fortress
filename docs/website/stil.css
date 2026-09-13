@@ -7,32 +7,30 @@
  * keine Cookies und keine Uebertragung an Dritte — diese Seite braucht deshalb
  * kein Zustimmungsfenster.
  *
- * ── Gezeichnet statt abfotografiert ───────────────────────────────────────
+ * ── Warum wieder echte Aufnahmen ──────────────────────────────────────────
  *
- * Die Fassung davor war eine Bildschirmfoto-Galerie: achtzehn Aufnahmen aus
- * dem Spiel, ordentlich aufgereiht. Das zeigt, was da ist, und macht keine
- * Lust darauf.
+ * Eine Zwischenfassung hatte die sieben Welten selbst gezeichnet: Dreiecke als
+ * Berge, Rechtecke als Burgen. Das Urteil des Gruenders war „kindlich", und es
+ * war richtig. Die beste Grafik in diesem Projekt ist die, die das Spiel selbst
+ * rendert — Steintexturen, glimmende Fluesse, Burgdaecher, Ambient-Partikel.
+ * Dagegen kommt eine handgesetzte SVG-Landschaft nicht an.
  *
- * Jetzt traegt die Seite ZEICHNUNGEN. Die sieben Welten sind gemalte Szenen —
- * Himmel, Berge, Fluss, zwei Burgen, das Zierwerk drumherum — jede in den
- * Farben, die dieselbe Welt im Spiel wirklich hat (`src/engine/terrain.ts`).
- * Es ist also nicht erfunden, nur nicht abfotografiert: So sieht die Welt aus,
- * wenn man sie zeichnet statt sie zu knipsen.
+ * Die Arbeit steckt deshalb nicht mehr in eigenen Zeichnungen, sondern in der
+ * DARSTELLUNG der echten Aufnahmen:
  *
- * Echte Aufnahmen stehen nur noch dort, wo sie die Aussage TRAGEN: bei „zu
- * zweit und zu dritt an einem Geraet" sind die Bauteil-Felder unten der
- * Beweis, und in einem kurzen Streifen „so sieht es wirklich aus".
+ *   · gross gezeigt statt klein aufgereiht,
+ *   · ein Haarstrich als Rahmen und ein weicher, tiefer Schatten — das liest
+ *     sich als Bildschirm, ohne dass eine Telefon-Attrappe drumherum muss,
+ *   · kein Zierrat: keine Zinnen, keine Nieten, keine Wimpel. Was teuer
+ *     aussieht, ist Zurueckhaltung, nicht Schmuck,
+ *   · viel Luft und ein grosser Sprung zwischen Ueberschrift und Fliesstext.
  *
- * Alles Gezeichnete ist Inline-SVG und CSS: null zusaetzliche Anfragen, null
- * Kilobyte Bilddaten, und es bleibt in jeder Groesse scharf.
+ * ── Bewegung (Entwurf „Einschlag") ────────────────────────────────────────
  *
- * ── Bewegung (Entwurf „Einschlag", vom Gruender gewaehlt) ─────────────────
- *
- *   · Der Anfang liegt in Schichten, die beim Scrollen unterschiedlich
- *     schnell laufen — Parallaxe wie bei Alto's Odyssey.
- *   · Kugeln fliegen quer durchs Bild; alle paar Sekunden zittert die
- *     Ueberschrift, als sei etwas eingeschlagen.
- *   · Die Welten-Kacheln heben sich beim Ueberfahren aus dem Rahmen.
+ * Geblieben: die Schichten im Anfang laufen beim Scrollen unterschiedlich
+ * schnell, und alle paar Sekunden zittert die Ueberschrift kurz, als sei etwas
+ * eingeschlagen. Weggefallen sind die quer fliegenden Kugeln — das war das
+ * verspielteste Element und trug am wenigsten.
  *
  * `prefers-reduced-motion` friert jede Bewegung ein.
  */
@@ -40,250 +38,241 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
-  --grund:  #05060d;
-  --tiefer: #0a0c18;
-  --ink:    #ffffff;
-  --ink2:   #a9aec4;
-  --ink3:   #6f7490;
-  --strich: #1a1d31;
+  --grund:  #06070c;
+  --tiefer: #0b0d14;
+  --ink:    #f7f8fb;
+  --ink2:   #9aa1b4;
+  --ink3:   #616879;
+  --strich: #191c26;
 
   --blau:  #4d8dff;
   --rot:   #ff4d4d;
-  --gruen: #3ddc8a;
   --gold:  #ffc233;
-  --stein: #c8b28a;          /* Farbe des Zierwerks: heller Sandstein */
 
-  --w-seite: 1120px;
+  --w-seite: 1180px;
   --f: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
        system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Ein weicher, tiefer Schatten — nicht mehrere harte. Das ist der
+     Unterschied zwischen „teuer" und „Baukasten". */
+  --schatten: 0 2px 6px rgba(0,0,0,.5), 0 30px 70px -28px rgba(0,0,0,.95);
 }
 
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: dark; }
 body {
   margin: 0; background: var(--grund); color: var(--ink); font-family: var(--f);
-  font-size: 18px; line-height: 1.52; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  font-size: 18px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: inherit; }
-h1, h2, h3 { margin: 0; font-weight: 900; letter-spacing: -.025em; line-height: 1.04; }
-p { margin: 0 0 .85em; max-width: 42ch; color: var(--ink2); }
+h1, h2, h3 { margin: 0; font-weight: 900; letter-spacing: -.028em; line-height: 1.03; }
+p { margin: 0 0 .9em; max-width: 44ch; color: var(--ink2); }
 p:last-child { margin-bottom: 0; }
-.bahn { width: 100%; max-width: var(--w-seite); margin-inline: auto; padding-inline: 24px; }
+.bahn { width: 100%; max-width: var(--w-seite); margin-inline: auto; padding-inline: 26px; }
 .sprung { position: absolute; left: -9999px; background: var(--blau); color: #fff; padding: 10px 16px; z-index: 100; }
 .sprung:focus { left: 0; top: 0; }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
-/* ── Anfang: Schichten, Kugeln, Einschlag ──────────────────────────────── */
+/* Kleinueberschrift: nur Sperrung und Farbe. Kein Band, kein Wimpel. */
+.label {
+  font-size: 12px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
+  color: var(--ink3); margin-bottom: 16px;
+}
+
+/* ── Anfang ────────────────────────────────────────────────────────────
+   Das echte Brett fuellt den Bildschirm, ein Schleier macht den Text
+   lesbar. Kein Aufbau drumherum — das Spiel selbst ist das Plakat. */
 .buehne {
-  position: relative; min-height: 94vh; overflow: hidden;
-  display: flex; align-items: center; justify-content: center; text-align: center;
-  padding-block: clamp(44px, 7vw, 84px);
+  position: relative; min-height: 92vh; overflow: hidden;
+  display: flex; align-items: center;
+  padding-block: clamp(60px, 9vw, 110px);
 }
-.schicht { position: absolute; inset: -12% -6%; pointer-events: none; }
-.s1 {
+.buehne-gitter { display: grid; gap: clamp(32px, 5vw, 72px); grid-template-columns: 1fr; align-items: center; width: 100%; }
+@media (min-width: 900px) { .buehne-gitter { grid-template-columns: minmax(0, 1fr) minmax(0, 340px); } }
+
+/* **Der Hintergrund ist ABSICHTLICH unscharf.** Die Aufnahme ist 485 px breit;
+   ueber einen 1280er Bildschirm gezogen waere sie einfach hochskaliert und
+   matschig. Weichgezeichnet und abgedunkelt wird daraus Tiefe statt eines
+   Mangels — die Schaerfe traegt das Bild im Vordergrund, das in seiner
+   natuerlichen Groesse steht. */
+.hintergrund { position: absolute; inset: -4%; }
+.hintergrund img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%;
+  filter: blur(11px) brightness(.42) saturate(1.25); transform: scale(1.12);
+}
+/* Der Schleier: oben dunkel fuer die Kopfzeile, unten fast deckend fuer den
+   Text, in der Mitte offen, damit das Brett sichtbar bleibt. */
+.hintergrund::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    rgba(6,7,12,.80) 0%, rgba(6,7,12,.18) 34%,
+    rgba(6,7,12,.86) 78%, var(--grund) 100%);
+}
+.sterne {
+  position: absolute; inset: -10%; pointer-events: none;
   background:
-    radial-gradient(2px 2px at 12% 22%, rgba(255,255,255,.55), transparent),
-    radial-gradient(2px 2px at 68% 14%, rgba(255,255,255,.40), transparent),
-    radial-gradient(1.5px 1.5px at 34% 68%, rgba(255,255,255,.45), transparent),
-    radial-gradient(2px 2px at 84% 74%, rgba(255,255,255,.35), transparent),
-    radial-gradient(1.5px 1.5px at 52% 44%, rgba(255,255,255,.30), transparent),
-    radial-gradient(2px 2px at 22% 86%, rgba(255,255,255,.30), transparent);
-  animation: treiben 26s linear infinite;
+    radial-gradient(1.6px 1.6px at 14% 18%, rgba(255,255,255,.45), transparent),
+    radial-gradient(1.6px 1.6px at 72% 12%, rgba(255,255,255,.32), transparent),
+    radial-gradient(1.2px 1.2px at 38% 62%, rgba(255,255,255,.35), transparent),
+    radial-gradient(1.6px 1.6px at 88% 70%, rgba(255,255,255,.28), transparent);
+  animation: treiben 30s linear infinite;
 }
-/* Die gezeichnete Landschaft des Anfangs sitzt als eigene Schicht unten. */
-.s2 { inset: auto -6% -2% -6%; height: 62%; animation: treiben2 18s ease-in-out infinite alternate; }
-.s2 svg { width: 100%; height: 100%; display: block; }
-.s3 { background: radial-gradient(76% 64% at 50% 42%, transparent 34%, rgba(5,6,13,.92) 100%); }
-@keyframes treiben  { from { transform: none } to { transform: translate3d(-40px, 18px, 0) } }
-@keyframes treiben2 { from { transform: translateY(10px) } to { transform: translateY(-10px) } }
+@keyframes treiben { from { transform: none } to { transform: translate3d(-34px, 16px, 0) } }
 @supports (animation-timeline: scroll()) {
-  .s1 { animation: tiefe1 linear both; animation-timeline: scroll(root block); }
-  .s2 { animation: tiefe2 linear both; animation-timeline: scroll(root block); }
+  .sterne      { animation: tiefe1 linear both; animation-timeline: scroll(root block); }
+  .hintergrund { animation: tiefe2 linear both; animation-timeline: scroll(root block); }
 }
-@keyframes tiefe1 { to { transform: translateY(-80px) scale(1.08) } }
-@keyframes tiefe2 { to { transform: translateY(-120px) } }
+@keyframes tiefe1 { to { transform: translateY(-70px) scale(1.06) } }
+@keyframes tiefe2 { to { transform: translateY(-110px) scale(1.05) } }
 
 .buehne .bahn { position: relative; z-index: 2; }
 
 .marke {
-  font-size: clamp(46px, 12vw, 124px); line-height: .86; letter-spacing: -.035em;
-  text-transform: uppercase; animation: zittern 7s 1.6s ease-in-out infinite;
+  font-size: clamp(44px, 11vw, 116px); line-height: .88; letter-spacing: -.04em;
+  text-transform: uppercase; animation: zittern 8s 2s ease-in-out infinite;
 }
-/* Der Einschlag: ein kurzer harter Stoss, dann lange Ruhe. Gleichmaessiges
-   Wackeln waere Zierrat — so liest es sich als Treffer. */
+/* Ein kurzer harter Stoss, dann lange Ruhe — gleichmaessiges Wackeln waere
+   Zierrat, so liest es sich als Treffer. */
 @keyframes zittern {
-  0%, 88%, 100% { transform: none }
-  89% { transform: translate(-7px, 3px) rotate(-.5deg) }
-  91% { transform: translate(6px, -3px) rotate(.4deg) }
-  93% { transform: translate(-3px, 2px) }
-  95% { transform: translate(2px, -1px) }
+  0%, 90%, 100% { transform: none }
+  91% { transform: translate(-6px, 3px) rotate(-.4deg) }
+  93% { transform: translate(5px, -2px) rotate(.3deg) }
+  95% { transform: translate(-2px, 1px) }
   97% { transform: none }
 }
 .marke .b { color: var(--blau); }
 .marke .r { color: var(--rot); }
-.zeile { font-size: clamp(20px, 3vw, 30px); font-weight: 800; color: var(--ink);
-  margin: 26px auto 0; max-width: 21ch; }
-.dazu { margin: 14px auto 0; max-width: 40ch; font-size: 17px; }
 
-.kugel { position: absolute; z-index: 1; width: 10px; height: 10px; border-radius: 50%;
-  background: var(--gold); box-shadow: 0 0 16px 3px rgba(255,194,51,.8); }
-.k1 { top: 26%; animation: quer 5.2s .4s linear infinite; }
-.k2 { top: 60%; width: 7px; height: 7px; animation: quer 6.8s 2.1s linear infinite; }
-.k3 { top: 42%; width: 12px; height: 12px; background: var(--rot);
-  box-shadow: 0 0 18px 4px rgba(255,77,77,.7); animation: quer 8s 4.4s linear infinite; }
-@keyframes quer { 0% { left: -4%; opacity: 0 } 6% { opacity: 1 } 88% { opacity: 1 } 100% { left: 104%; opacity: 0 } }
+.buehne .schirm { max-width: 340px; margin-inline: auto; }
+.zeile { font-size: clamp(20px, 2.8vw, 29px); font-weight: 700; color: var(--ink);
+  margin: 24px 0 0; max-width: 22ch; }
+.dazu { margin: 14px 0 0; max-width: 42ch; font-size: 17px; }
 
 /* ── Knopf ─────────────────────────────────────────────────────────────── */
 .knopf {
   display: inline-flex; align-items: center; gap: 11px; margin-top: 30px;
   background: var(--ink); color: var(--grund); text-decoration: none;
   font-weight: 800; font-size: 16px; padding: 16px 32px; border-radius: 100px;
-  transition: transform .18s, box-shadow .18s;
+  transition: transform .2s, box-shadow .2s;
 }
-.knopf:hover { transform: translateY(-3px); box-shadow: 0 16px 38px -12px rgba(255,255,255,.5); }
+.knopf:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -14px rgba(255,255,255,.55); }
 .knopf svg { width: 19px; height: 19px; }
 .neben { display: block; margin-top: 14px; color: var(--ink2); font-size: 15px; }
 .neben a { color: var(--ink); }
 
 /* ── Abschnitte ────────────────────────────────────────────────────────── */
-.welt { padding-block: clamp(52px, 8vw, 108px); border-top: 1px solid var(--strich); position: relative; }
+.welt { padding-block: clamp(64px, 10vw, 132px); border-top: 1px solid var(--strich); }
 .welt-tief { background: var(--tiefer); }
-h2 { font-size: clamp(29px, 5vw, 52px); max-width: 17ch; margin-bottom: 18px; }
+h2 { font-size: clamp(30px, 5.2vw, 56px); max-width: 16ch; margin-bottom: 20px; }
 h2 em { font-style: normal; color: var(--rot); }
 
-/* Die Kleinüberschrift sitzt auf einem Band, nicht nackt in der Luft.
-   Zwei Zipfel links und rechts machen daraus ein Schild. */
-.band {
-  display: inline-flex; align-items: center; position: relative;
-  font-size: 12px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase;
-  color: #14100a; background: var(--stein); padding: 6px 16px; margin-bottom: 18px;
+/* ── Die Darstellung der Aufnahmen ───────────────────────────────────────
+   Ein Haarstrich und ein weicher, tiefer Schatten. Keine Telefon-Attrappe:
+   die Aufnahme IST ein Telefonbildschirm, ein gezeichneter Rahmen drumherum
+   erzaehlte nur den Vertriebsweg. Der Radius ist derselbe, den die
+   Oberflaeche des Spiels benutzt. */
+.schirm {
+  position: relative; overflow: hidden; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: var(--schatten);
+  background: #0b0d14;
 }
-.band::before, .band::after {
-  content: ""; position: absolute; top: 0; bottom: 0; width: 9px; background: var(--stein);
-}
-.band::before { left: -9px; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
-.band::after  { right: -9px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.schirm img { width: 100%; }
 
-/* ── Zierrahmen: Zinnen oben, Nieten in den Ecken ──────────────────────── */
-.rahmen { position: relative; padding: 13px 9px 9px; background: #0d1020; }
-.rahmen::before {                 /* die Zinnenkante */
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 13px;
-  background: repeating-linear-gradient(90deg,
-    var(--stein) 0 11px, transparent 11px 22px);
-  opacity: .85;
+/* ── Welten ────────────────────────────────────────────────────────────── */
+.welten {
+  display: flex; gap: 22px; overflow-x: auto; padding: 8px 26px 26px;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
 }
-.rahmen::after {                  /* der umlaufende Strich mit Eck-Nieten */
-  content: ""; position: absolute; inset: 13px 0 0; pointer-events: none;
-  border: 2px solid var(--stein); opacity: .55;
-  background:
-    radial-gradient(circle at 7px 7px, var(--stein) 2px, transparent 2.5px),
-    radial-gradient(circle at calc(100% - 7px) 7px, var(--stein) 2px, transparent 2.5px),
-    radial-gradient(circle at 7px calc(100% - 7px), var(--stein) 2px, transparent 2.5px),
-    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), var(--stein) 2px, transparent 2.5px);
-}
-
-/* ── Gezeichnete Welten ────────────────────────────────────────────────
-   Eine Szene, sieben Farbsaetze. Die Werte stammen aus WORLD_THEMES in
-   src/engine/terrain.ts — dieselbe Welt, nur gemalt statt geknipst. */
-.welten { display: flex; gap: 18px; overflow-x: auto; padding: 6px 24px 22px;
-  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
-.welten::-webkit-scrollbar { height: 8px; }
-.welten::-webkit-scrollbar-thumb { background: #232741; border-radius: 8px; }
-.kachel { flex: 0 0 auto; width: 210px; scroll-snap-align: center;
-  transition: transform .3s cubic-bezier(.34,1.4,.64,1); }
-.kachel:hover { transform: translateY(-10px); }
-.szene {
-  position: relative; aspect-ratio: 3 / 4; overflow: hidden;
-  background: linear-gradient(180deg, var(--h1) 0%, var(--h2) 62%, var(--h3) 100%);
-}
-.szene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-/* Der Fluss glimmt — in jeder Welt in seiner eigenen Farbe. */
-.szene .fluss { filter: drop-shadow(0 0 6px var(--fluss)); }
+.welten::-webkit-scrollbar { height: 6px; }
+.welten::-webkit-scrollbar-thumb { background: #222633; border-radius: 6px; }
+.kachel { flex: 0 0 auto; width: 250px; scroll-snap-align: center; }
+.kachel .schirm { transition: transform .35s cubic-bezier(.22,.8,.3,1), box-shadow .35s; }
+.kachel:hover .schirm { transform: translateY(-8px); box-shadow: 0 2px 6px rgba(0,0,0,.5), 0 44px 80px -30px rgba(0,0,0,1); }
 .kachel b {
-  display: block; text-align: center; margin-top: 12px;
-  font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase;
+  display: block; margin-top: 16px;
+  font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
   color: var(--ink2);
 }
-.w-kristall { --h1:#12304a; --h2:#0a1827; --h3:#060e1a; --berg:#3a4a63; --gipfel:#e0f2fe; --fluss:#22d3ee; --prop:#7dd3fc; }
-.w-frost    { --h1:#20355a; --h2:#111e34; --h3:#0a1322; --berg:#64748b; --gipfel:#ffffff; --fluss:#93c5fd; --prop:#b8c9dd; }
-.w-glut     { --h1:#4d3015; --h2:#2a1a0c; --h3:#160d05; --berg:#7a5a30; --gipfel:#fde68a; --fluss:#2dd4bf; --prop:#65803a; }
-.w-vulkan   { --h1:#3a1a12; --h2:#1c0d09; --h3:#0d0504; --berg:#511f14; --gipfel:#fb923c; --fluss:#f97316; --prop:#fb923c; }
-.w-moor     { --h1:#223a29; --h2:#121e16; --h3:#090f0b; --berg:#2e4522; --gipfel:#d9f99d; --fluss:#a3e635; --prop:#6f9440; }
-.w-herbst   { --h1:#3a2716; --h2:#20140b; --h3:#110a05; --berg:#4a2f18; --gipfel:#fde047; --fluss:#38bdf8; --prop:#d97b2e; }
-.w-astral   { --h1:#2e1b4d; --h2:#180e2a; --h3:#0b0616; --berg:#3b2360; --gipfel:#f0abfc; --fluss:#d946ef; --prop:#c084fc; }
 
-/* ── Streifen echter Aufnahmen ─────────────────────────────────────────── */
-.streifen { display: flex; gap: 16px; overflow-x: auto; padding: 6px 0 18px;
-  scroll-snap-type: x mandatory; margin-top: clamp(24px, 4vw, 38px); }
-.streifen figure { margin: 0; flex: 0 0 auto; width: 186px; scroll-snap-align: start; }
-.streifen img { width: 100%; }
-.streifen figcaption { margin-top: 11px; font-size: 12px; font-weight: 800;
-  letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); }
+/* Zwei Aufnahmen nebeneinander in der rechten Spalte eines Zweispalters. */
+.doppel { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.doppel .schirm { max-width: none; }
 
-/* ── Gezeichnete Karten (Kanonen, Einblicke) ──────────────────────────── */
-.karten { display: grid; gap: clamp(18px, 3vw, 28px);
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: clamp(26px, 4vw, 42px); }
-.karte { position: relative; }
-.karte .bild { display: grid; place-items: center; aspect-ratio: 4 / 3; }
-.karte .bild svg { width: 72%; height: 72%; }
-.karte h3 { font-size: 20px; margin: 16px 0 7px; }
-.karte p { font-size: 16px; max-width: 34ch; }
-.preis { display: inline-block; margin-top: 12px; font-size: 13px; font-weight: 800;
-  letter-spacing: .06em; color: var(--gold); border: 1px solid rgba(255,194,51,.35);
-  padding: 4px 11px; font-variant-numeric: tabular-nums; }
+/* ── Zweispalter: Text neben einer grossen Aufnahme ───────────────────── */
+.paar { display: grid; gap: clamp(30px, 5vw, 70px); grid-template-columns: 1fr; align-items: center; }
+@media (min-width: 880px) {
+  .paar { grid-template-columns: minmax(0, 1fr) minmax(0, 330px); }
+  .paar-gedreht > :first-child { order: 2; }
+}
+.paar .schirm { max-width: 330px; margin-inline: auto; }
+
+/* ── Zwei Aufnahmen nebeneinander ─────────────────────────────────────── */
+.zwei { display: grid; gap: clamp(26px, 4vw, 52px); grid-template-columns: 1fr;
+  margin-top: clamp(30px, 4vw, 48px); }
+@media (min-width: 760px) { .zwei { grid-template-columns: 1fr 1fr; max-width: 860px; } }
+.zwei figure { margin: 0; }
+.zwei .schirm { max-width: 300px; }
+.zwei figcaption { margin-top: 18px; }
+.zwei b { display: block; font-size: 13px; font-weight: 700; letter-spacing: .2em;
+  text-transform: uppercase; margin-bottom: 8px; }
+.zwei span { color: var(--ink2); font-size: 17px; display: block; max-width: 32ch; }
+
+/* ── Vier Aufnahmen im Raster ─────────────────────────────────────────── */
+.vier { display: grid; gap: clamp(24px, 3.4vw, 40px);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: clamp(30px, 4vw, 48px); }
+.vier figure { margin: 0; }
+.vier figcaption { margin-top: 18px; }
+.vier b { display: block; font-size: 13px; font-weight: 700; letter-spacing: .2em;
+  text-transform: uppercase; margin-bottom: 8px; }
+.vier span { color: var(--ink2); font-size: 16px; display: block; max-width: 34ch; }
+
+/* ── Zwei Kanonen: reiner Satz, kein Bild ─────────────────────────────── */
+.kanonen { display: grid; gap: clamp(26px, 4vw, 48px); grid-template-columns: 1fr;
+  margin-top: clamp(30px, 4vw, 46px); }
+@media (min-width: 760px) { .kanonen { grid-template-columns: 1fr 1fr; } }
+.kanone { border-top: 2px solid var(--rot); padding-top: 22px; }
+.kanone.violett { border-top-color: #a78bfa; }
+.kanone h3 { font-size: 21px; margin-bottom: 10px; }
+.kanone p { font-size: 16.5px; max-width: 36ch; }
+.preis { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 700;
+  letter-spacing: .06em; color: var(--gold); border: 1px solid rgba(255,194,51,.3);
+  padding: 5px 12px; border-radius: 4px; font-variant-numeric: tabular-nums; }
 
 /* ── Haarstrich-Listen ─────────────────────────────────────────────────── */
-.liste { margin: clamp(24px, 4vw, 38px) 0 0; padding: 0; list-style: none; }
-.liste li { border-top: 1px solid var(--strich); padding: 20px 0; display: grid; gap: 4px 28px; }
-@media (min-width: 720px) { .liste li { grid-template-columns: 230px 1fr; } }
+.liste { margin: clamp(28px, 4vw, 42px) 0 0; padding: 0; list-style: none; }
+.liste li { border-top: 1px solid var(--strich); padding: 24px 0; display: grid; gap: 6px 32px; }
+@media (min-width: 720px) { .liste li { grid-template-columns: 240px 1fr; } }
 .liste li:last-child { border-bottom: 1px solid var(--strich); }
-.liste b { font-size: 14px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.liste span { color: var(--ink2); font-size: 17px; max-width: 52ch; }
+.liste b { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.liste span { color: var(--ink2); font-size: 17px; max-width: 54ch; }
 
 /* ── Die Regel ─────────────────────────────────────────────────────────── */
-.regel { display: grid; gap: clamp(26px, 4vw, 56px); grid-template-columns: 1fr; align-items: center; }
-@media (min-width: 820px) { .regel { grid-template-columns: minmax(0,1fr) 260px; } }
-.mauer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 232px; margin-inline: auto; }
-.mauer i { aspect-ratio: 1; background: #141828; border-radius: 2px; }
-.mauer i.w { background: #b34a3c; }
-.mauer i.k { background: #cbd5e1; }
-.mauer i.l { background: transparent; outline: 2px dashed var(--rot); outline-offset: -2px;
-  animation: puls 1.6s ease-in-out infinite; }
-.mauer i.z { animation: wackel 3.4s ease-in-out infinite; }
-.mauer i.z:nth-of-type(2n) { animation-delay: .4s; }
-@keyframes puls { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
-@keyframes wackel { 0%,92%,100% { transform: none }
-  94% { transform: translate(2px,-2px) rotate(3deg) } 97% { transform: translate(-1px,1px) rotate(-2deg) } }
-
-/* ── Zu zweit / zu dritt: hier tragen echte Aufnahmen die Aussage ─────── */
-.geraet { display: grid; gap: clamp(24px, 4vw, 46px); grid-template-columns: 1fr;
-  margin-top: clamp(26px, 4vw, 42px); }
-@media (min-width: 720px) { .geraet { grid-template-columns: 1fr 1fr; max-width: 800px; } }
-.geraet figure { margin: 0; }
-.geraet .rahmen { max-width: 252px; }
-.geraet img { width: 100%; }
-.geraet figcaption { margin-top: 15px; }
-.geraet b { display: block; font-size: 14px; font-weight: 800; letter-spacing: .15em;
-  text-transform: uppercase; margin-bottom: 6px; }
-.geraet span { color: var(--ink2); font-size: 17px; display: block; max-width: 30ch; }
+.mauer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 250px; margin-inline: auto; }
+.mauer i { aspect-ratio: 1; background: #11141d; border-radius: 3px; }
+.mauer i.w { background: #9c4236; }
+.mauer i.k { background: #c3ccd9; }
+.mauer i.l { background: transparent; border: 2px dashed var(--rot);
+  animation: puls 2s ease-in-out infinite; }
+@keyframes puls { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
 
 /* ── Abschluss ─────────────────────────────────────────────────────────── */
 .mitte { text-align: center; }
-.mitte .zeile, .mitte p { margin-inline: auto; }
-.mitte .band { margin-inline: auto; }
+.mitte .zeile, .mitte p, .mitte .label { margin-inline: auto; }
+.mitte .zeile { max-width: 26ch; }
 .angaben { display: flex; flex-wrap: wrap; justify-content: center;
-  margin: clamp(32px, 5vw, 50px) auto 0; border-top: 1px solid var(--strich); max-width: 720px; }
-.angaben div { flex: 1 1 140px; padding: 20px 12px; border-bottom: 1px solid var(--strich); }
-.angaben b { display: block; font-size: 19px; font-weight: 900; }
-.angaben span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--ink3); }
+  margin: clamp(36px, 5vw, 56px) auto 0; border-top: 1px solid var(--strich); max-width: 760px; }
+.angaben div { flex: 1 1 150px; padding: 22px 12px; border-bottom: 1px solid var(--strich); }
+.angaben b { display: block; font-size: 19px; font-weight: 800; }
+.angaben span { display: block; margin-top: 5px; font-size: 11px; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--ink3); }
 
-.fuss { border-top: 1px solid var(--strich); padding-block: 30px 46px; }
-.fuss .bahn { display: flex; flex-wrap: wrap; gap: 12px 26px; align-items: center; justify-content: space-between; }
-.fuss a, .fuss span { font-size: 12px; font-weight: 700; letter-spacing: .14em;
+.fuss { border-top: 1px solid var(--strich); padding-block: 32px 50px; }
+.fuss .bahn { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; justify-content: space-between; }
+.fuss a, .fuss span { font-size: 12px; font-weight: 600; letter-spacing: .16em;
   text-transform: uppercase; color: var(--ink3); text-decoration: none; }
 .fuss a:hover { color: var(--ink); }
-.fuss nav { display: flex; flex-wrap: wrap; gap: 12px 22px; }
+.fuss nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

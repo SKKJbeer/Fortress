@@ -106,10 +106,7 @@ async function fuerZiel(browser, ziel) {
     console.log('   ' + ziel.out + '/' + datei);
   };
 
-  // Das Menuebild braucht nur der Store. Die Website zeigt seit der
-  // gezeichneten Fassung keine Menue-Aufnahme mehr — und jede Datei in
-  // `bilder/` zaehlt dort auf das Gewichtslimit der Pruefung.
-  if (ziel.name !== 'website') await shot('menu.png');
+  await shot('menu.png');
   await click(p, ['LOKAL']); await p.waitForTimeout(250);
   await click(p, ['gegen Bot', 'vs Bot']); await p.waitForTimeout(300);
   await click(p, ['Mittel']);
@@ -215,6 +212,92 @@ async function lokalePartie(browser, ziel, spieler) {
   await ctx.close();
 }
 
+// Ein Bild je WELT — nur das Brett, ohne Kopfzeile und Leiste.
+//
+// Die Welt haengt am Terrain-Seed (`worldThemeOf(seed) = seed % 7`), und der
+// ist bei jedem lokalen Spiel zufaellig. Einen Seed vorzugeben hiesse, dafuer
+// Spielcode zu aendern — fuer Werbebilder der falsche Preis. Also wird
+// gewuerfelt, bis alle sieben einmal dran waren: Das Spiel verraet die Welt
+// ueber den gesicherten Haken `__waterTheme().name`.
+//
+// Aufgenommen wird NUR das Spielfeld (`canvas`). Als Kachel in einer Galerie
+// traegt das Brett die Aussage; Kopfzeile und Bauteil-Leiste wiederholen sich
+// in jeder Welt und lenken ab.
+async function welten(browser, ziel) {
+  const out = path.join(ROOT, ziel.out);
+  fs.mkdirSync(out, { recursive: true });
+  // Kleiner und staerker komprimiert als die Telefonbilder: Sieben Kacheln
+  // nebeneinander duerfen zusammen nicht so viel wiegen wie die ganze uebrige
+  // Seite. Angezeigt werden sie rund 200 px breit.
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 }, deviceScaleFactor: 1.25,
+    isMobile: true, hasTouch: true, serviceWorkers: 'block'
+  });
+  const p = await ctx.newPage();
+  await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
+
+  const gesehen = new Set();
+  for (let versuch = 0; versuch < 60 && gesehen.size < 7; versuch++) {
+    await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+    await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+    await p.waitForTimeout(700);
+    await click(p, ['LOKAL']); await p.waitForTimeout(220);
+    await click(p, ['2 Spieler']);
+    await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
+    // Das Phasen-Schild wegwarten — es liegt sonst ueber dem Brett.
+    const frei = await warteAuf(p, async () =>
+      await p.evaluate(() => !document.querySelector('div[style*="phasebanner"]')), 12000);
+    if (!frei) continue;
+    const name = await p.evaluate(() => (window.__waterTheme && window.__waterTheme() || {}).name || null);
+    if (!name || gesehen.has(name)) continue;
+    gesehen.add(name);
+    const datei = 'welt-' + name.toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '-') + '.jpg';
+    await p.locator('canvas').screenshot({ path: path.join(out, datei), type: 'jpeg', quality: 68 });
+    console.log('   ' + ziel.out + '/' + datei + '  (' + name + ')');
+  }
+  if (gesehen.size < 7) {
+    console.log('   ::warning::nur ' + gesehen.size + ' von 7 Welten erwischt: '
+      + [...gesehen].join(', '));
+  }
+  await ctx.close();
+}
+
+// Die Menue-Fenster, die das Spiel sonst nirgends zeigt: Schmiede, Gold-Shop,
+// Auszeichnungen, Tagesaufgaben. Sie tragen die Merkmale, von denen man auf
+// einem Brett-Bildschirmfoto nichts sieht.
+async function fenster(browser, ziel) {
+  const out = path.join(ROOT, ziel.out);
+  const ctx = await browser.newContext({
+    viewport: { width: ziel.w, height: ziel.h }, deviceScaleFactor: ziel.scale,
+    isMobile: true, hasTouch: true, serviceWorkers: 'block'
+  });
+  const p = await ctx.newPage();
+  await p.addInitScript(PROF); await p.addInitScript(SPEED);
+  await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+  await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+  await p.waitForTimeout(1400);
+
+  const auf = (teil) => p.evaluate((t) => {
+    const b = [...document.querySelectorAll('button')]
+      .find(x => (x.getAttribute('title') || '').startsWith(t));
+    if (b) { b.click(); return true; } return false;
+  }, teil);
+  const zu = () => p.keyboard.press('Escape');
+
+  for (const [titel, datei] of [['Schmiede', 'schmiede'], ['Gold-Shop', 'goldshop'],
+                                ['Achievements', 'erfolge'], ['Tagesaufgaben', 'aufgaben']]) {
+    if (!(await auf(titel))) { console.log('   ::warning::Knopf "' + titel + '" nicht gefunden'); continue; }
+    await p.waitForTimeout(900);
+    await p.screenshot({ path: path.join(out, datei + '.jpg'), type: 'jpeg', quality: 78 });
+    console.log('   ' + ziel.out + '/' + datei + '.jpg');
+    await zu(); await p.waitForTimeout(500);
+  }
+  await ctx.close();
+}
+
 (async () => {
   // Ein Ziel allein aufnehmen: `node tools/make-screenshots.cjs website`.
   // Alle fuenf dauern rund zehn Minuten — wer nur die Website-Bilder braucht,
@@ -233,6 +316,8 @@ async function lokalePartie(browser, ziel, spieler) {
     if (ziel.name === 'website') {
       await lokalePartie(browser, ziel, 2);
       await lokalePartie(browser, ziel, 3);
+      await fenster(browser, ziel);
+      await welten(browser, ziel);
     }
   }
   await browser.close();

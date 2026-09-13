@@ -10,7 +10,7 @@ Pages getrennt: Das Spiel bleibt, wo es ist, die Website wirbt dafür.
 |---|---|
 | `docs/website/index.html` | Die Seite. Von Hand geschrieben, kein Bauwerkzeug. |
 | `docs/website/stil.css` | Eine Stildatei. Keine fremde Schrift, kein fremdes Skript. |
-| `docs/website/bilder/*.jpg` | Fuenf Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`). Alles Uebrige ist gezeichnet — siehe unten. |
+| `docs/website/bilder/*.jpg` | 17 Bildschirmfotos aus dem echten Spiel, erzeugt von `tools/make-screenshots.cjs` (Ziel `website`) — siehe unten. |
 | `public/{impressum,privacy,agb}.html` | Die Rechtstexte. **Eine Quelle** — sie gehören zum Spiel und werden für die Website nur kopiert. |
 | `scripts/website-bauen.sh` | Stellt beides zum Auslieferordner zusammen. |
 | `scripts/check-website.mjs` | Sagt nein, wenn etwas fehlt. |
@@ -32,11 +32,12 @@ bewegt sich, so wie das Spiel sich bewegt.**
 
 - Der Anfang besteht aus **Schichten**, die beim Scrollen unterschiedlich
   schnell laufen — Parallaxe wie bei Alto's Odyssey (dort neun Ebenen).
-- **Kugeln fliegen quer durchs Bild**, und alle paar Sekunden zittert die
-  Überschrift, als sei etwas eingeschlagen. Gleichmässiges Wackeln wäre
-  Zierrat; ein kurzer harter Stoss mit langer Ruhe liest sich als Treffer.
-- Die **sieben Welten** stehen als grosse, gezeichnete Kacheln in einer eigenen
-  Galerie und heben sich beim Überfahren aus dem Rahmen.
+- Alle paar Sekunden **zittert die Überschrift**, als sei etwas eingeschlagen.
+  Gleichmässiges Wackeln wäre Zierrat; ein kurzer harter Stoss mit langer Ruhe
+  liest sich als Treffer. (Die quer fliegenden Kugeln des Entwurfs sind weg —
+  das war das verspielteste Element und trug am wenigsten.)
+- Die **sieben Welten** stehen als grosse Kacheln in einer eigenen Galerie
+  und heben sich beim Überfahren leicht an.
 
 Alles aus CSS. Kein Skript, keine Bibliothek, keine fremde Anfrage.
 `prefers-reduced-motion` friert jede Bewegung ein.
@@ -51,33 +52,42 @@ Die anderen fünf Entwürfe bleiben in `docs/entwuerfe/` liegen. Sie werden
 **nicht** ausgeliefert (das Bauskript kopiert nur `docs/website/`) und sind die
 Begründung dafür, warum es diese Fassung geworden ist.
 
-## Gezeichnet statt abfotografiert
+## Echte Aufnahmen, sorgfältig dargestellt
 
-Die Fassung davor war eine Bildschirmfoto-Galerie: achtzehn Aufnahmen aus dem
-Spiel, ordentlich aufgereiht. Das zeigt, was da ist, und macht keine Lust
-darauf.
+Eine Zwischenfassung hatte die sieben Welten selbst gezeichnet — Dreiecke als
+Berge, Rechtecke als Burgen. Das Urteil des Gründers war „kindlich", und es war
+richtig. Die beste Grafik in diesem Projekt ist die, die **das Spiel selbst
+rendert**: Steintexturen, glimmende Flüsse, Burgdächer, Ambient-Partikel.
+Dagegen kommt eine handgesetzte SVG-Landschaft nicht an.
 
-Jetzt trägt die Seite **Zeichnungen**:
+Die Arbeit steckt deshalb nicht in eigenen Zeichnungen, sondern in der
+**Darstellung**:
 
-- Die **sieben Welten** sind gemalte Szenen — Himmel, Berge, ein glimmender
-  Fluss, zwei Burgen mit Zinnen, Requisiten je nach Welt: Kristalle, Bäume,
-  Kakteen, Glutpunkte. Eine Szene, sieben Farbsätze; die Werte stammen aus
-  `WORLD_THEMES` in `src/engine/terrain.ts`. Es ist also nicht erfunden, nur
-  nicht abfotografiert.
-- Ebenfalls gezeichnet: die **Landschaft im Anfang**, die **beiden Kanonen**
-  und die **vier Einblicke** (Amboss, Münzstapel, Pokal, Merkzettel).
-- Der **Zierrahmen** (`.rahmen`) setzt Zinnen auf die Oberkante und Nieten in
-  die vier Ecken; die Kleinüberschriften sitzen auf einem **Band** mit zwei
-  Zipfeln statt nackt in der Luft.
+- **Gross gezeigt statt klein aufgereiht.** Die Welten stehen als 250er
+  Kacheln, die Aufnahmen im Text als 330er.
+- **Ein Haarstrich und ein weicher, tiefer Schatten.** Das liest sich als
+  Bildschirm, ohne dass eine Telefon-Attrappe drumherum muss.
+- **Nie hochskaliert.** Jedes Bild steht kleiner, als es aufgenommen wurde —
+  das ist der Unterschied zwischen scharf und matschig. Der Hintergrund im
+  Anfang ist die einzige Ausnahme, und der ist *absichtlich* weichgezeichnet
+  und abgedunkelt: So wird aus dem Grössenmangel Tiefe.
+- **Kein Zierrat.** Keine Zinnen, keine Nieten, keine Wimpel. Was teuer
+  aussieht, ist Zurückhaltung.
 
-Alles Inline-SVG und CSS: **null zusätzliche Anfragen, null Kilobyte
-Bilddaten**, und in jeder Grösse scharf.
+Die Bilder erzeugt `tools/make-screenshots.cjs website`:
 
-**Echte Aufnahmen stehen nur noch dort, wo sie die Aussage tragen:** bei „zu
-zweit und zu dritt an einem Gerät" sind die Bauteil-Felder unten im Bild der
-Beweis, dass zwei Leute gleichzeitig spielen — eine Zeichnung könnte das nur
-behaupten. Dazu ein kurzer Streifen „So sieht es wirklich aus". Macht fünf
-Bilder statt achtzehn, 512 kB statt 1097.
+| Bilder | Was |
+|---|---|
+| `menu/game/shoot/shop` | Menü und die Phasen, aus einem Bot-Selbstspiel |
+| `zwei/drei` | lokale Partien zu zweit und zu dritt |
+| `schmiede/goldshop/erfolge/aufgaben` | die Menüfenster, die man auf einem Spielfeld nie sieht |
+| `welt-*.jpg` | **nur das Brett**, je einmal pro Welt |
+
+Die Welt hängt am Terrain-Seed (`worldThemeOf(seed) = seed % 7`) und ist bei
+jedem lokalen Spiel zufällig. Einen Seed vorzugeben hiesse, dafür Spielcode zu
+ändern — für Werbebilder der falsche Preis. Also würfelt das Werkzeug, bis alle
+sieben einmal dran waren; die Welt verrät der gesicherte Haken
+`__waterTheme().name`.
 
 
 ## Der TestFlight-Knopf
