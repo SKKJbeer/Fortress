@@ -150,6 +150,14 @@ Die Freigabe passiert außerhalb des Repositories, ändert also keine Datei und
 löst keinen Push aus. Deshalb läuft der Ablauf **einmal täglich** — sonst
 bliebe der Knopf weg, bis jemand von Hand nachfragt.
 
+Seit die Beta offen ist, steht im selben Riegel auch ein eigener Abschnitt
+**„In drei Schritten in der Beta"**: TestFlight holen, den Link auf dem Gerät
+öffnen, annehmen. Er nennt die Adresse zusätzlich **im Klartext**, weil ein
+Knopf allein dem nicht hilft, der die Seite am Rechner liest — der Beitritt
+passiert in der TestFlight-App auf dem Gerät, nicht im Browser. Ist die Beta
+zu, verschwindet der Abschnitt mitsamt den Knöpfen; beide Zustände sind örtlich
+durchgespielt (offen: vier Vorkommen des Links, zu: null).
+
 Die Gruppe heißt `Öffentlich` und wird von
 `scripts/asc-testflight.py --oeffentlich` angelegt (Actions → „App Store (Stand
 / Eintragen)" → Modus `oeffentlich`). Dasselbe Skript reicht den neuesten Bau

@@ -339,6 +339,16 @@ h2 em { font-style: normal; color: var(--rot); }
 .liste b { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 .liste span { color: var(--ink2); font-size: 17px; max-width: 54ch; }
 
+/* Die Beitritts-Adresse im Klartext: Wer die Seite am Rechner liest, kann sie
+   abtippen oder kopieren — ein Knopf allein hilft ihm nicht, weil der Beitritt
+   auf dem Geraet passieren muss. */
+.adresse {
+  display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .92em; color: var(--ink); background: rgba(255,255,255,.05);
+  border: 1px solid var(--strich); border-radius: 6px; padding: 2px 7px;
+  word-break: break-all;
+}
+
 /* ── Die Regel ─────────────────────────────────────────────────────────── */
 .mauer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 250px; margin-inline: auto; }
 .mauer i { aspect-ratio: 1; background: #11141d; border-radius: 3px; }
