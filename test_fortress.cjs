@@ -1996,7 +1996,7 @@ async function suiteIPad(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
   const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
-  console.log('\n' + '='.repeat(50) + '\nTEST: iPad\n' + '='.repeat(50));
+  console.log('\n' + '='.repeat(50) + '\nTEST: Apple-Geraetematrix (iPhone SE bis iPad 13 Zoll)\n' + '='.repeat(50));
 
   // ── 1) Das Querformat ist gesperrt (Info.plist, ohne Browser) ──────────
   {
@@ -2203,6 +2203,61 @@ async function suiteIPad(browser) {
           ? ok(`Bauteil-Vorschau: iPad ${pad.box} px ≥ iPhone ${tel.box} px (Leiste ${pad.leiste}/${tel.leiste}) ✓`)
           : fail(`Bauteil-Vorschau: iPad ${pad.box} px KLEINER als iPhone ${tel.box} px — das groessere Geraet zeigt weniger`))
       : fail(`Bauteil-Vorschau nicht gefunden (iPad ${pad.box}, iPhone ${tel.box})`);
+  }
+
+  // ── 7) Das Menue muss auf JEDEN Schirm passen ─────────────────────────
+  // Gemessen ist die Menuespalte 720 Punkte hoch. Auf einem iPhone SE bleiben
+  // nach Sicherheitsbereichen und Polsterung 615, auf einem 13 mini 696 — auf
+  // beiden lag die Fusszeile mit Impressum und Datenschutz unter der Kante.
+  // Geprueft wird das Ergebnis, nicht die Regel: Der Kasten darf nicht rollen.
+  for (const [w, h, name] of [[375, 667, 'iPhone SE'], [375, 812, 'iPhone 13 mini']]) {
+    const { ctx, page } = await starten(w, h);
+    try {
+      const m = await page.evaluate(() => {
+        const el = document.querySelector('.gross-spalte');
+        const k = el.parentElement;
+        return { ueber: k.scrollHeight - k.clientHeight,
+                 zoom: getComputedStyle(el).zoom,
+                 hoehe: Math.round(el.getBoundingClientRect().height) };
+      });
+      (m.ueber <= 1)
+        ? ok(`${name}: Menue passt ohne Rollen (Spalte ${m.hoehe}, zoom ${m.zoom}) ✓`)
+        : fail(`${name}: Menue ragt ${m.ueber} px hinaus — die Fusszeile liegt unter der Kante`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 8) Die Kopfzeile waechst mit der Breite ───────────────────────────
+  // Vorher war sie auf JEDEM iPhone 53 px hoch, vom SE mit 375 Punkten bis
+  // zum 16 Pro Max mit 440. Auf breiten Telefonen kostet das Wachsen nichts:
+  // Dort ist das Brett breitenbegrenzt, die Kopfzeile nimmt der Unterleiste.
+  {
+    const kopfUndBrett = async (w, h) => {
+      const { ctx, page } = await starten(w, h);
+      try {
+        await jsClick(page, ['LOKAL']);
+        await page.waitForTimeout(250);
+        await jsClick(page, ['2 Spieler']);
+        await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
+        await page.waitForTimeout(400);
+        return await page.evaluate(() => {
+          const hu = document.querySelector('#root > div');
+          const fluss = Array.from(hu.children)
+            .filter(e => ['static', 'relative'].includes(getComputedStyle(e).position));
+          const c = document.querySelector('canvas').getBoundingClientRect();
+          return { kopf: Math.round(fluss[0].getBoundingClientRect().height),
+                   brett: [Math.round(c.width), Math.round(c.height)] };
+        });
+      } finally { await ctx.close(); }
+    };
+    const schmal = await kopfUndBrett(375, 812);
+    const breit  = await kopfUndBrett(440, 956);
+    (breit.kopf > schmal.kopf)
+      ? ok(`Kopfzeile waechst mit der Breite: ${schmal.kopf} px bei 375, ${breit.kopf} px bei 440 ✓`)
+      : fail(`Kopfzeile bleibt gleich: ${schmal.kopf} px bei 375, ${breit.kopf} px bei 440`);
+    // Und sie darf das Brett auf dem breiten Telefon NICHT kleiner machen.
+    (breit.brett[0] >= 436)
+      ? ok(`Breites Telefon: Brett bleibt ${breit.brett[0]}x${breit.brett[1]} — die Kopfzeile nimmt der Leiste ✓`)
+      : fail(`Breites Telefon: Brett auf ${breit.brett[0]} px geschrumpft — die Kopfzeile nimmt dem Brett`);
   }
 
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))

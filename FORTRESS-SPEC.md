@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.88.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.89.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -5918,3 +5918,98 @@ stand eine Zeile ueber `const raum = …`. Das Bundle warf beim ersten Rendern
 schlug an, weil das Bauen gelingt — gefunden hat es der Blick auf die Seite.
 
 Tests gruen (Unit 70/70, E2E 386/386, Typen 0 Fehler).
+
+---
+
+## v3.89.0 — Die Darstellung auf allen Apple-Geraeten, vermessen
+
+Kein Umbau aus einer Idee heraus, sondern eine **Messung ueber die ganze
+Geraetematrix**: dreizehn Modelle vom iPhone SE bis zum iPad Pro 13", jeweils
+mit den echten Punktmassen UND den echten Sicherheitsbereichen, Hochformat.
+Aufgenommen wurden Brettgroesse, Brettanteil am Schirm, Hoehe der Kopfzeile,
+Hoehe der Unterleiste, Groesse der Bauteil-Vorschau, die Gasse neben dem Brett
+und der ungenutzte Rest unter der Huelle.
+
+### Was die Messung zeigte
+
+| Gerät | Schirm | Brett | % | Kopf | Leiste | Vorschau | Gasse |
+|---|---|---|---|---|---|---|---|
+| iPhone SE (3. Gen) | 375×667 | 345×534 | 73,7 | 53 | 52 | 24 | 15 |
+| iPhone 13 mini | 375×812 | 373×576 | 70,6 | 53 | 91 | 49 | 1 |
+| iPhone 14 / 13 | 390×844 | 388×599 | 70,6 | 53 | 103 | 61 | 1 |
+| iPhone 15 / 14 Pro | 393×852 | 391×604 | 70,5 | 53 | 93 | 51 | 1 |
+| iPhone 16 Pro | 402×874 | 400×618 | 70,4 | 53→**55** | 96 | 54 | 1 |
+| iPhone 14 Plus | 428×926 | 426×658 | 70,7 | 53→**58** | 121 | 76 | 1 |
+| iPhone 15 Pro Max | 430×932 | 428×661 | 70,6 | 53→**58** | 111 | 69 | 1 |
+| iPhone 16 Pro Max | 440×956 | 438×676 | 70,4 | 53→**60** | 116 | 74 | 1 |
+| iPad mini | 744×1133 | 589×911 | 63,7 | 69 | 100 | 58 | 78 |
+| iPad 10./11., Air 11" | 820×1180 | 616×953 | 60,7 | 69 | 105 | 63 | 102 |
+| iPad Pro 11" | 834×1210 | 634×980 | 61,6 | 69 | 108 | 66 | 100 |
+| iPad Air 13" / Pro 12,9" | 1024×1366 | 728×1126 | 58,6 | 69 | 118 | 76 | 148 |
+| iPad Pro 13" (M4) | 1032×1376 | 735×1136 | 58,8 | 69 | 118 | 76 | 149 |
+
+**Senkrecht ist ueberall alles verbraucht** — der Rest zwischen Huellenunterkante
+und Sicherheitsbereich ist auf allen dreizehn Geraeten 0. Die drei Reihen
+spannen ueber die volle Breite. Zwei echte Maengel kamen trotzdem heraus.
+
+### 1. Das Menue passte auf zwei Geraeten nicht auf den Schirm
+
+Die Menuespalte ist 720 Punkte hoch. Nach Sicherheitsbereichen und Polsterung
+bleiben auf einem **iPhone SE 615** und auf einem **13 mini 696**. Auf beiden
+lag die Fusszeile mit Impressum, Datenschutz und Nutzungsbedingungen unter der
+Kante — erreichbar nur durch Rollen, und nichts deutete darauf hin, dass da noch
+etwas ist. Bei einem Impressum ist das nicht nur unschoen.
+
+Geloest mit demselben Regler, der das Menue auf Tabletts vergroessert, nur in
+die andere Richtung: `zoom` 0,95 / 0,84 / 0,70, gestaffelt nach Schirmhoehe und
+auf Telefonbreiten begrenzt (ein Fenster von 1280×800 ist niedrig, aber nicht
+eng). Die Stufen sind an den zwei Messungen abgelesen, nicht geraten. Ergebnis:
+**alle dreizehn Geraete zeigen das Menue jetzt ohne Rollen.**
+
+### 2. Die Kopfzeile war auf jedem iPhone gleich hoch
+
+53 Punkte — auf einem SE mit 375 Punkten Breite genauso wie auf einem
+16 Pro Max mit 440. Sie wurde auf dem groesseren Geraet also proportional immer
+kleiner, obwohl ein Punkt auf allen iPhones ungefaehr gleich gross ist.
+
+Statt des bisherigen Ja/Nein fuer Tabletts waechst sie jetzt stetig mit der
+Breite: `min(1,3; max(1; Breite/390))`. Der Deckel 1,3 gilt weiter fuer
+Tabletts — 1024/390 waere 2,6, und ein Punkt ist auf einem iPad ohnehin rund ein
+Viertel groesser.
+
+**Auf breiten Telefonen kostet das nichts.** Dort ist das Brett
+BREITEN-begrenzt, die Hoehe reicht ohnehin; was die Kopfzeile mehr braucht,
+nimmt sie der Unterleiste, die dort bis 150 Punkte Spielraum hat. Nachgemessen
+auf dem 16 Pro Max: Brett unveraendert 438×676, Leiste 116 statt 123. Eine
+eigene Pruefung haelt genau das fest.
+
+### 3. Der Deckel der Tablett-Leiste ist jetzt 118 statt 132
+
+Die Vorschau ist bei 76 gedeckelt und braucht daneben 42 fuer Polsterung,
+Abstand und Beschriftung. Alles darueber sieht niemand — und auf einem Tablett
+ist das Brett hoehenbegrenzt, jeder dieser Punkte fehlt direkt am Brett.
+Bringt auf den grossen iPads 58,2 → 58,6 bzw. 58,8 %.
+
+### Was NICHT behoben wurde, und warum
+
+**Die Gasse neben dem Brett auf dem iPad** (78–149 Punkte je Seite). Sie ist
+keine Nachlaessigkeit, sondern Geometrie: Das Brett ist 44×68 Zellen, also
+616:952 und damit hoch; ein iPad ist 3:4. Auf einem iPad 12,9" kann das Brett
+**hoechstens 81 % des Schirms fuellen — und das nur voellig ohne Kopfzeile und
+ohne Leiste.** Mit beiden liegt die Grenze bei rund 63 %, und dort sind wir.
+
+Die Gasse liesse sich nur schliessen, indem die Kopfzeile hinein wandert
+(Spielerkarten senkrecht links und rechts). Das brachte in der Rechnung
+67 % — scheitert aber am iPad mini: dort ist die Gasse 78 Punkte breit, zu
+schmal fuer eine Spielerkarte. Es waere also eine dritte Anordnung nur fuer
+grosse iPads, mit eigener Loesung fuer drei Spieler, Zeit, Phasenschild und
+Beenden-Knopf. Der Gewinn traegt diesen Preis nicht; die Gasse ist stattdessen
+Buehne (v3.88.0).
+
+**Die Bauteil-Vorschau auf dem iPhone SE** (24 Punkte, das Minimum). Auch das
+ist Geometrie: Auf dem SE ist das Brett als einzigem iPhone HOEHEN-begrenzt und
+verbraucht den Rest. Nachgerechnet: Eine Vorschau von 40 kostete dort 8 % der
+Brettflaeche (73,7 → 65,7 %) auf dem kleinsten Schirm ueberhaupt. Gemessen wird
+sie nicht gequetscht — 24×24 quadratisch, die Leiste fasst sie.
+
+Tests gruen (Unit 70/70, E2E 390/390, Typen 0 Fehler).

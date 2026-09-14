@@ -2507,7 +2507,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Leiste vorher auf dem iPad bekam, und den 17 %, die sie auf einem
       // iPhone von selbst bekommt (dort ist das Brett BREITEN-begrenzt, also
       // faellt unten viel ab — auf dem iPad faellt gar nichts ab).
-      const BAR_MIN = tablett ? Math.min(132, Math.max(96, Math.round(raum.h * 0.092))) : 52;
+      // Der Deckel ist 118 und keine runde Zahl: Die Vorschau ist bei 76
+      // gedeckelt und braucht daneben 42 fuer Polsterung, Abstand und
+      // Beschriftung. Was die Leiste darueber hinaus bekaeme, sieht niemand —
+      // auf einem Tablett ist das Brett hoehenbegrenzt, jeder dieser Punkte
+      // fehlt also direkt am Brett.
+      const BAR_MIN = tablett ? Math.min(118, Math.max(96, Math.round(raum.h * 0.092))) : 52;
       const vw = raum.w - 2;
       const vh = raum.h - topH - BAR_MIN - 8;
       const scale = Math.min(vw / W, vh / H, 1.4);
@@ -7370,7 +7375,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.88.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.89.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -9069,13 +9074,24 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Die volle nutzbare Breite. Kopfzeile, Buehne und Unterleiste spannen
   // darueber; nur das Brett selbst bleibt bei seinem Seitenverhaeltnis.
   const vollB = viewSize.voll || viewSize.w;
-  // Die Kopfzeile auf einem Tablett (v3.88.0). Ueber die volle Breite gezogen
-  // sah sie gedehnt aus: zwei fast leere Farbbalken mit Telefonschrift darin.
-  // 1,3 statt der vollen Breitenrelation (1024/393 = 2,6) — ein Punkt ist auf
-  // einem iPad ohnehin rund ein Viertel groesser als auf einem iPhone; die
-  // volle Relation ergaebe dreifache Schrift. Die Breite wird durch die
-  // Zoomstufe geteilt, sonst laeuft die Leiste um denselben Faktor ueber.
-  const hudZ = viewSize.tablett ? 1.3 : 1;
+  // Die Kopfzeile waechst mit der Breite (v3.89.0; vorher ein Ja/Nein fuer
+  // Tabletts). Gemessen war sie auf JEDEM iPhone 53 px hoch — auf einem
+  // 16 Pro Max mit 440 Punkten Breite genauso wie auf einem SE mit 375. Sie
+  // wurde damit auf dem groesseren Geraet proportional immer kleiner, obwohl
+  // ein Punkt auf allen iPhones ungefaehr gleich gross ist.
+  //
+  // Und es kostet dort NICHTS: Auf einem breiten Telefon ist das Brett
+  // BREITEN-begrenzt, die Hoehe reicht ohnehin. Was die Kopfzeile mehr
+  // braucht, nimmt sie der Unterleiste, die dort bis 150 px Spielraum hat —
+  // nicht dem Brett. Nachgemessen auf dem 16 Pro Max: Brett unveraendert
+  // 438x676, Leiste 116 statt 123.
+  //
+  // Der Deckel bei 1,3 gilt weiter fuer Tabletts: 1024/390 waere 2,6, und ein
+  // Punkt ist auf einem iPad ohnehin rund ein Viertel groesser als auf einem
+  // iPhone — die volle Relation ergaebe dreifache Schrift. 390 als Bezug ist
+  // die Breite, fuer die die Kopfzeile gesetzt wurde. Die Breite wird durch
+  // die Zoomstufe geteilt, sonst laeuft die Leiste um denselben Faktor ueber.
+  const hudZ = Math.min(1.3, Math.max(1, vollB / 390));
   const hudBreite = vollB / hudZ;
   // Die Buehne (v3.88.0): 616:952 ist hoch, ein iPad ist es weniger — links
   // und rechts bleiben je ~120 px uebrig, und die waren bisher leer. Jetzt
