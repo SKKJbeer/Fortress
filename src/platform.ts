@@ -41,38 +41,62 @@ export function kontoVerknuepfbar(): boolean {
  * WebKit ist eine Eigenschaft der ANSICHT, keine des Dokuments — sie greift
  * auch dort, wo nichts auswaehlbar ist, und die Lupe erscheint beim Ziehen
  * ueber Kopfzeile und Shop. Abschalten laesst sie sich nur nativ:
- * `WKPreferences.isTextInteractionEnabled`, gesetzt in
- * `SpielViewController` (ios/App/App/SceneDelegate.swift).
+ * `WKPreferences.isTextInteractionEnabled`, gesetzt in `SpielViewController`
+ * (ios/App/App/SceneDelegate.swift).
  *
- * **Warum trotzdem eine Schaltung und kein dauerhaftes Aus.** Ohne
- * Textbedienung laesst sich in einem Eingabefeld kein Wort markieren und die
- * Schreibmarke nicht setzen. Fuers Spielfeld ist das erwuenscht, fuer die
- * Eingabe des Spielernamens waere es eine Verschlechterung. Also: aus, solange
- * niemand in einem Feld steht, an, sobald eines den Fokus hat.
+ * ── Warum die Richtung gedreht wurde (v3.90.0) ────────────────────────────
  *
- * Im Browser tut die Funktion nichts — dort gibt es den Kanal nicht, und das
- * CSS erledigt die Sache ohnehin.
+ * v3.86.0 schaltete die Textbedienung beim Erzeugen der Ansicht AUS und
+ * wollte sie einschalten, sobald ein Feld den Fokus bekommt. Das war in zwei
+ * Punkten falsch, und beides zusammen kostete die Namenseingabe:
+ *
+ *   1. `isTextInteractionEnabled = false` heisst laut Apple „nicht auswaehlen
+ *      UND NICHT BEARBEITEN". Ab dem ersten Bild der App war damit jedes
+ *      Eingabefeld tot — und das erste Bild fuer einen neuen Spieler ist der
+ *      Profil-Editor mit genau einem Feld: dem Namen.
+ *   2. Das Wiedereinschalten lief ins Leere. `webView.configuration` ist laut
+ *      Apple „eine KOPIE der Konfiguration, mit der die Ansicht erzeugt
+ *      wurde"; an der Kopie zu drehen aendert an der lebenden Ansicht nichts.
+ *      Der Schalter blieb also aus, fuer immer.
+ *
+ * Jetzt gilt die umgekehrte Richtung: Die Textbedienung bleibt AN, und
+ * ausgeschaltet wird sie nur, solange das SPIELFELD oben ist — dort gibt es
+ * kein Eingabefeld. Der Unterschied ist nicht Geschmack, sondern der
+ * Fehlerfall: Beisst die Schaltung auf dem Geraet nicht, erscheint
+ * schlimmstenfalls wieder die Lupe. Vorher war der Fehlerfall „man kann
+ * seinen Namen nicht eintippen".
+ *
+ * Im Browser tut das alles nichts — dort gibt es den Kanal nicht, und das CSS
+ * erledigt die Sache ohnehin.
  */
-export function lupeNurInTextfeldern(): void {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
+let letzteMeldung: boolean | null = null;
+
+/** Meldet der nativen Huelle, ob die Textbedienung gebraucht wird. */
+export function textbedienung(an: boolean): void {
+  if (typeof window === "undefined") return;
   const kanal = (window as any).webkit?.messageHandlers?.textfeld;
   if (!kanal) return;
-  const melden = (an: boolean) => { try { kanal.postMessage(an); } catch (e) {} };
-  const istFeld = (z: EventTarget | null) =>
-    !!z && typeof (z as Element).closest === "function" &&
-    !!(z as Element).closest("input:not([type=range]), textarea");
-  document.addEventListener("focusin", (e) => { if (istFeld(e.target)) melden(true); });
-  document.addEventListener("focusout", (e) => { if (istFeld(e.target)) melden(false); });
+  // Nur bei Aenderung melden: Ein Bildschirmwechsel loest mehrere Renderlaeufe
+  // aus, und jede Nachricht quert die Bruecke zwischen Web und App.
+  if (letzteMeldung === an) return;
+  letzteMeldung = an;
+  try { kanal.postMessage(an); } catch (e) { /* ohne Bruecke: egal */ }
 }
 
 /**
- * Vibration. `navigator.vibrate` gibt es auf iOS nicht.
- *
- * Der Parameter ist entweder eine Dauer ODER ein MUSTER — `SFX.destroy()`
- * uebergibt `[30, 40, 60]`. Ein blosser Vergleich `ms >= 30` ist auf ein Feld
- * blind (`[30,40,60] >= 30` ergibt false), womit ausgerechnet der staerkste
- * Effekt des Spiels nativ als schwaechster Impuls ankaeme.
+ * Sicherheitsnetz: Bekommt irgendwo ein Eingabefeld den Fokus, wird die
+ * Textbedienung eingeschaltet — ganz gleich, welcher Bildschirm sich das
+ * gerade anders gedacht hat. Ein Feld, in das man nicht schreiben kann, ist
+ * der schlimmere Fehler.
  */
+export function lupeNurInTextfeldern(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const istFeld = (z: EventTarget | null) =>
+    !!z && typeof (z as Element).closest === "function" &&
+    !!(z as Element).closest("input:not([type=range]), textarea");
+  document.addEventListener("focusin", (e) => { if (istFeld(e.target)) textbedienung(true); });
+}
+
 export function vibriere(muster: number | number[]): void {
   if (typeof window === "undefined") return;
   const w = window as any;

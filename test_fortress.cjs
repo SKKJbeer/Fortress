@@ -1763,19 +1763,40 @@ async function suitePlattform(browser) {
       if (!hatFeld) {
         fail('Lupe: kein Textfeld gefunden — die Pruefung greift ins Leere');
       } else {
+        // v3.90.0: Geprueft wird die UMGEKEHRTE Richtung. Die Textbedienung
+        // ist an, solange kein Spielfeld oben ist; sie geht nur im Spiel aus.
+        // Der Fehler davor war genau andersherum gebaut und hat die
+        // Namenseingabe gekostet — deshalb steht hier jetzt vor allem, dass
+        // im Menue NIE ein `false` als letzte Meldung stehen bleibt.
         await page.evaluate(() => document.querySelector('input:not([type=range])').focus());
-        await page.waitForTimeout(120);
-        await page.evaluate(() => document.querySelector('input:not([type=range])').blur());
-        await page.waitForTimeout(120);
-        const gemeldet = await page.evaluate(() => window.__lupe || null);
+        await page.waitForTimeout(150);
+        const imMenue = await page.evaluate(() => window.__lupe || null);
         if (nativ) {
-          JSON.stringify(gemeldet) === '[true,false]'
-            ? ok('Lupe (App): an beim Fokus, aus beim Verlassen ✓')
-            : fail(`Lupe (App): erwartet [true,false], bekam ${JSON.stringify(gemeldet)}`);
+          const letzte = Array.isArray(imMenue) && imMenue.length ? imMenue[imMenue.length - 1] : null;
+          (letzte === true)
+            ? ok(`Textbedienung (App): im Menue an (${JSON.stringify(imMenue)}) ✓`)
+            : fail(`Textbedienung (App): im Menue ist ${JSON.stringify(imMenue)} — im Namensfeld laesst sich dann nichts eintippen`);
         } else {
-          gemeldet === null
-            ? ok('Lupe (Web): kein nativer Kanal, nichts gemeldet ✓')
-            : fail(`Lupe (Web): meldet ins Leere (${JSON.stringify(gemeldet)})`);
+          imMenue === null
+            ? ok('Textbedienung (Web): kein nativer Kanal, nichts gemeldet ✓')
+            : fail(`Textbedienung (Web): meldet ins Leere (${JSON.stringify(imMenue)})`);
+        }
+        // Und im Spiel muss sie ausgehen — sonst waere die Lupe zurueck.
+        if (nativ) {
+          await page.evaluate(() => { const b = [...document.querySelectorAll('button')]
+            .find(x => /Profil erstellen|Create profile|Speichern|Save/i.test(x.textContent)); b && b.click(); });
+          await page.waitForTimeout(400);
+          await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+          await page.waitForTimeout(250);
+          await jsClick(page, ['2 Spieler', '2 Players']);
+          const kam = await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 })
+            .then(() => true).catch(() => false);
+          await page.waitForTimeout(300);
+          const imSpiel = await page.evaluate(() => window.__lupe || []);
+          const letzteS = imSpiel.length ? imSpiel[imSpiel.length - 1] : null;
+          (kam && letzteS === false)
+            ? ok(`Textbedienung (App): im Spiel aus (${JSON.stringify(imSpiel)}) ✓`)
+            : fail(`Textbedienung (App): im Spiel ${JSON.stringify(imSpiel)}, Brett da=${kam}`);
         }
       }
     } finally { await ctx.close(); }
@@ -2262,6 +2283,147 @@ async function suiteIPad(browser) {
 
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
               : ok('iPad: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE 0f: Der Spielername (v3.90.0)
+// Gemeldet vom Geraet: „man kann sich keinen Namen geben". Zwei Ursachen, und
+// die Suite war bei beiden blind:
+//
+//   · In der APP war die Textbedienung von iOS ab dem ersten Bild
+//     abgeschaltet (v3.86.0). Das Namensfeld im Profil-Editor war damit tot.
+//     Geprueft wird das in `suitePlattform` — hier geht es um den Rest.
+//   · Im WEB lag die Tages-Belohnung ueber dem Editor: beide auf Ebene 1100,
+//     und dann entscheidet die Reihenfolge im Dokument. Das Feld war zu SEHEN,
+//     aber nicht zu treffen — was wie ein kaputtes Feld aussieht, nicht wie
+//     ein Fenster darueber.
+//
+// Beides wird hier am Ergebnis geprueft, nicht an der Regel: Laesst sich ein
+// Name eintippen, speichern, aendern — und ueberlebt er das Neuladen?
+// ═══════════════════════════════════════════════════════════════
+async function suiteProfilName(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Spielername\n' + '='.repeat(50));
+
+  const FELD = 'input:not([type=range]):not([type=checkbox])';
+
+  const starten = async (mitProfil, tagesBelohnungFaellig) => {
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 852 },
+      hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    await page.addInitScript(FB_SPERRE);
+    if (mitProfil) await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(`try{
+      localStorage.setItem('fortress_onboarded','1');
+      localStorage.setItem('fortress_lang','de');
+      ${tagesBelohnungFaellig
+        ? "localStorage.removeItem('fortress_daily');"
+        : "localStorage.setItem('fortress_daily', JSON.stringify({lastCollect:Date.now(),streak:1,lastStreakDay:new Date().toISOString().slice(0,10)}));"}
+    }catch(e){}`);
+    await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    return { ctx, page };
+  };
+
+  const feldFrei = (page) => page.evaluate((s) => {
+    const f = document.querySelector(s);
+    if (!f) return 'kein Feld';
+    const r = f.getBoundingClientRect();
+    const oben = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return oben === f ? 'frei' : ('verdeckt von "' + ((oben && oben.textContent) || '').trim().slice(0, 30) + '"');
+  }, FELD);
+
+  // ── 1) Erstes Profil: tippen, speichern, im Menue sehen ───────────────
+  {
+    const { ctx, page } = await starten(false, false);
+    try {
+      const da = await page.$(FELD);
+      if (!da) { fail('Erstes Profil: kein Namensfeld — die Pruefung greift ins Leere'); }
+      else {
+        const frei = await feldFrei(page);
+        (frei === 'frei') ? ok('Erstes Profil: Namensfeld ist erreichbar ✓')
+                          : fail(`Erstes Profil: Namensfeld ${frei}`);
+        await da.click();
+        await page.keyboard.type('KUNIGUNDE');
+        const wert = await page.evaluate((s) => document.querySelector(s).value, FELD);
+        (wert === 'KUNIGUNDE') ? ok('Erstes Profil: Name laesst sich eintippen ✓')
+                               : fail(`Erstes Profil: im Feld steht "${wert}"`);
+        await jsClick(page, ['Profil erstellen', 'Create profile']);
+        await page.waitForTimeout(700);
+        const gespeichert = await page.evaluate(() => {
+          try { return JSON.parse(localStorage.getItem('fortress_profile')).name; } catch (e) { return null; } });
+        (gespeichert === 'KUNIGUNDE') ? ok('Erstes Profil: Name gespeichert ✓')
+                                      : fail(`Erstes Profil: gespeichert wurde "${gespeichert}"`);
+      }
+    } finally { await ctx.close(); }
+  }
+
+  // ── 2) Die Tages-Belohnung darf den Editor NICHT zudecken ─────────────
+  // Sie ist das einzige Fenster, das sich ungefragt oeffnet (1,2 s nachdem ein
+  // Profil da ist). Genau das lag vorher ueber dem Namensfeld.
+  {
+    const { ctx, page } = await starten(true, true);
+    try {
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')]
+          .find(x => (x.getAttribute('title') || '').startsWith('Profil bearbeiten'));
+        if (b) b.click();
+      });
+      await page.waitForTimeout(600);
+      // Lange genug warten, dass der 1,2-s-Wecker der Belohnung durch waere.
+      await page.waitForTimeout(1600);
+      const frei = await feldFrei(page);
+      (frei === 'frei')
+        ? ok('Tages-Belohnung liegt nicht ueber dem Namensfeld ✓')
+        : fail(`Namensfeld ${frei} — mit offenem Editor darf sich nichts daruebersetzen`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 3) Umbenennen und Neuladen ────────────────────────────────────────
+  {
+    const { ctx, page } = await starten(true, false);
+    try {
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')]
+          .find(x => (x.getAttribute('title') || '').startsWith('Profil bearbeiten'));
+        if (b) b.click();
+      });
+      await page.waitForTimeout(600);
+      const f = await page.$(FELD);
+      if (!f) { fail('Umbenennen: kein Namensfeld im Editor'); }
+      else {
+        await f.click({ clickCount: 3 });
+        await page.keyboard.press('Backspace');
+        await page.keyboard.type('ZWEITNAME');
+        // Genau "Speichern" — „Mit Google sichern" enthaelt ebenfalls „sichern".
+        const k = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('button')].find(x => (x.textContent || '').trim() === 'Speichern');
+          if (b) { b.click(); return true; } return false; });
+        k ? ok('Umbenennen: Speichern-Knopf vorhanden ✓') : fail('Umbenennen: kein Speichern-Knopf');
+        await page.waitForTimeout(800);
+        // NICHT neu laden: `PROFILE_INIT` haengt als Initialskript an der Seite
+        // und schreibt beim naechsten Dokument das Testprofil zurueck — die
+        // Pruefung wuerde den Prueftstand messen, nicht das Spiel. Geprueft wird
+        // deshalb da, wo die Bestaendigkeit entsteht: im Speicher selbst.
+        const nach = await page.evaluate(() => {
+          let gespeichert = null;
+          try { gespeichert = JSON.parse(localStorage.getItem('fortress_profile')).name; } catch (e) {}
+          return { gespeichert, imMenue: document.body.innerText.includes('ZWEITNAME') };
+        });
+        (nach.gespeichert === 'ZWEITNAME' && nach.imMenue)
+          ? ok('Umbenennen: Name steht im Speicher und im Menue ✓')
+          : fail(`Umbenennen: gespeichert="${nach.gespeichert}", im Menue=${nach.imMenue}`);
+      }
+    } finally { await ctx.close(); }
+  }
+
+  errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+              : ok('Spielername: keine JS-Fehler ✓');
   return { res, errs };
 }
 
@@ -4295,12 +4457,13 @@ async function suiteTutorial(browser) {
     const cs = await suiteCloudSave(browser, FB_PORT);
     return { mm, mm3, hb, cs, tr };
   })();
-  const [rMenu, rOff, rPlat, rSA, rPad, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
     suitePlattform(browser),
     suiteSicherheitsbereiche(browser),
     suiteIPad(browser),
+    suiteProfilName(browser),
     suiteNavHUD(browser, 2),
     suiteNavHUD(browser, 3),
     suiteMechanics(browser),
@@ -4328,9 +4491,9 @@ async function suiteTutorial(browser) {
   await browser.close();
   mockFbSrv.close();
 
-  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
                    ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res];
-  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
                    ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.89.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.90.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6013,3 +6013,88 @@ Brettflaeche (73,7 → 65,7 %) auf dem kleinsten Schirm ueberhaupt. Gemessen wir
 sie nicht gequetscht — 24×24 quadratisch, die Leiste fasst sie.
 
 Tests gruen (Unit 70/70, E2E 390/390, Typen 0 Fehler).
+
+---
+
+## v3.90.0 — „Man kann sich keinen Namen geben"
+
+Vom Geraet gemeldet. Die Suche hat **zwei** Ursachen gefunden, eine in der App
+und eine im Web. Beide fuehrten zum selben Bild: ein Namensfeld, das da ist,
+aussieht wie immer — und nichts annimmt.
+
+### 1. In der App war die Textbedienung ab dem ersten Bild aus
+
+v3.86.0 hat die iOS-Text-Lupe abgeschaltet, und zwar so:
+
+```swift
+konfiguration.preferences.isTextInteractionEnabled = false   // beim Erzeugen
+…
+webView?.configuration.preferences.isTextInteractionEnabled = an  // spaeter wieder an
+```
+
+Daran ist beides falsch.
+
+**`false` heisst nicht „keine Lupe".** Apple schreibt: *„whether to allow
+people to select or edit text"* — also auch **nicht bearbeiten**. Ab dem ersten
+Bild der App war damit jedes Eingabefeld tot. Und das erste Bild fuer einen
+neuen Spieler ist der Profil-Editor, dessen einziges Feld der Name ist.
+
+**Das Wiedereinschalten lief ins Leere.** `webView.configuration` ist laut
+Apple *„a copy of the configuration with which the web view was initialized"*.
+An der Kopie zu drehen aendert an der lebenden Ansicht nichts. Der Schalter
+blieb aus — dauerhaft. Dazu kam ein Henne-Ei-Problem: Gemeldet wurde beim
+`focusin` eines Feldes, aber in ein Feld, das keine Textbedienung hat, kommt
+man gar nicht erst hinein.
+
+**Die Richtung ist jetzt gedreht.** Beim Erzeugen wird nichts mehr
+abgeschaltet; die Textbedienung startet an, wie iOS sie vorsieht. Aus geht sie
+nur, solange das SPIELFELD oben ist — dort gibt es kein Eingabefeld, und dort
+erschien die Lupe. Dazu ein Sicherheitsnetz: Bekommt irgendwo ein Feld den
+Fokus, wird sie eingeschaltet, ganz gleich was der Bildschirm meint.
+
+Der Gewinn ist nicht die Eleganz, sondern **der Fehlerfall**: Beisst die
+Schaltung auf dem Geraet nicht, erscheint schlimmstenfalls wieder die Lupe.
+Vorher hiess der Fehlerfall „die App ist nicht zu bedienen". Ob die Umschaltung
+auf dem Geraet greift, kann weiterhin nur das Geraet sagen — die Web-Haelfte
+ist geprueft.
+
+### 2. Im Web lag die Tages-Belohnung ueber dem Editor
+
+Profil-Editor, Tages-Belohnung und Bestenliste standen **alle drei auf Ebene
+1100**. Bei gleicher Ebene entscheidet die Reihenfolge im Dokument, nicht die
+Absicht. Die Tages-Belohnung ist das einzige Fenster, das sich **ungefragt**
+oeffnet — 1,2 s nachdem ein Profil da ist. Stand der Editor offen, legte sie
+sich darueber: Das Feld war zu SEHEN, aber nicht zu treffen. Das sieht nicht
+nach einem Fenster aus, das sieht nach einem kaputten Feld aus.
+
+Zwei Aenderungen, weil eine allein nur das Symptom nimmt:
+
+- Die Tages-Belohnung oeffnet **nicht mehr, solange der Editor offen ist** —
+  sie kommt, sobald er zu ist (der Effekt haengt jetzt daran).
+- Der Editor liegt auf **1160** statt 1100. Er enthaelt das einzige Textfeld
+  des Spiels; verdeckt zu werden ist fuer ihn teurer als fuer andere Fenster.
+
+### Was sonst noch gemessen wurde
+
+Ein Durchgang von Hand ueber die Wege, die ein Mensch geht — Profil anlegen,
+umbenennen, Wappen waehlen, die vier Menuefenster, lokale Partien zu zweit und
+zu dritt, alle drei Bot-Stufen, Sprache, Ton, Musik, Vibration, Bestenliste.
+Ausser den beiden oben: **keine Befunde.**
+
+Drei vermeintliche Fehler waren meine eigenen Messfehler und sind hier
+festgehalten, damit sie niemand ein zweites Mal sucht:
+
+- `input[type=text]` findet das Feld NICHT — es hat gar kein `type`-Attribut.
+- Ein Knopfmuster auf `/Sichern/` trifft „Mit Google sichern", nicht
+  „Speichern".
+- Ein Initialskript, das das Testprofil ohne Bedingung setzt, schreibt beim
+  Neuladen den alten Namen zurueck. Gemessen wird dann der Pruefstand.
+
+### Geprueft
+
+Neue Suite `suiteProfilName` (7 Pruefungen): Feld erreichbar, Name eintippbar,
+gespeichert, Tages-Belohnung deckt den Editor nicht zu, Umbenennen landet im
+Speicher UND im Menue. `suitePlattform` prueft die neue Richtung der
+Textbedienung: im Menue an, im Spiel aus.
+
+Tests gruen (Unit 70/70, E2E 398/398, Typen 0 Fehler).

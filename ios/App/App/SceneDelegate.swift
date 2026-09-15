@@ -3,7 +3,7 @@ import WebKit
 import Capacitor
 
 /// Die Ansicht des Spiels — sie unterscheidet sich von Capacitors Vorgabe in
-/// genau einem Punkt: **die Text-Lupe von iOS ist aus.**
+/// genau einem Punkt: **sie kann die Text-Lupe von iOS abschalten.**
 ///
 /// Gemeldet vom Geraet: Beim Ziehen ueber Kopfzeile und Shop klappte die Lupe
 /// auf. Das CSS in index.html schaltet seit v3.32.1 Textauswahl und
@@ -11,23 +11,31 @@ import Capacitor
 /// nicht. Die Textbedienung von WebKit haengt an der ANSICHT, nicht am
 /// Dokument — sie greift auch dort, wo gar nichts auswaehlbar ist.
 ///
-/// Abgeschaltet wird sie ueber `isTextInteractionEnabled` (ab iOS 14.5; das
-/// Ziel dieses Projekts ist 15.0, eine Verfuegbarkeitsabfrage ist also
-/// unnoetig). Gesetzt wird sie an der KONFIGURATION, bevor die Ansicht
-/// entsteht — Capacitor sieht `webViewConfiguration(for:)` genau dafuer vor
-/// und empfiehlt, die Vorgabe zu erweitern statt sie zu ersetzen.
+/// ── Was v3.86.0 hier falsch gemacht hat (behoben in v3.90.0) ──────────────
 ///
-/// **Sie bleibt schaltbar.** Ohne Textbedienung laesst sich in einem
-/// Eingabefeld kein Wort markieren und die Schreibmarke nicht setzen — fuers
-/// Spielfeld erwuenscht, fuer die Eingabe des Spielernamens nicht. Die
-/// Weboberflaeche meldet deshalb ueber den Kanal `textfeld`, wenn ein Feld den
-/// Fokus bekommt oder verliert (`src/platform.ts`), und hier wird
-/// entsprechend umgeschaltet.
+/// Damals stand an dieser Stelle `isTextInteractionEnabled = false`, gesetzt
+/// an der Konfiguration, BEVOR die Ansicht entsteht. Zwei Fehler auf einmal:
+///
+///   1. `false` heisst laut Apple „nicht auswaehlen UND NICHT BEARBEITEN".
+///      Ab dem ersten Bild der App war damit jedes Eingabefeld tot. Das erste
+///      Bild fuer einen neuen Spieler ist der Profil-Editor, und dessen
+///      einziges Feld ist der Name — **man konnte sich keinen Namen geben.**
+///   2. Das Wiedereinschalten unten lief ins Leere. `webView.configuration`
+///      ist laut Apple „eine KOPIE der Konfiguration, mit der die Ansicht
+///      erzeugt wurde". An der Kopie zu drehen aendert an der lebenden Ansicht
+///      nichts; der Schalter blieb aus, fuer immer.
+///
+/// **Deshalb wird hier nichts mehr abgeschaltet.** Die Textbedienung startet
+/// an, wie iOS sie vorsieht. Ausgeschaltet wird sie nur auf Zuruf der
+/// Weboberflaeche, solange das Spielfeld oben ist (`src/platform.ts`).
+///
+/// Der Fehlerfall ist damit gedreht, und das ist der eigentliche Gewinn:
+/// Beisst der Zuruf auf dem Geraet nicht, erscheint schlimmstenfalls wieder
+/// die Lupe. Vorher hiess der Fehlerfall „die App ist nicht zu bedienen".
 final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler {
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
         let konfiguration = super.webViewConfiguration(for: instanceConfiguration)
-        konfiguration.preferences.isTextInteractionEnabled = false
         // Der Nachrichtenkanal haelt den Empfaenger stark fest. Bei einem
         // beliebigen Bildschirm waere das ein Zyklus; diese Ansicht ist die
         // Wurzel der App und lebt ohnehin, solange die App laeuft.
@@ -38,6 +46,8 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
         guard message.name == "textfeld", let an = message.body as? Bool else { return }
+        // Bestmoeglicher Versuch — siehe Punkt 2 oben. Schlaegt er fehl, bleibt
+        // die Textbedienung an, und die App bleibt bedienbar.
         webView?.configuration.preferences.isTextInteractionEnabled = an
     }
 }

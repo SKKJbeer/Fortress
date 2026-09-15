@@ -23,7 +23,7 @@ import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainF
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from '../engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from '../engine/progression.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
-import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern } from '../platform.ts';
+import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung } from '../platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from '../engine/catalog.ts';
 import { LANGS } from '../i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction } from '../net/protocol.js';
@@ -2000,6 +2000,13 @@ window.StackSiegeApp = function StackSiegeApp() {
   }, [profile?.id, screen, mpScreen]);
   useEffect(() => {
     if (!profile) return;
+    // v3.90.0: NICHT ueber den Profil-Editor legen. Die Tages-Belohnung ist
+    // das einzige Fenster, das sich UNGEFRAGT oeffnet — 1,2 s nachdem ein
+    // Profil da ist. Stand der Editor offen, landete sie darueber, und das
+    // Namensfeld war nicht mehr zu treffen: beide lagen auf Ebene 1100, und
+    // dann entscheidet die Reihenfolge im Dokument, nicht die Absicht.
+    // Sie kommt, sobald der Editor zu ist — der Effekt haengt jetzt daran.
+    if (showProfileEditor) return;
     let onboarded = true;
     try { onboarded = !!localStorage.getItem('fortress_onboarded'); } catch (e) {}
     const d = loadDailyState();
@@ -2007,7 +2014,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       const timer = setTimeout(() => setShowDailyModal(true), 1200);
       return () => clearTimeout(timer);
     }
-  }, [profile?.id]);
+  }, [profile?.id, showProfileEditor]);
   // Sieg-/Niederlage-Sound beim Erscheinen des Ergebnisbildschirms
   useEffect(() => {
     if (screen !== "result") return;
@@ -2547,6 +2554,11 @@ window.StackSiegeApp = function StackSiegeApp() {
       ro.disconnect();
     };
   }, [phase, numPlayers]);
+  // v3.90.0: Die Textbedienung von iOS wird nur AUSgeschaltet, solange das
+  // Spielfeld oben ist — dort gibt es kein Eingabefeld, und dort erschien die
+  // Lupe. Ueberall sonst bleibt sie an. Vorher war sie ab dem ersten Bild der
+  // App aus; damit war das Namensfeld im Profil-Editor nicht zu bedienen.
+  useEffect(() => { textbedienung(screen !== "game"); }, [screen]);
   function serializeState() {
     var _a2;
     const players = playersList();
@@ -7375,7 +7387,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.89.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.90.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7473,7 +7485,13 @@ window.StackSiegeApp = function StackSiegeApp() {
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "center",
-    zIndex: 1100,
+    // v3.90.0: 1160 statt 1100. Auf 1100 liegen auch die Tages-Belohnung und
+    // die Bestenliste; bei gleicher Ebene entscheidet die Reihenfolge im
+    // Dokument, welches Fenster oben liegt. Der Editor enthaelt das EINZIGE
+    // Textfeld des Spiels — wird er verdeckt, kann man sich keinen Namen
+    // geben, und das sieht nicht nach einem Fenster aus, sondern nach einem
+    // toten Feld.
+    zIndex: 1160,
     padding: "24px 16px",
     overflowY: "auto"
   } }, /* @__PURE__ */ React.createElement("div", { style: {
@@ -9819,7 +9837,9 @@ setTimeout(() => { const s = document.getElementById('splash'); if (s) { s.style
 //
 // Geprueft wird deshalb ueber die EINE Plattform-Weiche (ARCHITEKTUR.md E7),
 // nicht ueber ein weiteres selbstgebautes Merkmal.
-// Die iOS-Text-Lupe: aus im Spiel, an im Namensfeld. Siehe platform.ts.
+// Sicherheitsnetz fuer die iOS-Text-Lupe: Fokus in einem Feld schaltet die
+// Textbedienung IMMER ein. Das Ausschalten haengt am Bildschirm — siehe den
+// Effekt in der Komponente und die Begruendung in platform.ts.
 lupeNurInTextfeldern();
 
 const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
