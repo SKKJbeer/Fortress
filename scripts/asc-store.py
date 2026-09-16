@@ -57,16 +57,19 @@ ANTWORTEN = {
     # denn Beschuss IST das Spiel.
     "violenceCartoonOrFantasy": "INFREQUENT_OR_MILD",
     # Kanonen sind Waffen; das zu verschweigen waere ein vermeidbarer
-    # Ablehnungsgrund. Mild, weil Ziel immer Mauerwerk ist, nie ein Lebewesen.
-    # Entscheidung des Gruenders vom 16.09.
-    "gunsOrOtherWeapons": "INFREQUENT_OR_MILD",
+    # Ablehnungsgrund. Apple fragt hier NICHT nach der Haeufigkeit, sondern
+    # Ja/Nein (von Apple selbst gemeldet: "Expected a BOOLEAN"). Die
+    # Abstufung „mild, weil das Ziel immer Mauerwerk ist" traegt deshalb
+    # `violenceCartoonOrFantasy`; hier bleibt nur die ehrliche Feststellung,
+    # dass es Kanonen gibt. Entscheidung des Gruenders vom 16.09.
+    "gunsOrOtherWeapons": True,
     "violenceRealistic": "NONE",
     "violenceRealisticProlongedGraphicOrSadistic": "NONE",
     "profanityOrCrudeHumor": "NONE",
     "matureOrSuggestiveThemes": "NONE",
     "horrorOrFearThemes": "NONE",
     "medicalOrTreatmentInformation": "NONE",
-    "healthOrWellnessTopics": "NONE",
+    "healthOrWellnessTopics": False,
     "alcoholTobaccoOrDrugUseOrReferences": "NONE",
     "sexualContentOrNudity": "NONE",
     "sexualContentGraphicAndNudity": "NONE",
