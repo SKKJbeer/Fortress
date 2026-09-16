@@ -18,6 +18,7 @@ on:
           - anlegen    # zusaetzlich die App-ID registrieren
           - fuellen    # zusaetzlich Texte und Pruefhinweise eintragen
           - testflight # internen Tester-Kreis einrichten, Bau zuordnen
+          - marktreif  # nur lesen: was fehlt bis zur Einreichung im Store?
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
 
@@ -74,5 +75,6 @@ jobs:
             fuellen)    python3 scripts/asc.py --fuellen ;;
             testflight)  python3 scripts/asc-testflight.py ;;
             oeffentlich) python3 scripts/asc-testflight.py --oeffentlich ;;
+            marktreif)  python3 scripts/asc-marktreif.py ;;
             *)          python3 scripts/asc.py --stand ;;
           esac
