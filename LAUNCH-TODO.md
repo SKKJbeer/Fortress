@@ -1,54 +1,65 @@
 # Stack & Siege — Marktstart-Checkliste
 
-> Stand: v3.79.0, 05.09.2026. **iOS zuerst** — der Developer-Account steht
-> (Zählora ist seit dem 4. September im Store), und TestFlight hat keine
-> 12-Tester-über-14-Tage-Regel wie Google Play.
+> Stand: **v3.90.0, 16.09.2026.** **iOS zuerst** — der Developer-Account steht,
+> und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
 > Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
 
 ---
 
-## Stand 12.09.2026 — **Bau 12 liegt in TestFlight (VALID)**
+## Stand 16.09.2026 — Beta ist offen, Einreichung steht an zwei Klicks
 
-**Die Kette läuft vollständig durch.** Lauf 12 des iOS-Builds: Zertifikat
-einlesen, Verteilprofil anlegen, archivieren, exportieren, hochladen — jeder
-Schritt grün. Ohne Mac, ohne registriertes Gerät, ohne einen Klick im Portal.
+**Die Beta läuft öffentlich.** Apple hat sie freigegeben; der Link
+`testflight.apple.com/join/hE2AdHwr` nimmt Tester an, ohne Einladung und ohne
+Konto bei uns. **Bau 20 (v3.90.0)** liegt in TestFlight und ist der Fassung 1.0
+zugeordnet.
 
-### Was drei Anläufe gekostet hat, und was sie ergaben
+**Der Store-Eintrag ist maschinell gefüllt.** Was in App Store Connect steht,
+steht dort nicht, weil jemand es abgehakt hat, sondern weil Apple es auf
+Nachfrage bestätigt: `Actions → App Store (Stand / Eintragen) → marktreif`
+fragt und berichtet, `→ store` trägt ein. Beides ist wiederholbar und schreibt
+nur, was fehlt.
 
-| Lauf | Fehler | Erkenntnis |
-|---|---|---|
-| 10 | *conflicting provisioning settings* | `Automatic` und eine vorgeschriebene Identität schließen einander aus |
-| 11 | *no devices from which to generate a profile* | `Automatic` will ein **Entwicklungs**-Profil; die Art hängt nicht an der Konfiguration, und `-allowProvisioningUpdates` ändert sie auch nicht |
-| 12 | — | **Manuell**, mit einem selbst über die Schnittstelle angelegten App-Store-Profil (`scripts/asc-profil.py`) |
-
-### Bei Apple steht
-- [x] App-ID `de.skkjbeer.stackandsiege`
-- [x] App-Eintrag „Stack & Siege – Burgenduell"
+### Bei Apple steht — von Apple bestätigt, nicht behauptet
+- [x] App-ID `de.skkjbeer.stackandsiege`, Eintrag „Stack & Siege – Burgenduell"
 - [x] Fassung 1.0 (`PREPARE_FOR_SUBMISSION`)
 - [x] Untertitel, Datenschutz-Adresse, Beschreibung, Schlagworte, Werbetext
-- [x] **Prüfhinweise** — die sieben 2.1-Punkte vorab beantwortet, auf Englisch
-- [x] **Bau 12** — von Apple selbst bestätigt, Zustand `VALID`. Nicht aus dem
-      Exit-Code des Upload-Befehls geschlossen, sondern nachgefragt: der erste
-      Abgleich vier Minuten nach dem Upload meldete noch „kein Bau", der zweite
-      nach fünfzehn Minuten den fertig verarbeiteten.
+- [x] **Kategorie** GAMES / Strategie / Puzzle
+- [x] **Altersfreigabe** — 24 Angaben, mit Begründung in `scripts/asc-store.py`
+- [x] **Prüfkontakt vollständig** und Prüfhinweise hinterlegt
+- [x] **Bau 20** der Fassung zugeordnet
+- [x] **Bildschirmfotos** 4× iPhone 6,7" und 4× iPad 12,9", aus v3.90.0
+- [x] **Preisplan** vorhanden
+- [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
 
-## ⏸ Wartet auf dich
+## ⏸ Wartet auf dich — und nur darauf
 
-**Für TestFlight:** nichts. Der Bau ist verarbeitet und steht in der
-TestFlight-App auf deinem iPhone bereit.
+Beides kann **kein Schlüssel und kein Skript**; Apples Schnittstelle bietet es
+nicht an. Drüben im Schwesterprojekt sind acht Pfade gemessen worden, alle
+„does not exist".
 
-**Auf dem Gerät prüfen**, was sich maschinell nicht prüfen lässt: Haptik, Ton,
-Safe-Areas, Startbild — und ob das Spiel sich anfühlt wie eine App.
+- [ ] **Datenschutz-Fragebogen** — App Store Connect → *App-Datenschutz* →
+      *Bearbeiten*. Die Antworten stehen fertig in `store/listing.md`.
+      Ohne ihn lässt sich nicht einreichen.
+- [ ] **Händlerstatus nach dem EU-Digitale-Dienste-Gesetz** — *Business →
+      Agreements → Compliance* **und** je App unter *App Information*. Steht er
+      auf „In Prüfung", scheitert jede Einreichung an einer Meldung, die ihn
+      nicht erwähnt.
 
-**Vor der Store-Einreichung:**
-- [ ] **`ASC_KONTAKT_NAME`** als Secret. Apple nimmt den Prüfkontakt nur
-      **vollständig** — ohne Namen steht gar keiner hinterlegt.
-- [ ] **Datenschutz-Fragebogen** — App Store → App-Datenschutz → Bearbeiten.
-      Die Antworten stehen fertig in `store/listing.md`.
-- [ ] **Händlerstatus je App** — App Information → Digital Services Act.
-- [ ] **Impressum** — `public/impressum.html` steht live mit Platzhaltern.
-- [ ] **Bildschirmaufnahme** auf einem echten Gerät (Punkt 7 der 2.1-Rückfrage,
+Danach ist die Einreichung selbst der letzte Schritt — der einzige, der sich
+nicht zurücknehmen lässt, und deshalb bewusst kein Skript.
+
+### Empfohlen, aber kein Riegel
+- [ ] **Bildschirmaufnahme auf einem echten Gerät** (Punkt 7 der 2.1-Rückfrage,
       Ablauf in `store/listing.md`).
+- [ ] **Firebase absichern.** Gemessen am 15.09.: Die Datenbank nimmt
+      **unangemeldete** Schreibzugriffe auf `games` und `queue2` an — von der
+      Kommandozeile aus nachgewiesen und sofort wieder aufgeräumt. Die
+      auth-gebundenen Regeln liegen fertig in `firebase-rules-PASTE.json`,
+      lassen sich aber nicht veröffentlichen, solange die anonyme Anmeldung
+      nicht geht: Es fehlt der Firebase-API-Schlüssel (eine öffentliche
+      Kennung, kein Geheimnis) und der Schalter *Authentication → Sign-in
+      method → Anonym*. **Cloud-Save funktioniert deshalb heute gar nicht** —
+      `players` weist unangemeldete Zugriffe ab, und angemeldet ist niemand.
 
 ---
 
