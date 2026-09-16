@@ -51,20 +51,47 @@ UNTER_ZWEI = "GAMES_PUZZLE"
 #   Gluecksspiel (Gold ist erspielt, es gibt keinen Einsatz und keinen Kauf),
 #   kein Netzzugang in der App, keine Gewinnspiele.
 ANTWORTEN = {
+    # ── Inhalt: wie haeufig und wie stark ────────────────────────────────
+    # Kanonen schiessen auf Mauern aus Bloecken. Keine Figuren, kein Blut,
+    # keine Verletzten. Zeichentrick-Gewalt, und sie ist mild — nicht NONE,
+    # denn Beschuss IST das Spiel.
     "violenceCartoonOrFantasy": "INFREQUENT_OR_MILD",
+    # Kanonen sind Waffen; das zu verschweigen waere ein vermeidbarer
+    # Ablehnungsgrund. Mild, weil Ziel immer Mauerwerk ist, nie ein Lebewesen.
+    # Entscheidung des Gruenders vom 16.09.
+    "gunsOrOtherWeapons": "INFREQUENT_OR_MILD",
     "violenceRealistic": "NONE",
     "violenceRealisticProlongedGraphicOrSadistic": "NONE",
     "profanityOrCrudeHumor": "NONE",
     "matureOrSuggestiveThemes": "NONE",
     "horrorOrFearThemes": "NONE",
     "medicalOrTreatmentInformation": "NONE",
+    "healthOrWellnessTopics": "NONE",
     "alcoholTobaccoOrDrugUseOrReferences": "NONE",
     "sexualContentOrNudity": "NONE",
     "sexualContentGraphicAndNudity": "NONE",
+    # Gold ist erspielt. Es gibt keinen Einsatz, keinen Kauf und keine
+    # Zufallsziehung — die Tages-Kiste gibt fest eine Drachenschuppe.
     "gamblingSimulated": "NONE",
     "gambling": False,
-    "unrestrictedWebAccess": False,
+    "lootBox": False,
     "contests": "NONE",
+    # ── Was die App kann und was nicht ───────────────────────────────────
+    "unrestrictedWebAccess": False,
+    "advertising": False,
+    # Emotes sind SECHS FESTE Symbole, kein freier Text. Das ist keine
+    # Unterhaltung im Sinne der Frage.
+    "messagingAndChat": False,
+    "socialMedia": False,
+    "socialMediaAgeRestricted": False,
+    # Das Einzige, was ein Spieler selbst erzeugt und was andere sehen, ist
+    # sein Anzeigename (16 Zeichen). Kein Erstellen, kein Teilen, keine
+    # Beitraege. Entscheidung des Gruenders vom 16.09.: Nein.
+    # WENN das je zur Rueckfrage fuehrt, ist die Antwort nicht „umdeklarieren",
+    # sondern Filter, Meldung und Sperre nachruesten — Richtlinie 1.2.
+    "userGeneratedContent": False,
+    "parentalControls": False,
+    "ageAssurance": False,
 }
 
 # ── Bildschirmfotos ────────────────────────────────────────────────────────
