@@ -19,6 +19,8 @@ on:
           - fuellen    # zusaetzlich Texte und Pruefhinweise eintragen
           - testflight # internen Tester-Kreis einrichten, Bau zuordnen
           - marktreif  # nur lesen: was fehlt bis zur Einreichung im Store?
+          - store-probe # Trockenlauf: was wuerde eingetragen?
+          - store      # Kategorie, Altersfreigabe, Bau, Bildschirmfotos eintragen
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
 
@@ -76,5 +78,7 @@ jobs:
             testflight)  python3 scripts/asc-testflight.py ;;
             oeffentlich) python3 scripts/asc-testflight.py --oeffentlich ;;
             marktreif)  python3 scripts/asc-marktreif.py ;;
+            store-probe) python3 scripts/asc-store.py --alles --trocken ;;
+            store)      python3 scripts/asc-store.py --alles ;;
             *)          python3 scripts/asc.py --stand ;;
           esac
