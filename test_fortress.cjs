@@ -2428,6 +2428,103 @@ async function suiteProfilName(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 0g: Die Zumauern-Warnung (v3.91.0)
+// Gemeldet vom Geraet: Im Bot-Modus pulsierte die Leiste des BOTS mit
+// „ZUMAUERN!", waehrend die eigene Burg dicht war. Die Warnung ist ein
+// Handlungsaufruf; fuer eine fremde Burg ist sie Laerm — man kann dort nichts
+// tun, und es liest sich, als sei man selbst in Not.
+//
+// Geprueft wird die REGEL, nicht das Aussehen: `__urgent` gibt die Spieler
+// zurueck, die gerade gemahnt werden. Der erste Entwurf ging ueber die
+// Anzeige und brauchte dafuer eine dichte eigene und eine offene fremde Burg
+// gleichzeitig — dafuer musste der Bot beide Seiten spielen, der Lauf dauerte
+// bis zu 90 s, und er hat mit seiner Last drei andere Suiten ins Zeitlimit
+// gedrueckt. Am Wert gemessen genuegt EIN Bot-Spiel und ein Blick.
+// ═══════════════════════════════════════════════════════════════
+async function suiteZumauern(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Zumauern-Warnung\n' + '='.repeat(50));
+
+  const ctx = await browser.newContext({ viewport: { width: 393, height: 852 },
+    hasTouch: true, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  try {
+    await page.addInitScript(FB_SPERRE);
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(TIMER_SPEEDUP);
+    await page.addInitScript(`window.__mmDebug = true;`);
+    await page.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
+    await page.waitForTimeout(300);
+    await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+    await page.waitForTimeout(250);
+    await jsClick(page, ['gegen Bot', 'vs Bot']);
+    await page.waitForTimeout(300);
+    await jsClick(page, ['Mittel', 'Medium']);
+    const brett = await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 10000 })
+      .then(() => true).catch(() => false);
+    if (!brett) { fail('Zumauern: Bot-Spiel startet nicht'); return { res, errs }; }
+
+    // Ueber mehrere Bauphasen mitschreiben, WER gemahnt wurde — und BEIDE
+    // Burgen dabei offen halten. Das ist der Fall, der die Regel wirklich
+    // prueft: Sind beide offen und wird trotzdem nur die eigene gemahnt, kann
+    // das Ergebnis nicht daran liegen, dass die fremde zufaellig dicht war.
+    // Der erste Entwurf riss die eigene erst spaeter auf und konnte die
+    // Gegenprobe nicht herstellen — gemessen wurde dann „niemand gemahnt",
+    // was auch dann gruen waere, wenn die Warnung ganz kaputt ist.
+    const gesehen = new Set();
+    let eigeneOffenGesehen = false, fremdeOffenGesehen = false, imFenster = 0;
+    // 14 s und alle 200 ms statt 22 s und alle 90 ms: Mit dem 20fachen
+    // Zeitraffer dauert eine Runde rund drei Sekunden, das reicht fuer
+    // mehrere Fenster. Die dichtere Abfrage hat zweimal andere Suiten ins
+    // Zeitlimit gedrueckt — die Suiten laufen parallel, und diese hier war
+    // die schwerste von allen.
+    const ende = Date.now() + 14000;
+    while (Date.now() < ende) {
+      const m = await page.evaluate(() => {
+        const e = window.__econFull && window.__econFull();
+        if (!e || e.phase !== 'build') return null;
+        try { window.__blastWall(1, 40); window.__blastWall(2, 40); } catch (x) {}
+        return { gemahnt: (window.__urgent && window.__urgent()) || [],
+                 offen1: !window.__castleClosed(1), offen2: !window.__castleClosed(2),
+                 t: window.__readTimer && window.__readTimer() };
+      });
+      if (m && typeof m.t === 'number' && m.t <= 8 && m.t > 0) {
+        imFenster += 1;
+        m.gemahnt.forEach(p => gesehen.add(p));
+        if (m.offen1) eigeneOffenGesehen = true;
+        if (m.offen2) fremdeOffenGesehen = true;
+      }
+      await page.waitForTimeout(200);
+    }
+    if (!imFenster) { fail('Zumauern: keine Bauphase mit Restzeit ≤ 8 erwischt'); return { res, errs }; }
+
+    if (!fremdeOffenGesehen) {
+      fail('Zumauern: die Bot-Burg war nie offen — die Pruefung sagt nichts aus');
+    } else if (!gesehen.has(2)) {
+      ok(`Offene Bot-Burg wird nicht gemahnt (gemahnt wurde: ${[...gesehen].join(',') || 'niemand'}) ✓`);
+    } else {
+      fail('Die Bot-Burg wird gemahnt — die Warnung gilt nur fuer eigene Burgen');
+    }
+
+    if (!eigeneOffenGesehen) {
+      fail('Zumauern: die eigene Burg war nie offen — die Gegenprobe sagt nichts aus');
+    } else if (gesehen.has(1)) {
+      ok('Offene eigene Burg wird gemahnt ✓');
+    } else {
+      fail('Die eigene offene Burg wird NICHT gemahnt — die Warnung ist ganz weg');
+    }
+  } finally { await ctx.close(); }
+
+  errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
+              : ok('Zumauern-Warnung: keine JS-Fehler ✓');
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE 0d: Trichter (v3.79.0)
 // Drei Eingriffe gegen das eigentliche Problem: bei zehn aktiven Spielern ist
 // die Warteschlange fast immer leer. Geprueft wird, dass die Sackgasse weg ist
@@ -4455,7 +4552,13 @@ async function suiteTutorial(browser) {
     const hb = await suiteHeartbeat(browser, FB_PORT);
     const tr = await suiteTrichter(browser, FB_PORT);
     const cs = await suiteCloudSave(browser, FB_PORT);
-    return { mm, mm3, hb, cs, tr };
+    // Zumauern laeuft HIER und nicht parallel: Die Suite haelt ein Bot-Spiel
+    // ueber vierzehn Sekunden am Laufen und fragt es dabei staendig ab. Neben
+    // den uebrigen Suiten hat sie zweimal die Mechanik-Pruefungen ins
+    // Zeitlimit gedrueckt — dieselbe Ueberlast, wegen der Matchmaking und 3P
+    // schon seriell stehen.
+    const zm = await suiteZumauern(browser);
+    return { mm, mm3, hb, cs, tr, zm };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -4487,13 +4590,13 @@ async function suiteTutorial(browser) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm;
   await browser.close();
   mockFbSrv.close();
 
-  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
+  const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
                    ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res];
-  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
+  const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
                    ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));

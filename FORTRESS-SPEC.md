@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.90.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.91.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6098,3 +6098,64 @@ Speicher UND im Menue. `suitePlattform` prueft die neue Richtung der
 Textbedienung: im Menue an, im Spiel aus.
 
 Tests gruen (Unit 70/70, E2E 398/398, Typen 0 Fehler).
+
+---
+
+## v3.91.0 — Die Zumauern-Warnung galt auch für fremde Burgen
+
+Vom Gerät gemeldet, mit Bildschirmfoto: Im Bot-Modus pulsierte die Leiste des
+**Bots** mit „ZUMAUERN!", und das Brett bekam den roten Alarmrahmen — während
+die eigene Burg dicht war.
+
+Die Warnung ist ein **Handlungsaufruf**. Für eine fremde Burg ist sie keiner:
+Man kann dort nichts tun, und sie liest sich, als sei man selbst in Not. Genau
+das ist der Schaden — nicht die falsche Anzeige, sondern die falsche Dringlichkeit.
+
+### Die Ursache stand in einer Zeile
+
+```js
+const checkP = online.current ? (myRole.current >= 1 ? [myRole.current] : playersList())
+                              : playersList();
+```
+
+**Online war es von Anfang an richtig** auf die eigene Rolle begrenzt. Offline
+lief alles über `playersList()` — und das schließt im Bot-Modus und im Tutorial
+die KI ein. Beim Spiel zu zweit oder zu dritt an EINEM Gerät ist die Liste
+dagegen richtig: Dort sitzt hinter jeder Burg ein Mensch, und jeder soll seine
+eigene Mahnung sehen. Die neue Regel unterscheidet das:
+
+| | wer wird gemahnt |
+|---|---|
+| Online | nur die eigene Rolle |
+| Bot-Modus, Tutorial | nur P1 (der Mensch) |
+| Lokal zu zweit/dritt | alle — jede Burg hat ihren Menschen |
+
+Betroffen waren beide Anzeigen: die pulsierende Leiste **und** der rote
+Alarmrahmen ums Brett (`buildUrgencyOpen` zählt dieselbe Menge).
+
+**Nicht geändert** wurde die einmalige Meldung „BURG von *Name* offen": Sie
+erscheint, wenn ein Schuss eine Burg aufreißt, nennt den Namen und ist damit
+Rückmeldung zum eigenen Treffer — kein Daueralarm.
+
+### Geprüft wird die Regel, nicht das Aussehen
+
+Neuer gesicherter Haken `__urgent` (nur mit `__mmDebug`) gibt zurück, wer
+gerade gemahnt wird. Die Suite reißt in einem Bot-Spiel **beide** Burgen auf
+und schaut über mehrere Bauphasen zu: Die 2 darf nie erscheinen, die 1 muss.
+
+Beide Hälften sind nötig. Drei Entwürfe davor waren wertlos, und zwar jedes Mal
+aus einem anderen Grund — sie stehen hier, damit der nächste sie sich spart:
+
+1. Erst aufreißen, dann aufs Fenster warten: Der Bot mauert seine Burg in der
+   Bauphase selbst wieder zu, und gemessen wurde eine dichte Burg.
+2. Sechs Wände aufreißen: Der Bot baut dick, sechs Löcher ergeben noch keinen
+   Weg nach draußen.
+3. Nur die fremde Burg aufreißen: Dann lautet das Ergebnis „niemand gemahnt" —
+   und das wäre auch dann grün, wenn die Warnung **ganz** kaputt ist.
+
+Die Suite läuft **seriell** in der schweren Kette. Parallel hat sie zweimal die
+Mechanik-Prüfungen ins Zeitlimit gedrückt; sie hält ein Bot-Spiel über vierzehn
+Sekunden am Laufen und fragt es dabei laufend ab. Dieselbe Überlast, wegen der
+Matchmaking und 3P schon seriell stehen.
+
+Tests grün (Unit 70/70, E2E 401/401, Typen 0 Fehler), zweimal hintereinander.

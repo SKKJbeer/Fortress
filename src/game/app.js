@@ -1459,6 +1459,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     window.__readScrap = gated((p) => scrap.current[p] || 0);
     window.__matchStats = gated((p) => JSON.parse(JSON.stringify(matchStats.current[p] || {})));
     window.__phase = gated(() => phase_r.current);
+    // Wer wird gerade zum Zumauern gemahnt? Nur eigene Burgen duerfen hier
+    // stehen — im Bot-Modus also nie die 2.
+    window.__urgent = gated(() => Object.keys(urgentRef2.current).map(Number));
     // Testhilfen (v3.32.4): Bot-Backfill — Wartezeit vorspulen + Bot-Modus lesen
     window.__mmForceWait = gated((s) => { mmStartedAt.current = Date.now() - s * 1e3; return true; });
     window.__botMode = gated(() => botMode.current);
@@ -7153,13 +7156,33 @@ window.StackSiegeApp = function StackSiegeApp() {
   }
   const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
   // Pro Spieler: ist in den letzten 8 Bau-Sekunden die Burg noch offen?
+  //
+  // **Nur fuer Burgen, die der Mensch am Geraet selbst zumauern kann.** Die
+  // Warnung ist ein Handlungsaufruf — „ZUMAUERN!", pulsierend, dazu der rote
+  // Rahmen ums Brett. Fuer eine fremde Burg ist das kein Aufruf, sondern
+  // Laerm: Man kann dort nichts tun, und es liest sich, als sei man selbst in
+  // Not. Gemeldet vom Geraet (v3.91.0): Im Bot-Modus pulsierte die Leiste des
+  // BOTS, waehrend die eigene Burg dicht war.
+  //
+  // Online war es von Anfang an richtig begrenzt. Offline lief alles ueber
+  // `playersList()` — und das schliesst im Bot-Modus und im Tutorial die KI
+  // ein. Beim Spiel zu zweit oder zu dritt an EINEM Geraet ist die Liste
+  // dagegen richtig: Dort sitzt hinter jeder Burg ein Mensch.
+  const meineBurgen = online.current
+    ? (myRole.current >= 1 ? [myRole.current] : playersList())
+    : (botMode.current || tutorialMode.current) ? [1] : playersList();
+  // Spiegel fuer den gesicherten Haken `__urgent` (nur mit __mmDebug). Die
+  // Warnung haengt an einem waehrend des Renderns gerechneten Wert; ohne
+  // Spiegel muesste eine Pruefung sie ueber die Anzeige erraten, und dann
+  // prueft sie das Aussehen statt der Regel.
+  const urgentRef2 = useRef({});
   const urgentPlayers = (phase === "build" && timer <= 8 && timer > 0) ? (() => {
     const fc = getFloodCache();
-    const checkP = online.current ? (myRole.current >= 1 ? [myRole.current] : playersList()) : playersList();
     const res = {};
-    checkP.forEach((p) => { if (!eliminated.current[p] && !fc.castleClosed[p]) res[p] = true; });
+    meineBurgen.forEach((p) => { if (!eliminated.current[p] && !fc.castleClosed[p]) res[p] = true; });
     return res;
   })() : {};
+  urgentRef2.current = urgentPlayers;
   const buildUrgencyOpen = Object.keys(urgentPlayers).length > 0;
   // Tutorial: ist die Spielerburg (P1) gerade offen (vom Bot aufgeschossen)? → Coach-Text/Key
   const coachP1Open = tutorialMode.current && screen === "game" && !getFloodCache().castleClosed[1];
@@ -7387,7 +7410,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.90.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.91.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
