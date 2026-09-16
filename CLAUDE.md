@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.79.0
+- **Aktuelle Version**: v3.90.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -129,7 +129,11 @@ Zahnrad-Glyphe ist ersatzlos entfallen.
 
 ## Spielmechanik (Kurzreferenz)
 
-- **Phasen**: Setup (20s) → Build (25s) → Shoot (20s, seit v3.14.11) → Rüstphase/Cannon (15s, seit v3.16.0) → Build ...
+- **Phasen**: Setup (20s) → **Shoot (20s)** → Build (25s) → Rüstphase/Cannon (15s, seit v3.16.0) → Shoot → Build …
+  **Runde 1 hat KEINE Bauphase** — `endSetup()` ruft direkt `startShoot()`. Der
+  wiederkehrende Takt ist Bauen 25 + Schießen 20 + Rüsten 15 = **60 s**, nicht 80.
+  (Hier stand bis v3.90.0 die Reihenfolge Setup → Build → Shoot; das war falsch
+  und hat es einmal bis auf die Website geschafft. SPEC v3.1.9 hatte es richtig.)
 - **Schrott-Ökonomie (seit v3.16.0, Messpass v3.24.0, Playtest-Balancing v3.31.0)**: In-Match-Währung **Beute** (`scrap`, seit v3.65.0 umbenannt und ×10: Mauer +20, Kanonen-Kill +180, Überleben +60/Rüstphase, Start 150; `CANNON_HP=12`). KEIN Gratis-Kanonen-Nachschub mehr — Shop in der Rüstphase (Kanone 200+80, Bezwinger 250, Schnellladen 250/500 → `reloadMsOf()`, Panzermauern 450 → `wallHp`-Map + Riss-Sprite, Reparatur 150+50-Staffel via `up.repair`). Match-persistent über Runden (Reset nur bei neuem Spiel; `beginSetup` resettet wallHp + Kanonen- UND Reparatur-Staffel). Kanonen-Kill sprengt 3×3-Mauern des Besitzers mit. Wiederaufbau-Paket (v3.30.0, `rebuildAidActive`/`cannonPriceOf`): bei 0 einsatzfähigen Kanonen Sold verdoppelt (12), Kanone zum Basispreis 20, Bergung = `SCRAP_WALL` je eigener zerstörter Mauer. Host-autoritativ; Gäste senden `buy`-Action. Gated Debug: `__buys`/`__econ`/`__botSelfPlay`. Messpass-Daten im SPEC-Changelog v3.24.0 (Armor verlängerte Spiele ~2× → 35→45).
 - **Emotes (seit v3.25.0)**: `EMOTES` (6, Index-Übertragung). Gast → `{type:'emote',e}`-Action; Host rate-limitet 3s/Spieler, synct via State-Feld `emo` (Dedupe `emoteSeen`). Auslöse-Button = smile-Icon (aria-label "Emote"), nur online. EMOTE-Inhalte sind bewusst Emojis (Inhalts-Ausnahme der Emoji-Regel).
 - **Queue-Tipps (seit v3.26.0)**: 8 i18n-Tipps im Matchmaking-Screen, Rotation `floor(mmElapsed/5)%8` — kein eigener Timer.
