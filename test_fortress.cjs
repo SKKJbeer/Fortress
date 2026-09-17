@@ -1,7 +1,48 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// Playwright aus node_modules, ersatzweise aus der globalen Installation
+// dieses Rechners.
+//
+// **Der feste Pfad allein war der Grund, warum diese Suite nie in einem Ablauf
+// lief.** /opt/node22/... gibt es nur in einer Umgebung; auf einem Laeufer von
+// GitHub bricht `require` sofort ab. Damit konnte die groesste Pruefschicht des
+// Projekts kein Deployment aufhalten — sie lief nur, wenn jemand daran dachte.
+const { chromium } = (() => {
+  try { return require('playwright'); }
+  catch (e) { return require('/opt/node22/lib/node_modules/playwright'); }
+})();
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+
+/**
+ * Ein winziger Dateiserver fuer dist/ auf 8765.
+ *
+ * Bewusst KEINE Abhaengigkeit: Die Suite soll ohne Zutun laufen — oertlich wie
+ * im Ablauf. Er liefert nur aus dist/ und nur Pfade ohne „..", damit aus einem
+ * Testhelfer kein Weg ins Dateisystem wird.
+ */
+function starteDistServer() {
+  const pfadmodul = require('path');
+  const wurzel = pfadmodul.join(__dirname, 'dist');
+  const typen = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript',
+    '.css': 'text/css', '.json': 'application/json', '.png': 'image/png',
+    '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg',
+    '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon' };
+  const srv = http.createServer((anfrage, antwort) => {
+    let pfad = decodeURIComponent((anfrage.url || '/').split('?')[0]);
+    if (pfad.includes('..')) { antwort.writeHead(400).end(); return; }
+    if (pfad.endsWith('/')) pfad += 'index.html';
+    const datei = pfadmodul.join(wurzel, pfad);
+    if (!datei.startsWith(wurzel)) { antwort.writeHead(400).end(); return; }
+    fs.readFile(datei, (fehler, inhalt) => {
+      if (fehler) { antwort.writeHead(404).end('nicht da'); return; }
+      antwort.writeHead(200, { 'Content-Type': typen[pfadmodul.extname(datei)] || 'application/octet-stream' });
+      antwort.end(inhalt);
+    });
+  });
+  srv.listen(8765);
+  srv.unref();
+  return srv;
+}
 
 // React kommt seit dem Vite-Umbau aus dem Bundle (Architektur E3), nicht mehr
 // vom CDN. Das fruehere Nachreichen von /tmp/react.min.js entfaellt damit
@@ -4523,6 +4564,329 @@ async function suiteTutorial(browser) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE 5e: Online-Haerte — Beitritts-Rennen, volle Spiele,
+// verwaiste Lobbys und Warteschlangen-Hygiene (v3.94.0)
+//
+// Diese Invarianten stehen seit Jahren in CLAUDE.md unter "geloeste Bugs",
+// waren aber NIE geprueft. Jede davon hat das Spiel schon einmal zerlegt:
+//   v2.8.1  — zwei gleichzeitig beitretende Gaeste bekamen beide Rolle 2
+//   v3.14.10 — verwaiste Lobbys blieben liegen, Codes wurden unbenutzbar
+//   v3.14.10 — geloeschtes Warteschlangen-Ticket heilte als {hb}-Stub,
+//              den niemand mehr matchen konnte ("sucht ewig")
+// ═══════════════════════════════════════════════════════════════
+async function suiteOnlineHaerte(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Online-Haerte\n' + '='.repeat(50));
+
+  // Direktzugriff auf den Mock-Server: so lassen sich Zustaende herstellen,
+  // die mit echten Clients Minuten kosten wuerden (volle Lobby, 3h alte Lobby).
+  const dbGet = (p, path) => p.evaluate(async ({ port, path }) => {
+    try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=' + encodeURIComponent(path))).json(); }
+    catch (e) { return 'ERR'; }
+  }, { port: fbPort, path });
+  const dbSet = (p, path, val) => p.evaluate(async ({ port, path, val }) => {
+    try {
+      await fetch('http://localhost:' + port + '/fb?op=set&path=' + encodeURIComponent(path),
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val) });
+      return true;
+    } catch (e) { return false; }
+  }, { port: fbPort, path, val });
+  const dbDel = (p, path) => p.evaluate(async ({ port, path }) => {
+    try { await fetch('http://localhost:' + port + '/fb?op=delete&path=' + encodeURIComponent(path), { method: 'DELETE' }); return true; }
+    catch (e) { return false; }
+  }, { port: fbPort, path });
+
+  const mk = async (n, pid, dev) => {
+    const c = await makeOnlineCtx(browser, fbPort, mmIdentInit(n, pid, dev));
+    c.page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(`${n}: ${e.message}`); });
+    await loadMenu(c.page);
+    return c;
+  };
+  // Beitritt bis VOR den letzten Klick vorbereiten — nur so lassen sich zwei
+  // Gaeste wirklich gleichzeitig absenden.
+  const beitrittVorbereiten = async (p, code) => {
+    await jsClick(p, ['ONLINE']);            await p.waitForTimeout(250);
+    await jsClick(p, ['Spiel beitreten', 'beitreten']); await p.waitForTimeout(250);
+    await p.waitForSelector('input:not([type=range])', { timeout: 3000 }).catch(() => {});
+    if (await p.evaluate(() => !!document.querySelector('input:not([type=range])')))
+      await p.fill('input:not([type=range])', code);
+    await p.waitForTimeout(80);
+  };
+  const absenden = p => jsClick(p, ['Beitreten']);
+  const imSpiel  = (p, ms) => p.waitForSelector('canvas', { timeout: ms }).then(() => true).catch(() => false);
+
+  // ══ BLOCK A: Slot-Rennen (v2.8.1) ══════════════════════════════
+  {
+    const H  = await mk('HaerteHost', 'p_hh', 'd_hh');
+    const Ga = await mk('HaerteGastA', 'p_hga', 'd_hga');
+    const Gb = await mk('HaerteGastB', 'p_hgb', 'd_hgb');
+    try {
+      await jsClick(H.page, ['ONLINE']);          await H.page.waitForTimeout(220);
+      await jsClick(H.page, ['3 Spieler']);        await H.page.waitForTimeout(150);
+      await jsClick(H.page, ['Spiel erstellen']);  await H.page.waitForTimeout(1200);
+      const code = await H.page.evaluate(() => {
+        const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
+        return null;
+      });
+      if (!code) {
+        fail('Slot-Rennen: Host liefert keinen Spielcode');
+      } else {
+        await Promise.all([beitrittVorbereiten(Ga.page, code), beitrittVorbereiten(Gb.page, code)]);
+        // Der eigentliche Test: BEIDE Klicks im selben Moment.
+        await Promise.all([absenden(Ga.page), absenden(Gb.page)]);
+
+        const [cH, cA, cB] = await Promise.all([
+          imSpiel(H.page, 14000), imSpiel(Ga.page, 14000), imSpiel(Gb.page, 14000)]);
+        (cH && cA && cB)
+          ? ok('Slot-Rennen: Host und beide Gaeste im Spiel ✓')
+          : fail(`Slot-Rennen: Host=${cH} GastA=${cA} GastB=${cB}`);
+
+        const rollen = await Promise.all([Ga.page, Gb.page].map(p => p.evaluate(() => window.__myRole || 0)));
+        const sortiert = [...rollen].sort().join(',');
+        sortiert === '2,3'
+          ? ok(`Slot-Rennen: getrennte Rollen vergeben (${sortiert}) — v2.8.1 haelt ✓`)
+          : fail(`Slot-Rennen: Rollen "${sortiert}" statt "2,3" — Transaktion vergibt Slots doppelt!`);
+
+        // Gegenprobe im Datenstand: beide Slots belegt, keiner ueberschrieben.
+        const knoten = await dbGet(H.page, 'games/' + code);
+        const slots = (knoten && knoten !== 'ERR')
+          ? [!!knoten.guestAction2, !!knoten.guestAction3] : [false, false];
+        (slots[0] && slots[1])
+          ? ok('Slot-Rennen: guestAction2 UND guestAction3 belegt ✓')
+          : fail(`Slot-Rennen: Slots ${JSON.stringify(slots)} — ein Beitritt ging verloren`);
+
+        // Drei verschiedene Namen im HUD — ein doppelt vergebener Slot
+        // wuerde sich hier als fehlender dritter Spieler zeigen.
+        if (cH) {
+          const namen = await H.page.evaluate(() => {
+            const t = document.body.innerText;
+            return ['HaerteHost', 'HaerteGastA', 'HaerteGastB'].filter(n => t.includes(n)).length;
+          });
+          namen >= 2
+            ? ok(`Slot-Rennen: ${namen} Gast-Namen im Host-HUD ✓`)
+            : fail(`Slot-Rennen: nur ${namen} Namen im Host-HUD`);
+        }
+      }
+    } catch (e) {
+      fail('Slot-Rennen: Ausnahme — ' + e.message);
+    } finally { await H.ctx.close(); await Ga.ctx.close(); await Gb.ctx.close(); }
+  }
+
+  // ══ BLOCK B: Beitritt muss scheitern, wo er scheitern MUSS ════
+  {
+    const P = await mk('HaertePruefer', 'p_hp', 'd_hp');
+    try {
+      const text = () => P.page.evaluate(() => document.body.innerText);
+      const probe = async (code, erwartet, name, vorher) => {
+        if (vorher) await vorher();
+        await beitrittVorbereiten(P.page, code);
+        await absenden(P.page);
+        await P.page.waitForTimeout(900);
+        const t = await text();
+        const spiel = await P.page.evaluate(() => !!document.querySelector('canvas'));
+        if (spiel) { fail(`${name}: Client landete trotzdem im Spiel!`); return false; }
+        if (erwartet.test(t)) { ok(`${name}: abgewiesen mit korrekter Meldung ✓`); return true; }
+        fail(`${name}: falsche/keine Meldung (${t.replace(/\s+/g, ' ').slice(0, 90)})`);
+        return false;
+      };
+
+      await probe('ZZZZZZ', /nicht gefunden/i, 'Unbekannter Code');
+
+      // Verwaiste Lobby: nie gestartet (kein state), aelter als 2h.
+      const alt = Date.now() - 3 * 3600 * 1000;
+      await dbSet(P.page, 'games/ALTLAB', { numPlayers: 2, createdAt: alt, updatedAt: alt });
+      await probe('ALTLAB', /nicht gefunden/i, 'Verwaiste Lobby');
+      const rest = await dbGet(P.page, 'games/ALTLAB');
+      (rest === null || rest === undefined)
+        ? ok('Verwaiste Lobby: Knoten beim Beitrittsversuch aufgeraeumt ✓')
+        : fail('Verwaiste Lobby: Knoten liegt weiter herum — Code bleibt verbrannt');
+
+      // Volles 2P-Spiel: der einzige Gast-Slot ist belegt. Entscheidend ist,
+      // dass NICHT auf guestAction3 ausgewichen wird (np===3-Schranke).
+      await dbSet(P.page, 'games/VOLLZW', {
+        numPlayers: 2, createdAt: Date.now(), updatedAt: Date.now(),
+        guestAction2: JSON.stringify({ type: 'join', n: Date.now(), name: 'Belegt' })
+      });
+      await probe('VOLLZW', /bereits voll\./i, 'Volles 2-Spieler-Spiel');
+      const zw = await dbGet(P.page, 'games/VOLLZW');
+      (zw && zw !== 'ERR' && !zw.guestAction3)
+        ? ok('Volles 2-Spieler-Spiel: kein Ausweichen auf Slot 3 ✓')
+        : fail('Volles 2-Spieler-Spiel: dritter Spieler in ein 2P-Spiel gerutscht!');
+
+      // Volles 3P-Spiel: beide Gast-Slots belegt.
+      await dbSet(P.page, 'games/VOLLDR', {
+        numPlayers: 3, createdAt: Date.now(), updatedAt: Date.now(),
+        guestAction2: JSON.stringify({ type: 'join', n: Date.now(), name: 'Belegt2' }),
+        guestAction3: JSON.stringify({ type: 'join', n: Date.now(), name: 'Belegt3' })
+      });
+      await probe('VOLLDR', /bereits voll \(3/i, 'Volles 3-Spieler-Spiel');
+
+      // Nach vier gescheiterten Beitritten muss der Client bedienbar bleiben.
+      const nochDa = await P.page.evaluate(() =>
+        [...document.querySelectorAll('button')].some(b => /Beitreten/.test(b.textContent)));
+      nochDa ? ok('Nach vier Fehlversuchen weiter bedienbar ✓')
+             : fail('Beitritts-Bildschirm nach Fehlversuchen kaputt');
+    } catch (e) {
+      fail('Beitritts-Abweisung: Ausnahme — ' + e.message);
+    } finally { await P.ctx.close(); }
+  }
+
+  // ══ BLOCK C: Warteschlange ════════════════════════════════════
+  {
+    const Q = await mk('HaerteQueue', 'p_hq', 'd_hq');
+    try {
+      await dbDel(Q.page, 'queue2');
+      await jsClick(Q.page, ['ONLINE']);       await Q.page.waitForTimeout(250);
+      await jsClick(Q.page, ['Matchmaking']);  await Q.page.waitForTimeout(1200);
+
+      const tickets = async () => {
+        const q = await dbGet(Q.page, 'queue2');
+        if (!q || q === 'ERR') return [];
+        return Object.entries(q).map(([k, v]) => ({ sid: k, ...v }));
+      };
+
+      let t1 = await tickets();
+      t1.length === 1
+        ? ok('Warteschlange: genau ein eigenes Ticket eingetragen ✓')
+        : fail(`Warteschlange: ${t1.length} Tickets statt 1`);
+      (t1[0] && t1[0].status === 'waiting' && t1[0].dev === 'd_hq')
+        ? ok('Warteschlange: Ticket vollstaendig (status=waiting, dev gesetzt) ✓')
+        : fail(`Warteschlange: unvollstaendiges Ticket ${JSON.stringify(t1[0])}`);
+
+      // Selbstheilung (v3.14.10): Server loescht das Ticket (onDisconnect nach
+      // kurzem Verbindungsabriss). Der Client muss es KOMPLETT neu eintragen —
+      // ein blosser {hb}-Stub ist nicht matchbar und war die Ursache fuer
+      // "sucht ewig".
+      await dbDel(Q.page, 'queue2');
+      const wegSofort = await tickets();
+      wegSofort.length === 0
+        ? ok('Warteschlange: Ticket serverseitig geloescht (Abriss simuliert) ✓')
+        : fail('Warteschlange: Loeschen hat nicht gegriffen');
+
+      let geheilt = null;
+      for (let i = 0; i < 25 && !geheilt; i++) {
+        await Q.page.waitForTimeout(200);
+        const t = await tickets();
+        if (t.length === 1) geheilt = t[0];
+      }
+      geheilt
+        ? ok('Warteschlange: Ticket nach Abriss selbst wiederhergestellt ✓')
+        : fail('Warteschlange: Ticket kam nicht zurueck — "sucht ewig" (v3.14.10)');
+      (geheilt && geheilt.status === 'waiting' && geheilt.pid && geheilt.dev)
+        ? ok('Warteschlange: geheiltes Ticket ist vollstaendig, kein {hb}-Stub ✓')
+        : fail(`Warteschlange: geheiltes Ticket unbrauchbar ${JSON.stringify(geheilt)}`);
+
+      // Sauber verlassen: kein Ticket-Leichnam.
+      await jsClick(Q.page, ['Suche abbrechen']);
+      await Q.page.waitForTimeout(900);
+      const nachher = await tickets();
+      nachher.length === 0
+        ? ok('Warteschlange: nach Abbrechen leer ✓')
+        : fail(`Warteschlange: ${nachher.length} Ticket(s) nach Abbrechen`);
+
+      // Und der Tick-Loop muss stehen — sonst schriebe er das Ticket zurueck.
+      await Q.page.waitForTimeout(1000);
+      const spaeter = await tickets();
+      spaeter.length === 0
+        ? ok('Warteschlange: Tick-Loop gestoppt, kein Zombie-Ticket ✓')
+        : fail(`Warteschlange: Zombie-Ticket nach Abbrechen (${spaeter.length})`);
+
+      const imMenue = await Q.page.evaluate(() =>
+        [...document.querySelectorAll('button')].some(b => /Matchmaking/.test(b.textContent)));
+      imMenue ? ok('Warteschlange: zurueck im Online-Menue ✓')
+              : fail('Warteschlange: haengt nach Abbrechen im Suchbildschirm');
+    } catch (e) {
+      fail('Warteschlange: Ausnahme — ' + e.message);
+    } finally { await Q.ctx.close(); }
+  }
+
+  // == BLOCK D: Protokoll-Versions-Schranke (v3.35.0) ==============
+  // Seit die App im Store liegt, spielt ein eingefrorener Client gegen einen
+  // laufend aktualisierten Web-Client. Ist der Host neuer, muss der Gast das
+  // EINMAL sagen statt still Geister-Fehler zu erzeugen. Nie geprueft gewesen.
+  {
+    const H = await mk('ProtoHost', 'p_ph', 'd_ph');
+    const G = await mk('ProtoGast', 'p_pg', 'd_pg');
+    try {
+      await jsClick(H.page, ['ONLINE']);         await H.page.waitForTimeout(220);
+      await jsClick(H.page, ['Spiel erstellen']); await H.page.waitForTimeout(1200);
+      const code = await H.page.evaluate(() => {
+        const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
+        return null;
+      });
+      if (!code) { fail('Protokoll-Schranke: kein Spielcode'); }
+      else {
+        await beitrittVorbereiten(G.page, code);
+        await absenden(G.page);
+        const drin = await imSpiel(G.page, 14000);
+        if (!drin) fail('Protokoll-Schranke: Gast kam nicht ins Spiel');
+        else {
+          // Ohne Versions-Unterschied darf NICHTS gewarnt werden — sonst
+          // pruefte der Test unten nur, dass irgendein Banner existiert.
+          const vorher = await G.page.evaluate(() =>
+            /Neue Spielversion|New game version/.test(document.body.innerText));
+          !vorher ? ok('Protokoll-Schranke: keine Warnung bei gleicher Version ✓')
+                  : fail('Protokoll-Schranke: warnt ohne Versions-Unterschied');
+
+          // Host anhalten, sonst ueberschreibt seine Push-Schleife die
+          // Manipulation binnen Millisekunden.
+          await H.ctx.close();
+          await G.page.waitForTimeout(300);
+          // ACHTUNG: `state` ist ein JSON-STRING, kein Objekt. Ein `st.pv = 99`
+          // auf dem String lief stillschweigend ins Leere und die Pruefung
+          // unten war wertlos \u2014 deshalb hier parsen, aendern, neu schreiben
+          // und anschliessend GEGENLESEN, dass die 99 wirklich drinsteht.
+          const gesetzt = await G.page.evaluate(async ({ port, code }) => {
+            const b = 'http://localhost:' + port + '/fb?op=';
+            const pfad = encodeURIComponent('games/' + code + '/state');
+            const roh = await (await fetch(b + 'get&path=' + pfad)).json();
+            if (typeof roh !== 'string') return 'KEIN_STRING:' + typeof roh;
+            const st = JSON.parse(roh);
+            st.pv = 99; // Host gibt sich als neuere Version aus
+            await fetch(b + 'set&path=' + pfad,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(JSON.stringify(st)) });
+            const zurueck = await (await fetch(b + 'get&path=' + pfad)).json();
+            return JSON.parse(zurueck).pv === 99 ? 'OK' : 'NICHT_UEBERNOMMEN';
+          }, { port: fbPort, code });
+          gesetzt === 'OK'
+            ? ok('Protokoll-Schranke: neuerer Host-State (pv=99) eingespielt ✓')
+            : fail(`Protokoll-Schranke: State nicht manipulierbar (${gesetzt})`);
+
+          let gewarnt = false;
+          for (let i = 0; i < 20 && !gewarnt; i++) {
+            await G.page.waitForTimeout(200);
+            gewarnt = await G.page.evaluate(() =>
+              /Neue Spielversion|New game version/.test(document.body.innerText));
+          }
+          gewarnt ? ok('Protokoll-Schranke: Gast weist auf neuere Version hin ✓')
+                  : fail('Protokoll-Schranke: veralteter Gast bleibt stumm (pv-Pruefung tot)');
+
+          // Und der Gast darf daran nicht zerbrechen: weiter im Spiel.
+          const nochImSpiel = await G.page.evaluate(() => !!document.querySelector('canvas'));
+          nochImSpiel ? ok('Protokoll-Schranke: Gast spielt trotz Hinweis weiter ✓')
+                      : fail('Protokoll-Schranke: Gast aus dem Spiel geworfen');
+        }
+      }
+    } catch (e) {
+      fail('Protokoll-Schranke: Ausnahme — ' + e.message);
+    } finally {
+      try { await H.ctx.close(); } catch (e) {}
+      await G.ctx.close();
+    }
+  }
+
+  errs.length === 0 ? ok('Online-Haerte: keine JS-Fehler ✓')
+                    : errs.slice(0, 3).forEach(e => fail(`Haerte JS: ${e.slice(0, 80)}`));
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 (async () => {
@@ -4530,9 +4894,25 @@ async function suiteTutorial(browser) {
   const expected = getExpectedVersion();
   if (!expected) { console.error('❌ ABBRUCH: Version nicht lesbar'); process.exit(1); }
   console.log(`   Erwartet: v${expected}`);
+  // Laeuft nichts auf 8765, wird selbst einer gestartet.
+  //
+  // Vorher brach die Suite hier ab mit „Server nicht erreichbar", und man
+  // musste sich erinnern, dass sie gegen dist/ laeuft und nicht gegen die
+  // Quelle. Das kostete jedes Mal einen Anlauf, und in einem Ablauf braucht
+  // es sonst einen eigenen Schritt, der den Server im Hintergrund startet und
+  // hinterher niemand aufraeumt.
+  let eigenerServer = null;
   let server;
   try { server = await getServerVersion(); }
-  catch (e) { console.error(`❌ ABBRUCH: Server nicht erreichbar — ${e.message}`); process.exit(1); }
+  catch (e) {
+    console.log(`   Kein Server auf 8765 (${e.code || e.message}) — starte einen fuer dist/`);
+    eigenerServer = starteDistServer();
+    try { server = await getServerVersion(); }
+    catch (e2) {
+      console.error(`❌ ABBRUCH: Auch der eigene Server antwortet nicht — ${e2.message}`);
+      process.exit(1);
+    }
+  }
   console.log(`   Server:   v${server}`);
   if (server !== expected) {
     console.error(`❌ ABBRUCH: Versions-Mismatch (Server v${server} ≠ Disk v${expected})`);
@@ -4545,6 +4925,67 @@ async function suiteTutorial(browser) {
   const browser   = await chromium.launch({ headless: true, args: ['--ignore-certificate-errors', '--disable-web-security'] });
   const mockFbSrv = await startMockFbServer();
   const FB_PORT   = 8766;
+
+  // Entwicklungs-Abkuerzung: NUR=haerte,online2p faehrt einzelne Suiten.
+  // Das ist ausdruecklich KEIN Ersatz fuer den Lauf, der den Build freigibt —
+  // `npm run test:e2e` ohne NUR faehrt immer alles. Der Schalter existiert,
+  // weil ein voller Lauf zwei Minuten kostet und man beim Schreiben einer
+  // Suite zehnmal hintereinander laeuft.
+  const NUR = (process.env.NUR || '').split(',').map(x => x.trim()).filter(Boolean);
+  if (NUR.length) {
+    const einzeln = {
+      menu: () => suiteMenu(browser),
+      offline: () => suiteOffline(browser),
+      plattform: () => suitePlattform(browser),
+      sicherheit: () => suiteSicherheitsbereiche(browser),
+      ipad: () => suiteIPad(browser),
+      profilname: () => suiteProfilName(browser),
+      nav2: () => suiteNavHUD(browser, 2),
+      nav3: () => suiteNavHUD(browser, 3),
+      mechanik: () => suiteMechanics(browser),
+      quit: () => suiteQuitUX(browser),
+      onlineui: () => suiteOnlineUI(browser, FB_PORT),
+      online2p: () => suiteOnline2P(browser, FB_PORT),
+      online3p: () => suiteOnline3P(browser, FB_PORT),
+      matchmaking: () => suiteMatchmaking(browser, FB_PORT),
+      haerte: () => suiteOnlineHaerte(browser, FB_PORT),
+      heartbeat: () => suiteHeartbeat(browser, FB_PORT),
+      trichter: () => suiteTrichter(browser, FB_PORT),
+      cloudsave: () => suiteCloudSave(browser, FB_PORT),
+      zumauern: () => suiteZumauern(browser),
+      progression: () => suiteProgression(browser),
+      achievements: () => suiteAchievements(browser),
+      bauwarnung: () => suiteBuildUrgency(browser),
+      onboarding: () => suiteOnboarding(browser),
+      sound: () => suiteSound(browser),
+      i18n: () => suiteI18n(browser),
+      bot: () => suiteBot(browser),
+      tutorial: () => suiteTutorial(browser),
+      settle: () => suiteBallSettle(browser),
+      ruestphase: () => suiteArmoryReady(browser),
+      kanonenkill: () => suiteCannonKill(browser),
+      aufgaben: () => suiteDailyTasks(browser),
+      goldshop: () => suiteGoldShop(browser),
+      schmiede: () => suiteSchmiede(browser),
+    };
+    const unbekannt = NUR.filter(n => !einzeln[n]);
+    if (unbekannt.length) {
+      console.error(`ABBRUCH: unbekannte Suite(n): ${unbekannt.join(', ')}`);
+      console.error(`Verfuegbar: ${Object.keys(einzeln).join(', ')}`);
+      await browser.close(); mockFbSrv.close(); process.exit(2);
+    }
+    const teil = [];
+    for (const n of NUR) teil.push(await einzeln[n]());
+    await browser.close(); mockFbSrv.close();
+    const rs = teil.flatMap(x => x.res), es = teil.flatMap(x => x.errs);
+    console.log('\n' + '='.repeat(50) + `\nTEILERGEBNIS (NUR=${NUR.join(',')})\n` + '='.repeat(50));
+    rs.forEach(r => console.log(r));
+    if (es.length) { console.log('\nJS-FEHLER:'); es.forEach(e => console.log('  ' + e)); }
+    const p2 = rs.filter(r => r.startsWith('\u2705')).length;
+    const f2 = rs.filter(r => r.startsWith('\u274C')).length;
+    console.log(`\nTeilsumme: ${p2} \u2705  ${f2} \u274C  (${((Date.now()-t0)/1000).toFixed(1)}s)`);
+    process.exit(f2 > 0 ? 1 : 0);
+  }
 
   // Alle Suites parallel ausführen (Online-Suites teilen Mock-Server)
   // Matchmaking- und 3P-Suite NACHEINANDER (bis zu 6 Kontexte mit laufenden
@@ -4564,7 +5005,11 @@ async function suiteTutorial(browser) {
     // Zeitlimit gedrueckt — dieselbe Ueberlast, wegen der Matchmaking und 3P
     // schon seriell stehen.
     const zm = await suiteZumauern(browser);
-    return { mm, mm3, hb, cs, tr, zm };
+    // Online-Haerte gehoert ebenfalls hierher: sie haelt in Block A drei
+    // Spielkontexte gleichzeitig und braucht ein unbelastetes Zeitfenster,
+    // sonst wird aus dem Beitritts-Rennen ein Lastproblem.
+    const hrt = await suiteOnlineHaerte(browser, FB_PORT);
+    return { mm, mm3, hb, cs, tr, zm, hrt };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -4596,14 +5041,14 @@ async function suiteTutorial(browser) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

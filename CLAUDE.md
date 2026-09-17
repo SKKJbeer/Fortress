@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.90.0
+- **Aktuelle Version**: v3.94.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -25,7 +25,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `src/audio.js`, `src/spread.js`, `src/platform.ts` | Ton/Musik, Objekt-Helfer, Plattform-Weiche |
 | `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
-| `tests/*.test.js` | **Unit-Tests** (`node --test tests/engine.test.js tests/i18n.test.js`, ~0,2s). |
+| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 85 Tests, ~0,3 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
 | `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |
@@ -306,6 +306,7 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 | v3.14.11 | `fb.subscribe`/`subscribeRaw`: `off(ref,'value',unsub)` meldete NIE ab (modulare SDK: `onValue()` gibt Unsubscribe-FUNKTION zurück, die muss aufgerufen werden). Geister-Listener alter Spiele beendeten neue Sessions → „2. Online-Spiel kommt nicht zustande". Test-Mock muss SDK-Semantik spiegeln (onValue → Funktion)! |
 | v3.14.12 | Tutorial-Autostart/Onboarding kaperte laufendes Matchmaking (Erstgerät): Onboarding+Tutorial-Autostart nur noch im untätigen Menü; `startGuidedTutorial` bricht Matchmaking sauber ab, nie bei `online`. Selbst-Match im Quick-Match: `pid`-Fallback war SESSION_ID (ändert sich pro Load) → eigenes Geister-Ticket = „bester Gegner" (ELO-Diff 0). Fix: persistente `DEVICE_ID` (`fortress_device_id`), Ticket-Feld `dev`, alle 3 Selbst-Filter prüfen `dev`. |
 | v3.14.17 | `screenRef`/`screen`-Drift: `leaveOnline`/`quitGame` setzten nur `setScreen("menu")`, NICHT `screenRef.current` → Gast, der mitten im Spiel ausstieg, behielt Ref="game"; `applyState` wechselt den Screen nur bei Differenz zum Ref → nächster Online-Beitritt blieb für immer im Menü hängen (Refs spielten unsichtbar mit, Name erschien beim Gegner!). Regel: `setScreen` IMMER mit `screenRef.current` synchron setzen. |
+| v3.94.0 | Warteschlangen-Subscription hing an `fb.subscribe` — das verschluckt den Null-Fall (`if (data) onData(data)`). Die Realtime Database löscht einen Knoten, sobald sein letztes Kind weg ist: War man der EINZIGE Wartende und das eigene Ticket fiel per onDisconnect weg, kam die Leerung nie an, der Schnappschuss behielt das eigene Ticket, `mmTick` hielt es für vorhanden und trug es nie neu ein → unsichtbar in leerer Warteschlange, sucht ewig (3P ohne Bot-Rückfall unbegrenzt). Fix: `fb.subscribeRaw`. Geprüft in `suiteOnlineHaerte`. |
 | v3.15.2 | Selbst-Match-Race: `mmClaimAndMatch` patchte das EIGENE Ticket auf `matched(role:1)` → Firebase-Push-Echo → `mmOnQueueUpdate` hielt es für ein Fremd-Match → Host jointe als Gast 2 ins EIGENE Spiel. Own-Patch entfernt + Guards (`mmBusy`/`claimBy`/`role 1`) + mmJoinMatchedGame verweigert eigenes Spiel. NIE das eigene Ticket auf matched patchen! Test-Mocks (Polling) treffen solche Push-Races kaum — Vorsicht bei grünen Tests. Außerdem: Verwaist-Check jetzt beobachtungsbasiert (`mmHbSeen`), nie lokale Uhr vs. fremde Zeitstempel (Uhren-Skew löschte fremde Tickets). |
 
 ---
@@ -351,6 +352,19 @@ npm run test:e2e
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)
 - **Online immer mitgetestet**: Code-Join (Host+Gast, Phasen-Sync, Gast-Timer, Aktionen) UND Matchmaking-Suite (`suiteMatchmaking`, seit v3.14.15): Quick Match ×2 hintereinander (Geister-Listener-Regression), Ranked-Result ohne Rematch-Buttons, Queue-Leere nach Matches (Ticket-Leichen), Selbst-Match-Schutz (gleiche `DEVICE_ID` via `mmIdentInit`-Override in `makeOnlineCtx(browser, fbPort, extraInit)`)
 - **Regel: Kein Commit ohne grünen Test**
+- **Der Ablauf `deploy.yml` ist seit v3.94.0 der Riegel**: `typecheck` →
+  `test:unit` → `test:ios` → `build` → `test:e2e`, erst dann Auslieferung.
+  Vorher lief dort nur `test:unit` — die E2E-Suite konnte kein Deployment
+  aufhalten. Diese Schritte nie wieder herausnehmen.
+- **Einzelne Suite fahren** (nur Entwicklung): `NUR=haerte npm run test:e2e`.
+  Namen stehen in der `einzeln`-Tabelle in `test_fortress.cjs`. Ohne `NUR`
+  läuft immer alles.
+- **Online-Härte (`suiteOnlineHaerte`, seit v3.94.0)**: Beitritts-Rennen
+  (v2.8.1), Abweisungen (unbekannter Code, verwaiste Lobby, volles Spiel),
+  Warteschlangen-Selbstheilung (v3.14.10) und die Protokoll-Schranke (`pv`).
+  Die Selbstheilungs-Prüfung hat beim ersten Lauf einen echten Fehler
+  gefunden: `fb.subscribe` verschluckt den Null-Fall, deshalb hängt die
+  Warteschlangen-Subscription an **`fb.subscribeRaw`** — nicht zurückbauen.
 
 ### iOS zusätzlich (seit v3.91.0)
 - `npm run test:ios` → `scripts/ios-pruefen.mjs`: 18 statische Prüfungen an der

@@ -21,6 +21,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Ein haengender Browser darf nicht stundenlang Laufzeit fressen.
+    timeout-minutes: 30
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -48,11 +50,44 @@ jobs:
       - name: Abhaengigkeiten installieren
         run: npm ci
 
+      # **Diese vier Schritte sind der Riegel vor der Auslieferung.**
+      #
+      # Bis v3.94.0 stand hier NUR `test:unit`. Die E2E-Suite mit allen
+      # Online- und Warteschlangen-Pruefungen lief nie in einem Ablauf — sie
+      # konnte kein Deployment aufhalten, und ob sie vor einem Push gelaufen
+      # war, hing daran, ob jemand daran gedacht hat. Der Grund war ein fester
+      # Pfad auf Playwright, den es nur in einer Umgebung gibt; er steht jetzt
+      # in package.json.
+      - name: Typen pruefen
+        run: npm run typecheck
+
       - name: Unit-Tests
         run: npm run test:unit
 
+      - name: iOS-Huelle pruefen
+        run: npm run test:ios
+
       - name: Bauen
         run: npm run build
+
+      # Die Suite laeuft gegen dist/ und bringt ihren Dateiserver selbst mit.
+      # Nur der Browser muss da sein.
+      - name: Browser fuer die E2E-Suite
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E-Suite (Spiel, Online, Warteschlange, iPad)
+        run: npm run test:e2e
+
+      # Bei rotem Lauf sind die Bildschirmfotos der Suite das Einzige, woran
+      # man von aussen sieht, WAS kaputt war.
+      - name: Bildschirmfotos der Suite sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-bildschirmfotos
+          path: /tmp/s*.png
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Bauergebnis pruefen
         run: |

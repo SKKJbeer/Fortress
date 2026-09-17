@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.93.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.94.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6295,3 +6295,89 @@ Drei Zeilen, drei Aussagen: Die Hülle läuft, der Kanal steht, und die
 Weboberfläche spricht darüber.
 
 Tests grün (Typen 0, Unit 70/70, iOS 21/21, E2E 400/400).
+
+---
+
+## v3.94.0 — Die Prüfungen laufen jetzt beim Bauen, und sie haben einen echten Fehler gefunden
+
+Auftrag: erweiterte Prüfungen, die **immer beim Bauen laufen**, mit
+Mehrspieler und Warteschlange vollständig abgedeckt.
+
+### Befund 1: Die E2E-Suite hat noch nie ein Deployment aufgehalten
+
+`deploy.yml` — der Ablauf, der jeden Push auf `main` ausliefert — führte
+`test:unit` und `build` aus. Sonst nichts. Die 400 Prüfungen der E2E-Suite,
+darunter jede einzelne Online- und Matchmaking-Prüfung, liefen in keinem
+Ablauf. Ob sie vor einem Push gelaufen waren, hing daran, ob jemand daran
+gedacht hatte.
+
+Der Grund war ein fester Pfad: `test_fortress.cjs` lud Playwright aus
+`/opt/node22/lib/node_modules/playwright`, und Playwright stand in keiner
+`package.json`. Auf einem Runner gibt es diesen Pfad nicht — die Suite wäre
+sofort abgebrochen. Jetzt `require('playwright')` mit Rückfall, Playwright als
+`devDependency` auf **1.56.1 festgenagelt** (1.63 passt nicht zu den
+vorinstallierten Browsern: „Executable doesn't exist").
+
+`deploy.yml` läuft nun: `typecheck` → `test:unit` → `test:ios` → `build` →
+Browser holen → `test:e2e` → erst dann ausliefern. Job-Zeitlimit 30 Minuten;
+bei rotem Lauf werden die Bildschirmfotos der Suite als Artefakt gesichert.
+
+### Befund 2: Zwei Testdateien liefen nie
+
+`tests/net.test.js` (13 Prüfungen, darunter Matchmaking-Determinismus, die
+Schwarm-Eigenschaft und die Livelock-Regression aus v3.14.13) und
+`tests/ui.test.js` existierten — aber `test:unit` rief namentlich nur
+`engine` und `i18n` auf. Jetzt `node --test tests/*.test.js`: **70 → 85**.
+
+### Befund 3 — der eigentliche Fund: Wer allein in der Warteschlange steht, sucht ewig
+
+Die neue Suite „Online-Härte" prüft die Selbstheilung aus v3.14.10: Server
+löscht das eigene Ticket (kurzer Netzaussetzer, App-Wechsel), Client muss es
+komplett neu eintragen. **Das schlug fehl** — und zwar nicht im Test, sondern
+im Spiel:
+
+- `fb.subscribe` verschluckt den Null-Fall (`if (data) onData(data)`).
+- Die Realtime Database löscht einen Knoten, sobald sein letztes Kind weg ist.
+- War man der **einzige** Wartende und das eigene Ticket fiel weg, war `queue2`
+  danach nicht mehr vorhanden → die Leerung kam beim Client nie an → der
+  Schnappschuss behielt das eigene Ticket → `mmTick` hielt es für vorhanden und
+  trug es **nie** neu ein.
+
+Ergebnis: ein Spieler wartet in einer leeren Warteschlange, ist für alle
+anderen unsichtbar und sucht bis zum Bot-Rückfall nach 60 s — im
+3-Spieler-Modus, wo es keinen Rückfall gibt, unbegrenzt. Genau das Bild von
+v3.14.10, im Ein-Mann-Fall überlebt. Bei kleiner Spielerbasis ist der
+Ein-Mann-Fall der Normalfall.
+
+Das `|| {}` in der Rückruffunktion stand von Anfang an da — die Absicht war
+vorhanden, die Leitung hat sie nur nie durchgelassen. Fix: `subscribeRaw`
+statt `subscribe` für die Warteschlange.
+
+Die Prüfung ist nachweislich nicht hohl: Sie war **rot vor** dem Fix und
+**grün danach**.
+
+### Neue Suite: Online-Härte (24 Prüfungen)
+
+Alles Invarianten, die seit Jahren in `CLAUDE.md` unter „gelöste Bugs" stehen
+und nie geprüft waren:
+
+| Block | Was |
+|---|---|
+| Beitritts-Rennen | Zwei Gäste drücken **gleichzeitig** „Beitreten" (v2.8.1). Rollen müssen 2 **und** 3 sein, beide Slots belegt, drei Namen im HUD. |
+| Abweisungen | Unbekannter Code; verwaiste Lobby (>2 h ohne State) muss aufgeräumt **und** abgewiesen werden; volles 2P-Spiel darf **nicht** auf Slot 3 ausweichen; volles 3P-Spiel. Danach muss der Bildschirm bedienbar bleiben. |
+| Warteschlange | Ticket vollständig eingetragen; nach serverseitigem Löschen selbst wiederhergestellt und **kein `{hb}`-Stub**; nach Abbrechen leer; Tick-Loop gestoppt (kein Zombie-Ticket); zurück im Menü. |
+| Protokoll-Schranke | Host gibt sich als neuere Version aus (`pv=99`) → Gast weist einmalig darauf hin und **spielt weiter**. Gegenprobe: bei gleicher Version schweigt er. Das zählt jetzt, weil eine eingefrorene App gegen einen laufend aktualisierten Web-Client spielt. |
+
+Auch hier war die erste Fassung der Protokoll-Prüfung hohl: `state` ist ein
+JSON-**String**, `st.pv = 99` lief auf dem String stillschweigend ins Leere.
+Jetzt wird geparst, geändert, zurückgeschrieben und **gegengelesen**, dass die
+99 wirklich im Knoten steht.
+
+### Entwicklungs-Abkürzung
+
+`NUR=haerte,online2p npm run test:e2e` fährt einzelne Suiten (33 Namen). Ein
+voller Lauf kostet 100 s; beim Schreiben einer Suite läuft man zehnmal
+hintereinander. Ohne `NUR` fährt die Suite immer alles — der Riegel vor der
+Auslieferung kennt die Abkürzung nicht.
+
+Tests grün (Typen 0, Unit **85/85**, iOS 21/21, E2E **424/424**).

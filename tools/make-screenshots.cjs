@@ -11,7 +11,17 @@
 //   Play        1080x2340  — Telefon-Screenshots
 // Gerendert wird jeweils in CSS-Pixeln x Geraetefaktor, NICHT hochskaliert:
 // hochskalierte Bilder sehen im Store sichtbar weich aus.
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// Playwright aus node_modules, ersatzweise aus der globalen Installation
+// dieses Rechners.
+//
+// **Der feste Pfad allein war der Grund, warum diese Suite nie in einem Ablauf
+// lief.** /opt/node22/... gibt es nur in einer Umgebung; auf einem Laeufer von
+// GitHub bricht `require` sofort ab. Damit konnte die groesste Pruefschicht des
+// Projekts kein Deployment aufhalten — sie lief nur, wenn jemand daran dachte.
+const { chromium } = (() => {
+  try { return require('playwright'); }
+  catch (e) { return require('/opt/node22/lib/node_modules/playwright'); }
+})();
 const fs = require('fs');
 const path = require('path');
 

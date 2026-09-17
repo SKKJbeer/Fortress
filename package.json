@@ -1,6 +1,6 @@
 {
   "name": "stack-and-siege",
-  "version": "3.93.0",
+  "version": "3.94.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --port 8766",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --test tests/engine.test.js tests/i18n.test.js",
+    "test:unit": "node --test tests/*.test.js",
     "test:ios": "node scripts/ios-pruefen.mjs",
     "test:e2e": "node test_fortress.cjs"
   },
@@ -25,6 +25,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",
     "@types/node": "^26.2.0",
+    "playwright": "1.56.1",
     "typescript": "^7.0.2",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^1.3.0"

@@ -3800,7 +3800,17 @@ window.StackSiegeApp = function StackSiegeApp() {
     setMmElapsed(0);
     setMpScreen("matchmaking");
     if (mmChannel.current) mmChannel.current.stop();
-    mmChannel.current = fb.subscribe(qn, (data) => {
+    // subscribeRaw, NICHT subscribe (v3.94.0): fb.subscribe verschluckt den
+    // Null-Fall (`if (data) onData(data)`), und die Realtime Database loescht
+    // einen Knoten, sobald sein letztes Kind verschwindet. War man der einzige
+    // Wartende und das eigene Ticket fiel per onDisconnect weg (kurzer
+    // Netzaussetzer, App-Wechsel), kam die Leerung hier nie an: der
+    // Schnappschuss behielt das eigene Ticket, mmTick hielt es fuer vorhanden
+    // und trug es NIE neu ein. Ergebnis: ein Spieler, der in einer leeren
+    // Warteschlange wartet, ist fuer alle anderen unsichtbar und sucht ewig —
+    // dasselbe Bild wie v3.14.10, das im Ein-Mann-Fall ueberlebt hat.
+    // Das `|| {}` unten stand schon immer da und war bis hierher toter Code.
+    mmChannel.current = fb.subscribeRaw(qn, (data) => {
       mmQueueSnapshot.current = data || {};
       mmOnQueueUpdate();
     });
@@ -7410,7 +7420,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.93.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.94.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
