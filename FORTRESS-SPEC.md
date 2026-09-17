@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.97.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.98.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6665,3 +6665,63 @@ Modal: Stünden im Kalender andere Zahlen als auf dem Konto, wäre das ein
 gebrochenes Versprechen und kein Anzeigefehler.
 
 Tests grün (Typen 0, Unit 111/111, iOS 21/21, E2E 424/424).
+
+---
+
+## v3.98.0 — Die Modale sind raus, und das Herausziehen hat vier Fehler eingebaut, die alle gefunden wurden
+
+Vierter Schnitt: `src/ui/modale.js` mit `WinFx`, `rarityMeta`,
+`forgeItemVisual`, `AchievementPopup`, `AchievementsModal`, `ItemRevealModal`,
+`XpResultAnim`, `OnboardingModal`. Dazu `forgeRarity` nach
+`engine/catalog.ts` — reine Logik gehört in die Engine, und dort liegen die
+Rezepte schon. `src/game/app.js`: **9.712 → 9.338 Zeilen** (seit v3.94.0
+zusammen **−556**).
+
+Diese hier hingen am Abschluss, anders als die kleinen Anzeigen aus v3.96.0:
+an `t` (Übersetzung, hängt an der Sprachwahl) und an `achTitle`/`achDesc`. Das
+steht jetzt in den Signaturen. **Requisiten und kein React-Kontext:** Kontext
+wäre weniger zu tippen, versteckt die Abhängigkeit aber wieder. In der Signatur
+kann man sie lesen und im Test einsetzen — genau das war der Zweck.
+
+### Vier eingebaute Fehler, vier verschiedene Fänger
+
+Ein Umzug dieser Größe ist nicht mechanisch. Was schiefging und was es fand:
+
+| Fehlender Import | Wirkung | Gefunden von |
+|---|---|---|
+| `ConfettiBurst` | `WinFx` stürzt ab | Rauchtest, direkter Aufruf |
+| `MASTER_TRAIL` | Reveal stürzt ab — **nur bei Meister-Schweifen** | Unit-Test über **alle** Rezepte |
+| `xpToNextLevel`, `AVATAR_UNLOCKS` | `XpResultAnim` stürzt ab — nur nach Stufenaufstieg | Rendern mit `react-dom/server` |
+| `__spreadValues` | Reveal stürzt ab — bei **jedem** Rezept | Rendern mit `react-dom/server` |
+
+Die Reihenfolge ist die Lehre. Meine erste Abhängigkeitsanalyse verglich nur
+gegen die in `app.js` **definierten** Namen — importierte übersah sie, deshalb
+fehlte `ConfettiBurst`. Der Rauchtest rief die Komponenten als Funktion auf;
+das geht bei Hooks nicht, also blieben drei Komponenten ungeprüft. Erst
+`react-dom/server` rendert richtig, mit Hooks — und fand die restlichen zwei.
+
+`tests/modale.test.js`, 10 Prüfungen (Unit **111 → 121**). Jede Komponente des
+Moduls wird mindestens einmal **wirklich ausgeführt**; `ItemRevealModal` für
+jedes Rezept des Katalogs.
+
+### Eine Lücke in der E2E-Suite, aufgefallen nebenbei
+
+Die Schmiede-Suite prüfte nur den **Datenstand** nach dem Schmieden, nie den
+Bildschirm, der danach aufgeht — `craftReveal` kam im ganzen Test nicht vor.
+Der `__spreadValues`-Absturz hätte also **jedes Reveal zerlegt und die Suite
+wäre grün geblieben.** Neue Prüfung: Nach dem Schmieden lebt die Seite noch.
+Nicht der Text ist der Punkt, sondern dass überhaupt noch etwas da ist — ein
+Fehler beim Rendern reißt den ganzen React-Baum ab.
+
+Gegenprobe gemacht: Import entfernt → **3 ❌**, wieder eingesetzt → **0 ❌**.
+
+### Wo ich mir selbst einen Fehler gebaut hatte
+
+Ich prüfte zuerst, ob `XpResultAnim` mit `xpChange: null` klarkommt. Tut es
+nicht — und muss es nicht: Die Aufrufstelle schützt bereits
+(`xpChangeRef.current && …`). Der Test hätte verlangt, dass die Komponente
+etwas abfängt, was sie nie zu sehen bekommt. **Ein Test darf einen Vertrag
+prüfen, nicht sich einen ausdenken.** Der `null`-Fall ist raus, die Begründung
+steht im Test.
+
+Tests grün (Typen 0, Unit 121/121, iOS 21/21, E2E **425/425**).

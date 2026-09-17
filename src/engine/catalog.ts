@@ -195,3 +195,14 @@ export const RECIPES = [
   { id: "trail_venom_m", cat: "trail", base: "trail_venom", cost: { dragon: 5, star: 1, gold: 300 } },
   { id: "trail_gold_m",  cat: "trail", base: "trail_gold",  cost: { dragon: 5, star: 2, gold: 400 } }
 ];
+
+// Seltenheit eines Rezepts — abgeleitet aus dem, was es KOSTET, nicht aus einer
+// zweiten Liste, die auseinanderlaufen kann (aus app.js hierher, v3.98.0).
+// Sternenstaub ist das knappste Material, also steht er oben.
+export function forgeRarity(rec: { cost?: Record<string, number> } | null | undefined): string {
+  const c = (rec && rec.cost) || {};
+  if (c.star) return "legendary";
+  if (c.dragon) return "epic";
+  if (c.silver) return "rare";
+  return "common";
+}

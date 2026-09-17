@@ -3787,6 +3787,31 @@ async function suiteSchmiede(browser) {
     after.owned ? ok('Schmiede: cannon_crystal in owned[] ✓') : fail('Schmiede: owned fehlt');
     after.equipped === 'cannon_crystal' ? ok('Schmiede: Skin direkt angelegt ✓') : fail(`Schmiede: equipped falsch (${after.equipped})`);
 
+    // ── Das Reveal nach dem Schmieden (Luecke, gefunden in v3.98.0) ──────
+    // Diese Suite pruefte bisher NUR den Datenstand nach dem Schmieden, nie
+    // den Bildschirm, der danach aufgeht. Beim Herausloesen der Modale fehlte
+    // `__spreadValues` im neuen Modul — ItemRevealModal waere bei JEDEM Rezept
+    // abgestuerzt, und diese Suite haette es durchgewinkt. Gefunden hat es ein
+    // Unit-Test, der die Komponente wirklich rendert. Damit das nicht vom
+    // Zufall abhaengt, steht die Frage jetzt auch hier.
+    {
+      const rv = await page.evaluate(() => {
+        const t = document.body.innerText;
+        return {
+          sichtbar: /Geschmiedet|Forged|rarityLegendary|Legendär|Legendary|Episch|Epic/i.test(t),
+          canvasWeg: !!document.querySelector('canvas'),
+          knopf: [...document.querySelectorAll('button')].length,
+          leer: document.body.innerText.trim().length < 30
+        };
+      });
+      // Das Entscheidende ist NICHT der genaue Text, sondern: Die Seite lebt
+      // noch. Ein Absturz beim Rendern reisst den ganzen Baum ab, und uebrig
+      // bleibt eine leere Seite ohne Knoepfe.
+      !rv.leer && rv.knopf > 0
+        ? ok(`Schmiede: Seite lebt nach dem Schmieden (${rv.knopf} Knöpfe) ✓`)
+        : fail('Schmiede: leere Seite nach dem Schmieden — Reveal abgestürzt?');
+    }
+
     // ── Abrüsten: Standard-Karte in der Kanonen-Sektion ──
     await page.evaluate(() => {
       const cards = [...document.querySelectorAll('button')].filter(x => /Standard/.test(x.textContent || '') && !x.disabled);
