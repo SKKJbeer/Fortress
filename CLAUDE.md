@@ -327,8 +327,8 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 ## Automatisierter Test (IMMER nach jeder Änderung ausführen)
 
 ```bash
-# 1) Typen + Unit-Tests (schnellstes Feedback, ~1 s):
-npm run typecheck && npm run test:unit
+# 1) Typen + Unit-Tests + iOS-Huelle (schnellstes Feedback, ~1 s):
+npm run typecheck && npm run test:unit && npm run test:ios
 
 # 2) BAUEN — die E2E-Suite laeuft gegen dist/, nicht gegen die Quelle:
 npm run build
@@ -351,6 +351,19 @@ npm run test:e2e
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)
 - **Online immer mitgetestet**: Code-Join (Host+Gast, Phasen-Sync, Gast-Timer, Aktionen) UND Matchmaking-Suite (`suiteMatchmaking`, seit v3.14.15): Quick Match ×2 hintereinander (Geister-Listener-Regression), Ranked-Result ohne Rematch-Buttons, Queue-Leere nach Matches (Ticket-Leichen), Selbst-Match-Schutz (gleiche `DEVICE_ID` via `mmIdentInit`-Override in `makeOnlineCtx(browser, fbPort, extraInit)`)
 - **Regel: Kein Commit ohne grünen Test**
+
+### iOS zusätzlich (seit v3.91.0)
+- `npm run test:ios` → `scripts/ios-pruefen.mjs`: 18 statische Prüfungen an der
+  iOS-Hülle (Info.plist, Xcode-Projekt, Bundle-Kennung in allen sechs Dateien,
+  Storyboard gegen Swift-Klassen, Symbol ohne Alphakanal, Startbild) plus ein
+  Riegel gegen die Regression aus v3.86.0. Läuft in einer Sekunde, ohne Mac.
+  **Eine Quelle, drei Aufrufer:** npm-Skript, erster Schritt in `ios.yml`, und
+  eine Prüfung in der E2E-Suite.
+- Jeder iOS-Lauf macht einen **Simulator-Probelauf**: bauen, booten,
+  installieren, STARTEN, auf Absturzbericht prüfen, Bildschirmfoto sichern
+  (Artefakt `simulator-probe`). Übersetzen beweist nicht, dass die App läuft —
+  v3.86.0 hat sauber übersetzt und war unbedienbar.
+- Begründungen und Grenzen: `IOS-SETUP.md`, Abschnitt „Was geprüft wird".
 
 ---
 

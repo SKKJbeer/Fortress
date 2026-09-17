@@ -9,6 +9,7 @@
     "preview": "vite preview --port 8766",
     "typecheck": "tsc --noEmit",
     "test:unit": "node --test tests/engine.test.js tests/i18n.test.js",
+    "test:ios": "node scripts/ios-pruefen.mjs",
     "test:e2e": "node test_fortress.cjs"
   },
   "dependencies": {

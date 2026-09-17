@@ -2019,16 +2019,22 @@ async function suiteIPad(browser) {
   const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
   console.log('\n' + '='.repeat(50) + '\nTEST: Apple-Geraetematrix (iPhone SE bis iPad 13 Zoll)\n' + '='.repeat(50));
 
-  // ── 1) Das Querformat ist gesperrt (Info.plist, ohne Browser) ──────────
+  // ── 1) Die iOS-Huelle als Ganzes (statisch, ohne Mac) ─────────────────
+  // Frueher standen hier zwei eigene Pruefungen auf die Info.plist. Sie sind
+  // in `scripts/ios-pruefen.mjs` aufgegangen — zusammen mit sechzehn weiteren,
+  // und vor allem an EINER Stelle. Zwei Orte mit derselben Regel laufen
+  // auseinander, und dann glaubt man dem, der gerade gruen ist.
   {
-    const plist = fs.readFileSync(path.join(__dirname, 'ios/App/App/Info.plist'), 'utf8');
-    const block = (plist.split('UISupportedInterfaceOrientations~ipad')[1] || '').split('</array>')[0];
-    !/Landscape/.test(block)
-      ? ok('iPad: Querformat gesperrt (Info.plist) ✓')
-      : fail('iPad: Querformat steht wieder in Info.plist — das Brett fuellt dort nur ~30 %');
-    /Portrait/.test(block)
-      ? ok('iPad: Hochformat erlaubt ✓')
-      : fail('iPad: kein Hochformat in Info.plist');
+    const { execFileSync } = require('child_process');
+    try {
+      execFileSync('node', [path.join(__dirname, 'scripts/ios-pruefen.mjs')],
+                   { stdio: 'pipe', encoding: 'utf8' });
+      ok('iOS-Huelle: alle statischen Pruefungen gruen (scripts/ios-pruefen.mjs) ✓');
+    } catch (e) {
+      const zeilen = String((e.stdout || '') + (e.stderr || ''))
+        .split('\n').filter(z => z.includes('FEHL') || z.includes('→'));
+      fail('iOS-Huelle: ' + (zeilen.slice(0, 4).join(' ').trim() || 'Pruefer schlug fehl'));
+    }
   }
 
   const starten = async (w, h) => {

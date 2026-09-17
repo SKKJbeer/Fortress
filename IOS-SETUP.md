@@ -185,6 +185,62 @@ die Store-Prüfung, aber sie findet statt.
 
 ---
 
+## Was geprüft wird, bevor etwas hochgeht
+
+Drei Ebenen, von schnell nach gründlich. Sie greifen ineinander: Was die untere
+schon abfängt, soll die obere nicht noch einmal suchen müssen.
+
+### 1. Statisch — eine Sekunde, ohne Mac
+
+```bash
+npm run test:ios          # scripts/ios-pruefen.mjs
+```
+
+18 Prüfungen auf das, was in Dateien steht: Ausrichtungen in der `Info.plist`,
+Verschlüsselungs-Erklärung, Vollbild, Gerätefamilie, Mindest-iOS, die
+Bundle-Kennung in **allen sechs** Dateien, Storyboard gegen Swift-Klassen,
+App-Symbol (1024×1024, **kein Alphakanal**) und Startbild.
+
+Dazu ein ausdrücklicher Riegel gegen den Fehler aus v3.86.0:
+`isTextInteractionEnabled = false` darf im Swift-Code nicht stehen. Das hat
+damals jedes Eingabefeld ab dem ersten Bild totgelegt — und der erste
+Bildschirm für einen neuen Spieler ist der Profil-Editor mit dem Namensfeld.
+
+**Warum das vorne steht:** Der iOS-Lauf braucht rund zehn Minuten. Ein falscher
+Plist-Eintrag fällt dort frühestens nach sechs Minuten auf, der Alphakanal im
+Symbol sogar erst per E-Mail von Apple — nach dem Hochladen. Jede dieser
+Prüfungen ist im Kontrollversuch mit absichtlich eingebautem Fehler angeschlagen.
+
+Dieselbe Prüfung läuft als erster Schritt in `.github/workflows/ios.yml` und
+als eine Prüfung in der E2E-Suite. **Eine Quelle, drei Aufrufer** — zwei Orte
+mit derselben Regel laufen auseinander, und dann glaubt man dem, der gerade
+grün ist.
+
+### 2. Simulator-Probelauf — startet sie wirklich?
+
+Jeder iOS-Lauf baut für den Simulator, bootet eines, installiert die App und
+**startet sie**. Danach: kein Absturzbericht, und der Bildschirm zeigt etwas.
+Das Bildschirmfoto hängt als Artefakt `simulator-probe` am Lauf.
+
+**Übersetzen beweist nicht, dass die App läuft.** v3.86.0 hat sauber übersetzt,
+archiviert und hochgeladen — und war auf dem Gerät nicht zu bedienen. Kein
+Schritt des Ablaufs hatte sie je gestartet.
+
+Der Probelauf läuft **auch bei Hochlade-Läufen**, gerade da: Das ist der Weg,
+der bei Testern ankommt.
+
+Die Größe des Bildschirmfotos ist dabei ein **Hilfsmaß, kein Beweis**: Ein
+leerer Schirm komprimiert auf wenige Kilobyte, ein gerendertes Menü liegt
+deutlich darüber. Es fängt den Fall ab, der sonst durchginge — App startet,
+zeigt aber nichts, weil das Web-Bündel fehlt.
+
+### 3. Was nur das Gerät sagen kann
+
+Ob die Text-Lupe im Spielfeld wirklich wegbleibt, ob sich Haptik richtig
+anfühlt, ob der Ton sitzt. Dafür gibt es keinen Ersatz — und deshalb ist die
+Umschaltung der Textbedienung so gebaut, dass ihr Versagen höchstens die Lupe
+zurückbringt und nie wieder ein totes Eingabefeld (siehe `src/platform.ts`).
+
 ## Vor der Einreichung noch nötig
 
 - **Screenshots** hochladen — liegen fertig unter `store/ios-6.7/`,

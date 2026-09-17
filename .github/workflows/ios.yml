@@ -70,6 +70,13 @@ jobs:
 
       # Dieselben Gates wie beim Web-Deploy. Eine App, die die Tests nicht
       # besteht, hat in TestFlight nichts verloren.
+      # ZUERST die statische Pruefung der iOS-Huelle. Sie braucht eine Sekunde
+      # und faengt genau die Fehler ab, die sonst erst nach sechs Minuten
+      # Uebersetzen auffallen — oder, beim Alphakanal im Symbol, erst per
+      # E-Mail von Apple, nach dem Hochladen.
+      - name: iOS-Huelle pruefen
+        run: npm run test:ios
+
       - name: Typen pruefen
         run: npm run typecheck
 
@@ -174,20 +181,78 @@ jobs:
           echo "Im Bundle: Spielcode, $(ls "$APP/public/music/"*.mp3 | wc -l | tr -d ' ') Musikstuecke, Toene."
           echo "Kennung $KENN, Bau $BAU, Ausfuhrangabe gesetzt."
 
-      # Zweiter Durchgang fuer den Simulator, in der Debug-Konfiguration —
-      # also genau das, was beim Druck auf "Run" in Xcode passiert. Der
-      # Geraete-Bogen oben beweist das nicht mit: andere Architektur, andere
-      # Konfiguration. Wer die App lokal ausprobieren will, soll nicht der
-      # erste sein, der einen Fehler in diesem Pfad findet.
-      - name: Probe-Uebersetzung fuer den Simulator
-        if: ${{ !inputs.upload && !startsWith(github.ref, 'refs/tags/') }}
+      # ── Der Probelauf im Simulator ────────────────────────────────────
+      #
+      # **Uebersetzen beweist nicht, dass die App laeuft.** v3.86.0 hat sauber
+      # uebersetzt, sauber archiviert, sauber hochgeladen — und war auf dem
+      # Geraet nicht zu bedienen: Die Textbedienung war ab dem ersten Bild aus,
+      # das Namensfeld im Profil-Editor damit tot. Kein Schritt dieses Ablaufs
+      # hat das gesehen, weil keiner die App je gestartet hat.
+      #
+      # Dieser Schritt startet sie. Er laeuft AUCH bei Hochlade-Laeufen — gerade
+      # da: Das ist der Weg, der bei Testern ankommt. Die vier Minuten sind der
+      # Preis dafuer, dass ein Startabsturz hier auffaellt und nicht dort.
+      #
+      # Er ersetzt die fruehere reine Probe-Uebersetzung fuer den Simulator:
+      # Wer startet, hat auch uebersetzt.
+      - name: Simulator-Probelauf
         run: |
+          set -e
           xcodebuild -project ios/App/App.xcodeproj \
             -scheme App -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath $RUNNER_TEMP/dd-sim \
             build
-          echo "Debug fuer den Simulator: uebersetzt."
+          APP=$(find $RUNNER_TEMP/dd-sim/Build/Products -maxdepth 2 -name 'App.app' -type d | head -1)
+          [ -n "$APP" ] || { echo "FEHLER: App.app nach dem Uebersetzen nicht gefunden"; exit 1; }
+
+          # Das erste verfuegbare iPhone nehmen, statt eine Modellbezeichnung
+          # festzuschreiben: Welche Geraete es gibt, haengt an der Xcode-Fassung
+          # des Laeufers, und ein fester Name bricht beim naechsten Abbild.
+          UDID=$(xcrun simctl list devices available -j | python3 scripts/sim-geraet.py || true)
+          [ -n "$UDID" ] || { echo "FEHLER: kein iPhone-Simulator verfuegbar"; exit 1; }
+          echo "Simulator $UDID"
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          rm -f ~/Library/Logs/DiagnosticReports/App-*.ips 2>/dev/null || true
+          xcrun simctl launch "$UDID" de.skkjbeer.stackandsiege
+
+          # Warten, bis die Weboberflaeche wirklich steht: Splash rund eine
+          # Sekunde, danach React und das Menue.
+          sleep 15
+          mkdir -p "$RUNNER_TEMP/probe"
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/probe/start.png"
+
+          # 1) Kein Absturzbericht. Simulator-Abstuerze landen hier als .ips.
+          if ls ~/Library/Logs/DiagnosticReports/App-*.ips >/dev/null 2>&1; then
+            echo "FEHLER: die App ist im Simulator abgestuerzt:"
+            ls -la ~/Library/Logs/DiagnosticReports/App-*.ips
+            head -40 ~/Library/Logs/DiagnosticReports/App-*.ips || true
+            exit 1
+          fi
+
+          # 2) Der Schirm zeigt etwas. Das ist ein HILFSMASS, kein Beweis: Ein
+          #    schwarzes oder einfarbiges Bild komprimiert auf wenige Kilobyte,
+          #    ein gerendertes Menue liegt deutlich darueber. Es faengt den
+          #    Fall ab, der sonst unbemerkt durchginge — App startet, zeigt
+          #    aber nichts, weil das Web-Buendel fehlt.
+          GROESSE=$(stat -f%z "$RUNNER_TEMP/probe/start.png")
+          echo "Bildschirmfoto: $GROESSE Byte"
+          [ "$GROESSE" -gt 80000 ] || {
+            echo "FEHLER: Das Bild ist mit $GROESSE Byte zu klein — der Schirm ist " \
+                 "vermutlich leer. Sieh dir das Artefakt 'simulator-probe' an."; exit 1; }
+
+          echo "Die App startet, stuerzt nicht ab und zeigt etwas."
+
+      - name: Bildschirmfoto des Probelaufs sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-probe
+          path: ${{ runner.temp }}/probe
+          if-no-files-found: ignore
 
       # **Das eigene Zertifikat, wenn es eines gibt.**
       #
