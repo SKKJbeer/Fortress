@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.94.0
+- **Aktuelle Version**: v3.95.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -25,7 +25,8 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `src/audio.js`, `src/spread.js`, `src/platform.ts` | Ton/Musik, Objekt-Helfer, Plattform-Weiche |
 | `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
-| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 88 Tests, ~0,3 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
+| `src/ui/*` | `icons.js` (ICON_PATHS + Icon) und **`wappen.js`** (Avatar-Katalog: WAPPEN_SRC/WAPPEN/WAPPEN_GLOW/WAPPEN_MIGRATION/AVATAR_UNLOCKS, seit v3.95.0). Erster Schnitt beim Abtragen des Grossblocks. **`WAPPEN_SVG` ist entfallen** — 17,2 KB Inline-SVG, die nur noch `Object.keys()` lieferten; die Namensliste kommt aus `WAPPEN_SRC`. `tests/wappen.test.js` haelt den Katalog fest. |
+| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 94 Tests, ~0,3 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
 | `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |
@@ -437,7 +438,8 @@ Der verbindliche Stand steht in **`LAUNCH-TODO.md`** (Marktstart) und
   nur noch Zugänge, keine Arbeit.
 - **Firebase-Kette.** Ohne API-Schlüssel und aktivierte anonyme Anmeldung
   läuft Online weder im Web noch in der App (`LAUNCH-TODO.md`, Abschnitt 1).
-- **Großblock zerlegen.** `src/game/app.js` hat noch ~9.600 Zeilen.
+- **Großblock zerlegen.** `src/game/app.js` hat noch ~9.845 Zeilen.
+  Begonnen in v3.95.0 mit `src/ui/wappen.js` (reine Daten zuerst).
   Reihenfolge und Begründung: `ARCHITEKTUR.md`, Schritt 8.
 - **v2:** Google- und Apple-Anmeldung zusammen (Richtlinie 4.8 verlangt „Sign
   in with Apple", sobald es Fremd-Login gibt).

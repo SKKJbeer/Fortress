@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.94.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.95.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6498,3 +6498,58 @@ Riegel, der zufällig rot wird, erzieht dazu, Rot zu ignorieren — dann ist er
 schlimmer als keiner.
 
 Tests grün (Typen 0, Unit **88/88**, iOS 21/21, E2E **424/424**).
+
+---
+
+## v3.95.0 — Erster Schnitt am Großblock, und dabei 17,2 KB gefunden, die niemand brauchte
+
+Beginn von Schritt 8 aus `ARCHITEKTUR.md` (Würgefeigen-Muster: den Block am
+Rand abtragen, nach jedem Schnitt beide Testebenen grün). Begonnen wird bei
+`ui/`, weil dort viel Fläche und wenig Verflechtung liegt.
+
+**Der erste Schnitt sind reine Daten:** der Avatar-Katalog wandert nach
+`src/ui/wappen.js` — `WAPPEN_SRC`, `WAPPEN`, `WAPPEN_GLOW`,
+`WAPPEN_MIGRATION`, `AVATAR_UNLOCKS`. Kein Abschluss über äußeren Zustand,
+also ein reiner Umzug. `src/game/app.js`: **9.894 → 9.845 Zeilen.**
+
+### Der Fund
+
+`WAPPEN_SVG` enthielt zwölf Inline-SVG-Medaillons, **17,2 KB**, die jeder
+Spieler bei jedem Laden mitbekam. Die einzige verbliebene Verwendung:
+
+```js
+const WAPPEN = Object.keys(WAPPEN_SVG);
+```
+
+Eine Liste von zwölf Namen. Gezeichnet wird seit Längerem aus `WAPPEN_SRC`
+(Base64-PNG, 313 KB). Das SVG-Set ist entfallen; die Namensliste kommt jetzt
+aus `WAPPEN_SRC` selbst — **eine Quelle statt zweier, die auseinanderlaufen
+können.**
+
+Vor dem Löschen gegengeprüft: beide Schlüsselmengen waren identisch, auch in
+der **Reihenfolge** (die ist sichtbar — der Profil-Editor zeigt die Avatare in
+ihr).
+
+Gemessen am gebauten Bündel:
+
+| | vorher | nachher | |
+|---|---|---|---|
+| roh | 1177,6 KB | 1160,5 KB | **−17,1 KB** |
+| gzip | 465,1 KB | 461,9 KB | **−3,2 KB** |
+
+Die 17,1 KB decken sich mit den 17,2 KB der Quelle — es wurde also genau das
+entfernt, was gemeint war, und nichts sonst.
+
+### Damit die Löschung nicht auf Zuruf steht
+
+`tests/wappen.test.js` (6 Prüfungen, in `test:unit`): zwölf Avatare; Liste
+deckt sich mit den Bildern; die sichtbare Reihenfolge steht fest; jeder Avatar
+hat Bild, Glow-Farbe und Freischaltstufe; die ersten vier sind ab Stufe 1 frei;
+**jede Migration zeigt auf einen Avatar, den es gibt** (zeigt sie ins Leere,
+steht ausgerechnet der Spieler mit dem ältesten Profil ohne Bild da); und kein
+Inline-SVG mehr im Katalog — kommt eines zurück, soll das eine Entscheidung
+sein und kein Versehen.
+
+Unit **88 → 94**.
+
+Tests grün (Typen 0, Unit 94/94, iOS 21/21, E2E 424/424).
