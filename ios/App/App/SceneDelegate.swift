@@ -62,6 +62,30 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
     /// kommt beim Aufbau des Menues (`textbedienung` in src/platform.ts).
     private var lebenszeichenGesendet = false
 
+    /// Der Kanal ein zweites Mal anmelden — am LEBENDEN WebView.
+    ///
+    /// Gemessen im Simulator-Probelauf: Der Marker aus `webViewConfiguration`
+    /// erscheint, die Ansicht laeuft also. Die Weboberflaeche meldet sich
+    /// trotzdem nie — `window.webkit.messageHandlers.textfeld` gibt es dort
+    /// offenbar nicht. Zwischen der Konfiguration, die wir zurueckgeben, und
+    /// dem Inhaltssteuerer, den der fertige WebView benutzt, geht die Anmeldung
+    /// verloren.
+    ///
+    /// `webView.configuration` ist laut Apple eine Kopie — `userContentController`
+    /// ist darin aber ein Verweis auf DASSELBE Objekt, das der WebView benutzt.
+    /// Deshalb greift die Anmeldung hier, wo sie an der Konfiguration nicht
+    /// greift. Vorher abmelden: Zweimal derselbe Name wirft eine Ausnahme.
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        guard let steuerer = webView?.configuration.userContentController else {
+            NSLog("STACK-SIEGE-HUELLE kein WebView in viewDidLoad")
+            return
+        }
+        steuerer.removeScriptMessageHandler(forName: "textfeld")
+        steuerer.add(self, name: "textfeld")
+        NSLog("STACK-SIEGE-HUELLE Kanal am WebView angemeldet")
+    }
+
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
         guard message.name == "textfeld", let an = message.body as? Bool else { return }
