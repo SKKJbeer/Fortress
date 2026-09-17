@@ -1,17 +1,33 @@
 # Stack & Siege — Marktstart-Checkliste
 
-> Stand: **v3.90.0, 16.09.2026.** **iOS zuerst** — der Developer-Account steht,
+> Stand: **v3.94.0, 17.09.2026.** **iOS zuerst** — der Developer-Account steht,
 > und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
 > Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
 
 ---
 
-## Stand 16.09.2026 — Beta ist offen, Einreichung steht an zwei Klicks
+## Stand 17.09.2026 — Beta läuft, Bau 28 wartet auf Apples Beta-Prüfung
 
-**Die Beta läuft öffentlich.** Apple hat sie freigegeben; der Link
-`testflight.apple.com/join/hE2AdHwr` nimmt Tester an, ohne Einladung und ohne
-Konto bei uns. **Bau 20 (v3.90.0)** liegt in TestFlight und ist der Fassung 1.0
-zugeordnet.
+**Die Beta läuft öffentlich.** Der Link `testflight.apple.com/join/hE2AdHwr`
+nimmt Tester an, ohne Einladung und ohne Konto bei uns.
+
+**Bau 28 (v3.94.0)** ist am 17.09. hochgeladen, bei Apple `VALID`, der
+öffentlichen Gruppe zugeordnet und zur Beta-Prüfung eingereicht
+(`WAITING_FOR_REVIEW`). **Bau 20 (v3.90.0)** bleibt bis zur Freigabe der
+ausgelieferte Stand.
+
+> **Achtung, Bau 20 ist nicht harmlos.** Er trägt die tote Brücke aus v3.90.0:
+> der Nachrichtenkanal `textfeld` war nur an der Konfiguration angemeldet, nicht
+> am fertigen WebView — die Lupen-Umschaltung hat auf dem Gerät **nie** gewirkt
+> (gefunden in v3.93.0 durch den Simulator-Probelauf). Wer heute über den Link
+> installiert, bekommt diesen Stand. Behoben ist es erst mit Bau 28.
+
+**Der Knopf „Jetzt testen" auf der Website** hängt an
+`scripts/testflight-stand.py`: Er fragt je Bau der öffentlichen Gruppe den
+Prüfzustand ab und sagt `ja`, sobald **irgendein** Bau `APPROVED` ist. Ein neu
+eingereichter Bau schaltet den Knopf also nicht ab, solange der alte freigegeben
+bleibt. Nachsehen ohne etwas zu schreiben:
+`Actions → App Store (Stand / Eintragen) → beta-stand`.
 
 **Der Store-Eintrag ist maschinell gefüllt.** Was in App Store Connect steht,
 steht dort nicht, weil jemand es abgehakt hat, sondern weil Apple es auf
@@ -26,10 +42,11 @@ nur, was fehlt.
 - [x] **Kategorie** GAMES / Strategie / Puzzle
 - [x] **Altersfreigabe** — 24 Angaben, mit Begründung in `scripts/asc-store.py`
 - [x] **Prüfkontakt vollständig** und Prüfhinweise hinterlegt
-- [x] **Bau 20** der Fassung zugeordnet
-- [x] **Bildschirmfotos** 4× iPhone 6,7" und 4× iPad 12,9", aus v3.90.0
+- [x] **Bildschirmfotos** 4× iPhone 6,7" und 4× iPad 12,9"
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
+- [ ] **Bau der Fassung zuordnen** — Bau 20 ist zugeordnet; vor der Einreichung
+      auf **28** wechseln (`→ store`), sonst geht v3.90.0 in den Store.
 
 ## ⏸ Wartet auf dich — und nur darauf
 

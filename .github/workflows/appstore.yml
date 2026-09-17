@@ -19,6 +19,7 @@ on:
           - fuellen    # zusaetzlich Texte und Pruefhinweise eintragen
           - testflight # internen Tester-Kreis einrichten, Bau zuordnen
           - marktreif  # nur lesen: was fehlt bis zur Einreichung im Store?
+          - beta-stand # nur lesen: nimmt die oeffentliche Beta Tester an?
           - store-probe # Trockenlauf: was wuerde eingetragen?
           - store      # Kategorie, Altersfreigabe, Bau, Bildschirmfotos eintragen
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
@@ -78,6 +79,12 @@ jobs:
             testflight)  python3 scripts/asc-testflight.py ;;
             oeffentlich) python3 scripts/asc-testflight.py --oeffentlich ;;
             marktreif)  python3 scripts/asc-marktreif.py ;;
+            # Liest je Bau der oeffentlichen Gruppe den Pruefzustand und sagt
+            # ja/nein. Genau die Frage, an der der Knopf auf der Website haengt
+            # — und die man sonst nur beantworten kann, indem man etwas
+            # SCHREIBT (`oeffentlich`). Reines Lesen gehoert als eigener Modus
+            # hierher, sonst schreibt irgendwann jemand nur, um nachzusehen.
+            beta-stand) python3 scripts/testflight-stand.py ;;
             store-probe) python3 scripts/asc-store.py --alles --trocken ;;
             store)      python3 scripts/asc-store.py --alles ;;
             *)          python3 scripts/asc.py --stand ;;
