@@ -238,21 +238,24 @@ jobs:
           #    gestartet und weiss, welche Fassung es ist". src/game/app.js
           #    schreibt die Zeile nach dem Rendern; Capacitor reicht
           #    console.log ins Systemprotokoll weiter.
-          # NICHT nach dem Marker filtern: `log show` schreibt seine eigene
-          # Aufrufzeile mit ins Protokoll, und die enthaelt den Suchbegriff,
-          # weil er im Filter steht. Genau daran ist der erste Entwurf
-          # gescheitert — die Datei enthielt NUR diese eine Zeile, und die
-          # Pruefung war gruen, ohne etwas zu pruefen.
+          # Zwei Irrwege stecken in diesen vier Zeilen, beide gemessen:
           #
-          # Deshalb: nach dem PROZESS filtern und erst danach suchen. Gesucht
-          # wird der Marker MIT Fassungsnummer; die Aufrufzeile kann sie nicht
-          # enthalten.
+          # 1. NICHT nach dem Marker filtern. `log show` schreibt seine eigene
+          #    Aufrufzeile mit ins Protokoll, und die enthaelt den Suchbegriff,
+          #    weil er im Filter steht. Die Datei enthielt NUR diese Zeile, und
+          #    die Pruefung war gruen, ohne etwas zu pruefen.
+          # 2. Der Marker kommt NICHT aus console.log. WebKit reicht
+          #    Konsolenausgaben an den Web-Inspektor weiter, nicht an os_log —
+          #    im Lauf nachgesehen: 983 Zeilen der App, kein Marker. Er kommt
+          #    jetzt aus SpielViewController, sobald die Weboberflaeche die
+          #    erste Nachricht ueber die Bruecke schickt. Das beweist mehr:
+          #    nicht nur, dass React laeuft, sondern dass die Bruecke traegt.
           xcrun simctl spawn "$UDID" log show --last 3m --style compact \
             --predicate 'process == "App"' \
             > "$RUNNER_TEMP/probe/app-log.txt" 2>&1 || true
           echo "Protokollzeilen der App: $(wc -l < "$RUNNER_TEMP/probe/app-log.txt")"
-          if grep -Eq 'STACK-SIEGE-BEREIT [0-9]' "$RUNNER_TEMP/probe/app-log.txt"; then
-            echo "Lebenszeichen: $(grep -Eo 'STACK-SIEGE-BEREIT [0-9.]+' "$RUNNER_TEMP/probe/app-log.txt" | head -1)"
+          if grep -q 'STACK-SIEGE-BEREIT Bruecke steht' "$RUNNER_TEMP/probe/app-log.txt"; then
+            echo "Lebenszeichen: $(grep -o 'STACK-SIEGE-BEREIT.*' "$RUNNER_TEMP/probe/app-log.txt" | head -1)"
           else
             echo "FEHLER: Die Weboberflaeche hat sich nicht gemeldet."
             echo "Entweder ist sie nicht gestartet, oder der Ladebildschirm haengt."

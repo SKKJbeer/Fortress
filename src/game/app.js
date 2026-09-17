@@ -9849,16 +9849,18 @@ window.StackSiegeApp = function StackSiegeApp() {
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));
 _root.render(React.createElement(window.StackSiegeApp));
-// **Ein Lebenszeichen, sobald die Oberflaeche wirklich steht.**
+// Ein Lebenszeichen fuer die Browser-Konsole und den Web-Inspektor.
 //
-// In Capacitor landet console.log im Systemprotokoll von iOS. Damit kann der
-// Simulator-Probelauf (.github/workflows/ios.yml) den Unterschied zwischen
-// „App laeuft" und „App zeigt noch den Ladebildschirm" sehen — vorher hing die
-// Pruefung allein an der Groesse des Bildschirmfotos, und ein haengender
-// Ladebildschirm waere als Erfolg durchgegangen.
+// **Es taugt NICHT als Pruefung fuer die App.** Der erste Versuch suchte diese
+// Zeile im Systemprotokoll von iOS; im Lauf nachgemessen: 983 Protokollzeilen
+// der App, kein Marker. WebKit reicht Konsolenausgaben an den Web-Inspektor
+// weiter, nicht an os_log. Der Marker, an dem der Simulator-Probelauf haengt,
+// kommt deshalb aus SpielViewController (ios/App/App/SceneDelegate.swift),
+// sobald die erste Nachricht ueber die Bruecke geht.
 //
-// Auch auf einem echten Geraet nuetzlich: In Console.app steht damit schwarz
-// auf weiss, ob die Weboberflaeche gestartet ist und welche Fassung laeuft.
+// Hier bleibt die Zeile trotzdem: Im Browser und im Web-Inspektor sieht man
+// damit auf einen Blick, ob die Oberflaeche gestartet ist und welche Fassung
+// laeuft.
 console.log('STACK-SIEGE-BEREIT ' + (document.title || '').replace(/^\D+/, ''));
 setTimeout(() => { const s = document.getElementById('splash'); if (s) { s.style.opacity='0'; setTimeout(()=>s.remove(),500); } }, 600);
 // **Der Hinweis „Zum Home-Bildschirm" gehoert NUR in den Browser.**

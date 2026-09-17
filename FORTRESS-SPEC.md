@@ -6171,7 +6171,7 @@ dem Gerät nicht zu bedienen. **Kein Schritt des Ablaufs hatte sie je gestartet.
 ### Drei Ebenen statt einer
 
 **1. Statisch, eine Sekunde, ohne Mac** — `npm run test:ios`
-(`scripts/ios-pruefen.mjs`, 18 Prüfungen): Ausrichtungen, Verschlüsselungs-
+(`scripts/ios-pruefen.mjs`, 20 Prüfungen): Ausrichtungen, Verschlüsselungs-
 Erklärung, Vollbild, Gerätefamilie, Mindest-iOS, die Bundle-Kennung in **allen
 sechs** Dateien, Storyboard gegen vorhandene Swift-Klassen, App-Symbol
 1024×1024 **ohne Alphakanal**, Startbild. Dazu ein ausdrücklicher Riegel:
@@ -6195,14 +6195,27 @@ warten, Bildschirmfoto. Drei Bedingungen, in dieser Reihenfolge:
 | | Prüfung | Was sie aussagt |
 |---|---|---|
 | 1 | kein Absturzbericht unter `DiagnosticReports` | die App lebt noch |
-| 2 | `STACK-SIEGE-BEREIT <Fassung>` im Systemprotokoll | **React ist gestartet** |
+| 2 | `STACK-SIEGE-BEREIT Bruecke steht` im Systemprotokoll | **die Brücke trägt** |
 | 3 | Bildschirmfoto > 80 kB | es wird auch etwas gezeichnet |
 
-Prüfung 2 ist die eigentliche Aussage. Der erste Entwurf hatte nur Prüfung 3 —
-und ein hängender Ladebildschirm wäre als Erfolg durchgegangen. `src/game/app.js`
-schreibt die Zeile nach dem Rendern; Capacitor reicht `console.log` ins
-Systemprotokoll weiter. Auf einem echten Gerät steht damit auch in Console.app,
-ob die Oberfläche gestartet ist und welche Fassung läuft.
+Prüfung 2 ist die eigentliche Aussage — und sie hat **zwei Irrwege** gekostet,
+die hier stehen, damit sie niemand wiederholt:
+
+1. **Der erste Entwurf filterte das Protokoll nach dem Marker selbst.** `log
+   show` schreibt seine eigene Aufrufzeile mit, und die enthält den Suchbegriff,
+   weil er im Filter steht. Im Artefakt nachgesehen: Die Datei enthielt **genau
+   diese eine Zeile**. Die Prüfung meldete „Lebenszeichen" und konnte gar nicht
+   fehlschlagen.
+2. **Der Marker kam aus `console.log`.** Das erreicht das Systemprotokoll nicht
+   — WebKit reicht Konsolenausgaben an den Web-Inspektor weiter, nicht an
+   `os_log`. Gemessen: 983 Protokollzeilen der App, kein Marker.
+
+Jetzt schreibt ihn `SpielViewController`, sobald die Weboberfläche die **erste
+Nachricht über die Brücke** schickt. Das beweist mehr als „React läuft": dass
+die Verbindung zwischen Weboberfläche und Hülle trägt — genau das, was v3.86.0
+im Kern zerstört hatte. `scripts/ios-pruefen.mjs` prüft zusätzlich, dass Swift
+und Ablauf **denselben** Marker benutzen; sonst könnte die Prüfung still wieder
+leer werden.
 
 Der Probelauf läuft **auch bei Hochlade-Läufen** — gerade da: Das ist der Weg,
 der bei Testern ankommt. Er ersetzt die frühere reine Probe-Übersetzung für den
@@ -6221,4 +6234,4 @@ ihr Versagen höchstens die Lupe zurückbringt (siehe v3.90.0).
 Gemessen im ersten echten Lauf: statische Prüfung **1 Sekunde**,
 Simulator-Probelauf **6 Minuten 12**, Bildschirmfoto 2,8 MB.
 
-Tests grün (Typen 0, Unit 70/70, iOS 18/18, E2E 400/400).
+Tests grün (Typen 0, Unit 70/70, iOS 20/20, E2E 400/400).

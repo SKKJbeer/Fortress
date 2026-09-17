@@ -158,6 +158,21 @@ pruefe(!/isTextInteractionEnabled\s*=\s*false/.test(ohneKommentar),
   "Zuruf der Weboberflaeche — dann ist der schlimmste Fall die Lupe, nicht " +
   "eine unbedienbare App.");
 
+// ── Der Marker, an dem der Simulator-Probelauf haengt ─────────────────────
+// Ohne diese Pruefung koennte jemand die NSLog-Zeile entfernen, und der
+// Probelauf im Ablauf wuerde still zu dem, was er schon einmal war: eine
+// Pruefung, die nicht fehlschlagen kann.
+abschnitt("Lebenszeichen fuer den Simulator-Probelauf");
+const MARKER = "STACK-SIEGE-BEREIT Bruecke steht";
+pruefe(swift.includes(MARKER), `Swift schreibt den Marker (${MARKER})`,
+  "Der Simulator-Probelauf in .github/workflows/ios.yml sucht genau diese " +
+  "Zeichenkette im Systemprotokoll. Fehlt sie, schlaegt der Lauf fehl — " +
+  "richtig so, aber die Ursache steht dann im Ablauf und nicht hier.");
+const ablauf = lies(".github/workflows/ios.yml");
+pruefe(ablauf.includes(MARKER), "Der Ablauf sucht denselben Marker",
+  "Laufen die beiden auseinander, prueft der Probelauf ins Leere und meldet " +
+  "trotzdem Erfolg oder Misserfolg — beides ohne Bezug zur Sache.");
+
 // ── Bilder ────────────────────────────────────────────────────────────────
 abschnitt("Symbole und Startbild");
 const iconOrdner = "ios/App/App/Assets.xcassets/AppIcon.appiconset";

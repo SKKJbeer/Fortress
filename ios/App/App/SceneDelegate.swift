@@ -43,9 +43,27 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
         return konfiguration
     }
 
+    /// Ein Lebenszeichen fuer den Probelauf im Simulator — einmal pro Start.
+    ///
+    /// **Warum ueber diesen Kanal und nicht ueber console.log.** Der erste
+    /// Versuch schrieb die Zeile in der Weboberflaeche und suchte sie im
+    /// Systemprotokoll. Im Lauf nachgesehen: 983 Protokollzeilen der App, kein
+    /// Marker. WebKit reicht Konsolenausgaben an den Web-Inspektor weiter, nicht
+    /// an os_log — die Pruefung fand vorher nur ihren eigenen Suchbegriff in der
+    /// Aufrufzeile von `log` und war damit leer.
+    ///
+    /// Diese Zeile sagt mehr als „React ist gestartet": Sie beweist, dass die
+    /// BRUECKE zwischen Weboberflaeche und Huelle traegt. Die erste Nachricht
+    /// kommt beim Aufbau des Menues (`textbedienung` in src/platform.ts).
+    private var lebenszeichenGesendet = false
+
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
         guard message.name == "textfeld", let an = message.body as? Bool else { return }
+        if !lebenszeichenGesendet {
+            lebenszeichenGesendet = true
+            NSLog("STACK-SIEGE-BEREIT Bruecke steht, Textbedienung=%@", an ? "an" : "aus")
+        }
         // Bestmoeglicher Versuch — siehe Punkt 2 oben. Schlaegt er fehl, bleibt
         // die Textbedienung an, und die App bleibt bedienbar.
         webView?.configuration.preferences.isTextInteractionEnabled = an
