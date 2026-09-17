@@ -36,6 +36,11 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
         let konfiguration = super.webViewConfiguration(for: instanceConfiguration)
+        // Diagnose: Wird diese Ansicht ueberhaupt benutzt? Der Simulator-
+        // Probelauf fand den Bruecken-Marker nicht, und dafuer gibt es zwei
+        // moegliche Gruende — die Bruecke schweigt, oder dieser Kode laeuft
+        // gar nicht. Diese Zeile trennt die beiden Faelle.
+        NSLog("STACK-SIEGE-HUELLE SpielViewController konfiguriert")
         // Der Nachrichtenkanal haelt den Empfaenger stark fest. Bei einem
         // beliebigen Bildschirm waere das ein Zyklus; diese Ansicht ist die
         // Wurzel der App und lebt ohnehin, solange die App laeuft.

@@ -254,6 +254,8 @@ jobs:
             --predicate 'process == "App"' \
             > "$RUNNER_TEMP/probe/app-log.txt" 2>&1 || true
           echo "Protokollzeilen der App: $(wc -l < "$RUNNER_TEMP/probe/app-log.txt")"
+          echo "Huellen-Marker: $(grep -c 'STACK-SIEGE-HUELLE' "$RUNNER_TEMP/probe/app-log.txt" || true)"
+          grep -o 'STACK-SIEGE-[A-Z]* .*' "$RUNNER_TEMP/probe/app-log.txt" | head -4 || true
           if grep -q 'STACK-SIEGE-BEREIT Bruecke steht' "$RUNNER_TEMP/probe/app-log.txt"; then
             echo "Lebenszeichen: $(grep -o 'STACK-SIEGE-BEREIT.*' "$RUNNER_TEMP/probe/app-log.txt" | head -1)"
           else
