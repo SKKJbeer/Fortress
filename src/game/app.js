@@ -22,6 +22,8 @@ const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from '../engine/terrain.ts';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from '../engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from '../engine/progression.ts';
+import { normalisiereProfil } from '../engine/profil.ts';
+import { SCHLUESSEL } from '../engine/speicher.ts';
 import { DAILY_REWARDS, DAILY_TASK_POOL, todayStr, msTillMidnight, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, rollDailyTasks, taskDef } from '../engine/daily.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
 import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung } from '../platform.ts';
@@ -420,96 +422,24 @@ window.StackSiegeApp = function StackSiegeApp() {
     { name: "T\xFCrkis", hex: "#0891b2" },
     { name: "Pink", hex: "#db2777" }
   ];
+  // Duenne Huelle: Lesen, Normalisieren, bei Bedarf zurueckschreiben.
+  // Das Normalisieren steht seit v3.100.0 in `engine/profil.ts` und ist dort
+  // durchgeprueft — es entscheidet, ob gekaufte Gegenstaende ein Neuladen
+  // ueberleben.
   function loadProfile() {
-    var _a2, _b2, _c, _d, _e, _f;
     try {
-      const raw = localStorage.getItem("fortress_profile");
-      if (raw) {
-        const p = JSON.parse(raw);
-        let id = p.id;
-        let needsSave = false;
-        if (!id) {
-          id = "p_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-          needsSave = true;
-        }
-        const prof = {
-          id,
-          name: p.name || "",
-          wappen: (p.wappen && WAPPEN_MIGRATION[p.wappen] ? WAPPEN_MIGRATION[p.wappen] : (p.wappen && WAPPEN_SRC[p.wappen] ? p.wappen : "skelett")),
-          color: p.color || "#2563eb",
-          // ELO-Wertung (Start 1000). stats/stats3 = Siege/Niederlagen je Modus.
-          elo: typeof p.elo === "number" ? p.elo : 1e3,
-          elo3: typeof p.elo3 === "number" ? p.elo3 : 1e3,
-          stats: { wins: ((_a2 = p.stats) == null ? void 0 : _a2.wins) || 0, losses: ((_b2 = p.stats) == null ? void 0 : _b2.losses) || 0, games: ((_c = p.stats) == null ? void 0 : _c.games) || 0 },
-          stats3: { wins: ((_d = p.stats3) == null ? void 0 : _d.wins) || 0, losses: ((_e = p.stats3) == null ? void 0 : _e.losses) || 0, games: ((_f = p.stats3) == null ? void 0 : _f.games) || 0 },
-          gold: typeof p.gold === "number" ? p.gold : 100,
-          level: typeof p.level === "number" ? p.level : 1,
-          xp: typeof p.xp === "number" ? p.xp : 0,
-          unlockedRewards: Array.isArray(p.unlockedRewards) ? p.unlockedRewards : [],
-          peakElo: typeof p.peakElo === "number" ? p.peakElo : (typeof p.elo === "number" ? p.elo : 1000),
-          peakElo3: typeof p.peakElo3 === "number" ? p.peakElo3 : (typeof p.elo3 === "number" ? p.elo3 : 1000),
-          achievements: Array.isArray(p.achievements) ? p.achievements : [],
-          dailyTasks: Array.isArray(p.dailyTasks) ? p.dailyTasks : [],
-          seasonXp: typeof p.seasonXp === "number" ? p.seasonXp : 0,
-          historicalXpApplied: p.historicalXpApplied === true,
-          achievementsRetroApplied: p.achievementsRetroApplied === true,
-          winStreak: typeof p.winStreak === 'number' ? p.winStreak : 0,
-          blocksDestroyed: typeof p.blocksDestroyed === 'number' ? p.blocksDestroyed : 0,
-          lifetimeGold: typeof p.lifetimeGold === 'number' ? p.lifetimeGold : (typeof p.gold === 'number' ? Math.max(0, p.gold - 100) : 0),
-          // Gold-Shop-Käufe (v3.26.1): MUSS hier durchgereicht werden — loadProfile
-          // baut das Profil aus dieser Whitelist neu auf; fehlt ein Feld, wird es
-          // beim nächsten Speichern endgültig gelöscht (so gingen Käufe verloren).
-          cosmetics: {
-            owned: Array.isArray(p.cosmetics && p.cosmetics.owned) ? p.cosmetics.owned : [],
-            equipped: (p.cosmetics && typeof p.cosmetics.equipped === "object" && p.cosmetics.equipped) || {}
-          },
-          // Schmiede-Materialien (v3.33.0): Whitelist-Durchreichung wie cosmetics —
-          // fehlt das Feld hier, würde der Vorrat beim nächsten Speichern gelöscht.
-          materials: matOf(p)
-        };
-        if (!p.historicalXpApplied && prof.level === 1 && prof.xp === 0 && (prof.stats.games > 0 || prof.stats3.games > 0)) {
-          const histXp = (prof.stats.wins || 0) * 30 + (prof.stats.losses || 0) * 10 + (prof.stats3.wins || 0) * 30 + (prof.stats3.losses || 0) * 10;
-          if (histXp > 0) {
-            const migrated = applyXpGain(prof, histXp);
-            prof.level = migrated.level;
-            prof.xp = migrated.xp;
-            prof.historicalXpApplied = true;
-            needsSave = true;
-          }
-        }
-        if (!p.achievementsRetroApplied) {
-          const retroEvents = [
-            { type: GAME_EVENTS.GAME_PLAYED },
-            { type: GAME_EVENTS.GAME_WON },
-            { type: GAME_EVENTS.GOLD_EARNED },
-            { type: GAME_EVENTS.ELO_CHANGED },
-            { type: GAME_EVENTS.WIN_STREAK_CHANGED },
-            { type: GAME_EVENTS.BLOCK_DESTROYED }
-          ];
-          const achResult = processAchievementEvents(prof, retroEvents);
-          if (achResult.newlyUnlocked.length > 0) {
-            prof.achievements = achResult.achievements;
-            if (achResult.xpGained > 0 || achResult.goldGained > 0) {
-              const { level: aLvl, xp: aXp } = applyXpGain(prof, achResult.xpGained);
-              prof.level = aLvl;
-              prof.xp = aXp;
-              prof.gold = (typeof prof.gold === 'number' ? prof.gold : 100) + achResult.goldGained;
-            }
-          }
-          prof.achievementsRetroApplied = true;
-          needsSave = true;
-        }
-        if (needsSave) {
-          try {
-            localStorage.setItem("fortress_profile", JSON.stringify(prof));
-          } catch (e) {
-          }
-        }
-        return prof;
+      const raw = localStorage.getItem(SCHLUESSEL.profil);
+      if (!raw) return null;
+      const erg = normalisiereProfil(JSON.parse(raw),
+        { migration: WAPPEN_MIGRATION, vorhanden: WAPPEN_SRC });
+      if (!erg) return null;
+      if (erg.mussSpeichern) {
+        try { localStorage.setItem(SCHLUESSEL.profil, JSON.stringify(erg.profil)); } catch (e) {}
       }
+      return erg.profil;
     } catch (e) {
+      return null;
     }
-    return null;
   }
   const profileRef = React.useRef(null); // always holds latest profile
   const [profile, setProfile] = useState(() => loadProfile());
@@ -6791,7 +6721,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.99.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.100.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

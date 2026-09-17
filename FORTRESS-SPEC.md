@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.99.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.100.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6753,3 +6753,55 @@ gerendert: abholbar, heute schon geholt, lange Strähne mit Treue-Bonus, Tag 7
 mit Kiste. Unit **121 → 122**.
 
 Tests grün (Typen 0, Unit 122/122, iOS 21/21, E2E 425/425).
+
+---
+
+## v3.100.0 — Die Funktion, die über fremden Fortschritt entscheidet, ist jetzt geprüft
+
+`loadProfile` machte zwei Dinge in einem: aus `localStorage` lesen **und** das
+Profil aufbauen. Nur das Zweite ist rein — und nur das Zweite ist gefährlich.
+Es steht jetzt als `normalisiereProfil` in `src/engine/profil.ts`; in `app.js`
+bleibt eine Hülle von 17 Zeilen. Dazu `src/engine/speicher.ts` mit den
+Speicher-Schlüsseln. `src/game/app.js`: **9.265 → 9.195 Zeilen.**
+
+### Warum ausgerechnet diese Funktion
+
+Im Code stand seit v3.26.1 dieser Satz:
+
+> *„loadProfile baut das Profil aus dieser Whitelist neu auf; fehlt ein Feld,
+> wird es beim nächsten Speichern endgültig gelöscht (so gingen Käufe
+> verloren)."*
+
+Ein Kommentar, der eine Gefahr beschreibt und **niemanden aufhält.** Zweimal
+ist genau das passiert — einmal mit gekaufter Kosmetik, einmal mit
+Schmiede-Material. `tests/profil.test.js`, 10 Prüfungen: ein vollständig
+gefülltes Profil geht durch und **alle 24 Felder kommen wieder heraus**; Käufe
+und Material einzeln nachgewiesen; zweimal durchlaufen ändert nichts mehr
+(sonst driftete das Profil bei jedem Start); kaputte Eingaben ergeben kein
+kaputtes Profil; alte Avatar-Schlüssel werden umgezogen statt verworfen; und
+die rückwirkende XP-Gutschrift passiert genau **einmal**.
+
+### Speicher-Schlüssel: ein Tippfehler kostet Fortschritt
+
+15 Schlüssel standen als Zeichenketten an 37 Stellen verteilt. Ein Tippfehler
+darin ist kein Absturz und keine Warnung — der Schlüssel wird nicht gefunden,
+das Spiel legt ein frisches Profil an, und jemandes Fortschritt ist weg, ohne
+dass irgendwo etwas rot wird. `tests/speicher.test.js` durchsucht deshalb den
+**ganzen Quellbaum**: Jeder `fortress_`-Schlüssel muss in `SCHLUESSEL` stehen.
+Mit Gegenprobe, dass der Sammler überhaupt Dateien und Schlüssel sieht.
+
+### Ein Fund, der keiner ist — und deshalb festgehalten wird
+
+Beim Prüfen fiel auf: Ein **frisches** Profil hat am Ende 125 Gold, nicht 100.
+Grund: Der rückwirkende Achievement-Durchlauf schaltet `elo_1000` („Erreiche
+1000 ELO") sofort frei, weil jedes Profil bei genau 1000 startet — Ziel und
+Startwert sind dieselbe Zahl.
+
+Das sieht nach einem Fehler aus, ist aber langjähriges Verhalten und steht
+bereits auf den Konten aller Spieler. Es „geradezuziehen" hieße, ihnen etwas
+wegzunehmen. Die Prüfung hält deshalb den **Ist-Zustand** fest, samt Grund —
+damit der nächste Leser nicht denkt, er habe etwas gefunden.
+
+Unit **122 → 135**.
+
+Tests grün (Typen 0, Unit 135/135, iOS 21/21, E2E 425/425).
