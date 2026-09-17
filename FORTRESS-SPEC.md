@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.100.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.101.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6805,3 +6805,70 @@ damit der nächste Leser nicht denkt, er habe etwas gefunden.
 Unit **122 → 135**.
 
 Tests grün (Typen 0, Unit 135/135, iOS 21/21, E2E 425/425).
+
+---
+
+## v3.101.0 — Die letzten reinen Daten, und ein Protokoll-Vertrag, der keiner war
+
+Letzter Schnitt dieser Runde. `src/engine/bot.ts` (`BOT_LEVELS`, `BOT_NAMES`,
+`BOT_WAPPEN`) und `EMOTES` nach `src/net/protocol.js`.
+`src/game/app.js`: **9.195 → 9.168 Zeilen.**
+
+### Warum EMOTES ausgerechnet in die Netz-Schicht gehört
+
+Übertragen wird der **Index**, nicht das Zeichen. Damit sind Reihenfolge und
+Länge dieser Liste ein Vertrag zwischen beiden Seiten — und der stand bisher
+als einzelne Zeile mitten im Spielcode, ohne dass irgendwo dabeistand, was
+daran hängt.
+
+Wer die Liste umsortiert oder kürzt, sorgt dafür, dass ein alter und ein neuer
+Client **verschiedene Emojis anzeigen.** Und zwar ohne Fehlermeldung: Der
+Rückfall im Spielcode ist `EMOTES[e] || "👍"`, ein unbekannter Index landet
+still auf dem ersten Zeichen. Das wäre ein Missverständnis zwischen zwei
+Spielern, das niemand als Programmfehler erkennt.
+
+Die Prüfung dazu ist bewusst stur — sie vergleicht die Liste Zeichen für
+Zeichen. Wird sie rot, ist das kein Testfehler, sondern die Frage: **Habt ihr
+`PROTO_VERSION` erhöht?**
+
+### Bot-Stufen: prüfen, dass die Auswahl keine Zierde ist
+
+`BOT_LEVELS` ist Balancing, und dafür gilt die Architekturregel: nie inline im
+Spielcode. Jetzt geprüft wird nicht nur, dass die Werte da sind, sondern dass
+sie sich **unterscheiden** — `easy` zielt schlechter als `mid`, `mid`
+schlechter als `hard`, der Abstand zwischen `easy` und `hard` ist mindestens
+dreifach, und die Kanonenzahl steigt. Ein Bot, dessen Stufen sich kaum
+unterscheiden, macht die Auswahl zur Zierde.
+
+Dazu: 50 Bot-Namen, alle verschieden, keiner zu lang fürs HUD; und jedes
+Bot-Wappen zeigt auf einen Avatar, den es gibt (alte Schlüssel erlaubt, die
+Migration fängt sie ab — ins Leere zeigen darf keiner).
+
+Unit **135 → 141**.
+
+---
+
+### Bilanz der Zerlegung (v3.94.0 → v3.101.0)
+
+`src/game/app.js`: **9.894 → 9.168 Zeilen, −726.** Sieben neue Module:
+
+| Modul | Inhalt |
+|---|---|
+| `src/ui/wappen.js` | Avatar-Katalog (−17,2 KB totes SVG) |
+| `src/ui/anzeigen.js` | 6 kleine Anzeige-Komponenten |
+| `src/ui/modale.js` | 9 Modale und Effekte |
+| `src/engine/daily.ts` | Tages-Belohnungen, Treue-Bonus, Aufgaben |
+| `src/engine/profil.ts` | Profil-Normalisierung (24 Felder) |
+| `src/engine/speicher.ts` | Speicher-Schlüssel an einer Stelle |
+| `src/engine/bot.ts` | Bot-Stufen, Namen, Wappen |
+
+Unit-Tests **70 → 141**. Dabei gefunden: ein echter Produktfehler
+(Warteschlangen-Selbstheilung, v3.94.0), 17,2 KB toter Ballast, vier beim
+Umzug eingebaute Fehler und eine Lücke in der E2E-Suite.
+
+**Was bewusst nicht angefasst wurde:** Alles, was an Refs hängt — `impactAt`,
+`fireMortar`, `applyState`, die Bot-KI, das Matchmaking. Das ist der Schritt
+`state/` aus `ARCHITEKTUR.md`, und der steht dort aus gutem Grund zuletzt: Er
+verlangt, den Zustand umzubauen, nicht nur Code zu verschieben.
+
+Tests grün (Typen 0, Unit 141/141, iOS 21/21, E2E 425/425).

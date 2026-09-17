@@ -85,3 +85,18 @@ export function sanitizeAction(raw) {
   if (a.impact !== void 0 && (typeof a.impact !== "string" || a.impact.length > 24)) delete a.impact;
   return a;
 }
+
+// ── Emotes (v3.25.0, hierher v3.101.0) ──────────────────────────────────
+// Sechs vordefinierte Reaktionen fuers Online-Match — kein Freitext, also
+// keine Moderationslast.
+//
+// **Warum das hier steht und nicht bei der Oberflaeche:** Uebertragen wird der
+// INDEX, nicht das Zeichen. Damit sind Reihenfolge und Laenge dieser Liste ein
+// Vertrag zwischen beiden Seiten. Wer sie umsortiert oder kuerzt, sorgt dafuer,
+// dass ein alter und ein neuer Client verschiedene Emojis anzeigen — und zwar
+// ohne Fehlermeldung: Ein unbekannter Index faellt still auf das erste Zeichen
+// zurueck. Das waere ein Missverstaendnis zwischen zwei Spielern, das niemand
+// als Programmfehler erkennt.
+//
+// Aenderung an dieser Liste = PROTO_VERSION erhoehen.
+export const EMOTES = ["\u{1F44D}", "\u{1F604}", "\u{1F62E}", "\u{1F621}", "\u{1F3F0}", "\u{1F4A5}"];

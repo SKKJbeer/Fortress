@@ -23,13 +23,14 @@ import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainF
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from '../engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from '../engine/progression.ts';
 import { normalisiereProfil } from '../engine/profil.ts';
+import { BOT_LEVELS, BOT_NAMES, BOT_WAPPEN } from '../engine/bot.ts';
 import { SCHLUESSEL } from '../engine/speicher.ts';
 import { DAILY_REWARDS, DAILY_TASK_POOL, todayStr, msTillMidnight, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, rollDailyTasks, taskDef } from '../engine/daily.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
 import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung } from '../platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES, forgeRarity } from '../engine/catalog.ts';
 import { LANGS } from '../i18n.js';
-import { PROTO_VERSION, sanitizeState, sanitizeAction } from '../net/protocol.js';
+import { PROTO_VERSION, sanitizeState, sanitizeAction, EMOTES } from '../net/protocol.js';
 import { MM_BASE_RADIUS, MM_GROWTH_PER_SEC, mmRadius, MM_TICK_MS, MM_HEARTBEAT_STALE_MS, MM_CLAIM_HEAL_MS, MM_GUEST_JOIN_TIMEOUT_MS, MM_BOT_BACKFILL_S, computeMatchGroup } from '../net/matchmaking.js';
 import { ICON_PATHS, Icon } from '../ui/icons.js';
 import { WAPPEN_SRC, WAPPEN, WAPPEN_GLOW, WAPPEN_MIGRATION, AVATAR_UNLOCKS } from '../ui/wappen.js';
@@ -304,26 +305,6 @@ function makeCode() {
 }
 // Bot-Namen (v3.14.16): pro Bot-Spiel wird zufällig einer gezogen.
 // Burgen-/Belagerungs-Fantasy mit Augenzwinkern.
-const BOT_NAMES = [
-  "Sir Bröckelbert von Bruchstein", "Gundula Geröllheimer", "Graf Zerbrösel III.",
-  "Mortimer Mörtelbart", "Katapulta die Ungeduldige", "Baron von Trümmerfeld",
-  "Zinnen-Zenzi", "Ritter Rums von Wumms", "Splitterhilde die Spröde",
-  "Lord Fassadenriss", "Bimsbert der Belagerte", "Fräulein Schießscharte",
-  "Der Graue Grantler", "Kanonikus Knall", "Burgfried Bröselmeier",
-  "Walli die Wallmeisterin", "Herzog Halbdach", "Pulverpaula",
-  "Steinbeißer Sepp", "Madame Mauerblume", "Türmchen-Toni",
-  "General Gipsbruch", "Erkerhard der Schiefe", "Ballista Ballerina",
-  "Freiherr von Fallgitter", "Trebuchet-Trude", "Mörser-Mechthild",
-  "Ziegelrich Löwenmut", "Attila der Zinnenlose", "Burgunda von Bollwerk",
-  "Kasimir Kanonenfutter", "Der Nörgelnde Normanne", "Schuttkönig Schorsch",
-  "Prinzessin Pulverdampf", "Wackelwart von Windschief", "Festungs-Ferdi",
-  "Gräfin Giebelbruch", "Bastian Bastion", "Zugbrücken-Zacharias",
-  "Hilde Hagelschlag", "Ritter Kunibert Kachelschreck", "Munitiona die Großzügige",
-  "Doktor Donnerschlag", "Schamane Schuttberg", "Vroni von der Vorburg",
-  "Käpt'n Kartätsche", "Ottokar Ohnedach", "Magier Mauerfraß",
-  "Isolde Eisenpforte", "Der Letzte Zinnensteher"
-];
-const BOT_WAPPEN = ["roboter", "skelett", "vampir", "pestdoc", "eismagie", "schatten"];
 // ── Premium-Shop-Design (v3.17.0): pro Upgrade eine Farbwelt + maßgeschneidertes
 // SVG-Icon (kein Emoji). Rein optisch — Preise/Mechanik unverändert.
 const SHOP_THEME = {
@@ -342,9 +323,6 @@ const SHOP_ICONS = {
   repair: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><path fill="#fff" d="M20.9 6 a4.1 4.1 0 0 1-5.15 5.15 L8.2 18.7 a1.95 1.95 0 0 1-2.76-2.76 L13 8.4 A4.1 4.1 0 0 1 18.15 3.25 L15.5 5.9 a1.25 1.25 0 0 0 1.77 1.77 z"/></svg>',
   slayer: '<svg viewBox="0 0 24 24" width="21" height="21" style="display:block"><circle cx="12" cy="12" r="8.4" fill="none" stroke="#fff" stroke-width="1.7"/><path d="M12 1.6v3.6M12 18.8v3.6M1.6 12h3.6M18.8 12h3.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="3.4" fill="#fff"/><circle cx="12" cy="12" r="1.5" fill="#7c3aed"/></svg>'
 };
-// Emotes (v3.25.0): 6 vordefinierte Reaktionen fürs Online-Match — kein
-// Freitext (keine Moderationslast), Übertragung als Index via Action/State.
-const EMOTES = ["👍", "😄", "😮", "😡", "🏰", "💥"];
 const PHASE_BANNERS = {
   setup:  { title: "SPIELSTART",  sub: "Platziere 2 Kanonen rund um deine Burg", color: "#38bdf8", bg: "rgba(2,32,64,0.95)",  glow: "rgba(56,189,248,0.5)"  },
   build:  { title: "BAUPHASE",    sub: "Mauere deine Burg l\xFCckenlos ein!",     color: "#4ade80", bg: "rgba(2,40,15,0.95)",  glow: "rgba(74,222,128,0.5)"  },
@@ -4755,11 +4733,6 @@ window.StackSiegeApp = function StackSiegeApp() {
   // ── Bot-Schwierigkeitsgrade (v3.20.0, SPEC 14.1) ──────────────────────
   // Drei Stufen über Streuung / Feuer-Drossel / Einkauf. Bauverhalten (Burg
   // schließen) bleibt auf allen Stufen gleich. Tutorial nutzt immer 'mid'.
-  const BOT_LEVELS = {
-    easy: { spread: 2.4, fire: 1.8, maxCannons: 3, buy: "basic" },
-    mid:  { spread: 1.0, fire: 1.0, maxCannons: 6, buy: "standard" },
-    hard: { spread: 0.4, fire: 1.0, maxCannons: 8, buy: "optimal" }
-  };
   // KEINE Vorauswahl (v3.29.0): Die Stufe wird bei JEDEM Bot-Start aktiv im
   // Auswahlmenü angetippt (der Tipp startet das Spiel) — nichts ist vordefiniert
   // oder hervorgehoben, nichts wird gespeichert. "mid" hier ist nur ein inerter
@@ -6721,7 +6694,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.100.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.101.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
