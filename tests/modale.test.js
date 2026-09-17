@@ -103,7 +103,7 @@ test('OnboardingModal laeuft durch alle Schritte, ohne zu werfen', () => {
 // Import kann nicht mehr bis zum Spieler durchkommen.
 import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
-import { AchievementPopup, ItemRevealModal, XpResultAnim } from '../src/ui/modale.js';
+import { AchievementPopup, ItemRevealModal, XpResultAnim, DailyRewardModal } from '../src/ui/modale.js';
 
 const zeichne = (Komp, props) => renderToStaticMarkup(React.createElement(Komp, props));
 
@@ -144,5 +144,22 @@ test('XpResultAnim haelt den Stufensprung aus', () => {
                    { oldLevel: 1, newLevel: 3, oldXp: 0, newXp: 0, gained: 5000 }]) {
     assert.doesNotThrow(() => zeichne(XpResultAnim, { t, xpChange: x }),
       `wirft bei ${JSON.stringify(x)}`);
+  }
+});
+
+test('DailyRewardModal rendert in allen drei Zustaenden', () => {
+  // Frisch (abholbar), schon geholt, und eine lange Straehne mit Treue-Bonus.
+  // Der Kalender zeigt Zahlen, die jemand spaeter auf seinem Konto wiederfindet
+  // — ein Absturz hier ist kein Schoenheitsfehler.
+  const faelle = [
+    ['abholbar',  { daily: {},                                        collected: false }],
+    ['heute weg', { daily: { lastCollect: Date.now(), streak: 3 },    collected: true }],
+    ['Woche 3',   { daily: { streak: 20 },                            collected: false }],
+    ['Tag 7',     { daily: { streak: 6 },                             collected: false }],
+  ];
+  for (const [name, extra] of faelle) {
+    assert.doesNotThrow(
+      () => zeichne(DailyRewardModal, { onCollect() {}, onClose() {}, t, ...extra }),
+      `DailyRewardModal wirft bei "${name}"`);
   }
 });

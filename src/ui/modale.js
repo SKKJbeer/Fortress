@@ -20,6 +20,7 @@ import { ACHIEVEMENTS } from "../engine/achievements.js";
 import { CANNON_SKIN, IMPACT_FX, TRAIL_COLOR, TRAIL_FORM, MASTER_TRAIL, WIN_ICON, forgeRarity }
   from "../engine/catalog.ts";
 import { xpToNextLevel } from "../engine/progression.ts";
+import { DAILY_REWARDS, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, msTillMidnight } from "../engine/daily.ts";
 import { AVATAR_UNLOCKS } from "./wappen.js";
 import { __spreadValues, __spreadProps } from "../spread.js";
 
@@ -392,6 +393,80 @@ function OnboardingModal({ step, setStep, onFinish , t }) {
           isLast ? t('onbStart') : t('onbNext'),
           !isLast && React.createElement(Icon, { name: "chevronDown", size: 16, style: { transform: "rotate(-90deg)" } }))
       )
+    )
+  );
+}
+
+export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
+  const [collecting, setCollecting] = useState(false);
+  const canCollect = getDailyCollectable(daily);
+  const streakIdx = getDailyStreakIndex(daily);
+  const baseReward = DAILY_REWARDS[streakIdx];
+  const mult = dailyWeekMult(daily && daily.streak);
+  const week = Math.floor(((daily && daily.streak) || 0) / 7) + 1;
+  // Effektive Belohnung inkl. Treue-Bonus. Die Rechnung steht seit v3.97.0 in
+  // `engine/daily.ts` und ist dort durchgerechnet — Anzeige UND Vergabe
+  // nehmen denselben Wert, weil `onCollect` genau dieses Objekt bekommt.
+  // Stuenden im Kalender andere Zahlen als auf dem Konto, waere das ein
+  // gebrochenes Versprechen und kein Anzeigefehler.
+  const reward = dailyReward(daily);
+  const msLeft = msTillMidnight();
+  const hLeft = Math.floor(msLeft / 3600000);
+  const mLeft = Math.floor((msLeft % 3600000) / 60000);
+  function handleCollect() {
+    if (!canCollect || collecting || collected) return;
+    setCollecting(true);
+    setTimeout(() => onCollect(reward, streakIdx), 350);
+  }
+  const days = DAILY_REWARDS.map((r, i) => {
+    const isPast = i < streakIdx;
+    const isCurrent = i === streakIdx;
+    return React.createElement("div", { key: i, style: {
+      flex: 1, textAlign: "center",
+      background: isCurrent ? "rgba(251,191,36,0.18)" : isPast ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",
+      border: "1px solid " + (isCurrent ? "rgba(251,191,36,0.6)" : isPast ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.08)"),
+      borderRadius: 8, padding: "6px 2px",
+      animation: isCurrent ? "streakGlow 2s ease infinite" : "none"
+    } },
+      React.createElement("div", { style: { fontSize: 8, color: "#64748b", marginBottom: 2 } }, "T" + (i + 1)),
+      React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: isCurrent ? "#fbbf24" : isPast ? "#4ade80" : "#475569" } },
+        isPast ? "✓" : r.special === "chest" ? "★" : "+" + Math.round(r.gold * mult) + "G"
+      )
+    );
+  });
+  return React.createElement("div", {
+    style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.94)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
+  },
+    React.createElement("div", { style: {
+      background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(251,191,36,0.3)",
+      borderRadius: 16, padding: 24, maxWidth: 360, width: "100%", textAlign: "center",
+      animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both"
+    } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } },
+        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: "#475569", cursor: "pointer" } },
+          React.createElement(Icon, { name: "x", size: 18 })
+        )
+      ),
+      React.createElement("div", { style: { marginBottom: 4, color: "#fbbf24", display: "flex", justifyContent: "center" } },
+        React.createElement(Icon, { name: "zap", size: 28, color: "#fbbf24" })
+      ),
+      React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
+      React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: mult > 1 ? 6 : 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+      mult > 1 && React.createElement("div", { style: { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 14, background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.45)", color: "#fdba74", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", animation: "streakGlow 2s ease infinite" } }, React.createElement(Icon, { name: "flame", size: 12 }), t('dailyLoyalty', { m: mult, w: week })),
+      React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
+      collected
+        ? React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#4ade80", marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
+        : canCollect
+          ? React.createElement("div", { style: { marginBottom: 12 } },
+              React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#fbbf24" } }, "+" + reward.gold + " Gold"),
+              reward.xp > 0 && React.createElement("div", { style: { fontSize: 14, color: "#a78bfa", marginTop: 4 } }, "+" + reward.xp + " XP"),
+              reward.special === "chest" && React.createElement("div", { style: { fontSize: 12, color: "#22d3ee", marginTop: 4 } }, t('dailyChest'))
+            )
+          : React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
+      canCollect && !collected && React.createElement("button", {
+        onClick: handleCollect,
+        style: { width: "100%", background: "linear-gradient(135deg,#ca8a04,#fbbf24)", color: "#0a0a0a", border: "none", padding: "15px", fontSize: 16, fontWeight: 900, borderRadius: 12, cursor: "pointer", boxShadow: "0 4px 20px rgba(251,191,36,0.4)" }
+      }, t('dailyCollect'))
     )
   );
 }

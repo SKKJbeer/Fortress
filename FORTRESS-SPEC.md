@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.98.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.99.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6725,3 +6725,31 @@ prüfen, nicht sich einen ausdenken.** Der `null`-Fall ist raus, die Begründung
 steht im Test.
 
 Tests grün (Typen 0, Unit 121/121, iOS 21/21, E2E **425/425**).
+
+---
+
+## v3.99.0 — Das letzte Modal, und damit ist die UI-Schicht draußen
+
+`DailyRewardModal` nach `src/ui/modale.js`. Es war beim vorigen Schnitt
+liegengeblieben, weil es an sechs Dingen aus dem Abschluss hing — nach
+v3.97.0 (Tages-Logik in `engine/daily.ts`) blieb davon **nur noch `t`**
+übrig. Ein Schnitt macht den nächsten kleiner; das ist der Sinn der
+Reihenfolge.
+
+`src/game/app.js`: **9.338 → 9.265 Zeilen.** Seit v3.94.0 sind das
+**−629 Zeilen**, verteilt auf fünf Module:
+
+| Modul | Inhalt | seit |
+|---|---|---|
+| `src/ui/wappen.js` | Avatar-Katalog | v3.95.0 |
+| `src/ui/anzeigen.js` | 6 kleine Anzeige-Komponenten | v3.96.0 |
+| `src/engine/daily.ts` | Tages-Logik, durchgerechnet | v3.97.0 |
+| `src/ui/modale.js` | 8 Modale + Effekte | v3.98.0 |
+| — | `DailyRewardModal` dazu | v3.99.0 |
+
+Der Kalender zeigt Zahlen, die jemand später auf seinem Konto wiederfindet —
+ein Absturz dort ist kein Schönheitsfehler. Deshalb wird er in vier Zuständen
+gerendert: abholbar, heute schon geholt, lange Strähne mit Treue-Bonus, Tag 7
+mit Kiste. Unit **121 → 122**.
+
+Tests grün (Typen 0, Unit 122/122, iOS 21/21, E2E 425/425).
