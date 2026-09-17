@@ -172,16 +172,45 @@ def altersfreigabe(apple: Apple, app_id: str, trocken: bool):
         sag(f"  ! Altersfreigabe nicht setzbar ({stand}): {kurz(antwort)}")
 
 
-def bau_anhaengen(apple: Apple, app_id: str, fass_id: str, trocken: bool):
-    stand, bau = erste(apple, f"v1/appStoreVersions/{fass_id}/build")
-    if stand == 200 and bau:
-        sag(f"  ✓ Bau {feld(bau, 'version')} haengt bereits an der Fassung"); return
-    stand, antwort = apple.holen(f"v1/builds", **{
+def neuester_bau(apple: Apple, app_id: str):
+    """Der hoechste Bau nach ZAHL, nicht nach Zeichenkette.
+
+    Apples `sort=-version` sortiert die Bau-Nummer als Text: Ab Bau 100 stuende
+    „99" davor. Heute faellt das nicht auf, weil alle Nummern zweistellig sind —
+    genau die Sorte Fehler, die erst auffaellt, wenn sie schon etwas Falsches
+    ausgeliefert hat.
+    """
+    stand, antwort = apple.holen("v1/builds", **{
         "filter[app]": app_id, "filter[processingState]": "VALID",
-        "sort": "-version", "limit": 1})
-    neu = (antwort.json().get("data") or [None])[0] if stand == 200 else None
+        "sort": "-version", "limit": 50})
+    if stand != 200:
+        return None
+
+    def nummer(b):
+        try:
+            return int(feld(b, "version"))
+        except (TypeError, ValueError):
+            return -1
+
+    bauten = antwort.json().get("data") or []
+    return max(bauten, key=nummer) if bauten else None
+
+
+def bau_anhaengen(apple: Apple, app_id: str, fass_id: str, trocken: bool):
+    stand, dran = erste(apple, f"v1/appStoreVersions/{fass_id}/build")
+    neu = neuester_bau(apple, app_id)
     if not neu:
-        sag(f"  ! Kein gueltiger Bau gefunden (HTTP {stand})"); return
+        sag("  ! Kein gueltiger Bau gefunden"); return
+    if stand == 200 and dran and feld(dran, "version") == feld(neu, "version"):
+        sag(f"  ✓ Bau {feld(dran, 'version')} haengt an der Fassung — der neueste"); return
+    if stand == 200 and dran:
+        # **Nicht abbrechen, nur weil IRGENDEIN Bau dranhaengt.** Genau das tat
+        # diese Funktion bis v3.94.0: Bau 20 hing an der Fassung, Bau 28 war
+        # laengst da und freigegeben, und der Trockenlauf meldete zufrieden
+        # „haengt bereits". In den Store waere v3.90.0 gegangen — mit der toten
+        # Bruecke, die v3.93.0 behoben hat. Ein Haken, der sich selbst bestaetigt,
+        # ist schlimmer als keiner.
+        sag(f"  · Bau {feld(dran, 'version')} haengt dran, neuester gueltiger ist {feld(neu, 'version')}")
     if trocken:
         sag(f"  → wuerde Bau {feld(neu, 'version')} anhaengen"); return
     stand, antwort = apple.aendern(

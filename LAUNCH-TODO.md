@@ -6,33 +6,30 @@
 
 ---
 
-## Stand 17.09.2026 — Beta läuft, Bau 28 wartet auf Apples Beta-Prüfung
+## Stand 17.09.2026 — Bau 28 ist freigegeben und bei den Testern
 
-**Die Beta läuft öffentlich.** Der Link `testflight.apple.com/join/hE2AdHwr`
-nimmt Tester an, ohne Einladung und ohne Konto bei uns.
+**Die Beta läuft öffentlich mit v3.94.0.** Bau 28 ist am 17.09. hochgeladen,
+bei Apple `VALID`, der öffentlichen Gruppe zugeordnet und von Apple
+**freigegeben** (`APPROVED`, gemessen um 10:56 UTC — knapp drei Stunden nach dem
+Upload). Der Link `testflight.apple.com/join/hE2AdHwr` nimmt Tester an und
+liefert diesen Stand.
 
-**Bau 28 (v3.94.0)** ist am 17.09. hochgeladen, bei Apple `VALID`, der
-öffentlichen Gruppe zugeordnet und zur Beta-Prüfung eingereicht
-(`WAITING_FOR_REVIEW`). **Bau 20 (v3.90.0)** bleibt bis zur Freigabe der
-ausgelieferte Stand.
+> **Damit ist die tote Brücke aus v3.90.0 draußen.** Bau 20 hat den
+> Nachrichtenkanal `textfeld` nur an der Konfiguration angemeldet, nicht am
+> fertigen WebView — die Lupen-Umschaltung hat auf dem Gerät nie gewirkt
+> (gefunden in v3.93.0 durch den Simulator-Probelauf). Wer ab jetzt über den
+> Link installiert, bekommt Bau 28 mit der Behebung.
 
-> **Achtung, Bau 20 ist nicht harmlos.** Er trägt die tote Brücke aus v3.90.0:
-> der Nachrichtenkanal `textfeld` war nur an der Konfiguration angemeldet, nicht
-> am fertigen WebView — die Lupen-Umschaltung hat auf dem Gerät **nie** gewirkt
-> (gefunden in v3.93.0 durch den Simulator-Probelauf). Wer heute über den Link
-> installiert, bekommt diesen Stand. Behoben ist es erst mit Bau 28.
-
-**Der Knopf „Jetzt testen" auf der Website** hängt an
-`scripts/testflight-stand.py`: Er fragt je Bau der öffentlichen Gruppe den
-Prüfzustand ab und sagt `ja`, sobald **irgendein** Bau `APPROVED` ist. Ein neu
-eingereichter Bau schaltet den Knopf also nicht ab, solange der alte freigegeben
-bleibt. Nachsehen ohne etwas zu schreiben:
-`Actions → App Store (Stand / Eintragen) → beta-stand`.
+**Nachsehen ohne etwas zu schreiben:** `Actions → App Store (Stand /
+Eintragen) → beta-stand`. Der Modus ruft `scripts/testflight-stand.py` auf,
+liest je Bau der öffentlichen Gruppe den Prüfzustand und sagt `ja`/`nein` —
+dieselbe Frage, an der der Knopf „Jetzt testen" auf der Website hängt. Vorher
+ließ sie sich nur beantworten, indem man etwas **schrieb** (`oeffentlich`).
 
 **Der Store-Eintrag ist maschinell gefüllt.** Was in App Store Connect steht,
 steht dort nicht, weil jemand es abgehakt hat, sondern weil Apple es auf
-Nachfrage bestätigt: `Actions → App Store (Stand / Eintragen) → marktreif`
-fragt und berichtet, `→ store` trägt ein. Beides ist wiederholbar und schreibt
+Nachfrage bestätigt: `→ marktreif` fragt und berichtet, `→ store` trägt ein,
+`→ store-probe` zeigt vorher, was es täte. Alles wiederholbar, alles schreibt
 nur, was fehlt.
 
 ### Bei Apple steht — von Apple bestätigt, nicht behauptet
