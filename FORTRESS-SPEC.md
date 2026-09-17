@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.95.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.96.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6553,3 +6553,67 @@ sein und kein Versehen.
 Unit **88 → 94**.
 
 Tests grün (Typen 0, Unit 94/94, iOS 21/21, E2E 424/424).
+
+---
+
+## v3.96.0 — Zweiter Schnitt: sechs Anzeige-Komponenten, und ein Verdacht, der sich nicht bestätigt hat
+
+`src/ui/anzeigen.js`: `LevelBadge`, `ConfettiBurst`, `WappenAvatar`, `XpBarUI`,
+`MatPip`, `MatRow`. Gemeinsames Merkmal — alles kommt über Requisiten und
+Importe, kein Zugriff auf äußeren Zustand. `src/game/app.js`: **9.845 → 9.755
+Zeilen.** Größere Modale bleiben vorerst drüben; die hängen tiefer im Zustand.
+
+**Eine Ausnahme mit Absicht:** `MatRow` zog `t()` aus dem Abschluss — die
+Übersetzungsfunktion, die an der Sprachwahl hängt. Sie kommt jetzt als
+Requisite herein (zwei Aufrufstellen angepasst). Fehlt sie, entfällt nur der
+Titel-Text des Chips. Ein stiller Rückfall auf den rohen Schlüssel wäre
+schlimmer: `mat_iron` sähe aus wie eine Übersetzung.
+
+`tests/anzeigen.test.js`, 8 Prüfungen (Unit **94 → 102**). Darunter: Konfetti
+ist deterministisch (zwei Aufrufe müssen identisch sein — sonst flackert der
+Effekt bei jedem Neuzeichnen); `WappenAvatar` fällt bei unbekanntem Schlüssel
+auf ein vorhandenes Bild zurück (alte Profile tragen alte Schlüssel); die
+XP-Leiste läuft nicht über 100 %; und beide Wege von `MatRow` — mit `t` und
+ohne.
+
+> Beim Schreiben dieser Tests lag **ich** falsch, nicht der Code: Ich erwartete
+> von `MatRow` ohne `nurPositive` einen einzigen Chip. Es sind alle
+> Materialsorten, die leeren gedimmt — genau so dokumentiert, damit man sieht,
+> welche Sorten es überhaupt gibt.
+
+### Der Verdacht, und wie er ausgeräumt wurde
+
+Der erste volle Lauf nach dem Schnitt war **rot**: drei Fehler in der
+Bot-Suite, alle aus einer Wurzel (Burg nicht versiegelt → Bauphase nicht
+erreicht → Schussphase nicht erreicht). Naheliegender Verdacht: der Umzug.
+
+Nachgemessen statt geraten:
+
+| Was | Ergebnis |
+|---|---|
+| Entfernte Zeilen geprüft — gehören alle zu den sechs Komponenten? | ja, nichts Fremdes |
+| Bot-Suite allein, dreimal | **3 × grün** |
+| Voller Lauf auf dem **unveränderten** Stand | grün (424/424) |
+| Voller Lauf **mit** der Änderung, zweiter Versuch | **grün (424/424)** |
+
+Gleicher Code, anderer Ausgang — also Flackern unter Last, keine Regression.
+
+**Damit hat diese Suite an einem Tag viermal grundlos rot gemeldet** (dreimal
+im Ablauf, einmal örtlich). Zwei ihrer Fristen sind schon in v3.94.0
+geradegezogen worden; die verbleibende lastabhängige folgt jetzt: Der
+Versiegelungs-Test wartet **60 s statt 25**, der Folge-Schritt **30 s statt
+14**. Geprüft wird, **dass** der Bot dichtet — nicht, wie schnell. Die längere
+Frist kostet nur Zeit, wenn er es wirklich nicht tut, und dann ist der Lauf
+ohnehin rot.
+
+### Nebenbefund, der festgehalten gehört
+
+Vorher wurden diese Komponenten bei **jedem** Rendern der Elternkomponente neu
+erzeugt. React vergleicht Komponenten über die Funktions-Identität — eine neue
+Identität bedeutet: Teilbaum abbauen und neu aufbauen. Als Import sind sie jetzt
+stabil. Sichtbare Folge: Die CSS-Animationen `badgePop` und `confettiFall`
+laufen nicht mehr bei jedem Neuzeichnen neu an, sondern einmal. Das ist die
+Absicht der Animationen — aber es ist eine Verhaltensänderung und keine reine
+Verschiebung, deshalb steht sie hier.
+
+Tests grün (Typen 0, Unit 102/102, iOS 21/21, E2E 424/424).

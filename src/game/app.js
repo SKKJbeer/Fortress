@@ -30,6 +30,7 @@ import { PROTO_VERSION, sanitizeState, sanitizeAction } from '../net/protocol.js
 import { MM_BASE_RADIUS, MM_GROWTH_PER_SEC, mmRadius, MM_TICK_MS, MM_HEARTBEAT_STALE_MS, MM_CLAIM_HEAL_MS, MM_GUEST_JOIN_TIMEOUT_MS, MM_BOT_BACKFILL_S, computeMatchGroup } from '../net/matchmaking.js';
 import { ICON_PATHS, Icon } from '../ui/icons.js';
 import { WAPPEN_SRC, WAPPEN, WAPPEN_GLOW, WAPPEN_MIGRATION, AVATAR_UNLOCKS } from '../ui/wappen.js';
+import { LevelBadge, ConfettiBurst, WappenAvatar, XpBarUI, MatPip, MatRow } from '../ui/anzeigen.js';
 import { drawWall, drawRubble, ROOF_OF, FLAG_OF, ACCENT_OF, ACCENT_RGB, GHOST_RGB, GHOST_HEX, BALL_MID, BALL_DARK, BALL_GLOW, ballSprite, drawCastle, roundRectPath, SPR, mkSpriteCanvas, wallSprite, crackSprite, rubbleSprite, CANNON_NEON, cannonDomeSprite, BARREL_PAD, cannonBarrelSprite, drawCannonFull } from '../render/sprites.js';
 import { __spreadValues, __spreadProps } from '../spread.js';
 import { SFX, MUSIC } from '../audio.js';
@@ -531,51 +532,6 @@ window.StackSiegeApp = function StackSiegeApp() {
       )
     );
   }
-  function LevelBadge({ level, size }) {
-    const tier = getLevelTier(level);
-    const isLg = size === "lg";
-    return React.createElement("div", {
-      style: {
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        background: "linear-gradient(135deg," + tier.border + "cc," + tier.border + "55)",
-        border: "1.5px solid " + tier.border,
-        borderRadius: isLg ? 8 : 6,
-        padding: isLg ? "3px 8px" : "2px 5px",
-        fontSize: isLg ? 12 : 9,
-        fontWeight: 900,
-        color: tier.color,
-        letterSpacing: "0.04em",
-        boxShadow: "0 0 8px " + tier.glow,
-        flexShrink: 0,
-        animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both"
-      }
-    }, "L" + level);
-  }
-  function ConfettiBurst({ active }) {
-    if (!active) return null;
-    const colors = ["#fbbf24","#a78bfa","#22d3ee","#f87171","#4ade80","#60a5fa","#fb923c","#e879f9"];
-    const particles = Array.from({ length: 20 }, (_, i) => {
-      const color = colors[i % colors.length];
-      const left = 10 + (i / 19) * 80;
-      const delay = (i * 0.05).toFixed(2);
-      const dur = (0.8 + (i * 0.037) % 0.6).toFixed(2);
-      const sz = 4 + (i % 3) * 2;
-      return React.createElement("div", {
-        key: i,
-        style: {
-          position: "absolute", left: left + "%", top: "0%",
-          width: sz, height: sz * (i % 2 === 0 ? 2 : 1),
-          borderRadius: i % 3 === 0 ? "50%" : 1,
-          background: color,
-          animation: "confettiFall " + dur + "s " + delay + "s ease-in both",
-          pointerEvents: "none"
-        }
-      });
-    });
-    return React.createElement("div", {
-      style: { position: "relative", height: 0, overflow: "visible", pointerEvents: "none" }
-    }, ...particles);
-  }
   // Sieges-Effekt (v3.23.0, SPEC 14.4): Kosmetik auf dem Result-Screen.
   // Deterministisch (keine Math.random) wie ConfettiBurst; fixed overlay,
   // rein dekorativ (pointerEvents none).
@@ -711,52 +667,6 @@ window.StackSiegeApp = function StackSiegeApp() {
       h("div", { style: { fontSize: "clamp(23px,7vw,32px)", fontWeight: 900, color: "#fff", textAlign: "center", textShadow: "0 0 24px rgba(" + rar.glow + ",0.7)", marginBottom: 6, animation: "revealBurstIn 0.5s 0.34s both" } }, t("cos_" + rec.id)),
       h("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 30, animation: "revealBurstIn 0.5s 0.4s both" } }, catLabel + " · " + t("forgeRevealEquipped")),
       h("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", animation: "glowpulse 1.6s ease-in-out infinite" } }, t("forgeRevealTap"))
-    );
-  }
-  function WappenAvatar({ id, size = 36 }) {
-    const src = WAPPEN_SRC[id] || WAPPEN_SRC.skelett;
-    return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
-  // Statische XP-Leiste (Profil-Karte, Profil-Editor)
-  function XpBarUI({ level, xp }) {
-    const needed = xpToNextLevel(level);
-    const pct = Math.min(100, xp / needed * 100);
-    return React.createElement("div", { style: { marginTop: 5 } },
-      React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 3 } },
-        React.createElement("span", { style: { fontSize: 9, color: "#475569" } }, xp + " / " + needed + " XP")
-      ),
-      React.createElement("div", { style: { height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden", position: "relative" } },
-        React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(90deg,#7c3aed,#22d3ee)", borderRadius: 3, boxShadow: "0 0 6px rgba(124,58,237,0.7)", transition: "width 0.4s ease" } })
-      )
-    );
-  }
-  // Schmiede-Material sichtbar machen (v3.68.0). Vorher wanderten Eisen,
-  // Silber, Drachenstahl und Sternenstaub still ins Profil — man merkte erst
-  // in der Schmiede, dass sich etwas angesammelt hatte. Ein Rautenpip ist die
-  // gemeinsame Bildsprache: Menue-Leiste, Ergebnis-Karte, Aufgaben, Schmiede.
-  function MatPip({ k, size = 9 }) {
-    return React.createElement("span", { style: {
-      width: size, height: size, flexShrink: 0, background: MAT_META[k].c,
-      transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 6px " + MAT_META[k].c
-    } });
-  }
-  // Zeile aus Material-Chips. `vals` = {iron,silver,...}; `nurPositive` blendet
-  // Nullwerte aus (Belohnungs-Anzeige), sonst bleiben sie gedimmt stehen
-  // (Bestands-Anzeige — so sieht man auch, welche Sorten es ueberhaupt gibt).
-  function MatRow({ vals, nurPositive, plus, size, gap }) {
-    const keys = MAT_ORDER.filter((k) => !nurPositive || (vals[k] || 0) > 0);
-    if (!keys.length) return null;
-    return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: gap == null ? 6 : gap, flexWrap: "wrap" } },
-      keys.map((k) => {
-        const n = vals[k] || 0;
-        return React.createElement("span", { key: k, title: t("mat_" + k), style: {
-          display: "inline-flex", alignItems: "center", gap: 4,
-          fontSize: size || 11, fontWeight: 900,
-          color: n > 0 ? "#e2e8f0" : "#475569", opacity: n > 0 ? 1 : 0.55
-        } },
-          React.createElement(MatPip, { k, size: size ? size - 2 : 9 }),
-          (plus && n > 0 ? "+" : "") + n
-        );
-      })
     );
   }
   // Animierter XP-Reward-Screen nach Online-Spiel
@@ -7256,7 +7166,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // sieht, dass sich Material ansammelt — Klick fuehrt in die Schmiede.
     /* @__PURE__ */ React.createElement("div", { onClick: () => setShowForge(true), title: t("matToForge"), style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4, cursor: "pointer" } },
       React.createElement(Icon, { name: "hammer", size: 12, color: forgeReadyN > 0 ? "#fb923c" : "#64748b" }),
-      React.createElement(MatRow, { vals: matOf(profile), size: 11, gap: 4 })
+      React.createElement(MatRow, { t, vals: matOf(profile), size: 11, gap: 4 })
     ), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
     /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: {
       background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
@@ -7371,7 +7281,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.95.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.96.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7863,7 +7773,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   } },
     React.createElement(Icon, { name: "hammer", size: 15, color: "#fdba74" }),
     React.createElement("span", { style: { fontSize: 11.5, fontWeight: 800, color: "#fdba74" } }, t("matEarned")),
-    React.createElement(MatRow, { vals: matToast, nurPositive: true, plus: true, size: 12, gap: 8 })
+    React.createElement(MatRow, { t, vals: matToast, nurPositive: true, plus: true, size: 12, gap: 8 })
   ),
   // ── Daily-Tasks-Modal (v3.22.0, SPEC 14.3) ──
   showTasksModal && (() => {

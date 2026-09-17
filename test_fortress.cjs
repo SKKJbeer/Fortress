@@ -4358,7 +4358,15 @@ async function suiteBot(browser) {
       if (blasted.n >= 1 && blasted.open) {
         ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen) ✓`);
         let sealed = false;
-        const sealDeadline = Date.now() + 25000;
+        // 60 s, nicht 25. Geprueft wird, DASS der Bot dichtet — nicht, wie
+        // schnell. Unter voller Suitenlast (zwanzig Browserkontexte) kriecht
+        // der KI-Tick, und diese Frist hat am 17.09. eine Auslieferung
+        // aufgehalten, obwohl nichts kaputt war. Belegt: in Isolation 3/3
+        // gruen, im vollen Lauf einmal rot, im naechsten vollen Lauf mit
+        // DEMSELBEN Code wieder gruen. Die laengere Frist kostet nur dann
+        // Zeit, wenn der Bot wirklich nicht dichtet — und dann ist der Lauf
+        // ohnehin rot.
+        const sealDeadline = Date.now() + 60000;
         while (Date.now() < sealDeadline) {
           if (await page.evaluate(() => window.__castleClosed && window.__castleClosed(2) === true)) { sealed = true; break; }
           await page.waitForTimeout(300);
@@ -4372,7 +4380,9 @@ async function suiteBot(browser) {
 
     // ── v3.30.1: In der Bauphase nur die EIGENE Hand-Vorschau (Bot-Hand versteckt) ──
     {
-      const sawBuild = await waitForPhase(page, ['BAUEN'], 14000);
+      // Gleiche Ueberlegung wie oben: dieselbe Lastspitze hat auch diesen
+      // Schritt schon gerissen, und zwar als Folgefehler.
+      const sawBuild = await waitForPhase(page, ['BAUEN'], 30000);
       if (sawBuild) {
         const hands = await page.evaluate(() =>
           document.querySelectorAll('div[style*="grid-template-columns"]').length);
