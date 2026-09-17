@@ -25,7 +25,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `src/audio.js`, `src/spread.js`, `src/platform.ts` | Ton/Musik, Objekt-Helfer, Plattform-Weiche |
 | `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
-| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 85 Tests, ~0,3 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
+| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 88 Tests, ~0,3 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
 | `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |

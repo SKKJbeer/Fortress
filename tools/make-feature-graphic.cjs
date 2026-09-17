@@ -2,7 +2,13 @@
 // Bewusst KEIN aufgeblasener Screenshot — bei 1024x500 (Querformat) waere ein
 // Hochkant-Bild entweder winzig oder beschnitten. Stattdessen: Wortmarke links,
 // echtes Spielgeschehen rechts als angeschnittener Ausschnitt.
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// Playwright aus node_modules, ersatzweise aus der globalen Installation
+// dieses Rechners. Ein fester Pfad allein laeuft ueberall sonst ins Leere
+// (v3.94.0) — tests/pfade.test.js haelt das fest.
+const { chromium } = (() => {
+  try { return require('playwright'); }
+  catch (e) { return require('/opt/node22/lib/node_modules/playwright'); }
+})();
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 

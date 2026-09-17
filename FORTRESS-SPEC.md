@@ -6380,4 +6380,29 @@ voller Lauf kostet 100 s; beim Schreiben einer Suite läuft man zehnmal
 hintereinander. Ohne `NUR` fährt die Suite immer alles — der Riegel vor der
 Auslieferung kennt die Abkürzung nicht.
 
-Tests grün (Typen 0, Unit **85/85**, iOS 21/21, E2E **424/424**).
+### Nachtrag: Der neue Riegel hat sofort zugeschlagen — auf den eigenen Code
+
+Der erste Lauf mit dem neuen `deploy.yml` ist **rot geworden und hat die
+Auslieferung angehalten**. Grund: `test_fortress.cjs` las `index.html` aus
+`/home/user/Fortress/`. Örtlich grün, im Ablauf `ENOENT` in der ersten Zeile.
+
+Dieselbe Ursache wie beim Playwright-Pfad, keine zwei Stunden später — und
+beide Male sah es richtig aus, *weil es hier lief*. Deshalb jetzt
+`tests/pfade.test.js` (3 Prüfungen, läuft in `test:unit`):
+
+- Pfade unter `/home/`, `/Users/`, `/root/` sind in ausgeführten Dateien
+  **verboten** — sie zeigen auf genau einen Rechner.
+- `/opt/…` nur als abgesicherter Rückfall (`try { require(x) } catch { … }`).
+- Eine Gegenprobe, dass der Sammler überhaupt Dateien sieht — sonst meldete
+  ein kaputter Sammler alles grün.
+
+Die Prüfung fand auf Anhieb drei weitere Dateien mit demselben festen Pfad:
+`generate_icons.js`, `tools/make-icons.cjs`, `tools/make-feature-graphic.cjs`.
+Alle drei laufen jetzt mit Rückfall.
+
+Gegenprobe gemacht: Pfad absichtlich wieder eingesetzt → rot; zurückgesetzt →
+grün. Die Prüfung kann fehlschlagen.
+
+Unit **88/88**.
+
+Tests grün (Typen 0, Unit **88/88**, iOS 21/21, E2E **424/424**).

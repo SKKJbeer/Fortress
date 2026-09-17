@@ -110,7 +110,11 @@ function versionAus(text) {
 }
 
 function getExpectedVersion() {
-  return versionAus(fs.readFileSync('/home/user/Fortress/index.html', 'utf8'));
+  // __dirname, nicht der absolute Pfad dieses einen Rechners (v3.94.0).
+  // Derselbe Fehler wie bei Playwright: Ein fest verdrahteter Pfad laeuft
+  // ueberall dort ins Leere, wo das Projekt anders liegt — auf einem Laeufer
+  // von GitHub bricht die Suite in der ersten Zeile ab.
+  return versionAus(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'));
 }
 function getServerVersion() {
   return new Promise((resolve, reject) => {
