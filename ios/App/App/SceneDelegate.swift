@@ -36,11 +36,14 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
         let konfiguration = super.webViewConfiguration(for: instanceConfiguration)
-        // Diagnose: Wird diese Ansicht ueberhaupt benutzt? Der Simulator-
-        // Probelauf fand den Bruecken-Marker nicht, und dafuer gibt es zwei
-        // moegliche Gruende — die Bruecke schweigt, oder dieser Kode laeuft
-        // gar nicht. Diese Zeile trennt die beiden Faelle.
+        // Bleibt stehen: Diese Zeile trennt zwei Fehlerbilder, die sonst
+        // gleich aussehen — »die Bruecke schweigt« und »dieser Kode laeuft gar
+        // nicht«. Genau diese Unterscheidung hat den Fehler unten gefunden.
         NSLog("STACK-SIEGE-HUELLE SpielViewController konfiguriert")
+        // Anmeldung Nummer eins — sie allein GENUEGT NICHT, siehe viewDidLoad.
+        // Sie bleibt als Rueckfallebene: Sollte Capacitor den Inhaltssteuerer
+        // eines Tages nicht mehr austauschen, greift sie wieder.
+        //
         // Der Nachrichtenkanal haelt den Empfaenger stark fest. Bei einem
         // beliebigen Bildschirm waere das ein Zyklus; diese Ansicht ist die
         // Wurzel der App und lebt ohnehin, solange die App laeuft.
@@ -62,19 +65,25 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
     /// kommt beim Aufbau des Menues (`textbedienung` in src/platform.ts).
     private var lebenszeichenGesendet = false
 
-    /// Der Kanal ein zweites Mal anmelden — am LEBENDEN WebView.
+    /// **Hier wird der Kanal wirklich angemeldet.**
     ///
-    /// Gemessen im Simulator-Probelauf: Der Marker aus `webViewConfiguration`
-    /// erscheint, die Ansicht laeuft also. Die Weboberflaeche meldet sich
-    /// trotzdem nie — `window.webkit.messageHandlers.textfeld` gibt es dort
-    /// offenbar nicht. Zwischen der Konfiguration, die wir zurueckgeben, und
-    /// dem Inhaltssteuerer, den der fertige WebView benutzt, geht die Anmeldung
-    /// verloren.
+    /// Die Anmeldung an der Konfiguration oben reicht nicht — das ist keine
+    /// Vermutung, sondern im Simulator-Probelauf gemessen: Der Marker aus
+    /// `webViewConfiguration` erschien, die Ansicht lief also; die
+    /// Weboberflaeche meldete sich trotzdem nie, weil es
+    /// `window.webkit.messageHandlers.textfeld` dort gar nicht gab. Capacitor
+    /// tauscht den Inhaltssteuerer zwischen unserer Konfiguration und dem
+    /// fertigen WebView aus, und unsere Anmeldung geht dabei verloren.
     ///
-    /// `webView.configuration` ist laut Apple eine Kopie — `userContentController`
+    /// **Das war kein Testfehler, sondern ein echter.** Die ganze
+    /// Lupen-Umschaltung aus v3.90.0 hing an diesem Kanal — sie hat auf dem
+    /// Geraet nie gewirkt, und niemand haette es gemerkt: Eine Lupe, die
+    /// erscheint, sieht aus wie eine Lupe, die man nicht abgeschaltet hat.
+    ///
+    /// `webView.configuration` ist laut Apple eine Kopie; `userContentController`
     /// ist darin aber ein Verweis auf DASSELBE Objekt, das der WebView benutzt.
-    /// Deshalb greift die Anmeldung hier, wo sie an der Konfiguration nicht
-    /// greift. Vorher abmelden: Zweimal derselbe Name wirft eine Ausnahme.
+    /// Deshalb greift die Anmeldung hier. Vorher abmelden: Zweimal derselbe
+    /// Name wirft eine Ausnahme.
     override func viewDidLoad() {
         super.viewDidLoad()
         guard let steuerer = webView?.configuration.userContentController else {

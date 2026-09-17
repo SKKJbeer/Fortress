@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.92.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.93.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6235,3 +6235,63 @@ Gemessen im ersten echten Lauf: statische Prüfung **1 Sekunde**,
 Simulator-Probelauf **6 Minuten 12**, Bildschirmfoto 2,8 MB.
 
 Tests grün (Typen 0, Unit 70/70, iOS 20/20, E2E 400/400).
+
+---
+
+## v3.93.0 — Die Brücke zur App war tot, und der neue Probelauf hat es gefunden
+
+Der Simulator-Probelauf aus v3.92.0 war eine Stunde alt, als er den ersten
+echten Fehler meldete — einen, den kein Test dieses Projekts je hätte sehen
+können.
+
+### Was kaputt war
+
+`SpielViewController` meldet den Nachrichtenkanal `textfeld` an der
+Konfiguration an, die `webViewConfiguration(for:)` zurückgibt. **Diese
+Anmeldung erreicht den fertigen WebView nicht.** Capacitor tauscht den
+Inhaltssteuerer dazwischen aus; in der Weboberfläche gibt es
+`window.webkit.messageHandlers.textfeld` deshalb gar nicht, und
+`textbedienung()` in `src/platform.ts` kehrt still zurück.
+
+**Damit hat die gesamte Lupen-Umschaltung aus v3.90.0 auf dem Gerät nie
+gewirkt.** Und niemand hätte es bemerkt: Eine Lupe, die erscheint, sieht aus
+wie eine Lupe, die man nicht abgeschaltet hat.
+
+Behoben, indem der Kanal in `viewDidLoad` am **lebenden** WebView angemeldet
+wird. `webView.configuration` ist laut Apple eine Kopie — `userContentController`
+ist darin aber ein Verweis auf dasselbe Objekt, das der WebView benutzt.
+
+### Wie er gefunden wurde
+
+Nicht durch Nachdenken, sondern durch drei Läufe und zwei widerlegte Annahmen:
+
+| Lauf | Beobachtung | Schluss |
+|---|---|---|
+| 1 | „Lebenszeichen" gefunden | **falsch** — gefunden wurde die Aufrufzeile von `log` selbst, die den Suchbegriff im Filter trägt |
+| 2 | 983 Protokollzeilen, kein Marker | `console.log` erreicht `os_log` nicht; WebKit reicht es an den Web-Inspektor |
+| 3 | Hüllen-Marker da, Brücken-Marker nicht | die Ansicht läuft, die Brücke schweigt — **der eigentliche Fehler** |
+
+Lauf 1 ist der lehrreichste: Die Prüfung war grün und **konnte gar nicht
+fehlschlagen**. Aufgefallen ist das nur, weil das Artefakt nachgesehen wurde,
+statt der grünen Meldung zu glauben. Es stand da eine einzige Zeile.
+
+### Damit es nicht still zurückkommt
+
+`scripts/ios-pruefen.mjs` (jetzt 21 Prüfungen) verlangt: Swift muss den Marker
+schreiben, der Ablauf muss **denselben** suchen, und der Kanal muss in
+`viewDidLoad` angemeldet werden. Laufen diese drei auseinander, prüft der
+Probelauf wieder ins Leere — und genau das ist an einem Tag schon einmal
+passiert.
+
+Der Probelauf meldet jetzt:
+
+```
+STACK-SIEGE-HUELLE SpielViewController konfiguriert
+STACK-SIEGE-HUELLE Kanal am WebView angemeldet
+STACK-SIEGE-BEREIT Bruecke steht, Textbedienung=an
+```
+
+Drei Zeilen, drei Aussagen: Die Hülle läuft, der Kanal steht, und die
+Weboberfläche spricht darüber.
+
+Tests grün (Typen 0, Unit 70/70, iOS 21/21, E2E 400/400).

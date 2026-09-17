@@ -168,6 +168,13 @@ pruefe(swift.includes(MARKER), `Swift schreibt den Marker (${MARKER})`,
   "Der Simulator-Probelauf in .github/workflows/ios.yml sucht genau diese " +
   "Zeichenkette im Systemprotokoll. Fehlt sie, schlaegt der Lauf fehl — " +
   "richtig so, aber die Ursache steht dann im Ablauf und nicht hier.");
+pruefe(/override func viewDidLoad/.test(swift) &&
+       /userContentController[\s\S]{0,400}add\(self, name: "textfeld"\)/.test(swift),
+  "Der Kanal wird am lebenden WebView angemeldet (viewDidLoad)",
+  "Die Anmeldung an der Konfiguration allein GENUEGT NICHT — im Probelauf " +
+  "gemessen: Capacitor tauscht den Inhaltssteuerer aus, und die Anmeldung geht " +
+  "verloren. Faellt viewDidLoad weg, schweigt die Bruecke, und die " +
+  "Lupen-Umschaltung wirkt nicht mehr.");
 const ablauf = lies(".github/workflows/ios.yml");
 pruefe(ablauf.includes(MARKER), "Der Ablauf sucht denselben Marker",
   "Laufen die beiden auseinander, prueft der Probelauf ins Leere und meldet " +
