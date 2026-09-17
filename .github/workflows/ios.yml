@@ -238,15 +238,27 @@ jobs:
           #    gestartet und weiss, welche Fassung es ist". src/game/app.js
           #    schreibt die Zeile nach dem Rendern; Capacitor reicht
           #    console.log ins Systemprotokoll weiter.
+          # NICHT nach dem Marker filtern: `log show` schreibt seine eigene
+          # Aufrufzeile mit ins Protokoll, und die enthaelt den Suchbegriff,
+          # weil er im Filter steht. Genau daran ist der erste Entwurf
+          # gescheitert — die Datei enthielt NUR diese eine Zeile, und die
+          # Pruefung war gruen, ohne etwas zu pruefen.
+          #
+          # Deshalb: nach dem PROZESS filtern und erst danach suchen. Gesucht
+          # wird der Marker MIT Fassungsnummer; die Aufrufzeile kann sie nicht
+          # enthalten.
           xcrun simctl spawn "$UDID" log show --last 3m --style compact \
-            --predicate 'eventMessage CONTAINS "STACK-SIEGE-BEREIT"' \
-            > "$RUNNER_TEMP/probe/log.txt" 2>&1 || true
-          if grep -q "STACK-SIEGE-BEREIT" "$RUNNER_TEMP/probe/log.txt"; then
-            echo "Lebenszeichen: $(grep -o 'STACK-SIEGE-BEREIT.*' "$RUNNER_TEMP/probe/log.txt" | head -1)"
+            --predicate 'process == "App"' \
+            > "$RUNNER_TEMP/probe/app-log.txt" 2>&1 || true
+          echo "Protokollzeilen der App: $(wc -l < "$RUNNER_TEMP/probe/app-log.txt")"
+          if grep -Eq 'STACK-SIEGE-BEREIT [0-9]' "$RUNNER_TEMP/probe/app-log.txt"; then
+            echo "Lebenszeichen: $(grep -Eo 'STACK-SIEGE-BEREIT [0-9.]+' "$RUNNER_TEMP/probe/app-log.txt" | head -1)"
           else
             echo "FEHLER: Die Weboberflaeche hat sich nicht gemeldet."
             echo "Entweder ist sie nicht gestartet, oder der Ladebildschirm haengt."
-            echo "Das Bildschirmfoto liegt als Artefakt 'simulator-probe' bei."
+            echo "Das Bildschirmfoto und das Protokoll liegen als Artefakt"
+            echo "'simulator-probe' bei. Letzte Zeilen:"
+            tail -25 "$RUNNER_TEMP/probe/app-log.txt" || true
             exit 1
           fi
 
