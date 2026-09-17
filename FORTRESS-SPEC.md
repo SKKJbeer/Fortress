@@ -6405,4 +6405,21 @@ grün. Die Prüfung kann fehlschlagen.
 
 Unit **88/88**.
 
+### Nachtrag 2: Der zweite Lauf war rot — und zwar an zwei Zeitannahmen
+
+Die Suite lief im Ablauf diesmal vollständig durch: **421 ✅, 2 ❌**. Beide
+Fehler in der Bot-Suite, beide örtlich grün, beide dieselbe Sorte:
+
+| Prüfung | Was daran falsch war |
+|---|---|
+| „Bot platziert Kanonen" | Wartete 7 s auf einen **Toast**. Ein Toast ist flüchtig — auf einem ausgelasteten Läufer war er im Fenster entweder schon weg oder noch nicht da. Jetzt wird der **Zustand** gemessen (`__econFull().cannons[2]`), Frist 25 s. |
+| „Bau-KI: Bresche" | `__blastWall(2, 3)` sprengt eine Reihe vor der Burg. Ist die Mauer dort doppelt, bleibt die Burg **zu** — dann meldete der Test einen Fehler, obwohl nur die **Vorbedingung** nicht hergestellt war. Auf dem langsameren Läufer hatte der Bot mehr gebaut, genau das trat ein. Jetzt wird gesprengt, **bis die Burg wirklich offen ist** (bis zu 8 Anläufe), erst dann läuft die eigentliche Prüfung. |
+
+Gegenprobe zur Kanonen-Prüfung: Zähler beim Spielstart gemessen — P1=0 und
+P2=0 über die gesamte Setup-Phase. Ein Wert ≥ 1 ist also wirklich ein Beleg für
+die KI und kein Anfangsbestand.
+
+Das ist die eigentliche Lehre aus diesen beiden Tagen: **Eine Prüfung, die nur
+auf einem Rechner läuft, ist keine Prüfung.** Sie wird grün, weil die Umgebung
+passt, nicht weil das Spiel stimmt. Erst der Ablauf fragt beides getrennt ab.
 Tests grün (Typen 0, Unit **88/88**, iOS 21/21, E2E **424/424**).

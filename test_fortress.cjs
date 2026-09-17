@@ -4310,15 +4310,29 @@ async function suiteBot(browser) {
         : fail(`Terrain-Flip: Fluss verschoben? Nur ${fp.good}/${fp.edgeN} Kantenzellen wasserfarben`);
     }
 
-    // ── Beweis: Bot (P2) platziert Kanonen (Toast erscheint) ──
-    // Der Test-„Mensch" platziert nichts → jeder Kanonen-Toast stammt vom Bot.
-    let placed = false;
-    const deadline = Date.now() + 7000;
-    while (Date.now() < deadline) {
-      if (await page.evaluate(() => /Kanone[^]*platziert/i.test(document.body.innerText))) { placed = true; break; }
-      await page.waitForTimeout(100);
+    // ── Beweis: Bot (P2) platziert Kanonen ────────────────────
+    // Der Test-„Mensch" platziert nichts → jede Bot-Kanone stammt von der KI.
+    //
+    // Gemessen wird der ZUSTAND (`__econFull().cannons[2]`), nicht mehr ein
+    // Toast. Ein Toast ist fluechtig: Auf einem ausgelasteten Laeufer war er
+    // im 7-Sekunden-Fenster entweder schon wieder weg oder noch nicht da —
+    // oertlich gruen, im Ablauf rot. Der Zaehler bleibt stehen.
+    let botKanonen = 0, placed = false;
+    const deadline = Date.now() + 25000;
+    while (Date.now() < deadline && !placed) {
+      const st = await page.evaluate(() => {
+        const e = window.__econFull ? window.__econFull() : null;
+        return {
+          n: e ? (e.cannons && e.cannons[2]) || 0 : -1,
+          toast: /Kanone[^]*platziert/i.test(document.body.innerText)
+        };
+      });
+      botKanonen = st.n;
+      if (st.n >= 1 || st.toast) placed = true;
+      else await page.waitForTimeout(150);
     }
-    placed ? ok('Bot (P2) platziert selbstständig Kanonen ✓') : fail('Bot platziert keine Kanonen (KI inaktiv?)');
+    placed ? ok(`Bot (P2) platziert selbststaendig Kanonen (${botKanonen}) ✓`)
+           : fail(`Bot platziert keine Kanonen (KI inaktiv?) — Zaehler blieb bei ${botKanonen}`);
 
     // ── Bau-KI (v3.29.0): Bot schließt eine geschossene Bresche wieder ──
     // Bresche (3 Mauerzellen → Trümmer) in die Bot-Burg schlagen → Burg offen.
@@ -4326,10 +4340,21 @@ async function suiteBot(browser) {
     // sind NICHT bebaubar → erzwingt den Umgehungs-Ring des Leck-Versieglers).
     {
       await page.evaluate(() => { window.__mmDebug = true; });
-      const blasted = await page.evaluate(() => {
-        const n = window.__blastWall ? window.__blastWall(2, 3) : 0;
-        return { n, open: window.__castleClosed ? window.__castleClosed(2) === false : null };
-      });
+      // Bis die Burg WIRKLICH offen ist, nicht nur bis Zellen zerstoert sind.
+      // `__blastWall` sprengt eine Reihe vor der Burg; ist die Mauer dort
+      // doppelt, bleibt die Burg trotzdem zu — dann meldete der Test einen
+      // Fehler, obwohl die Vorbedingung nur nicht hergestellt war. Auf einem
+      // langsameren Laeufer hatte der Bot mehr gebaut und genau das passierte.
+      let blasted = { n: 0, open: false };
+      for (let versuch = 0; versuch < 8 && !blasted.open; versuch++) {
+        const r = await page.evaluate(() => {
+          const n = window.__blastWall ? window.__blastWall(2, 5) : 0;
+          return { n, open: window.__castleClosed ? window.__castleClosed(2) === false : false };
+        });
+        blasted = { n: blasted.n + r.n, open: r.open };
+        if (r.n === 0) break;               // keine Mauer mehr zu sprengen
+        if (!r.open) await page.waitForTimeout(120);
+      }
       if (blasted.n >= 1 && blasted.open) {
         ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen) ✓`);
         let sealed = false;
