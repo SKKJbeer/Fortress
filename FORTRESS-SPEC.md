@@ -6463,4 +6463,38 @@ verändern müssen.
 **Apple hat Bau 28 freigegeben** — `APPROVED`, 10:56 UTC, knapp drei Stunden
 nach dem Upload. Der öffentliche TestFlight-Link liefert seitdem v3.94.0.
 
+### Nachtrag 4: Zwei Prüfungen, die grundlos rot wurden
+
+Lauf 351 des Riegels: **422 ✅, 2 ❌** — beide örtlich grün, beide keine
+Produktfehler, beide haben ein Deployment aufgehalten.
+
+**`Schussphase nicht erreicht`** (Bot-Suite). Die Frist stand auf 6 s. Von
+BAUEN aus liegen noch der Rest der Bauphase und die ganze Rüstphase dazwischen;
+unter Last reicht das nicht. Geprüft wird aber, dass das Spiel **weiterläuft** —
+nicht, wie schnell. Frist auf 20 s: dieselbe Aussage, ohne Zufall.
+
+**`Pause: Uhr steht nach OK (20→20, Blase offen: false)`** (Tutorial-Suite).
+Hier war die Prüfung **von Konstruktion her** rennanfällig: Sie las den
+Pausenzustand **einmal** und maß danach 600 ms. In diesem Fenster ging die
+nächste Coach-Blase auf, die Uhr stand völlig zu Recht — und die Meldung
+behauptete „Blase offen: false", eine Angabe, die beim Ablesen schon veraltet
+war. Eine falsche Meldung ist schlimmer als gar keine: Sie schickt den nächsten
+Leser in die falsche Richtung.
+
+Jetzt werden **Uhr und Pausenzustand zusammen** abgelesen, bis zu achtmal. Es
+genügt ein Fenster ohne Blase, in dem sich die Uhr bewegt. Bleibt das Spiel
+pausiert, ist die Prüfung zu Recht rot.
+
+**Gegenprobe, zweiter Anlauf.** Der erste Versuch war stumpf: Messfenster auf
+0 ms gesetzt — und die Uhr bewegte sich trotzdem (15→14), weil schon das
+Ablesen über die Fernsteuerung länger dauert als ein Tick unter
+`TIMER_SPEEDUP`. Erst der zweite Versuch trennte sauber: das Wegklicken der
+Blase ausgebaut, damit das Spiel pausiert bleibt → **2 ❌**; wieder eingebaut →
+**0 ❌**.
+
+Die Lehre dieses Tages, drittes Mal in anderer Gestalt: **Eine Prüfung, die
+nur auf einem Rechner grün ist, prüft die Umgebung, nicht das Spiel.** Und ein
+Riegel, der zufällig rot wird, erzieht dazu, Rot zu ignorieren — dann ist er
+schlimmer als keiner.
+
 Tests grün (Typen 0, Unit **88/88**, iOS 21/21, E2E **424/424**).

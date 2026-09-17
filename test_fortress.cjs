@@ -4382,9 +4382,15 @@ async function suiteBot(browser) {
     }
 
     // ── Stabil über mehrere Phasen (KI-Tick läuft in allen Phasen) ──
-    const sawShoot = await waitForPhase(page, ['FEUER'], 6000);
+    //
+    // Geprüft wird, dass das Spiel WEITERLÄUFT — nicht, wie schnell. Die Frist
+    // stand auf 6 s und hat auf einem ausgelasteten Läufer ein Deployment
+    // aufgehalten, obwohl nichts kaputt war. Von BAUEN aus liegt noch der Rest
+    // der Bauphase plus die ganze Rüstphase dazwischen; unter Last reicht das.
+    // Eine großzügige Frist prüft dieselbe Aussage und wird nicht grundlos rot.
+    const sawShoot = await waitForPhase(page, ['FEUER'], 20000);
     sawShoot ? ok('Bot-Spiel erreicht Schussphase ✓') : fail('Schussphase nicht erreicht');
-    await waitForPhase(page, ['KANONE'], 6000);
+    await waitForPhase(page, ['KANONE'], 20000);
     await page.evaluate(() => { window.__mmDebug = true; });
     // ── Premium-Shop (v3.17.0): Panel-Struktur in der Rüstphase ──
     let shopSeen = null;
@@ -4555,24 +4561,47 @@ async function suiteTutorial(browser) {
     // vergehen in einer Wartezeit von 900 ms mehrere Phasen. Gemessen am
     // 05.09.: Beim Ablesen stand „3/4 Deine Kanone war beim START der
     // Schussrunde…" auf dem Schirm, die Uhr stand also völlig zu Recht.
-    // Die Prüfung hat das als Fehler gemeldet und damit über Wochen einen
-    // falschen Alarm erzeugt — ein Test, der grundlos rot wird, ist schlimmer
-    // als keiner. Deshalb erst alle offenen Blasen wegklicken, dann messen.
+    //
+    // Erst alle offenen Blasen wegklicken — das allein reichte aber NICHT:
+    // Die Prüfung las den Pausenzustand EINMAL und maß danach 600 ms. In
+    // diesem Fenster ging die nächste Blase auf, die Uhr stand zu Recht, und
+    // der Riegel meldete rot (17.09., Lauf 351: 20→20, „Blase offen: false" —
+    // die Angabe war schon beim Ablesen veraltet).
+    //
+    // Jetzt werden Uhr und Pausenzustand ZUSAMMEN abgelesen, mehrfach. Es
+    // genügt EIN Fenster ohne Blase, in dem sich die Uhr bewegt — das ist
+    // genau die Aussage der Prüfung. Steht die Uhr über alle Versuche hinweg
+    // ohne Blase still, ist sie zu Recht rot.
     let offen = true;
     for (let i = 0; i < 6 && offen; i++) {
       await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /OK — weiter|OK — continue/.test(x.textContent || '')); b && b.click(); });
       await page.waitForTimeout(250);
       offen = await page.evaluate(() => /SPIEL PAUSIERT|GAME PAUSED/.test(document.body.innerText));
     }
-    const t3 = await page.evaluate(() => window.__readTimer && window.__readTimer());
-    await page.waitForTimeout(600);
-    const t4 = await page.evaluate(() => window.__readTimer && window.__readTimer());
-    // „Verändert sich" statt „wird kleiner": Läuft die Uhr über einen
-    // Phasenwechsel, fängt sie mit einem HÖHEREN Wert neu an — auch das ist
-    // ein laufendes Spiel und darf nicht als Stillstand gelten.
-    !offen && t3 != null && t4 != null && t4 !== t3
+    const ablesen = () => page.evaluate(() => ({
+      t: window.__readTimer ? window.__readTimer() : null,
+      pause: /SPIEL PAUSIERT|GAME PAUSED/.test(document.body.innerText)
+    }));
+    let fortgesetzt = false, t3 = null, t4 = null, sahBlase = false;
+    for (let versuch = 0; versuch < 8 && !fortgesetzt; versuch++) {
+      const vor = await ablesen();
+      await page.waitForTimeout(400);
+      const nach = await ablesen();
+      t3 = vor.t; t4 = nach.t;
+      // „Verändert sich" statt „wird kleiner": Läuft die Uhr über einen
+      // Phasenwechsel, fängt sie mit einem HÖHEREN Wert neu an — auch das ist
+      // ein laufendes Spiel und darf nicht als Stillstand gelten.
+      if (!vor.pause && !nach.pause && vor.t != null && nach.t != null && vor.t !== nach.t) {
+        fortgesetzt = true;
+      } else if (vor.pause || nach.pause) {
+        sahBlase = true;
+        await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /OK — weiter|OK — continue/.test(x.textContent || '')); b && b.click(); });
+        await page.waitForTimeout(150);
+      }
+    }
+    fortgesetzt
       ? ok(`Pause: OK setzt fort (${t3}→${t4}) ✓`)
-      : fail(`Pause: Uhr steht nach OK (${t3}→${t4}, Blase offen: ${offen})`);
+      : fail(`Pause: Uhr steht nach OK (${t3}→${t4}, Blase zwischendurch: ${sahBlase})`);
 
     // ── Läuft über Phasen — jedes neue Popup mit OK bestätigen ──
     let reached = null;
