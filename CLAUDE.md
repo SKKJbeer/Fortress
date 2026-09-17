@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.96.0
+- **Aktuelle Version**: v3.97.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -23,10 +23,10 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `index.html` | Nur noch **Hülle** (125 Zeilen, seit v3.78.0): Stil, Splash, Wurzelknoten, zwei Modul-Verweise. |
 | `src/game/app.js` | Der Spielcode (~9500 Zeilen): UI, Rendering, Firebase-Sync, Matchmaking. Wird schrittweise nach aussen abgetragen — siehe `ARCHITEKTUR.md`. |
 | `src/audio.js`, `src/spread.js`, `src/platform.ts` | Ton/Musik, Objekt-Helfer, Plattform-Weiche |
-| `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
+| `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung), `daily.ts` (Tages-Belohnungen, Treue-Bonus, Aufgaben-Rotation — seit v3.97.0; `loadDailyState`/`saveDailyState` blieben in app.js, weil sie localStorage anfassen). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
 | `src/ui/*` | `icons.js` (ICON_PATHS + Icon), **`anzeigen.js`** (LevelBadge, ConfettiBurst, WappenAvatar, XpBarUI, MatPip, MatRow — seit v3.96.0; `MatRow` bekommt `t` als Requisite, nicht mehr aus dem Abschluss) und **`wappen.js`** (Avatar-Katalog: WAPPEN_SRC/WAPPEN/WAPPEN_GLOW/WAPPEN_MIGRATION/AVATAR_UNLOCKS, seit v3.95.0). Erster Schnitt beim Abtragen des Grossblocks. **`WAPPEN_SVG` ist entfallen** — 17,2 KB Inline-SVG, die nur noch `Object.keys()` lieferten; die Namensliste kommt aus `WAPPEN_SRC`. `tests/wappen.test.js` haelt den Katalog fest. |
-| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 102 Tests, ~0,3 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
+| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 111 Tests, ~0,4 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
 | `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |
@@ -438,9 +438,10 @@ Der verbindliche Stand steht in **`LAUNCH-TODO.md`** (Marktstart) und
   nur noch Zugänge, keine Arbeit.
 - **Firebase-Kette.** Ohne API-Schlüssel und aktivierte anonyme Anmeldung
   läuft Online weder im Web noch in der App (`LAUNCH-TODO.md`, Abschnitt 1).
-- **Großblock zerlegen.** `src/game/app.js` hat noch ~9.755 Zeilen.
+- **Großblock zerlegen.** `src/game/app.js` hat noch ~9.712 Zeilen.
   v3.95.0 `src/ui/wappen.js` (Daten), v3.96.0 `src/ui/anzeigen.js` (kleine
-  Komponenten). Als Nächstes die größeren Modale — die hängen tiefer im Zustand.
+  Komponenten), v3.97.0 `src/engine/daily.ts` (reine Tages-Logik).
+  Als Nächstes die größeren Modale — die hängen tiefer im Zustand.
   Reihenfolge und Begründung: `ARCHITEKTUR.md`, Schritt 8.
 - **v2:** Google- und Apple-Anmeldung zusammen (Richtlinie 4.8 verlangt „Sign
   in with Apple", sobald es Fremd-Login gibt).

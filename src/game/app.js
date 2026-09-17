@@ -22,6 +22,7 @@ const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
 import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from '../engine/terrain.ts';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from '../engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from '../engine/progression.ts';
+import { DAILY_REWARDS, DAILY_TASK_POOL, todayStr, msTillMidnight, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, rollDailyTasks, taskDef } from '../engine/daily.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
 import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung } from '../platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES } from '../engine/catalog.ts';
@@ -724,58 +725,11 @@ window.StackSiegeApp = function StackSiegeApp() {
       )
     );
   }
-  const DAILY_REWARDS = [
-    {gold:10},{gold:15},{gold:15},{gold:20},{gold:20},{gold:25},{gold:50,special:"chest"}
-  ];
-  function msTillMidnight() {
-    const n = new Date(); const m = new Date(n); m.setHours(24,0,0,0); return m - n;
-  }
   function loadDailyState() {
     try { return JSON.parse(localStorage.getItem('fortress_daily')) || {}; } catch { return {}; }
   }
   function saveDailyState(d) {
     try { localStorage.setItem('fortress_daily', JSON.stringify(d)); } catch (e) {}
-  }
-  function getDailyCollectable(daily) {
-    if (!daily || !daily.lastCollect) return true;
-    const last = new Date(daily.lastCollect);
-    const now = new Date();
-    return last.toDateString() !== now.toDateString();
-  }
-  function getDailyStreakIndex(daily) {
-    return Math.min(((daily && daily.streak) || 0) % 7, 6);
-  }
-  // Treue-Bonus: pro abgeschlossener 7-Tage-Woche +25% auf Gold/XP, gedeckelt bei ×3
-  // (nach 8 Wochen). Der 7-Tage-Kalender wiederholt sich, aber jede Woche wird wertvoller
-  // → kein „von-vorne"-Gefühl, sondern spürbare Belohnung für lange Streaks.
-  function dailyWeekMult(streak) {
-    return Math.min(1 + Math.floor(((streak || 0)) / 7) * 0.25, 3);
-  }
-  // ── Daily Tasks (v3.22.0, SPEC 14.3) ─────────────────────────────────────
-  // 3 rotierende Tagesaufgaben, deterministisch aus dem Datum (alle Spieler
-  // desselben Tages sehen dieselben Tasks). Fortschritt kommt am Rundenende
-  // aus matchStats (Bot + Online zählen, Tutorial nicht).
-  const DAILY_TASK_POOL = [
-    { id: "walls30", target: 30, gold: 30, stat: "walls", icon: "zap" },
-    { id: "walls80", target: 80, gold: 50, stat: "walls", icon: "zap" },
-    { id: "cannons2", target: 2, gold: 40, stat: "cannons", icon: "bomb" },
-    { id: "scrap60", target: 60, gold: 30, stat: "scrap", icon: "hammer" },
-    { id: "play2", target: 2, gold: 25, stat: "played", icon: "gamepad" },
-    { id: "play4", target: 4, gold: 45, stat: "played", icon: "gamepad" },
-    { id: "win1", target: 1, gold: 40, stat: "won", icon: "trophy" },
-    { id: "buy3", target: 3, gold: 30, stat: "buys", icon: "shoppingCart" }
-  ];
-  // ── Gold-Shop: Kosmetik (v3.23.0, SPEC 14.4) ─────────────────────────────
-  // Rein kosmetisch, nur mit erspieltem Gold. IDs global eindeutig
-  // (Kategorie-Präfix); Gratis-Artikel gelten implizit als besessen.
-  function todayStr() { return new Date().toISOString().slice(0, 10); }
-  function rollDailyTasks(dayStr) {
-    const seed = (parseInt(dayStr.replace(/-/g, ""), 10) ^ 1597334677) >>> 0;
-    const rng = makeRng(seed);
-    const pool = [...DAILY_TASK_POOL];
-    const picked = [];
-    while (picked.length < 3 && pool.length) picked.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
-    return picked.map((tk) => ({ id: tk.id, prog: 0, collected: false }));
   }
   function loadTasksState() {
     let st = null;
@@ -788,7 +742,6 @@ window.StackSiegeApp = function StackSiegeApp() {
     return st;
   }
   function saveTasksState(st) { try { localStorage.setItem("fortress_tasks", JSON.stringify(st)); } catch (e) {} }
-  function taskDef(id) { return DAILY_TASK_POOL.find((d) => d.id === id); }
   function DailyRewardModal({ daily, onCollect, onClose, collected }) {
     const [collecting, setCollecting] = useState(false);
     const canCollect = getDailyCollectable(daily);
@@ -796,8 +749,12 @@ window.StackSiegeApp = function StackSiegeApp() {
     const baseReward = DAILY_REWARDS[streakIdx];
     const mult = dailyWeekMult(daily && daily.streak);
     const week = Math.floor(((daily && daily.streak) || 0) / 7) + 1;
-    // Effektive Belohnung inkl. Treue-Bonus (Anzeige + Vergabe nutzen denselben Wert)
-    const reward = { gold: Math.round(baseReward.gold * mult), xp: Math.round((baseReward.xp || 0) * mult), special: baseReward.special };
+    // Effektive Belohnung inkl. Treue-Bonus. Die Rechnung steht seit v3.97.0 in
+    // `engine/daily.ts` und ist dort durchgerechnet — Anzeige UND Vergabe
+    // nehmen denselben Wert, weil `onCollect` genau dieses Objekt bekommt.
+    // Stuenden im Kalender andere Zahlen als auf dem Konto, waere das ein
+    // gebrochenes Versprechen und kein Anzeigefehler.
+    const reward = dailyReward(daily);
     const msLeft = msTillMidnight();
     const hLeft = Math.floor(msLeft / 3600000);
     const mLeft = Math.floor((msLeft % 3600000) / 60000);
@@ -7281,7 +7238,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.96.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.97.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

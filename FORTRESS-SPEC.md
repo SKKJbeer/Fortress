@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.96.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.97.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6617,3 +6617,51 @@ Absicht der Animationen — aber es ist eine Verhaltensänderung und keine reine
 Verschiebung, deshalb steht sie hier.
 
 Tests grün (Typen 0, Unit 102/102, iOS 21/21, E2E 424/424).
+
+---
+
+## v3.97.0 — Die Tages-Logik ist raus, und jetzt ist sie durchgerechnet
+
+Dritter Schnitt am Großblock. Diesmal **nicht** nach `ui/`, sondern nach
+`src/engine/daily.ts` — die Architekturregel dieses Projekts sagt: Formeln und
+Kataloge gehören in die Engine, neue Dateien in TypeScript.
+
+Umgezogen: `DAILY_REWARDS`, `DAILY_TASK_POOL`, `todayStr`, `msTillMidnight`,
+`getDailyCollectable`, `getDailyStreakIndex`, `dailyWeekMult`,
+`rollDailyTasks`, `taskDef` — plus neu `dailyReward(daily)`, das die effektive
+Belohnung an **einer** Stelle rechnet. `src/game/app.js`: **9.755 → 9.712
+Zeilen.**
+
+**Was bewusst drüben blieb:** `loadDailyState`/`saveDailyState` und die
+Aufgaben-Persistenz. Die fassen `localStorage` an, sind also nicht rein.
+
+### Warum das mehr ist als Ordnung
+
+Diese Funktionen entscheiden, **wie viel Gold jemand für seine Treue bekommt.**
+Bis hierher standen sie mitten im Spielcode und liefen nur im Browser — also
+hat sie nie jemand nachgerechnet. `tests/daily.test.js`, 9 Prüfungen
+(Unit **102 → 111**):
+
+- Der Kalender hat sieben Tage, der siebte ist die Kiste und lohnt sich.
+- **Abholbar hängt am Kalendertag, nicht an 24 Stunden.** Wer abends um 23:59
+  abholt, darf am nächsten Morgen wieder — geprüft mit genau diesem Fall.
+- Der Index läuft zyklisch und bleibt für jede Strähne von 0 bis 40 im Bereich.
+- Treue-Bonus: `+25 %` je **voller** Woche (bei Strähne 6 also noch nichts),
+  gedeckelt bei ×3, und **monoton über 200 Tage** — eine längere Strähne darf
+  nie weniger wert sein.
+- `dailyReward` liefert über 60 Strähnen hinweg nur ganze Zahlen. Krummes Gold
+  auf einem Konto wäre kein Schönheitsfehler, sondern eine Rundung, die jemand
+  bezahlt.
+- Die Aufgaben-Rotation ist pro Tag deterministisch — alle Spieler desselben
+  Tages sehen dieselben drei, sonst wäre jedes Gespräch darüber sinnlos.
+- **Über 365 Tage durchgespielt:** immer drei, immer verschieden, immer
+  definiert — und jede Aufgabe des Vorrats kommt im Jahr auch wirklich vor.
+  Ein einzelnes Datum zu prüfen hätte einen toten Eintrag nie gefunden.
+- Jede Aufgabe nennt ein `ICON_PATHS`-Icon, kein Emoji (Design-Regel).
+
+Anzeige und Vergabe teilten schon vorher dasselbe Objekt — nachgesehen, kein
+Fehler dort. Die Rechnung steht jetzt trotzdem an einer Stelle statt inline im
+Modal: Stünden im Kalender andere Zahlen als auf dem Konto, wäre das ein
+gebrochenes Versprechen und kein Anzeigefehler.
+
+Tests grün (Typen 0, Unit 111/111, iOS 21/21, E2E 424/424).
