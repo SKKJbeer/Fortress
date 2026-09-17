@@ -6422,4 +6422,45 @@ die KI und kein Anfangsbestand.
 Das ist die eigentliche Lehre aus diesen beiden Tagen: **Eine Prüfung, die nur
 auf einem Rechner läuft, ist keine Prüfung.** Sie wird grün, weil die Umgebung
 passt, nicht weil das Spiel stimmt. Erst der Ablauf fragt beides getrennt ab.
+### Nachtrag 3: Der Store hätte v3.90.0 ausgeliefert
+
+Nach dem Upload von Bau 28 zeigte der Trockenlauf `→ store-probe`:
+
+```
+Bau an die Fassung
+  ✓ Bau 20 haengt bereits an der Fassung
+```
+
+Zufrieden — und falsch. `bau_anhaengen` in `scripts/asc-store.py` brach ab,
+sobald **irgendein** Bau an der Fassung hing, und verglich nie mit dem
+neuesten. Bau 28 war zu diesem Zeitpunkt längst hochgeladen, gültig und von
+Apple freigegeben. Eine Einreichung hätte **v3.90.0 in den Store gebracht** —
+den Stand mit der toten Brücke, die v3.93.0 behoben hat.
+
+**Ein Haken, der sich selbst bestätigt, ist schlimmer als keiner.** Er sagt
+nicht „ungeprüft", er sagt „in Ordnung".
+
+Jetzt wird der neueste gültige Bau geholt und verglichen; nur bei Gleichheit
+ist nichts zu tun, sonst steht die Differenz im Bericht:
+
+```
+· Bau 20 haengt dran, neuester gueltiger ist 28
+✓ Bau 28 an die Fassung gehaengt
+```
+
+Dabei fiel ein zweiter Fehler mit auf: Apples `sort=-version` sortiert die
+Bau-Nummer als **Text**. Ab Bau 100 stünde „99" davor. Heute fällt das nicht
+auf, weil alle Nummern zweistellig sind — genau die Sorte Fehler, die erst
+auffällt, wenn sie schon etwas Falsches ausgeliefert hat. Verglichen wird jetzt
+nach Zahl.
+
+Dazu ein neuer, **lesender** Modus `beta-stand`: Er fragt je Bau der
+öffentlichen Gruppe den Prüfzustand ab und sagt `ja`/`nein`. Vorher ließ sich
+„nimmt die Beta Tester an?" nur beantworten, indem man etwas **schrieb**
+(`oeffentlich` ordnet zu und reicht ein). Wer nur nachsehen will, soll nichts
+verändern müssen.
+
+**Apple hat Bau 28 freigegeben** — `APPROVED`, 10:56 UTC, knapp drei Stunden
+nach dem Upload. Der öffentliche TestFlight-Link liefert seitdem v3.94.0.
+
 Tests grün (Typen 0, Unit **88/88**, iOS 21/21, E2E **424/424**).

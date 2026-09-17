@@ -42,8 +42,7 @@ nur, was fehlt.
 - [x] **Bildschirmfotos** 4× iPhone 6,7" und 4× iPad 12,9"
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
-- [ ] **Bau der Fassung zuordnen** — Bau 20 ist zugeordnet; vor der Einreichung
-      auf **28** wechseln (`→ store`), sonst geht v3.90.0 in den Store.
+- [x] **Bau 28 (v3.94.0) der Fassung zugeordnet** (17.09., `→ store`)
 
 ## ⏸ Wartet auf dich — und nur darauf
 
