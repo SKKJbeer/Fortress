@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.91.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.92.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6159,3 +6159,66 @@ Sekunden am Laufen und fragt es dabei laufend ab. Dieselbe Überlast, wegen der
 Matchmaking und 3P schon seriell stehen.
 
 Tests grün (Unit 70/70, E2E 401/401, Typen 0 Fehler), zweimal hintereinander.
+
+---
+
+## v3.92.0 — Prüfungen für die iOS-Hülle
+
+Kein Spielinhalt. Diese Fassung zieht die Konsequenz aus v3.86.0: Die App hat
+damals sauber übersetzt, sauber archiviert, sauber hochgeladen — und war auf
+dem Gerät nicht zu bedienen. **Kein Schritt des Ablaufs hatte sie je gestartet.**
+
+### Drei Ebenen statt einer
+
+**1. Statisch, eine Sekunde, ohne Mac** — `npm run test:ios`
+(`scripts/ios-pruefen.mjs`, 18 Prüfungen): Ausrichtungen, Verschlüsselungs-
+Erklärung, Vollbild, Gerätefamilie, Mindest-iOS, die Bundle-Kennung in **allen
+sechs** Dateien, Storyboard gegen vorhandene Swift-Klassen, App-Symbol
+1024×1024 **ohne Alphakanal**, Startbild. Dazu ein ausdrücklicher Riegel:
+`isTextInteractionEnabled = false` darf im Swift-Code nicht stehen.
+
+Jede Prüfung nennt ihren Grund im Klartext — eine Regel, deren Begründung
+niemand mehr kennt, wird beim nächsten Umbau weggeräumt.
+
+**Kontrollversuch für fünf davon:** Querformat zurück in die Plist,
+Textbedienung wieder fest aus, Bundle-Kennung in `asc.py` verdreht, Alphakanal
+ins Symbol, Gerätefamilie auf iPhone verkürzt — jedes Mal schlägt genau die
+zugehörige Prüfung an, und nur sie.
+
+**Eine Quelle, drei Aufrufer:** npm-Skript, erster Schritt in `ios.yml`, eine
+Prüfung in der E2E-Suite. Die zwei eigenen Plist-Prüfungen aus `suiteIPad` sind
+darin aufgegangen.
+
+**2. Simulator-Probelauf** — bauen, iPhone booten, installieren, **starten**,
+warten, Bildschirmfoto. Drei Bedingungen, in dieser Reihenfolge:
+
+| | Prüfung | Was sie aussagt |
+|---|---|---|
+| 1 | kein Absturzbericht unter `DiagnosticReports` | die App lebt noch |
+| 2 | `STACK-SIEGE-BEREIT <Fassung>` im Systemprotokoll | **React ist gestartet** |
+| 3 | Bildschirmfoto > 80 kB | es wird auch etwas gezeichnet |
+
+Prüfung 2 ist die eigentliche Aussage. Der erste Entwurf hatte nur Prüfung 3 —
+und ein hängender Ladebildschirm wäre als Erfolg durchgegangen. `src/game/app.js`
+schreibt die Zeile nach dem Rendern; Capacitor reicht `console.log` ins
+Systemprotokoll weiter. Auf einem echten Gerät steht damit auch in Console.app,
+ob die Oberfläche gestartet ist und welche Fassung läuft.
+
+Der Probelauf läuft **auch bei Hochlade-Läufen** — gerade da: Das ist der Weg,
+der bei Testern ankommt. Er ersetzt die frühere reine Probe-Übersetzung für den
+Simulator; wer startet, hat auch übersetzt. Das Bildschirmfoto hängt als
+Artefakt `simulator-probe` am Lauf.
+
+Das Simulator-Modell wird **gewählt, nicht festgeschrieben**
+(`scripts/sim-geraet.py`): Welche Geräte es gibt, hängt an der Xcode-Fassung des
+Läufers, und ein fester Name bricht beim nächsten Abbild mit einer Meldung, die
+nach einem Projektfehler aussieht.
+
+**3. Was nur das Gerät sagen kann** — Lupe, Haptik, Ton. Dafür gibt es keinen
+Ersatz, und genau deshalb ist die Umschaltung der Textbedienung so gebaut, dass
+ihr Versagen höchstens die Lupe zurückbringt (siehe v3.90.0).
+
+Gemessen im ersten echten Lauf: statische Prüfung **1 Sekunde**,
+Simulator-Probelauf **6 Minuten 12**, Bildschirmfoto 2,8 MB.
+
+Tests grün (Typen 0, Unit 70/70, iOS 18/18, E2E 400/400).

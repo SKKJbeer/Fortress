@@ -233,18 +233,35 @@ jobs:
             exit 1
           fi
 
-          # 2) Der Schirm zeigt etwas. Das ist ein HILFSMASS, kein Beweis: Ein
-          #    schwarzes oder einfarbiges Bild komprimiert auf wenige Kilobyte,
-          #    ein gerendertes Menue liegt deutlich darueber. Es faengt den
-          #    Fall ab, der sonst unbemerkt durchginge — App startet, zeigt
-          #    aber nichts, weil das Web-Buendel fehlt.
+          # 2) Die Weboberflaeche hat sich gemeldet. Das ist die eigentliche
+          #    Aussage: Nicht „ein Fenster ist da", sondern „React ist
+          #    gestartet und weiss, welche Fassung es ist". src/game/app.js
+          #    schreibt die Zeile nach dem Rendern; Capacitor reicht
+          #    console.log ins Systemprotokoll weiter.
+          xcrun simctl spawn "$UDID" log show --last 3m --style compact \
+            --predicate 'eventMessage CONTAINS "STACK-SIEGE-BEREIT"' \
+            > "$RUNNER_TEMP/probe/log.txt" 2>&1 || true
+          if grep -q "STACK-SIEGE-BEREIT" "$RUNNER_TEMP/probe/log.txt"; then
+            echo "Lebenszeichen: $(grep -o 'STACK-SIEGE-BEREIT.*' "$RUNNER_TEMP/probe/log.txt" | head -1)"
+          else
+            echo "FEHLER: Die Weboberflaeche hat sich nicht gemeldet."
+            echo "Entweder ist sie nicht gestartet, oder der Ladebildschirm haengt."
+            echo "Das Bildschirmfoto liegt als Artefakt 'simulator-probe' bei."
+            exit 1
+          fi
+
+          # 3) Der Schirm zeigt etwas. Ein HILFSMASS, kein Beweis: Ein leerer
+          #    Schirm komprimiert auf wenige Kilobyte, ein gerendertes Menue
+          #    liegt deutlich darueber. Seit Pruefung 2 ist das nur noch die
+          #    zweite Meinung — sie faengt den Fall ab, dass React laeuft, aber
+          #    nichts zeichnet.
           GROESSE=$(stat -f%z "$RUNNER_TEMP/probe/start.png")
           echo "Bildschirmfoto: $GROESSE Byte"
           [ "$GROESSE" -gt 80000 ] || {
             echo "FEHLER: Das Bild ist mit $GROESSE Byte zu klein — der Schirm ist " \
                  "vermutlich leer. Sieh dir das Artefakt 'simulator-probe' an."; exit 1; }
 
-          echo "Die App startet, stuerzt nicht ab und zeigt etwas."
+          echo "Die App startet, meldet sich, stuerzt nicht ab und zeigt etwas."
 
       - name: Bildschirmfoto des Probelaufs sichern
         if: always()

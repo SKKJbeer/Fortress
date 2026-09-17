@@ -7410,7 +7410,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.91.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.92.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -9849,6 +9849,17 @@ window.StackSiegeApp = function StackSiegeApp() {
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));
 _root.render(React.createElement(window.StackSiegeApp));
+// **Ein Lebenszeichen, sobald die Oberflaeche wirklich steht.**
+//
+// In Capacitor landet console.log im Systemprotokoll von iOS. Damit kann der
+// Simulator-Probelauf (.github/workflows/ios.yml) den Unterschied zwischen
+// „App laeuft" und „App zeigt noch den Ladebildschirm" sehen — vorher hing die
+// Pruefung allein an der Groesse des Bildschirmfotos, und ein haengender
+// Ladebildschirm waere als Erfolg durchgegangen.
+//
+// Auch auf einem echten Geraet nuetzlich: In Console.app steht damit schwarz
+// auf weiss, ob die Weboberflaeche gestartet ist und welche Fassung laeuft.
+console.log('STACK-SIEGE-BEREIT ' + (document.title || '').replace(/^\D+/, ''));
 setTimeout(() => { const s = document.getElementById('splash'); if (s) { s.style.opacity='0'; setTimeout(()=>s.remove(),500); } }, 600);
 // **Der Hinweis „Zum Home-Bildschirm" gehoert NUR in den Browser.**
 //
