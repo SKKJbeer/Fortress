@@ -131,6 +131,18 @@ def zugangsdaten() -> dict:
             if z["{"] == 0:
                 sag("  → Kein '{' im Text: Das ist in KEINER Verpackung ein JSON-Objekt.")
                 sag("    Es ist also nicht der Dienstkonto-Schluessel, auch nicht verpackt.")
+            # Der haeufigste Einzelfehler, gemessen am 18.09.: nicht die DATEI
+            # kopiert, sondern nur den Wert von "private_key" daraus.
+            # Kennzeichen: Base64-Alphabet, Endung auf '=', keine Klammern,
+            # keine Doppelpunkte, und ungefaehr ein Backslash je 64 Zeichen —
+            # das sind die \\n der zeilenumbrochenen PEM-Zeilen.
+            nur_b64 = re.fullmatch(r"[A-Za-z0-9+/=\\\\]+", roh) is not None
+            if nur_b64 and roh.endswith("=") and z["{"] == 0 and z["Doppelpunkte"] == 0:
+                je = len(roh) / max(z["\\"], 1)
+                sag(f"  → Sieht aus wie der WERT von \"private_key\" allein:")
+                sag(f"    Base64, Endung '=', ein Backslash je ~{je:.0f} Zeichen"
+                    f" (PEM bricht bei 64 um).")
+                sag("    Gebraucht wird die GANZE Datei, nicht ein Feld daraus.")
         sag("")
         sag("Gebraucht wird die JSON-DATEI aus:")
         sag("  Firebase-Console → Projekteinstellungen → Dienstkonten →")

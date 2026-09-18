@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.106.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.107.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7174,5 +7174,44 @@ in die Zukunft zu verschieben, wo es jemand anders trifft.
 
 Alle fünf Fälle örtlich durchgespielt, mit einem erfundenen Schlüssel: jeder
 wird entpackt, jeder meldet sich.
+
+Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).
+
+---
+
+## v3.107.0 — Nicht die Datei, sondern ein Feld daraus
+
+Die Zeichen-Zählung aus v3.106.0 hat den Fall entschieden:
+
+```
+Laenge         : 1676 Zeichen      letztes Zeichen: '='
+{=0  }=0  "=0  :=0  -=0            \=26        nur ASCII: ja
+```
+
+Keine Klammern, keine Anführungszeichen, keine Doppelpunkte, **keine
+Bindestriche** — also weder JSON noch PEM (dem fehlte `-----BEGIN`). Endung auf
+`=`: Base64-Auffüllung. Und 1676 Zeichen bei 26 Backslashes sind **ein
+Backslash je 64 Zeichen** — genau das Zeilenmaß, in dem PEM umbricht.
+
+Das ist der **Wert von `private_key`** aus der Datei, nicht die Datei.
+
+Meine Vermutung eine Runde davor („escaptes JSON") war falsch, und die Zählung
+hat sie widerlegt statt sie zu bestätigen. Genau dafür ist sie da.
+
+### Der Detektor — und ein Fehler darin, der nur im Ernstfall zugeschlagen hätte
+
+Das Skript erkennt den Fall jetzt und benennt ihn samt Beweis („ein Backslash
+je ~64 Zeichen"). Beim Prüfen fielen zwei eigene Fehler auf:
+
+1. **Der Testdatensatz war falsch.** Ich baute den Fall mit 1257 Zufallsbytes
+   nach — durch 3 teilbar, also **ohne** `=`-Auffüllung. Der Detektor griff
+   nicht, und es sah nach einem Fehler im Detektor aus. Er war im Test.
+2. **Ein latenter `KeyError`.** Der Wörterbuch-Schlüssel ist *ein* Backslash,
+   der Zugriff verlangte *zwei*. Das hätte genau dann geworfen, **wenn der
+   Detektor anspringt** — also im einzigen Fall, für den er gebaut wurde. Ein
+   Fehler, den nur ein Test mit passenden Daten findet, nie ein Blick.
+
+Beides behoben, danach mit 1250 Bytes (nicht durch 3 teilbar, also mit
+Auffüllung) nachgestellt: Der Detektor greift und meldet ~64.
 
 Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).
