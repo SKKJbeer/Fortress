@@ -4534,6 +4534,21 @@ async function suiteBot(browser) {
       // doppelt, bleibt die Burg trotzdem zu — dann meldete der Test einen
       // Fehler, obwohl die Vorbedingung nur nicht hergestellt war. Auf einem
       // langsameren Laeufer hatte der Bot mehr gebaut und genau das passierte.
+      // Die Phase beim Sprengen wird MITGESCHRIEBEN, aber NICHT abgewartet
+      // (v3.110.1). Sie steht hier, weil der CI-Lauf zu v3.110.0 an dieser
+      // Stelle fiel und die Meldung die Phase nicht nannte.
+      //
+      // Abgewartet wird sie bewusst nicht. Die naheliegende Vermutung war:
+      // „mitten in der Bauphase gesprengt, also hatte der Bot keine Zeit".
+      // Eine Gegenprobe hat das WIDERLEGT — absichtlich in der Bauphase
+      // gesprengt, versiegelt der Bot trotzdem, in 0,6 s. Stattdessen verlor
+      // der Test-Spieler, weil das Warten eine Runde kostet (die Falle aus
+      // v3.108.0: er baut nie nach). Ein Fix mit falscher Begruendung, der
+      // einen neuen Fehler erzeugt — deshalb nur die Messung, nicht das
+      // Warten. Faellt der Schritt im CI wieder, sagt die Phase mit, ob an
+      // der Vermutung doch etwas dran war.
+      const phaseVorSprengung = await page.evaluate(() => window.__phase ? window.__phase() : null);
+
       let blasted = { n: 0, open: false };
       for (let versuch = 0; versuch < 8 && !blasted.open; versuch++) {
         const r = await page.evaluate(() => {
@@ -4545,7 +4560,8 @@ async function suiteBot(browser) {
         if (!r.open) await page.waitForTimeout(120);
       }
       if (blasted.n >= 1 && blasted.open) {
-        ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen) ✓`);
+        ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen, `
+           + `in Phase "${phaseVorSprengung}") ✓`);
         let sealed = false;
         // 60 s, nicht 25. Geprueft wird, DASS der Bot dichtet — nicht, wie
         // schnell. Unter voller Suitenlast (zwanzig Browserkontexte) kriecht

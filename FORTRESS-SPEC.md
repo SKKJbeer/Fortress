@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.110.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.110.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7476,3 +7476,45 @@ Die Namensliste der 45 Einträge (`Bierkönig`, `SKKJ`, `Steffen`, `Moni`,
 Menschen**, kein Testmüll. Die Empfehlung, sie nicht zu löschen, sondern beim
 nächsten Cloud-Speichern zusammenzuführen, steht damit auf Messwerten statt auf
 einer Vermutung.
+
+## v3.110.1 — Eine Gegenprobe, die den eigenen Fix widerlegt hat
+
+Der CI-Lauf zu v3.110.0 fiel mit drei Fehlern, lokal war dieselbe Fassung
+dreimal grün. Die Meldung aus v3.108.0 nannte den Grund sofort und genau:
+
+```
+Bau-KI: Burg nach 2.3s (Frist 60s) immer noch offen — 1 Bauphase(n) beobachtet:
+das Spiel endete vorher (Ergebnisschirm) — der Bot kam nicht mehr dazu
+♔ Blau siegt! Burg war nicht geschlossen
+```
+
+Nach **2,3 s statt 60 s** — der Abbruch beim Ergebnisschirm greift also. Der
+**Bot** hatte verloren; die beiden anderen Fehler waren Nachhall desselben
+Ereignisses.
+
+**Die naheliegende Erklärung war falsch.** Sie lautete: Die Bresche wird
+geschlagen, wann der Code gerade hinkommt — auch Sekundenbruchteile vor dem
+Bauende. Dann sei die Burg beim Ende offen, der Bot fliege raus, ohne je eine
+Gelegenheit gehabt zu haben. Das klang zwingend, und der Fix (erst außerhalb
+der Bauphase sprengen) war schnell geschrieben.
+
+**Die Gegenprobe hat ihn erledigt.** Absichtlich mitten in der Bauphase
+gesprengt, versiegelt der Bot trotzdem — in **0,6 s** bzw. **1,2 s**. Kaputt
+ging etwas ganz anderes: `♚ Rot siegt!`, also verlor diesmal der
+**Test-Spieler** — weil das Warten auf die richtige Phase eine Runde kostet und
+er nie nachbaut. Exakt die Falle aus v3.108.0, ein zweites Mal getappt.
+
+Ein Fix mit falscher Begründung, der einen neuen Fehler erzeugt, ist kein Fix.
+Zurückgebaut. **Behalten wurde nur die Messung:** Die Phase beim Sprengen steht
+jetzt in der Erfolgsmeldung. Fällt der Schritt im CI wieder, sagt sie mit, ob an
+der Vermutung doch etwas dran war — statt dass wieder geraten wird.
+
+Die wahrscheinliche Ursache bleibt damit, was die Meldung schon sagt: **Last auf
+dem Läufer.** Der KI-Tick bekommt in der einen Bauphase, die ihm bleibt, zu
+wenige Durchläufe. Belegt ist das noch nicht — deshalb steht es hier als
+Vermutung und nicht als Befund.
+
+> **Zur Erinnerung an die eigene Regel:** In v3.108.0 steht „Nichts behaupten,
+> was der Lauf nicht geprüft hat." Dieselbe Regel gilt für Erklärungen von
+> Fehlern, nicht nur für Testmeldungen. Die Gegenprobe ist das Mittel dagegen —
+> hier hat sie eine fertige, plausible, falsche Geschichte aufgehalten.
