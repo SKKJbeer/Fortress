@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.104.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.105.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7082,5 +7082,52 @@ nicht Bequemlichkeit, sondern eine Prüfung mit Rückweg.
   Repository. Kein Geheimnis.
 - **Dienstkonto-Schlüssel**: umgeht alle Regeln. Ausschließlich GitHub-Secrets,
   wie `ASC_KEY_P8` und `DIST_P12`. Nie im Repository, nie in einem Chat.
+
+Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).
+
+---
+
+## v3.105.0 — Ein Stapelabzug ist keine Antwort
+
+Der erste Lauf von `firebase.yml` scheiterte so:
+
+```
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+```
+
+Das sagt, dass etwas nicht passt — **nicht, was.** Wer damit weitermacht,
+verbrennt Anläufe mit Raten. Also bekommt das Skript eine Diagnose.
+
+### Was jetzt herauskommt
+
+| Hinterlegt | Meldung |
+|---|---|
+| `1//0…` | „Google-OAuth-Auffrischungs-Token (z. B. aus `firebase login:ci`)" |
+| `ya29.…` | „kurzlebiges Google-Zugangs-Token" |
+| `eyJ….….…` | „JWT" |
+| `ghp_…` | „GitHub-Token" |
+| Base64 von JSON | wird **ausgepackt** und benutzt |
+| JSON, aber fremdes Projekt | **Abbruch**, bevor etwas Fremdes verändert wird |
+
+Dazu jeweils Länge und erstes Zeichen — und der Hinweis, was stattdessen
+gebraucht wird.
+
+**Es wird nie ein Teil des Geheimnisses ausgegeben.** Nur die Form. Das genügt,
+um den Fehler zu benennen, und landet nichts in einem Protokoll, das jeder mit
+Lesezugriff aufs Repository sehen kann.
+
+Der Projekt-Vergleich ist dabei der wichtigste Punkt. Ein Schlüssel für ein
+**anderes** Projekt wäre die unangenehmste Variante: Er funktioniert — und
+verändert eine fremde Datenbank.
+
+### Und ein Entwurfsfehler, den die erste Fassung hatte
+
+Die Diagnose lief gar nicht. `from google.oauth2 import service_account` stand
+oben in der Datei, und ohne installierte Bibliothek bricht das Modul schon beim
+Laden ab — also wieder ein Stapelabzug statt einer Antwort, diesmal ein
+anderer. Aufgefallen beim Versuch, die Diagnose örtlich zu proben.
+
+Der Import steht jetzt **in** `token()`, hinter der Prüfung. `zugangsdaten()`
+kommt mit der Standardbibliothek aus und antwortet immer.
 
 Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).

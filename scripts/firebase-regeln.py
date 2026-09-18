@@ -19,15 +19,22 @@ eigentliche Grund fuer den Dienstkonto-Zugang; Bequemlichkeit waere keiner.
 Aus der Umgebung: FIREBASE_SA_JSON (Dienstkonto-Schluessel, ein GEHEIMNIS)
 """
 
+import base64
 import json
 import os
 import pathlib
+import re
 import sys
 
 import requests
-from google.oauth2 import service_account
-from google.auth.transport.requests import Request
 
+# `google-auth` wird ERST IN token() importiert, nicht hier oben.
+# Grund: `zugangsdaten()` unten kommt mit der Standardbibliothek aus und soll
+# auch dann eine verstaendliche Diagnose liefern, wenn die Bibliothek fehlt.
+# Beim ersten Anlauf stand hier ein ModuleNotFoundError — also wieder ein
+# Stapelabzug statt einer Antwort, und die Diagnose lief nie.
+
+PROJEKT = "fortress-cbe30"
 DB = "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app"
 WEB_KEY = "AIzaSyBOmaWUaDKjSQCKZbEhYdy-PMl9LRQ-azg"   # oeffentliche Client-Kennung
 WURZEL = pathlib.Path(__file__).resolve().parent.parent
@@ -40,13 +47,91 @@ BEREICHE = [
 sag = print
 
 
-def token() -> str:
+def zugangsdaten() -> dict:
+    """Den Dienstkonto-Schluessel aus der Umgebung holen — mit Diagnose.
+
+    **Es wird NIE ein Teil des Geheimnisses ausgegeben.** Gemeldet wird nur die
+    FORM: Laenge, erstes Zeichen, erkanntes Muster. Das genuegt, um zu sagen,
+    was falsch ist, und verraet nichts, was in ein Protokoll gehoert, das
+    jeder mit Lesezugriff aufs Repository sehen kann.
+
+    Beim ersten Anlauf (18.09.) stand hier ein `json.loads`-Stapelabzug und
+    sonst nichts. Der sagt nur, dass etwas nicht passt — nicht, was. Wer dann
+    raet, verbrennt Anlaeufe.
+    """
     roh = os.environ.get("FIREBASE_SA_JSON", "").strip()
     if not roh:
-        sag("FEHLER: FIREBASE_SA_JSON fehlt.")
+        sag("FEHLER: Das Geheimnis FIREBASE_SA_JSON ist leer oder fehlt.")
         sys.exit(2)
-    zugang = service_account.Credentials.from_service_account_info(
-        json.loads(roh), scopes=BEREICHE)
+
+    def form() -> str:
+        if roh.startswith("{"):                 return "JSON-Objekt"
+        if roh.startswith("1//"):               return "Google-OAuth-Auffrischungs-Token (z. B. aus `firebase login:ci`)"
+        if roh.startswith("ya29."):             return "kurzlebiges Google-Zugangs-Token"
+        if roh.startswith("ey") and roh.count(".") == 2: return "JWT"
+        if roh.startswith("ghp_") or roh.startswith("github_pat_"): return "GitHub-Token"
+        if re.fullmatch(r"[A-Za-z0-9+/=\s]+", roh): return "Base64 oder Zeichenkette ohne Struktur"
+        return "unbekanntes Format"
+
+    daten = None
+    # 1) direkt JSON
+    if roh.startswith("{"):
+        try:
+            daten = json.loads(roh)
+        except Exception as e:
+            sag(f"FEHLER: Beginnt mit '{{', ist aber kein gueltiges JSON: {e}")
+            sys.exit(2)
+    else:
+        # 2) vielleicht Base64-verpackt — das machen viele beim Hinterlegen
+        try:
+            entpackt = base64.b64decode(roh, validate=True).decode("utf-8").strip()
+            if entpackt.startswith("{"):
+                daten = json.loads(entpackt)
+                sag("Hinweis: Das Geheimnis war Base64-verpackt — ausgepackt.")
+        except Exception:
+            daten = None
+
+    if daten is None:
+        sag("FEHLER: FIREBASE_SA_JSON enthaelt keinen Dienstkonto-Schluessel.")
+        sag(f"  Laenge        : {len(roh)} Zeichen")
+        sag(f"  erstes Zeichen: {roh[0]!r}")
+        sag(f"  sieht aus wie : {form()}")
+        sag("")
+        sag("Gebraucht wird die JSON-DATEI aus:")
+        sag("  Firebase-Console → Projekteinstellungen → Dienstkonten →")
+        sag("  „Neuen privaten Schluessel generieren\"")
+        sag("Sie beginnt mit '{' und enthaelt \"type\": \"service_account\".")
+        sag("")
+        sag("NICHT gebraucht: ein Token aus `firebase login:ci`, ein OAuth-Token,")
+        sag("ein GitHub-Token oder das alte „Datenbank-Geheimnis\". Keins davon")
+        sag("kann Sicherheitsregeln schreiben.")
+        sys.exit(2)
+
+    fehlt = [k for k in ("type", "project_id", "private_key", "client_email") if not daten.get(k)]
+    if fehlt:
+        sag(f"FEHLER: Im JSON fehlen Felder: {', '.join(fehlt)}")
+        sag("Das sieht nicht nach einem Dienstkonto-Schluessel aus.")
+        sys.exit(2)
+    if daten.get("type") != "service_account":
+        sag(f"FEHLER: type ist '{daten.get('type')}', erwartet 'service_account'.")
+        sys.exit(2)
+    if daten.get("project_id") != PROJEKT:
+        # Ein Schluessel fuer das FALSCHE Projekt waere die unangenehmste
+        # Variante: Er funktioniert, aber er veraendert eine fremde Datenbank.
+        sag(f"FEHLER: Der Schluessel gehoert zum Projekt '{daten['project_id']}',")
+        sag(f"        gebraucht wird '{PROJEKT}'. Abbruch, bevor etwas Fremdes")
+        sag("        veraendert wird.")
+        sys.exit(2)
+
+    sag(f"Dienstkonto erkannt: {daten['client_email']} (Projekt {daten['project_id']})")
+    return daten
+
+
+def token() -> str:
+    daten = zugangsdaten()          # zuerst pruefen, dann erst die Bibliothek
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import Request
+    zugang = service_account.Credentials.from_service_account_info(daten, scopes=BEREICHE)
     zugang.refresh(Request())
     return zugang.token
 
