@@ -20,6 +20,7 @@ Aus der Umgebung: FIREBASE_SA_JSON (Dienstkonto-Schluessel, ein GEHEIMNIS)
 """
 
 import base64
+import codecs
 import json
 import os
 import pathlib
@@ -73,29 +74,50 @@ def zugangsdaten() -> dict:
         if re.fullmatch(r"[A-Za-z0-9+/=\s]+", roh): return "Base64 oder Zeichenkette ohne Struktur"
         return "unbekanntes Format"
 
-    daten = None
-    # 1) direkt JSON
-    if roh.startswith("{"):
+    # Mehrere Anlaeufe, die haeufigsten Verpackungen zuerst. Jeder geglueckte
+    # Rettungsversuch wird GEMELDET — ein Geheimnis, das nur durch Nachhelfen
+    # lesbar ist, liegt falsch hinterlegt und sollte ersetzt werden, auch wenn
+    # es heute funktioniert.
+    daten, wie = None, None
+    versuche = [
+        ("unveraendert", lambda t: t),
+        ("Base64-verpackt", lambda t: base64.b64decode(t, validate=True).decode("utf-8")),
+        ("in Anfuehrungszeichen", lambda t: json.loads(t) if t[:1] in ('"', "'") else None),
+        ("escaped (\\n statt Zeilenumbruch)", lambda t: codecs.decode(t, "unicode_escape")),
+        ("escaped UND in Anfuehrungszeichen", lambda t: codecs.decode(t.strip('"\''), "unicode_escape")),
+    ]
+    for name, entpacken in versuche:
         try:
-            daten = json.loads(roh)
-        except Exception as e:
-            sag(f"FEHLER: Beginnt mit '{{', ist aber kein gueltiges JSON: {e}")
-            sys.exit(2)
-    else:
-        # 2) vielleicht Base64-verpackt — das machen viele beim Hinterlegen
-        try:
-            entpackt = base64.b64decode(roh, validate=True).decode("utf-8").strip()
-            if entpackt.startswith("{"):
-                daten = json.loads(entpackt)
-                sag("Hinweis: Das Geheimnis war Base64-verpackt — ausgepackt.")
+            k = entpacken(roh)
+            if not isinstance(k, str):
+                continue
+            k = k.strip()
+            if not k.startswith("{"):
+                continue
+            daten = json.loads(k)
+            wie = name
+            break
         except Exception:
-            daten = None
+            continue
+    if daten is not None and wie != "unveraendert":
+        sag(f"Hinweis: Das Geheimnis war {wie} — konnte ausgepackt werden.")
+        sag("         Bitte trotzdem neu hinterlegen: den JSON-Text unveraendert,")
+        sag("         ohne Anfuehrungszeichen und ohne Escaping.")
 
     if daten is None:
         sag("FEHLER: FIREBASE_SA_JSON enthaelt keinen Dienstkonto-Schluessel.")
         sag(f"  Laenge        : {len(roh)} Zeichen")
         sag(f"  erstes Zeichen: {roh[0]!r}")
         sag(f"  sieht aus wie : {form()}")
+        # Strukturelle Merkmale — das sind FELDNAMEN, keine Geheimnisse. Sie
+        # unterscheiden „falsche Sorte Zugang" von „richtiger Inhalt, falsch
+        # verpackt", und das sind zwei voellig verschiedene Reparaturen.
+        marker = [m for m in ("service_account", "private_key", "client_email",
+                              "BEGIN PRIVATE KEY", "project_id") if m in roh]
+        sag(f"  enthaelt      : {', '.join(marker) if marker else 'keine bekannten Feldnamen'}")
+        if marker:
+            sag("  → Der INHALT sieht richtig aus, nur die Verpackung nicht.")
+            sag("    Wahrscheinlich beim Einfuegen escaped oder in Anfuehrungszeichen.")
         sag("")
         sag("Gebraucht wird die JSON-DATEI aus:")
         sag("  Firebase-Console → Projekteinstellungen → Dienstkonten →")

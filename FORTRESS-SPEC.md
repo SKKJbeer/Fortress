@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.105.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.106.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7129,5 +7129,50 @@ anderer. Aufgefallen beim Versuch, die Diagnose örtlich zu proben.
 
 Der Import steht jetzt **in** `token()`, hinter der Prüfung. `zugangsdaten()`
 kommt mit der Standardbibliothek aus und antwortet immer.
+
+Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).
+
+---
+
+## v3.106.0 — Der Inhalt war richtig, die Verpackung nicht
+
+Der Lauf mit der neuen Diagnose meldete:
+
+```
+Laenge        : 1676 Zeichen
+erstes Zeichen: '\'
+sieht aus wie : unbekanntes Format
+```
+
+1676 Zeichen ist die Größenordnung eines Dienstkonto-Schlüssels — aber ein
+Backslash am Anfang. Das ist kein falscher Zugang, das ist der **richtige
+Inhalt in falscher Verpackung**: beim Einfügen escaped.
+
+### Zwei Verbesserungen, die daraus folgen
+
+**1. Die Diagnose nennt jetzt strukturelle Merkmale.** Sie meldet, ob
+`service_account`, `private_key`, `client_email`, `project_id` oder
+`BEGIN PRIVATE KEY` im Text vorkommen. Das sind **Feldnamen, keine
+Geheimnisse** — und sie unterscheiden zwei völlig verschiedene Reparaturen:
+„falsche Sorte Zugang hinterlegt" gegen „richtiger Inhalt, falsch verpackt".
+Kommen Marker vor, sagt das Skript es ausdrücklich.
+
+**2. Vier Verpackungen werden entpackt**, je nachdem was ankommt:
+
+| Verpackung | erkannt |
+|---|---|
+| unverändert | ✓ |
+| Base64 | ✓ |
+| in Anführungszeichen | ✓ |
+| escaped (`\n` statt Zeilenumbruch) | ✓ |
+| escaped **und** in Anführungszeichen | ✓ |
+
+**Jede geglückte Rettung wird gemeldet**, mit der Bitte, das Geheimnis sauber
+neu zu hinterlegen. Ein Zugang, der nur durch Nachhelfen lesbar ist, liegt
+falsch — auch wenn er heute funktioniert. Still zu reparieren hieße, das Problem
+in die Zukunft zu verschieben, wo es jemand anders trifft.
+
+Alle fünf Fälle örtlich durchgespielt, mit einem erfundenen Schlüssel: jeder
+wird entpackt, jeder meldet sich.
 
 Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).
