@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.108.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.109.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7339,3 +7339,80 @@ erneut fahren, um zu *bestätigen*, dass die Regeln noch greifen, statt das aus
 einer Zeichenzahl zu schließen. Geschrieben wird dabei nichts, und ein
 Fehlschlag rollt folgerichtig auch nichts zurück — er sagt stattdessen, dass
 der Befund den Zustand der Datenbank betrifft und nicht diesen Lauf.
+
+## v3.109.0 — Die Regeln stehen, und eine Namensliste statt eines Pfad-Felds
+
+### Die Sicherheitsregeln sind eingespielt und gemessen
+
+`firebase.yml` hat die alten Regeln ins Protokoll gesichert, die neuen
+eingespielt und sofort beide Richtungen geprüft. Ergebnis:
+
+```
+✓ unangemeldet abgewiesen: games, queue2, queue3,
+  leaderboard, players, telemetry, funnel     (alle HTTP 401)
+✓ angemeldet schreiben klappt: games, queue2, queue3,
+  leaderboard, players, telemetry, funnel
+Alles wie vorgesehen. Die Regeln stehen.
+```
+
+Vorher standen dort 1832 Zeichen mit `".write": true` **ohne jedes `auth`** —
+jeder Unangemeldete durfte in jeden Zweig schreiben. Die Reihenfolge-Falle war
+vorher entschärft: `Anonyme Anmeldung : geht (uid rtkqgY…)`. Wäre sie aus
+gewesen, hätte das Skript abgebrochen, ohne ein Zeichen zu schreiben.
+
+Unabhängig nachgemessen, von außerhalb der CI: Schreiben auf `games`,
+`leaderboard` und `players` ergibt HTTP 401, die Bestenliste lesen weiterhin
+HTTP 200 — öffentlich lesbar soll sie ja bleiben.
+
+### Was in der Bestenliste steht (gemessen, nicht geschätzt)
+
+45 Einträge. **44 mit Schlüssel `p_…`** (Profil-IDs aus der Zeit vor
+`auth.uid`), davon haben **11 tatsächlich gespielt** — der fleißigste 34
+Spiele. Die übrigen 33 sind leer (0 Spiele, ELO 1000): jemand hat das Menü
+geöffnet, mehr nicht.
+
+Unter den neuen Regeln kann niemand mehr unter diesen Schlüsseln schreiben
+(`auth.uid === $playerId`, und eine `p_…`-uid gibt es nicht). Sie sind
+eingefroren; dieselben Spieler legen beim nächsten Spiel einen zweiten Eintrag
+unter ihrer uid an. **Das ist eine Produktentscheidung** — löschen, zusammen-
+führen oder stehen lassen — und wird hier bewusst NICHT nebenbei getroffen.
+
+Der **45. Eintrag** ist kein Spieler: `test_bot_001`, Name „TestBot", Wappen
+`skelett`, ELO 1050, Bilanz 5/2/7 — wörtlich das `PROFILE_INIT` der E2E-Suite.
+Er steht in der echten Bestenliste, weil `suiteOffline` bis v3.103.0 keine
+`FB_SPERRE` hatte. Der Riegel steht seitdem, der Eintrag blieb liegen.
+
+### `scripts/firebase-aufraeumen.py` — Namen im Code, nicht im Eingabefeld
+
+Zum Entfernen solcher Reste gibt es jetzt einen eigenen Weg, und zwar
+absichtlich einen engen. Das Dienstkonto **umgeht alle Regeln**: Ein Tippfehler
+in einem frei übergebenen Pfad — `leaderboard` statt `leaderboard/test_bot_001`
+— löscht die gesamte Bestenliste, sofort und ohne Rückfrage.
+
+Deshalb stehen die Namen **im Code** (`ERLAUBT`), gehen durch git und lassen
+sich nicht im Vorbeigehen weiten. Dazu drei Riegel, jeder einzeln gegengeprüft:
+weniger als zwei Stufen, Platzhalter/Aufstieg (`*`, `..`), und eine erste Stufe,
+die kein Zweig der Datenbank ist. Alle fünf Angriffsfassungen wurden abgewiesen,
+der echte Pfad kam durch.
+
+**Ein Befund am eigenen Code:** Der zweite Riegel hieß zuerst „der Pfad IST ein
+Zweig" — und konnte nie greifen, weil ein Zweigname keinen Schrägstrich hat und
+schon die Stufenzahl ihn abfängt. Toter Code, der wie Schutz aussieht. Er prüft
+jetzt den Fall, der wirklich vorkommt: eine erste Stufe, die es gar nicht gibt.
+Die löscht zwar nichts, täuscht aber Aufräumen vor, das nie stattfand.
+
+`tests/aufraeumen.test.js` hält die Liste zusätzlich **statisch** fest (gleiche
+Bauart wie `speicher.test.js` und `testsperre.test.js`) — inklusive der Zusage,
+dass der Pfad nicht aus der Kommandozeile kommt. Gegengeprüft: Trägt man
+`leaderboard` ein, wird der Test rot.
+
+Neue Ablauf-Modi: `reste` (nur zeigen) und `reste-weg` (entfernen, Inhalt
+vorher ins Protokoll, danach nachsehen, ob wirklich weg).
+
+### Nachtrag zu den Flatter-Prüfungen aus v3.108.0
+
+Ein Lauf von dreien war rot — fünf Fehler in Matchmaking und Trichter, also
+Bereichen, die gar nicht angefasst wurden. Statt das wegzuerklären, gemessen:
+**5 gezielte Läufe der beiden Suiten: 5× 29 ✅ / 0 ❌**, und der CI-Lauf desselben
+Commits auf einem unbelasteten Runner grün. Der rote Lauf war Last auf dem
+Entwicklungsrechner (fünf volle Suiten hintereinander), keine Regression.

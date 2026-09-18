@@ -22,6 +22,8 @@ on:
           - stand      # nur lesen: was steht drin, weicht es von der Datei ab?
           - trocken    # zeigen, was eingespielt wuerde, inkl. Sicherung
           - regeln     # einspielen, sofort pruefen, bei Fehlschlag zurueckrollen
+          - reste      # nur ZEIGEN, was auf der Loeschliste steht
+          - reste-weg  # die Knoten der Loeschliste entfernen (Inhalt vorher ins Protokoll)
 
 permissions:
   contents: read
@@ -53,13 +55,19 @@ jobs:
           echo "Zugang vorhanden."
 
       # Die Regeln selbst liegen im Repository und sind dort nachlesbar und
-      # versioniert — der Ablauf spielt nur ein, was dort steht.
+      # versioniert — der Ablauf spielt nur ein, was dort steht. Dasselbe gilt
+      # fuer `reste`/`reste-weg`: WELCHE Knoten geloescht werden, steht in
+      # `scripts/firebase-aufraeumen.py` und nicht in einem Eingabefeld. Ein
+      # frei uebergebener Pfad koennte sich hier vertippen und mit dem
+      # Dienstkonto einen ganzen Zweig mitnehmen.
       - name: Regeln pruefen oder einspielen
         env:
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
         run: |
           case "${{ inputs.modus }}" in
-            trocken) python3 scripts/firebase-regeln.py --trocken ;;
-            regeln)  python3 scripts/firebase-regeln.py --veroeffentlichen ;;
-            *)       python3 scripts/firebase-regeln.py --stand ;;
+            trocken)   python3 scripts/firebase-regeln.py --trocken ;;
+            regeln)    python3 scripts/firebase-regeln.py --veroeffentlichen ;;
+            reste)     python3 scripts/firebase-aufraeumen.py --zeigen ;;
+            reste-weg) python3 scripts/firebase-aufraeumen.py --loeschen ;;
+            *)         python3 scripts/firebase-regeln.py --stand ;;
           esac

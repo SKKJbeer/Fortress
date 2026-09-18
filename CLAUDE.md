@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.108.0
+- **Aktuelle Version**: v3.109.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -92,6 +92,16 @@ der Spark-Plan trägt.
   prueft SOFORT beide Richtungen (unangemeldet muss abgewiesen werden,
   angemeldet muss durchkommen) und **rollt bei Fehlschlag automatisch
   zurueck**. Von Hand ist die Reihenfolge-Falle genau einmal falsch zu machen.
+  **Seit v3.109.0 stehen die Regeln** (gemessen: unangemeldet HTTP 401 auf
+  allen sieben Zweigen, angemeldet kommt durch). Die Probe fasst JEDEN Zweig
+  einzeln an — `players`/`leaderboard` haengen an `auth.uid === $schluessel`,
+  `games` nur an `auth != null`; ein Tippfehler dort waere sonst still.
+- **Loeschen in der Datenbank nur ueber eine Namensliste im Code**
+  (`scripts/firebase-aufraeumen.py`, Modi `reste`/`reste-weg`). Das
+  Dienstkonto umgeht alle Regeln: `leaderboard` statt
+  `leaderboard/test_bot_001` loescht die ganze Bestenliste, sofort und ohne
+  Rueckfrage. Deshalb KEIN Pfad-Eingabefeld — Namen stehen in `ERLAUBT`,
+  gehen durch git, und `tests/aufraeumen.test.js` haelt sie statisch fest.
 
 **Aktuell nicht verwenden (kostenpflichtig):**
 - Firebase Blaze / Cloud Functions
