@@ -1418,6 +1418,16 @@ window.StackSiegeApp = function StackSiegeApp() {
       uid: s && s.uid ? String(s.uid).slice(0, 6) + "\u2026" : null,
       bootFehler: w.__fbError || "",
       authFehler: w.__fbAuthError || "",
+      // `navigator.onLine` steht hier aus einem bestimmten Grund (v3.111.3):
+      // Das Firebase-SDK fragt es, BEVOR es eine Verbindung aufbaut. Meldet
+      // der WebView faelschlich `false` — ein bekanntes Verhalten, wenn die
+      // Seite unter einem eigenen Schema wie `capacitor://localhost` laeuft —
+      // dann versucht das SDK es gar nicht erst und wartet auf ein
+      // `online`-Ereignis, das nie kommt. Kein Fehler, keine Ablehnung, nur
+      // Stille: genau das gemeldete Bild. Ohne diese Angabe waere der Fall
+      // von aussen nicht von „Netz weg" zu unterscheiden.
+      online: typeof navigator !== "undefined" && typeof navigator.onLine === "boolean"
+        ? navigator.onLine : null,
       lesen: null
     };
     if (!s) return info;
@@ -6878,7 +6888,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.3"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8076,7 +8086,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     fontSize: 14,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { fontSize: 11, lineHeight: 1.6, marginBottom: 14, padding: "8px 10px", borderRadius: 8, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(51,65,85,0.6)", color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? "#64748b" : "#f59e0b", letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { fontSize: 11, lineHeight: 1.6, marginBottom: 14, padding: "8px 10px", borderRadius: 8, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(51,65,85,0.6)", color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? "#64748b" : "#f59e0b", letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.online === false ? " \u00B7 navigator.onLine=false" : "", netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
     background: "rgba(245,158,11,0.12)",
     border: "1px solid rgba(245,158,11,0.3)",
     borderRadius: 8,

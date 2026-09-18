@@ -3458,6 +3458,14 @@ async function suiteBestenliste(browser) {
                 window.__fbAuthError = 'auth/network-request-failed';
                 window.__fb.get = () => new Promise(() => {});`,
      { gut: false }],
+    // Der Verdachtsfall aus dem WebView: Das SDK verbindet gar nicht erst,
+    // weil `navigator.onLine` false meldet. Ohne diese Angabe waere er von
+    // „Netz weg" nicht zu unterscheiden — und genau darum geht es.
+    ['offline', `window.__fb.ref = (db, pfad) => ({ __pfad: String(pfad) });
+                window.__fb.uid = null;
+                window.__fb.get = () => new Promise(() => {});
+                Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true });`,
+     { gut: false, offline: true }],
   ]) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
       serviceWorkers: 'block' });
@@ -3490,9 +3498,18 @@ async function suiteBestenliste(browser) {
         /keine Anmeldung|not signed in/.test(zeile)
           ? ok('Verbindungsauskunft (stumm): nennt die fehlende Anmeldung ✓')
           : fail(`Verbindungsauskunft (stumm) verschweigt die Anmeldung: "${zeile}"`);
-        /network-request-failed/.test(zeile)
-          ? ok('Verbindungsauskunft (stumm): nennt den technischen Grund ✓')
-          : fail(`Verbindungsauskunft (stumm) ohne Grund: "${zeile}"`);
+        if (erwartet.offline) {
+          /navigator\.onLine=false/.test(zeile)
+            ? ok('Verbindungsauskunft: meldet navigator.onLine=false ✓')
+            : fail(`Verbindungsauskunft verschweigt navigator.onLine=false: "${zeile}"`);
+        } else {
+          /network-request-failed/.test(zeile)
+            ? ok('Verbindungsauskunft (stumm): nennt den technischen Grund ✓')
+            : fail(`Verbindungsauskunft (stumm) ohne Grund: "${zeile}"`);
+          !/navigator\.onLine=false/.test(zeile)
+            ? ok('Verbindungsauskunft: kein Fehlalarm zu navigator.onLine ✓')
+            : fail('Verbindungsauskunft meldet onLine=false, obwohl online');
+        }
       }
     } finally { await ctx.close(); }
   }

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7711,3 +7711,45 @@ etwas sagt, wäre wertlos.
 > einmal die Blase-Zeit beim Bot, einmal die vermeintliche 3P-Regression. Statt
 > eine dritte zu bauen, macht die App den Zustand sichtbar und liefert beim
 > nächsten Versuch die Angabe, die dieser Runde gefehlt hat.
+
+## v3.111.3 — `navigator.onLine`, der Kandidat, den die Auskunft noch nicht abdeckte
+
+Rückmeldung: **im Safari desselben Telefons läuft alles, in der App nichts.**
+Damit ist es der WebView — nicht das Netz, nicht der Server.
+
+### Alles Serverseitige ist damit ausgeschlossen, jeweils gemessen
+
+| Geprüft | Ergebnis |
+|---|---|
+| Anmeldung mit Herkunft `capacitor://localhost` | **HTTP 200**, uid geliefert |
+| CORS-Vorabanfrage, beide Herkünfte | `access-control-allow-origin` spiegelt die Herkunft |
+| RTDB-Lesezugriff, Herkunft `capacitor://localhost` | CORS freigegeben |
+| RTDB-WebSocket | HTTP 101 + Server-Hello |
+| `WKAppBoundDomains` / `limitsNavigationsToAppBoundDomains` | nicht gesetzt bzw. `false` |
+| CSP, ATS, Schlüssel-Beschränkungen | keine |
+
+Auch `ionic://localhost` wird angenommen — es ist also keine Herkunfts-Sperre.
+
+### Der verbliebene Kandidat
+
+Das Firebase-SDK fragt **`navigator.onLine`, bevor es eine Verbindung aufbaut.**
+Meldet der WebView dort fälschlich `false` — bekanntes Verhalten, wenn die Seite
+unter einem eigenen Schema wie `capacitor://localhost` läuft —, dann versucht das
+SDK es **gar nicht erst** und wartet auf ein `online`-Ereignis, das nie kommt.
+Kein Fehler, keine Ablehnung, nur Stille: genau das gemeldete Bild, und es
+erklärt beide Symptome auf einmal (Bestenliste hängt, Matchmaking reagiert nicht).
+
+Die Selbstauskunft nennt den Wert jetzt mit:
+
+```
+Verbindung: SDK ✓ · keine Anmeldung · keine Verbindung · navigator.onLine=false
+```
+
+**Gegengeprüft in allen drei Zuständen** — heil, stumm, und `onLine=false` —
+einschließlich der Zusage, dass im Normalfall **kein** Fehlalarm erscheint. Ohne
+diese Angabe wäre der Fall von „Netz weg" nicht zu unterscheiden.
+
+> Das ist ausdrücklich ein **Kandidat**, keine Diagnose. Bestätigt ist er erst,
+> wenn die Zeile auf dem Gerät `navigator.onLine=false` zeigt. Zweimal in dieser
+> Sitzung hat eine plausible Erklärung nicht gehalten; diese hier wird gemessen,
+> bevor sie behoben wird.
