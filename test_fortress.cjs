@@ -3319,6 +3319,134 @@ async function suiteOnlineAktionen(browser, fbPort) {
   return { res, errs: errsAll };
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Bestenliste — sie muss ANTWORTEN, auch wenn nichts kommt (v3.111.1)
+//
+// Anlass: Ein Bildschirmfoto aus der TestFlight-App (v3.103.0) zeigte die
+// Bestenliste dauerhaft auf „Lädt…" — ohne Meldung, ohne Hinweis worauf
+// gewartet wird. Die Ursache steckte nicht in den Sicherheitsregeln (ein
+// abgelehnter Zugriff endet in `fb.get` → null → „keine Einträge"), sondern
+// eine Stufe tiefer: Das Firebase-SDK loest `get()` gar nicht auf, solange
+// keine Verbindung zustande kommt. `setLeaderboard` wurde nie aufgerufen, der
+// Zustand blieb `null`, und `null` heisst in der Anzeige „Lädt…".
+//
+// Bis dahin gab es zur Bestenliste GENAU eine Pruefung: ob der Knopf da ist.
+// Ob sie jemals etwas anzeigt, stand nirgends.
+// ═══════════════════════════════════════════════════════════════
+async function suiteBestenliste(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Bestenliste\n' + '='.repeat(50));
+
+  const oeffne = async (page) => {
+    await jsClick(page, ['Bestenliste', 'Rangliste', 'Leaderboard']);
+    await page.waitForTimeout(400);
+  };
+  const zustand = (page) => page.evaluate(() => {
+    const t = document.body.innerText;
+    return {
+      laedt: /Lädt…|Loading…/.test(t),
+      fehler: !!document.querySelector('[data-lb-fehler]'),
+      fehlertext: (document.querySelector('[data-lb-fehler]') || {}).textContent || '',
+      leer: /Noch keine Einträge|No entries yet/.test(t),
+      zeilen: document.querySelectorAll('[data-lb-zeile]').length,
+      offen: /Bestenliste|Leaderboard/.test(t),
+    };
+  });
+
+  // ── 1) Datenbank liefert Eintraege → Liste erscheint ──────────
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+      serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    // Die Sperre liefert von Haus aus „nichts da". Hier soll sie EINTRAEGE
+    // liefern, damit die Liste ueberhaupt etwas zu zeigen hat.
+    // Die App ruft `s.get(s.ref(s.db, pfad))` und erwartet einen SNAPSHOT
+    // (`exists()`/`val()`), keine rohen Daten — der erste Anlauf gab die Daten
+    // direkt zurueck und lief in „Cannot read properties of null (reading
+    // 'exists')". Also muss auch `ref` den Pfad durchreichen.
+    await page.addInitScript(`
+      window.__fb.ref = (db, pfad) => ({ __pfad: String(pfad) });
+      window.__fb.get = async (r) => {
+        const pfad = (r && r.__pfad) || '';
+        if (pfad.indexOf('leaderboard') === 0) return {
+          exists: () => true,
+          val: () => ({
+            p_a: { name: 'Anna',  elo: 1200, wins: 8, losses: 2, games: 10 },
+            p_b: { name: 'Bodo',  elo: 1100, wins: 4, losses: 4, games: 8  },
+            p_c: { name: 'Niemand', elo: 1000, wins: 0, losses: 0, games: 0 }
+          })
+        };
+        return { exists: () => false, val: () => null };
+      };
+    `);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await loadMenu(page);
+      await oeffne(page);
+      let z = null;
+      for (let i = 0; i < 30; i++) { z = await zustand(page); if (!z.laedt) break; await page.waitForTimeout(200); }
+      !z.laedt ? ok('Bestenliste: verlaesst den Ladezustand ✓')
+               : fail('Bestenliste: bleibt auf „Lädt…" haengen, obwohl Daten da sind');
+      const text = await page.evaluate(() => document.body.innerText);
+      /Anna/.test(text) && /Bodo/.test(text)
+        ? ok('Bestenliste: zeigt die Eintraege (Anna, Bodo) ✓')
+        : fail('Bestenliste: Eintraege fehlen in der Anzeige');
+      // Wer nie gespielt hat, gehoert nicht in die Rangliste.
+      !/Niemand/.test(text) ? ok('Bestenliste: Eintraege ohne Spiele bleiben draussen ✓')
+                            : fail('Bestenliste: Eintrag mit 0 Spielen wird angezeigt');
+      !z.fehler ? ok('Bestenliste: kein Fehlalarm bei erreichbarer Datenbank ✓')
+                : fail(`Bestenliste: Fehlermeldung obwohl alles ging (${z.fehlertext})`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 2) Datenbank antwortet NIE → Meldung statt ewigem „Lädt…" ──
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+      serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    // GENAU der gemeldete Fall: `get()` loest nie auf. Kein Fehler, keine
+    // Ablehnung — nur Stille. Das laesst sich mit keiner Route nachstellen,
+    // weil die Realtime Database ueber WebSocket spricht.
+    await page.addInitScript(`window.__fb.get = () => new Promise(() => {});`);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await loadMenu(page);
+      await oeffne(page);
+      const start = Date.now();
+      let z = null;
+      // Die Zeitgrenze steht bei 8 s; 20 s Frist geben reichlich Luft.
+      for (let i = 0; i < 100; i++) {
+        z = await zustand(page);
+        if (z.fehler) break;
+        await page.waitForTimeout(200);
+      }
+      const sek = ((Date.now() - start) / 1000).toFixed(1);
+      z.fehler
+        ? ok(`Bestenliste: stumme Datenbank wird nach ${sek}s GEMELDET ✓`)
+        : fail(`Bestenliste: nach ${sek}s immer noch keine Meldung — `
+             + `laedt=${z.laedt}, leer=${z.leer}. Genau der Fall aus der TestFlight-App.`);
+      z.fehler && !z.laedt
+        ? ok('Bestenliste: „Lädt…" verschwindet mit der Meldung ✓')
+        : (z.fehler ? fail('Bestenliste: Meldung da, aber „Lädt…" steht weiter') : null);
+      // Und die Meldung darf nicht luegen: „noch keine Eintraege" waere hier
+      // falsch — es ist eine Verbindungssache, kein leerer Zustand.
+      !z.leer ? ok('Bestenliste: behauptet NICHT „noch keine Eintraege" ✓')
+              : fail('Bestenliste: behauptet „noch keine Eintraege", obwohl nur die Verbindung fehlt');
+    } finally { await ctx.close(); }
+  }
+
+  errs.length === 0 ? ok('Bestenliste: keine JS-Fehler ✓')
+                    : errs.slice(0, 3).forEach(e => fail(`Bestenliste JS: ${e.slice(0, 90)}`));
+  return { res, errs };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SUITE 6: Progressionssystem (Level, XP, Daily Reward, Avatar-Locks)
 // ═══════════════════════════════════════════════════════════════
@@ -5565,6 +5693,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       online2p: () => suiteOnline2P(browser, FB_PORT),
       online3p: () => suiteOnline3P(browser, FB_PORT),
       aktionen: () => suiteOnlineAktionen(browser, FB_PORT),
+      bestenliste: () => suiteBestenliste(browser),
       matchmaking: () => suiteMatchmaking(browser, FB_PORT),
       haerte: () => suiteOnlineHaerte(browser, FB_PORT),
       heartbeat: () => suiteHeartbeat(browser, FB_PORT),
@@ -5631,7 +5760,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // Spielkontexte und tastet das Brett ab, bis der Host reagiert. Parallel
     // dazu waere die Frist eine Lastmessung statt einer Funktionspruefung.
     const akt = await suiteOnlineAktionen(browser, FB_PORT);
-    return { mm, mm3, hb, cs, tr, zm, hrt, akt };
+    // Bestenliste ebenfalls SERIELL. Sie braucht kein Firebase (alles gemockt),
+    // haelt aber einen Kontext ueber acht Sekunden — das ist die Frist, deren
+    // Ablauf sie prueft. Im parallelen Block hat genau das einmal den
+    // Quick-Match reissen lassen („A=false B=true"): dieselbe Ueberlast, wegen
+    // der Matchmaking und 3P schon seriell stehen. Zehn Sekunden seriell sind
+    // billiger als ein Flattern im Deployment.
+    const lb = await suiteBestenliste(browser);
+    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -5663,14 +5799,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

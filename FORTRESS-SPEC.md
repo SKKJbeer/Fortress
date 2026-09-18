@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7591,3 +7591,78 @@ Der erste Anlauf der zweiten Gegenprobe verfälschte Burgpositionen — und blie
 still. Zu Recht: Die Burgen schickt der Host in *jedem* Zustand mit, die
 Verfälschung war im nächsten Takt wieder weg. Erst das Gelände, das aus dem Seed
 abgeleitet und nie übertragen wird, bildet den echten Gefahrenfall ab.
+
+## v3.111.1 — Die Bestenliste hing auf „Lädt…" und sagte nicht, worauf
+
+Gemeldet aus der TestFlight-App (Bau 29, v3.103.0): Die Bestenliste blieb
+dauerhaft auf **„Lädt…"** — ohne Meldung, ohne Hinweis worauf gewartet wird.
+
+### Zuerst ausgeschlossen, was naheliegend war
+
+Der Verdacht fiel sofort auf die neuen Sicherheitsregeln aus v3.109.0. **Falsch,
+und zwar nachweisbar:**
+
+```
+curl .../leaderboard.json   →  HTTP 200, 10355 Bytes, 0,5 s
+                               45 Einträge, 12 davon mit Spielen
+```
+
+Öffentlich lesbar, unangemeldet, in einer halben Sekunde. Dazu die Logik: Ein
+abgelehnter Zugriff wirft, `fb.get` fängt das ab und liefert `null` — die
+Anzeige stünde dann auf „noch keine Einträge", nicht auf „Lädt…".
+
+### Die eigentliche Ursache — eine Stufe tiefer
+
+`openLeaderboard` hatte **keine Zeitgrenze**. Das Firebase-SDK löst `get()`
+nicht auf, solange keine Verbindung zustande kommt: kein Fehler, keine
+Ablehnung, nur Stille. `setLeaderboard` wurde nie aufgerufen, der Zustand blieb
+`null` — und `null` heißt in der Anzeige „Lädt…". **Für immer.**
+
+Das ist unabhängig von der Ursache ein Fehler: Eine Oberfläche, die ohne
+Zeitgrenze und ohne Meldung wartet, ist für niemanden diagnostizierbar — weder
+für den Spieler noch beim Nachsehen aus der Ferne.
+
+**Behoben:** 8 Sekunden Frist (ein echter Lesezugriff dauert gemessen ~0,5 s),
+danach eine sichtbare Meldung „Bestenliste nicht erreichbar — keine Verbindung
+zur Datenbank". Und wenn `fb.get` mit einem Fehler zurückkommt, steht dieser
+Fehler jetzt da, statt „noch keine Einträge" zu behaupten — das ist ein
+Unterschied, den der Spieler kennen muss.
+
+### Neue Suite `suiteBestenliste`
+
+Zur Bestenliste gab es bis dahin **genau eine** Prüfung: ob der Knopf da ist.
+Ob sie jemals etwas anzeigt, stand nirgends. Jetzt:
+
+- Datenbank liefert Einträge → Liste erscheint, Namen sichtbar, Einträge mit
+  0 Spielen bleiben draußen, **kein** Fehlalarm.
+- Datenbank antwortet **nie** (`get()` gibt ein Promise zurück, das nie
+  auflöst — genau der gemeldete Fall, mit keiner Routen-Blockade nachstellbar,
+  weil die Realtime Database über WebSocket spricht) → nach 7,7 s steht die
+  Meldung da, „Lädt…" ist weg, und es wird **nicht** „noch keine Einträge"
+  behauptet.
+
+**Ein Fehler im eigenen Testaufbau**, beim ersten Lauf rot: Der Mock gab die
+Daten roh zurück, aber die App ruft `s.get(s.ref(s.db, pfad))` und erwartet
+einen Snapshot mit `exists()`/`val()` — „Cannot read properties of null
+(reading 'exists')". Auch `ref` muss den Pfad durchreichen.
+
+### Offen: warum das Gerät keine Verbindung bekam
+
+Dass die Datenbank vom Entwicklungsrechner aus in 0,5 s antwortet, sagt nichts
+darüber, ob der WebView auf dem Telefon sie erreicht. Die Meldung zeigt dem
+Spieler ab jetzt wenigstens, **dass** es die Verbindung ist — und liefert beim
+nächsten Mal den Anhaltspunkt, den dieser Lauf noch nicht hatte.
+
+### Nachtrag: die neue Suite gehört SERIELL, nicht parallel
+
+Beim ersten vollen Lauf mit der neuen Bestenlisten-Suite riss der Quick-Match
+(`Quick Match: A=false B=true`), und die Gesamtzahl fiel von 446 auf 434 — die
+Matchmaking-Suite bricht bei diesem Fehler früh ab und nimmt ihre restlichen
+Prüfungen mit.
+
+Ursache war die Einordnung, nicht der Inhalt: Die Suite stand im **parallelen**
+Block. Sie braucht zwar kein Firebase (alles gemockt), hält aber einen
+Browser-Kontext über **acht Sekunden** — das ist genau die Frist, deren Ablauf
+sie prüft. Dieselbe Überlast, wegen der Matchmaking und 3P schon seriell stehen,
+und wovor der Code an drei Stellen warnt. Jetzt läuft sie seriell in
+`onlineHeavy`; zehn Sekunden dort sind billiger als ein Flattern im Deployment.

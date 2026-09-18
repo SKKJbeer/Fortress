@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.111.0
+- **Aktuelle Version**: v3.111.1
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -411,6 +411,14 @@ npm run test:e2e
   gemeldet. (Burgpositionen zu verbiegen taugt NICHT als Gegenprobe — die
   schickt der Host in jedem Takt mit und ueberschreibt sie sofort.)
 - **Online immer mitgetestet**: Code-Join (Host+Gast, Phasen-Sync, Gast-Timer, Aktionen) UND Matchmaking-Suite (`suiteMatchmaking`, seit v3.14.15): Quick Match ×2 hintereinander (Geister-Listener-Regression), Ranked-Result ohne Rematch-Buttons, Queue-Leere nach Matches (Ticket-Leichen), Selbst-Match-Schutz (gleiche `DEVICE_ID` via `mmIdentInit`-Override in `makeOnlineCtx(browser, fbPort, extraInit)`)
+- **Kein `await` ohne Zeitgrenze an einer Anzeige** (seit v3.111.1): Das
+  Firebase-SDK loest `get()` NICHT auf, solange keine Verbindung steht — kein
+  Fehler, keine Ablehnung, nur Stille. `openLeaderboard` hing dadurch fuer
+  immer auf „Laedt…" (gemeldet aus der TestFlight-App). `fb.get` faengt
+  Fehler ab und liefert null; eine ABGELEHNTE Berechtigung endet also in
+  „keine Eintraege" — nur das Nicht-Antworten fuehrt zum Haenger. Wer einen
+  Ladezustand anzeigt, braucht eine Frist UND eine Meldung, die sagt, was
+  fehlt. `suiteBestenliste` haelt beide Faelle fest.
 - **Regel: Kein Commit ohne grünen Test**
 - **Wartebedingung statt Momentaufnahme** (seit v3.108.0): Im Zeitraffer
   (`TIMER_SPEEDUP`: 1000 ms → 50 ms) dauert eine Phase **rund eine Sekunde**.

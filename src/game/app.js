@@ -69,6 +69,8 @@ const DEVICE_ID = (() => {
 })();
 const MAX_STATE_BYTES = 15e4;
 let _fbError = "";
+/** Letzte Firebase-Fehlermeldung, damit die Oberflaeche sie zeigen kann. */
+function fbFehler() { return _fbError || ""; }
 let _pushCount = 0;
 let _pushWindow = 0;
 function sdk() {
@@ -1388,10 +1390,13 @@ window.StackSiegeApp = function StackSiegeApp() {
     return () => clearTimeout(timer);
   }, [screen, resultInfo]);
   const [lbRaw, setLbRaw] = useState(null);
+  // Warum die Bestenliste leer ist (v3.111.1) — null = kein Fehler.
+  const [lbFehler, setLbFehler] = useState(null);
   const [lbMode, setLbMode] = useState(2);
   async function openLeaderboard() {
     setShowLeaderboard(true);
     setLeaderboard(null);
+    setLbFehler(null);
     setLbMode(2);
     if (!MP_CONFIGURED) {
       setLeaderboard([]);
@@ -1399,8 +1404,31 @@ window.StackSiegeApp = function StackSiegeApp() {
       return;
     }
     if (!sdk()) await getFirebase();
-    const data = await fb.get("leaderboard");
+    // ZEITGRENZE (v3.111.1). Vorher stand hier ein nacktes `await fb.get(...)`.
+    //
+    // `fb.get` faengt Fehler ab und liefert null — eine abgelehnte Berechtigung
+    // endet also in „keine Eintraege". Was NICHT abgefangen war: Das SDK loest
+    // `get()` gar nicht auf, solange keine Verbindung zustande kommt. Dann
+    // wurde `setLeaderboard` nie aufgerufen, der Zustand blieb `null`, und die
+    // Anzeige stand FUER IMMER auf „Laedt…" — ohne Meldung, ohne Knopf, ohne
+    // Hinweis worauf gewartet wird. Genau so gemeldet aus der TestFlight-App.
+    //
+    // Acht Sekunden sind reichlich: Ein voller Lesezugriff auf die echte
+    // Datenbank dauert gemessen rund eine halbe Sekunde.
+    const data = await Promise.race([
+      fb.get("leaderboard"),
+      new Promise((r) => setTimeout(() => r("__zeit"), 8000))
+    ]);
+    if (data === "__zeit") {
+      setLbFehler(t('lbTimeout'));
+      setLeaderboard([]);
+      setLbRaw([]);
+      return;
+    }
     if (!data) {
+      // Auch hier: sagen, WARUM nichts kam, statt „noch keine Eintraege" zu
+      // behaupten. Das ist ein Unterschied, den der Spieler kennen muss.
+      if (fbFehler()) setLbFehler(fbFehler());
       setLeaderboard([]);
       setLbRaw([]);
       return;
@@ -6808,7 +6836,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7266,7 +7294,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     background: lbMode === m ? "rgba(202,138,4,0.25)" : "rgba(255,255,255,0.05)",
     color: lbMode === m ? "#fde68a" : "#94a3b8",
     border: lbMode === m ? "1px solid rgba(202,138,4,0.5)" : "1px solid rgba(255,255,255,0.1)"
-  } }, m === 2 ? t('local2p') : React.createElement("span", null, React.createElement(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), leaderboard && leaderboard.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
+  } }, m === 2 ? t('local2p') : React.createElement("span", null, React.createElement(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), lbFehler && /* @__PURE__ */ React.createElement("div", { "data-lb-fehler": "1", style: { color: "#f59e0b", textAlign: "center", padding: "24px 12px", fontSize: 14, lineHeight: 1.5 } }, lbFehler), leaderboard && leaderboard.length === 0 && !lbFehler && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
     const isMe = profile && e.id === profile.id;
     const medalCol = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : null;
     const medal = medalCol ? React.createElement(Icon, { name: "medal", size: 16, color: medalCol }) : `${i + 1}.`;

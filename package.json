@@ -1,6 +1,6 @@
 {
   "name": "stack-and-siege",
-  "version": "3.111.0",
+  "version": "3.111.1",
   "private": true,
   "type": "module",
   "scripts": {
