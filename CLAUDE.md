@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.103.0
+- **Aktuelle Version**: v3.104.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -78,6 +78,20 @@ der Spark-Plan trägt.
 **Aktuell erlaubt (kostenlos):**
 - **GitHub Pages** — Hosting, kostenlos für Public Repos
 - **Firebase Spark Plan**: Realtime Database (1 GB, 100 simultane Verbindungen, 10 GB/Monat)
+
+**Firebase-Zugaenge und wo sie hingehoeren (seit v3.104.0):**
+- **Web-API-Schluessel** (`AIza…`, in `src/firebase-boot.js`): oeffentliche
+  Client-Kennung, KEIN Geheimnis. Gewaehrt keinen Datenzugriff — gemessen:
+  Regeln lesen damit ergibt HTTP 403, genau wie ohne. Gehoert in den Code.
+- **Dienstkonto-Schluessel** (`FIREBASE_SA_JSON`): **umgeht alle Regeln**,
+  das maechtigste Zugangsmittel des Projekts. Gehoert ausschliesslich in die
+  GitHub-Secrets, wie `ASC_KEY_P8` und `DIST_P12`. Genutzt nur von
+  `.github/workflows/firebase.yml`.
+- Regeln werden NIE von Hand in der Console eingespielt, wenn der Ablauf da
+  ist: `firebase.yml` sichert die alten Regeln ins Protokoll, spielt ein,
+  prueft SOFORT beide Richtungen (unangemeldet muss abgewiesen werden,
+  angemeldet muss durchkommen) und **rollt bei Fehlschlag automatisch
+  zurueck**. Von Hand ist die Reihenfolge-Falle genau einmal falsch zu machen.
 
 **Aktuell nicht verwenden (kostenpflichtig):**
 - Firebase Blaze / Cloud Functions

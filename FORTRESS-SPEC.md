@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.103.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.104.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7024,3 +7024,63 @@ Tests grün (Typen 0, Unit **145/145**, iOS 21/21, E2E 431/431).
 4. Cloud-Save einmal ganz durchspielen.
 
 Umgekehrt sperrt Schritt 2 die Tester aus, die gerade spielen.
+
+---
+
+## v3.104.0 — „Mach du alles" — was dafür fehlt, und was jetzt bereitliegt
+
+Auf die Bitte, alles selbst zu erledigen, gehört zuerst eine Korrektur: **Mit
+dem Web-API-Schlüssel geht das nicht.** Gemessen statt behauptet:
+
+| Zugang | Regeln lesen |
+|---|---|
+| ohne | HTTP **403** |
+| mit Web-API-Schlüssel | HTTP **403** |
+| mit anonymem Anmelde-Token | HTTP **401** |
+
+Der Web-Schlüssel identifiziert die App gegenüber der Anmeldung — er berechtigt
+zu nichts. Regeln zu veröffentlichen ist ein Admin-Vorgang und braucht ein
+**Dienstkonto**.
+
+(Nebenbei bestätigt: Das anonyme Token ließ sich per REST holen. Die Anmeldung
+läuft also auch außerhalb des Browsers — zweite, unabhängige Bestätigung.)
+
+### Was bereitliegt
+
+`.github/workflows/firebase.yml` mit drei Modi und **einem** Geheimnis
+(`FIREBASE_SA_JSON`):
+
+| Modus | Was er tut |
+|---|---|
+| `stand` | Regeln lesen, mit `firebase-rules-PASTE.json` vergleichen |
+| `trocken` | zeigen, was eingespielt würde — samt Sicherung der alten Regeln |
+| `regeln` | einspielen, sofort prüfen, **bei Fehlschlag zurückrollen** |
+
+### Warum das sicherer ist als der Handgriff in der Console
+
+Die Regeln haben eine Reihenfolge-Falle: Sie verlangen `auth != null`. Wer sie
+einspielt, bevor alle Clients sich anmelden können, sperrt die Spieler aus, die
+gerade spielen — und merkt es erst, wenn sich jemand beschwert.
+
+`scripts/firebase-regeln.py` prüft deshalb **beide Richtungen**:
+
+- unangemeldet schreiben → muss **abgewiesen** werden
+- **angemeldet** schreiben → muss **durchkommen**
+
+Die zweite Hälfte ist die wichtigere. *Eine Regel, die alles abweist, ist nicht
+sicher, sondern kaputt* — dann kann auch kein Spieler mehr spielen. Fällt eine
+der beiden durch, werden die alten Regeln automatisch zurückgespielt; die
+Sicherung steht vorher im Protokoll, damit sie auch bei einem gescheiterten
+Rückrollen von Hand einsetzbar ist.
+
+Genau das war mein Argument für das Dienstkonto, als der Gründer danach fragte:
+nicht Bequemlichkeit, sondern eine Prüfung mit Rückweg.
+
+### Wo welcher Zugang hingehört
+
+- **Web-API-Schlüssel**: öffentliche Kennung, in `src/firebase-boot.js`, im
+  Repository. Kein Geheimnis.
+- **Dienstkonto-Schlüssel**: umgeht alle Regeln. Ausschließlich GitHub-Secrets,
+  wie `ASC_KEY_P8` und `DIST_P12`. Nie im Repository, nie in einem Chat.
+
+Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).

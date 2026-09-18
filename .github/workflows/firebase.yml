@@ -1,0 +1,65 @@
+# Firebase: Regeln lesen, vergleichen, einspielen.
+#
+# Braucht GENAU EIN Geheimnis: FIREBASE_SA_JSON — den Dienstkonto-Schluessel
+# (Firebase-Console → Projekteinstellungen → Dienstkonten → „Neuen privaten
+# Schluessel generieren"), als kompletter JSON-Text hinterlegt unter
+# Settings → Secrets and variables → Actions.
+#
+# **Dieser Schluessel umgeht ALLE Sicherheitsregeln.** Er darf nirgends sonst
+# stehen: nicht im Repository, nicht in einem Chat, nicht auf einem Rechner,
+# der ihn nicht braucht. Hier liegt er wie ASC_KEY_P8 und DIST_P12 — in den
+# GitHub-Secrets, sichtbar fuer niemanden, nutzbar nur durch diesen Ablauf.
+name: Firebase (Regeln)
+
+on:
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'Was soll passieren?'
+        type: choice
+        default: stand
+        options:
+          - stand      # nur lesen: was steht drin, weicht es von der Datei ab?
+          - trocken    # zeigen, was eingespielt wuerde, inkl. Sicherung
+          - regeln     # einspielen, sofort pruefen, bei Fehlschlag zurueckrollen
+
+permissions:
+  contents: read
+
+jobs:
+  regeln:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhaengigkeiten
+        run: pip install --quiet google-auth requests
+
+      - name: Zugang pruefen
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+        run: |
+          if [ -z "$FIREBASE_SA_JSON" ]; then
+            echo "::error::Das Geheimnis FIREBASE_SA_JSON fehlt."
+            echo "Firebase-Console → Projekteinstellungen → Dienstkonten →"
+            echo "„Neuen privaten Schluessel generieren\", den JSON-Text unter"
+            echo "Settings → Secrets and variables → Actions als FIREBASE_SA_JSON hinterlegen."
+            exit 1
+          fi
+          echo "Zugang vorhanden."
+
+      # Die Regeln selbst liegen im Repository und sind dort nachlesbar und
+      # versioniert — der Ablauf spielt nur ein, was dort steht.
+      - name: Regeln pruefen oder einspielen
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+        run: |
+          case "${{ inputs.modus }}" in
+            trocken) python3 scripts/firebase-regeln.py --trocken ;;
+            regeln)  python3 scripts/firebase-regeln.py --veroeffentlichen ;;
+            *)       python3 scripts/firebase-regeln.py --stand ;;
+          esac
