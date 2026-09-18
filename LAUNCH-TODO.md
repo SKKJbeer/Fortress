@@ -1,8 +1,55 @@
 # Stack & Siege — Marktstart-Checkliste
 
-> Stand: **v3.94.0, 17.09.2026.** **iOS zuerst** — der Developer-Account steht,
+> Stand: **v3.103.0, 18.09.2026.** **iOS zuerst** — der Developer-Account steht,
 > und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
 > Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
+
+---
+
+## Stand 18.09.2026 — Anmeldung läuft, Regeln warten auf Bau 29
+
+**Der Firebase-API-Schlüssel ist eingetragen** (v3.103.0) und die anonyme
+Anmeldung funktioniert. Gemessen an der echten Seite:
+
+```
+uid    : jxmT1frqPBghswE6oKN1cy4ASEP2
+anonym : true
+Fehler : keiner            (nach ~1 Sekunde)
+```
+
+**Bau 29 (v3.103.0)** ist hochgeladen, der öffentlichen Gruppe zugeordnet, zur
+Beta-Prüfung eingereicht (`WAITING_FOR_REVIEW`) und an die Store-Fassung
+gehängt.
+
+### ⛔ Die Regeln erst NACH Bau 29 veröffentlichen
+
+`firebase-rules-PASTE.json` verlangt überall `auth != null`. **Bau 28
+(v3.94.0) hat keinen Schlüssel**, dort bleibt `uid = null`. Würden die Regeln
+jetzt veröffentlicht, könnte kein Tester auf Bau 28 mehr ein Online-Spiel
+erstellen oder betreten.
+
+Reihenfolge also:
+1. ✅ Schlüssel im Code, live, Anmeldung nachgemessen
+2. ✅ Bau 29 hochgeladen und eingereicht
+3. ⏳ **Apple gibt Bau 29 frei** (beim letzten Mal knapp drei Stunden)
+4. ⏳ Tester haben aktualisiert
+5. ⏳ **Dann** Regeln veröffentlichen
+6. ⏳ Schreibprobe: unangemeldete Zugriffe müssen abgewiesen werden
+7. ⏳ Cloud-Save durchspielen: speichern → örtlich löschen → neu laden
+
+### Was nach der Veröffentlichung offen bleibt
+
+**45 Alt-Einträge in der Bestenliste**, alle mit lokalen Profil-IDs (`p_…`)
+verschlüsselt, darunter `test_bot_001` und fünf weitere Testprofile — die
+E2E-Suite *hat* also irgendwann in die Produktivdatenbank geschrieben. Mit den
+neuen Regeln (`auth.uid === $playerId`) werden sie zu unveränderlichen
+Geistern. Aufräumen braucht Admin-Zugang; das wäre ein enger, klar begrenzter
+Zweck für ein Dienstkonto.
+
+> Hinweis zur Dauerhaftigkeit: Eine anonyme Kennung ist an den lokalen Speicher
+> gebunden. Nach einer Neuinstallation gibt es eine neue uid — und damit einen
+> neuen Bestenlisten-Eintrag. Das lässt sich erst mit echten Konten (Sign in
+> with Apple) beenden, nicht über die Regeln.
 
 ---
 
@@ -64,15 +111,9 @@ nicht zurücknehmen lässt, und deshalb bewusst kein Skript.
 ### Empfohlen, aber kein Riegel
 - [ ] **Bildschirmaufnahme auf einem echten Gerät** (Punkt 7 der 2.1-Rückfrage,
       Ablauf in `store/listing.md`).
-- [ ] **Firebase absichern.** Gemessen am 15.09.: Die Datenbank nimmt
-      **unangemeldete** Schreibzugriffe auf `games` und `queue2` an — von der
-      Kommandozeile aus nachgewiesen und sofort wieder aufgeräumt. Die
-      auth-gebundenen Regeln liegen fertig in `firebase-rules-PASTE.json`,
-      lassen sich aber nicht veröffentlichen, solange die anonyme Anmeldung
-      nicht geht: Es fehlt der Firebase-API-Schlüssel (eine öffentliche
-      Kennung, kein Geheimnis) und der Schalter *Authentication → Sign-in
-      method → Anonym*. **Cloud-Save funktioniert deshalb heute gar nicht** —
-      `players` weist unangemeldete Zugriffe ab, und angemeldet ist niemand.
+- [x] **Firebase-Schlüssel eingetragen** (18.09., v3.103.0), anonyme Anmeldung
+      läuft — live nachgemessen. **Die Regeln stehen noch nicht**: siehe oben,
+      sie würden Bau 28 aussperren.
 
 ---
 
