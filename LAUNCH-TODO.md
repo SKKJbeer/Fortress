@@ -1,12 +1,78 @@
 # Stack & Siege — Marktstart-Checkliste
 
-> Stand: **v3.103.0, 18.09.2026.** **iOS zuerst** — der Developer-Account steht,
+> Stand: **v3.109.0, 18.09.2026.** **iOS zuerst** — der Developer-Account steht,
 > und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
 > Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
 
 ---
 
-## Stand 18.09.2026 — Anmeldung läuft, Regeln warten auf Bau 29
+## Stand 18.09.2026 (nachmittags) — Die Regeln stehen
+
+**Eingespielt und gemessen** (v3.109.0, über `firebase.yml` → `regeln`). Der
+Ablauf hat die alten Regeln ins Protokoll gesichert, eingespielt und sofort
+beide Richtungen geprüft — **jeden der sieben Zweige einzeln**:
+
+```
+✓ unangemeldet abgewiesen: games, queue2, queue3,
+  leaderboard, players, telemetry, funnel      (alle HTTP 401)
+✓ angemeldet schreiben klappt: dieselben sieben
+```
+
+Vorher standen dort 1832 Zeichen mit `".write": true` **ohne jedes `auth`** —
+jeder Unangemeldete durfte in jeden Zweig schreiben. Unabhängig nachgemessen
+von außerhalb der CI: Schreiben 401, Bestenliste lesen 200 (öffentlich lesbar
+soll sie bleiben).
+
+**Die Reihenfolge war eingehalten, aber nicht belegt.** Vor dem Einspielen war
+geprüft, dass die anonyme Anmeldung überhaupt geht (`uid rtkqgY…`) — wäre sie
+aus gewesen, hätte das Skript abgebrochen, ohne ein Zeichen zu schreiben.
+**Nicht** geprüft war vorher der Freigabe-Zustand von Bau 29; das wurde erst
+danach nachgeholt: `beta-stand` meldet **`Bau 29: APPROVED`**, der Link
+`testflight.apple.com/join/hE2AdHwr` liefert ihn aus. Es ist also gutgegangen —
+aber die Prüfung gehörte davor, nicht dahinter.
+
+**Bau 28 kommt jetzt nicht mehr online.** Kein Schlüssel → keine `uid` → die
+Regeln weisen ab. Lokales Spiel, Bot und Tutorial laufen weiter. Wer über den
+Link neu installiert, bekommt ohnehin Bau 29. **Offen:** Bau 28 ablaufen
+lassen, damit niemand darauf sitzen bleibt.
+
+### Was jetzt noch offen ist
+1. ✅ Schlüssel im Code, live, Anmeldung nachgemessen
+2. ✅ Bau 29 hochgeladen, eingereicht — und **freigegeben** (`APPROVED`)
+3. ✅ Regeln veröffentlicht
+4. ✅ Schreibprobe: unangemeldete Zugriffe werden abgewiesen (7/7, HTTP 401)
+5. ⏳ **Cloud-Save durchspielen**: speichern → örtlich löschen → neu laden.
+   Der einzige Punkt der Firebase-Kette, der noch nicht an der ECHTEN
+   Datenbank gemessen ist — die Regel-Probe zeigt nur, dass `players/{uid}`
+   beschreibbar ist, nicht dass die App den Stand wirklich zurückholt.
+6. ⏳ Bau 28 ablaufen lassen
+
+### Die Bestenliste — gemessen, nicht geschätzt
+
+45 Einträge. **44 mit Schlüssel `p_…`** (Profil-IDs aus der Zeit vor
+`auth.uid`), davon haben **11 tatsächlich gespielt** (Spitzenreiter 34 Spiele);
+die übrigen 33 sind leer — jemand hat das Menü geöffnet, mehr nicht.
+
+Der **45. ist kein Spieler**: `test_bot_001`, Name „TestBot", Wappen `skelett`,
+Bilanz 5/2/7 — wörtlich das `PROFILE_INIT` der E2E-Suite, durchgerutscht bevor
+`suiteOffline` die `FB_SPERRE` bekam. (Die frühere Notiz „darunter
+`test_bot_001` und fünf weitere Testprofile" war ungenau: Es ist **ein**
+Testeintrag, und er ist der einzige ohne `p_`-Schlüssel.)
+
+Unter den neuen Regeln sind alle 44 eingefroren (`auth.uid === $playerId`, und
+eine `p_…`-uid gibt es nicht). Dieselben Spieler legen beim nächsten Spiel
+einen zweiten Eintrag unter ihrer uid an → **derselbe Name doppelt**. Das ist
+eine Produktentscheidung: stehen lassen, löschen, oder beim nächsten
+Cloud-Speichern zusammenführen. **Empfehlung: zusammenführen** — verliert
+nichts und räumt die Doppelungen von selbst ab.
+
+Zum Entfernen einzelner Reste gibt es `firebase.yml` → `reste` / `reste-weg`
+(Namensliste im Code, kein Pfad-Eingabefeld — das Dienstkonto umgeht alle
+Regeln). **Ausgeführt wurde `reste-weg` noch nicht.**
+
+---
+
+## Stand 18.09.2026 (vormittags) — Anmeldung läuft, Regeln warten auf Bau 29
 
 **Der Firebase-API-Schlüssel ist eingetragen** (v3.103.0) und die anonyme
 Anmeldung funktioniert. Gemessen an der echten Seite:
@@ -21,7 +87,7 @@ Fehler : keiner            (nach ~1 Sekunde)
 Beta-Prüfung eingereicht (`WAITING_FOR_REVIEW`) und an die Store-Fassung
 gehängt.
 
-### ⛔ Die Regeln erst NACH Bau 29 veröffentlichen
+### ✅ (erledigt) Die Regeln erst NACH Bau 29 veröffentlichen
 
 `firebase-rules-PASTE.json` verlangt überall `auth != null`. **Bau 28
 (v3.94.0) hat keinen Schlüssel**, dort bleibt `uid = null`. Würden die Regeln
