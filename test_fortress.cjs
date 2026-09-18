@@ -177,6 +177,109 @@ async function getHudPhase(page) {
 }
 
 // Phasenwächter: 200ms-Polling, Deadline in ms
+// Die Bot-Hand darf NICHT sichtbar sein (v3.30.1) — beobachtet statt erblickt.
+//
+// Der Check zaehlte die Hand-Vorschauen in dem Augenblick, in dem die
+// Bauphase gerade begonnen hatte. Unter Last hatte React da noch nichts
+// gerendert: 0 sieht aus wie ein Fehler, war aber nur zu frueh. Umgekehrt
+// haette ein einzelner Blick eine Bot-Hand VERPASST, die erst mitten in der
+// Phase auftaucht — der Check war also in beide Richtungen unzuverlaessig.
+//
+// Jetzt wird die Bauphase ueber ihre ganze Dauer beobachtet und das MAXIMUM
+// bewertet: 1 ist richtig, 2 heisst Bot-Hand sichtbar, 0 heisst, es kam nie
+// etwas. Das ist strenger als der alte Blick, nicht nachsichtiger.
+async function beobachteHaende(page, waitMs = 5000) {
+  const lies = () => page.evaluate(() => ({
+    bauen: document.body.innerText.includes('BAUEN'),
+    n: document.querySelectorAll('div[style*="grid-template-columns"]').length,
+  }));
+  // Beobachtet wird die LAUFENDE Bauphase bis zu ihrem Ende — bewusst NICHT
+  // erst auf eine frische gewartet.
+  //
+  // Der Versuch, sauber an der Phasengrenze anzusetzen (erst raus aus BAUEN,
+  // dann rein), brachte 21 statt 2 Stichproben — und riss die Suite: Danach
+  // stand "Schussphase nicht erreicht", und die Meldung nannte den Grund
+  // selbst, "Rot siegt! Burg war nicht geschlossen". Eine ganze Runde extra
+  // kostet den Test-Spieler das Spiel, denn der baut nie nach: Der Bot
+  // schiesst ihm in der Schussphase die Mauer auf, und am naechsten Bauende
+  // ist die Burg offen. Kein Produktfehler, sondern der Preis der Wartezeit.
+  //
+  // Der Rest der laufenden Phase genuegt fuer die Aussage: Bewertet wird das
+  // MAXIMUM ueber alle Stichproben, und eine faelschlich gerenderte Bot-Hand
+  // stuende die ganze Phase ueber da, nicht nur einen Wimpernschlag.
+  let max = 0, proben = 0;
+  const start = Date.now();
+  while (Date.now() - start < waitMs) {
+    const st = await lies();
+    if (st.bauen) { proben++; if (st.n > max) max = st.n; }
+    else if (proben > 0) break;              // Bauphase vorbei, Messung steht
+    await page.waitForTimeout(80);
+  }
+  return { max, proben, ms: Date.now() - start };
+}
+
+// Phasengleichheit im ZEITRAFFER pruefen (v3.108.0).
+//
+// Unter TIMER_SPEEDUP wird aus 1000 ms ein 50-ms-Tick — eine Phase dauert
+// im Test also rund EINE SEKUNDE. Host und Gast sind dabei nie dauerhaft
+// gleich: der Host rechnet, pusht (hoechstens 8/s) und der Gast rendert
+// danach. An jeder Phasengrenze liegen sie fuer einen Bruchteil der Phase
+// auseinander, und ob ein Blick genau dort hinfaellt, entscheidet die Last
+// des Rechners.
+//
+// Der alte 2P-Check versuchte es 3× im Abstand von 400 ms — zusammen 1,2 s,
+// also laenger als eine ganze Phase. Damit konnte er der wandernden Grenze
+// hinterherlaufen statt sie zu ueberspringen. Der 3P-Check sah nur EINMAL
+// hin. Beides ergab ein Flattern, das nichts ueber das Spiel aussagte.
+//
+// Gefragt ist auch nicht "immer gleich", sondern "holt auf": es genuegt,
+// dass die Seiten in EINER gemeinsamen Stichprobe uebereinstimmen. Sind sie
+// ueber drei Sekunden hinweg in JEDER Stichprobe verschieden, haengt der
+// Gast wirklich fest — genau der Fehler aus v3.0.7, den dieser Check
+// bewachen soll. Die Aussagekraft bleibt also erhalten.
+async function wartePhasenGleich(pages, waitMs = 3000) {
+  const lies = p => p.evaluate(() => {
+    const t = document.body.innerText;
+    return ['FEUER', 'BAUEN', 'START', 'KANONE'].find(k => t.includes(k)) || null;
+  });
+  const start = Date.now();
+  let letzte = [], versuche = 0;
+  while (Date.now() - start < waitMs) {
+    letzte = await Promise.all(pages.map(lies));
+    versuche++;
+    if (letzte[0] && letzte.every(x => x === letzte[0]))
+      return { gleich: true, phase: letzte[0], versuche, ms: Date.now() - start };
+    await pages[0].waitForTimeout(100);
+  }
+  return { gleich: false, phasen: letzte, versuche, ms: Date.now() - start };
+}
+
+// Auf das Stueck-Vorschau-Panel WARTEN statt einmal hinzusehen (v3.108.0).
+//
+// Der Check las den DOM in dem Augenblick, in dem die Bauphase gerade
+// begonnen hatte — React hatte da nicht zwingend schon gerendert. Ergebnis:
+// ein Flattern, das mit der Last des Rechners kam und ging (zwei Laeufe
+// desselben Baums, einmal 1 ❌, einmal 2 ❌). Dieselbe Bauart wie die
+// Bot-Flakes vorher: Momentaufnahme statt Wartebedingung.
+//
+// Die Bauphase dauert 25 s, 8 s Suchfrist sind also reichlich. Ist das
+// Panel dann immer noch nicht da, fehlt es wirklich — und die Meldung
+// sagt, wie lange gesucht wurde, statt nur "fehlt".
+async function wartePanel(page, waitMs = 8000) {
+  const start = Date.now();
+  const zaehle = () => Array.from(document.querySelectorAll('div')).filter(d =>
+    d.style.cursor === 'pointer' &&
+    d.style.touchAction === 'manipulation' &&
+    d.style.borderRadius === '10px' &&
+    d.querySelector('div[style*="grid-template-columns"]')).length;
+  while (Date.now() - start < waitMs) {
+    const n = await page.evaluate(zaehle);
+    if (n > 0) return { da: true, ms: Date.now() - start, n };
+    await page.waitForTimeout(150);
+  }
+  return { da: false, ms: Date.now() - start, n: 0 };
+}
+
 async function waitForPhase(page, keywords, waitMs = 6000) {
   const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
@@ -534,18 +637,29 @@ async function suiteMechanics(browser) {
     ok(`Schussphase direkt nach Setup: "${shoot1}" ✓`);
     await page.screenshot({ path: '/tmp/s2_shoot1.png' });
 
-    // Timer zählt — Phasengrenzen-bewusst: bei Phasenwechsel zwischen den
-    // Samples (Zeitraffer!) neu versuchen statt fälschlich zu failen.
-    let timerOk = false, fs0 = null, fs1 = null;
-    for (let att = 0; att < 3 && !timerOk; att++) {
-      fs0 = await getTimerValue(page);
-      await page.waitForTimeout(500);
-      fs1 = await getTimerValue(page);
-      if (fs0 !== null && fs1 !== null && fs1 < fs0) timerOk = true;
+    // Timer zählt — Phasengrenzen-bewusst (v3.108.0: Folge statt Paar).
+    //
+    // Vorher wurden zwei Werte im Abstand von 500 ms verglichen, dreimal.
+    // Unter TIMER_SPEEDUP sind 500 ms rund zehn Sekunden Spielzeit, das Paar
+    // kann also ueber eine Phasengrenze fallen — und die Meldung hiess dann
+    // "Schuss-Timer zählt nicht (25 → 25)", obwohl 25 die Dauer der BAUphase
+    // ist, nicht der Schussphase. Das Paar sagte nicht, was es gelesen hatte.
+    //
+    // Jetzt wird engmaschig abgetastet und die ganze Folge behalten: Es
+    // genuegt EIN fallendes Paar irgendwo darin. Schlaegt es fehl, steht die
+    // Folge in der Meldung — beim naechsten Mal muss niemand mehr raten.
+    const tWerte = [];
+    let timerOk = false;
+    const tEnde = Date.now() + 4000;
+    while (Date.now() < tEnde && !timerOk) {
+      const v = await getTimerValue(page);
+      if (v !== null && (tWerte.length === 0 || v !== tWerte[tWerte.length - 1])) tWerte.push(v);
+      for (let i = 1; i < tWerte.length; i++) if (tWerte[i] < tWerte[i - 1]) timerOk = true;
+      if (!timerOk) await page.waitForTimeout(120);
     }
     timerOk
-      ? ok(`Schuss-Timer zählt: ${fs0} → ${fs1} ✓`)
-      : fail(`Schuss-Timer zählt nicht (${fs0} → ${fs1})`);
+      ? ok(`Schuss-Timer zählt: ${tWerte.slice(0, 4).join(' → ')} ✓`)
+      : fail(`Schuss-Timer zählt nicht — gelesen: [${tWerte.join(', ')}]`);
 
     // Schuss-Geste
     console.log('💥 Schuss-Geste...');
@@ -587,17 +701,10 @@ async function suiteMechanics(browser) {
     ok('Canvas-Tap dreht Stück in Bauphase ✓');
 
     // Drehen-Panel (kompaktes Layout ohne Text-Label seit v3.11.25)
-    const panelOk = await page.evaluate(() => {
-      // Rotate buttons: div with cursor:pointer containing a gridTemplateColumns preview
-      const divs = Array.from(document.querySelectorAll('div'));
-      return divs.some(d =>
-        d.style.cursor === 'pointer' &&
-        d.style.touchAction === 'manipulation' &&
-        d.style.borderRadius === '10px' &&
-        d.querySelector('div[style*="grid-template-columns"]')
-      );
-    });
-    panelOk ? ok('Stück-Vorschau-Panel sichtbar ✓') : fail('Stück-Vorschau-Panel fehlt');
+    const panel = await wartePanel(page);
+    panel.da
+      ? ok(`Stück-Vorschau-Panel sichtbar nach ${panel.ms} ms (${panel.n} Stück) ✓`)
+      : fail(`Stück-Vorschau-Panel fehlt (${panel.ms} ms gesucht, Phase "${await getHudPhase(page)}")`);
 
     // Panel-Tap dreht
     const panelTap = await page.evaluate(() => {
@@ -1104,21 +1211,11 @@ async function suiteOnline2P(browser, fbPort) {
     guestPh ? ok(`Gast-Phase erkannt: "${guestPh.slice(0,25)}" ✓`) : fail('Gast: keine Phase erkannt');
 
     if (hostPh && guestPh) {
-      // Beide Seiten GLEICHZEITIG samplen; an Phasengrenzen (Zeitraffer)
-      // bis zu 3 Versuche, bevor Desync gemeldet wird.
-      let hK = null, gK = null, syncOk = false;
-      const readPh = p => p.evaluate(() => {
-        const t = document.body.innerText;
-        return ['FEUER','BAUEN','START','KANONE'].find(k => t.includes(k)) || null;
-      });
-      for (let att = 0; att < 3 && !syncOk; att++) {
-        [hK, gK] = await Promise.all([readPh(pH), readPh(pG)]);
-        if (hK && hK === gK) syncOk = true;
-        else await pH.waitForTimeout(400);
-      }
-      syncOk
-        ? ok(`Phase-Sync: beide in "${hK}" ✓`)
-        : fail(`Phase-Desync: Host="${hK}" Gast="${gK}"`);
+      const sync = await wartePhasenGleich([pH, pG]);
+      sync.gleich
+        ? ok(`Phase-Sync: beide in "${sync.phase}" (${sync.versuche}. Stichprobe) ✓`)
+        : fail(`Phase-Desync ueber ${sync.ms} ms / ${sync.versuche} Stichproben: `
+             + `Host="${sync.phasen[0]}" Gast="${sync.phasen[1]}"`);
     }
 
     // ── Timer auf Gast-Seite zählt (beweist laufenden State-Sync) ──
@@ -2890,13 +2987,11 @@ async function suiteOnline3P(browser, fbPort) {
 
     if (j1 && j2 && j3) {
       await H.page.waitForTimeout(2500);
-      const phases = await Promise.all([H.page, G2.page, G3.page].map(p => p.evaluate(() => {
-        const t = document.body.innerText;
-        return ['BAUEN', 'FEUER', 'START', 'KANONE'].find(k => t.includes(k)) || '?';
-      })));
-      phases[0] !== '?' && phases.every(x => x === phases[0])
-        ? ok(`3P Phasen-Sync: alle in "${phases[0]}" ✓`)
-        : fail(`3P Phasen-Desync: ${phases.join('/')}`);
+      const sync3 = await wartePhasenGleich([H.page, G2.page, G3.page]);
+      sync3.gleich
+        ? ok(`3P Phasen-Sync: alle in "${sync3.phase}" (${sync3.versuche}. Stichprobe) ✓`)
+        : fail(`3P Phasen-Desync ueber ${sync3.ms} ms / ${sync3.versuche} Stichproben: `
+             + sync3.phasen.join('/'));
     }
     // Alle sauber raus (Host zuerst → Gäste bekommen Ergebnis)
     await quitBtn(H.page);
@@ -4479,7 +4574,7 @@ async function suiteBot(browser) {
         // hatte Gelegenheiten und hat sie nicht genutzt".
         const SEAL_MS = 60000;
         const sealStart = Date.now();
-        let bauphasen = 0, vorPhase = null;
+        let bauphasen = 0, vorPhase = null, spielVorbei = false;
         while (Date.now() - sealStart < SEAL_MS) {
           const st = await page.evaluate(() => ({
             zu: !!(window.__castleClosed && window.__castleClosed(2) === true),
@@ -4490,6 +4585,10 @@ async function suiteBot(browser) {
             vorPhase = st.phase;
           }
           if (st.zu) { sealed = true; break; }
+          // Ist das Spiel vorbei, kommt keine Bauphase mehr — dann ist die
+          // Frist von 60 s reine Wartezeit, und am Ende stuende eine Aussage
+          // ueber den Bot, die der Lauf nie gepruefte hat.
+          if (st.phase === 'result') { spielVorbei = true; break; }
           await page.waitForTimeout(300);
         }
         const sek = ((Date.now() - sealStart) / 1000).toFixed(1);
@@ -4497,8 +4596,17 @@ async function suiteBot(browser) {
           ? ok(`Bau-KI: Bot hat die Bresche wieder versiegelt (Burg zu, nach ${sek}s) ✓`)
           : fail(`Bau-KI: Burg nach ${sek}s (Frist ${SEAL_MS / 1000}s) immer noch offen — `
                  + `${bauphasen} Bauphase(n) beobachtet`
-                 + (bauphasen === 0 ? ': es kam keine einzige, der Lauf war zu langsam'
-                                    : ': der Bot hatte Gelegenheit und dichtet nicht'));
+                 // Aus EINER Bauphase laesst sich nichts schliessen: Die
+                 // Bresche entsteht mitten in einer Phase, der Bot bekommt
+                 // davon nur den Rest. Erst ab zwei hatte er wirklich
+                 // Gelegenheit. Ein Lauf, der die Frage nicht stellen konnte,
+                 // darf sie auch nicht beantworten — sonst steht da „der Bot
+                 // dichtet nicht", und das ist dann schlicht unwahr.
+                 + (spielVorbei
+                      ? ': das Spiel endete vorher (Ergebnisschirm) — der Bot kam nicht mehr dazu'
+                      : bauphasen < 2
+                      ? ': zu wenige fuer einen Schluss, der Lauf war zu langsam'
+                      : ': der Bot hatte Gelegenheit und dichtet nicht'));
       } else {
         fail(`Bau-KI: Bresche nicht erzeugbar (n=${blasted.n}, open=${blasted.open})`);
       }
@@ -4510,10 +4618,14 @@ async function suiteBot(browser) {
       // Schritt schon gerissen, und zwar als Folgefehler.
       const sawBuild = await waitForPhase(page, ['BAUEN'], 30000);
       if (sawBuild) {
-        const hands = await page.evaluate(() =>
-          document.querySelectorAll('div[style*="grid-template-columns"]').length);
-        hands === 1 ? ok('Bot-Modus: nur eigene Hand-Vorschau sichtbar (1) ✓')
-                    : fail(`Bot-Modus: ${hands} Hand-Vorschauen statt 1 (Bot-Hand sichtbar?)`);
+        const haende = await beobachteHaende(page);
+        haende.max === 1
+          ? ok(`Bot-Modus: nur eigene Hand-Vorschau sichtbar `
+               + `(1, ueber ${haende.proben} Stichproben) ✓`)
+          : fail(`Bot-Modus: hoechstens ${haende.max} Hand-Vorschauen statt 1 `
+               + `(${haende.proben} Stichproben in ${haende.ms} ms) `
+               + (haende.max === 0 ? '— es wurde nie eine gerendert'
+                                   : '— Bot-Hand sichtbar?'));
       } else fail('Bot-Modus: Bauphase für Hand-Check nicht erreicht');
     }
 
@@ -4525,7 +4637,20 @@ async function suiteBot(browser) {
     // der Bauphase plus die ganze Rüstphase dazwischen; unter Last reicht das.
     // Eine großzügige Frist prüft dieselbe Aussage und wird nicht grundlos rot.
     const sawShoot = await waitForPhase(page, ['FEUER'], 20000);
-    sawShoot ? ok('Bot-Spiel erreicht Schussphase ✓') : fail('Schussphase nicht erreicht');
+    if (sawShoot) ok('Bot-Spiel erreicht Schussphase ✓');
+    else {
+      // Bei 20 s Frist ist "nicht erreicht" kein Timing-Befund mehr, sondern
+      // heisst: das Spiel laeuft nicht weiter. Dann muss die Meldung sagen,
+      // WAS stattdessen zu sehen ist — sonst faengt das Raten an.
+      const lage = await page.evaluate(() => ({
+        phase: ['FEUER','BAUEN','START','KANONE'].find(k =>
+          document.body.innerText.includes(k)) || '(keine)',
+        ergebnis: /SIEG|NIEDERLAGE|ERGEBNIS/i.test(document.body.innerText),
+        text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 160),
+      }));
+      fail(`Schussphase nicht erreicht — Phase "${lage.phase}", `
+         + `Ergebnisschirm: ${lage.ergebnis ? 'JA' : 'nein'} | ${lage.text}`);
+    }
     await waitForPhase(page, ['KANONE'], 20000);
     await page.evaluate(() => { window.__mmDebug = true; });
     // ── Premium-Shop (v3.17.0): Panel-Struktur in der Rüstphase ──

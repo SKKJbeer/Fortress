@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.107.0
+- **Aktuelle Version**: v3.108.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -379,6 +379,25 @@ npm run test:e2e
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)
 - **Online immer mitgetestet**: Code-Join (Host+Gast, Phasen-Sync, Gast-Timer, Aktionen) UND Matchmaking-Suite (`suiteMatchmaking`, seit v3.14.15): Quick Match ×2 hintereinander (Geister-Listener-Regression), Ranked-Result ohne Rematch-Buttons, Queue-Leere nach Matches (Ticket-Leichen), Selbst-Match-Schutz (gleiche `DEVICE_ID` via `mmIdentInit`-Override in `makeOnlineCtx(browser, fbPort, extraInit)`)
 - **Regel: Kein Commit ohne grünen Test**
+- **Wartebedingung statt Momentaufnahme** (seit v3.108.0): Im Zeitraffer
+  (`TIMER_SPEEDUP`: 1000 ms → 50 ms) dauert eine Phase **rund eine Sekunde**.
+  Jede Pruefung, die den DOM EINMAL liest oder zwei Werte im Abstand von
+  Hunderten Millisekunden vergleicht, wuerfelt damit gegen die Last des
+  Rechners. Fuenf solche Stellen fielen auf einmal auf (SPEC v3.108.0).
+  Regeln daraus:
+  1. **Auf den Zustand warten, nicht ihn erblicken** — pollen mit Frist, und
+     die Frist kurz gegen die Phasendauer halten, nicht lang. Ein Vergleich
+     ueber 1,2 s laeuft der Phasengrenze hinterher, statt sie zu ueberspringen.
+  2. **Die Meldung muss sagen, was beobachtet wurde** (gelesene Werte, Zahl
+     der Stichproben, Phase, Ergebnisschirm ja/nein). „Timer zaehlt nicht
+     (25 → 25)" verschwieg, dass 25 die BAUphasen-Dauer ist.
+  3. **Nichts behaupten, was der Lauf nicht gepruefte hat.** Aus einer
+     beobachteten Bauphase folgt nicht „der Bot dichtet nicht" — die Bresche
+     entsteht mitten in der Phase. Fehlt die Gelegenheit, sagt das die Meldung.
+  4. **Jede Reparatur gegenpruefen**: Fehlerfall kuenstlich erzeugen und
+     sehen, dass es rot wird. Beim Hand-Check sprang die Gegenprobe NICHT an —
+     erst das zeigte, dass nur zwei Stichproben genommen wurden. Ohne sie
+     waere das Flattern versteckt statt behoben gewesen.
 - **Komponenten wirklich rendern, nicht nur aufrufen** (seit v3.98.0): Ein
   direkter Funktionsaufruf scheitert bei Hooks und lässt die Komponente
   ungeprüft. `renderToStaticMarkup` aus `react-dom/server` rendert richtig —

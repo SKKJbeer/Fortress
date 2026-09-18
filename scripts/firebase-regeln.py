@@ -202,49 +202,96 @@ def regeln_schreiben(tok: str, inhalt: str) -> bool:
     return True
 
 
-def anon_token() -> str | None:
-    """Ein echtes anonymes Anmelde-Token — genau das, was ein Spieler haette."""
+def anon_konto() -> tuple[str | None, str | None, str]:
+    """Eine echte anonyme Anmeldung holen — genau die, die ein Spieler bekommt.
+
+    Das ist zugleich die Probe, ob die anonyme Anmeldung im Projekt ueberhaupt
+    eingeschaltet ist. Die Console zu befragen waere eine zweite Wahrheit; hier
+    zaehlt, was der Client tatsaechlich in die Hand bekommt.
+    """
     r = requests.post(
         f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={WEB_KEY}",
         json={"returnSecureToken": True}, timeout=30)
-    return r.json().get("idToken") if r.status_code == 200 else None
+    if r.status_code != 200:
+        grund = ""
+        try:
+            grund = r.json().get("error", {}).get("message", "")
+        except Exception:
+            pass
+        if grund == "ADMIN_ONLY_OPERATION":
+            grund = ("ADMIN_ONLY_OPERATION — die anonyme Anmeldung ist im Projekt AUS. "
+                     "Console → Authentication → Sign-in method → Anonym aktivieren.")
+        return None, None, f"HTTP {r.status_code} {grund}".strip()
+    d = r.json()
+    return d.get("idToken"), d.get("localId"), ""
 
 
-def probe() -> list[str]:
+def anon_weg(tok: str) -> None:
+    """Das Wegwerf-Konto der Probe wieder loeschen — keine Leiche in Auth."""
+    try:
+        requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={WEB_KEY}",
+                      json={"idToken": tok}, timeout=30)
+    except Exception:
+        pass
+
+
+def weg(pfad: str, admin: str) -> None:
+    """Aufraeumen mit dem Dienstkonto — das umgeht die Regeln und kommt immer durch.
+
+    Wichtig fuer telemetry/funnel: dort steht `newData.exists()` in der
+    Schreibregel, ein Loeschen ist damit fuer Spieler VERBOTEN (Absicht:
+    niemand soll fremde Messpunkte tilgen). Die Probe raeumt also als Admin
+    auf, sonst bleibt ihr eigener Abfall liegen.
+    """
+    requests.delete(f"{DB}/{pfad}.json", headers={"Authorization": f"Bearer {admin}"}, timeout=30)
+
+
+def probe(admin: str, anon: str, uid: str) -> list[str]:
     """Nach dem Einspielen: Greifen die Regeln — und laeuft das Spiel noch?
 
     BEIDE Richtungen zaehlen. Eine Regel, die alles abweist, ist nicht sicher,
     sondern kaputt: Dann kann auch kein Spieler mehr spielen.
     """
     fehler = []
-    marke = "__probe_x"
+    m = "__probe_x"
 
     # a) unangemeldet schreiben — muss abgewiesen werden
-    for pfad in (f"games/{marke}/createdAt", f"queue2/{marke}/ts",
-                 f"leaderboard/{marke}/wins", f"players/{marke}/v"):
+    for pfad in (f"games/{m}/createdAt", f"queue2/{m}/ts", f"queue3/{m}/ts",
+                 f"leaderboard/{m}/wins", f"players/{m}/v",
+                 f"telemetry/{m}/ts", f"funnel/{m}/ts"):
+        zweig = pfad.split("/")[0]
         r = requests.put(f"{DB}/{pfad}.json", json=1, timeout=30)
         if r.status_code in (401, 403):
-            sag(f"  ✓ unangemeldet abgewiesen: {pfad.split('/')[0]} (HTTP {r.status_code})")
+            sag(f"  ✓ unangemeldet abgewiesen: {zweig} (HTTP {r.status_code})")
         else:
             fehler.append(f"unangemeldeter Schreibzugriff auf {pfad} kam durch (HTTP {r.status_code})")
-            sag(f"  ✗ DURCHGEKOMMEN: {pfad} (HTTP {r.status_code}) — wird aufgeraeumt")
-            requests.delete(f"{DB}/{'/'.join(pfad.split('/')[:2])}.json", timeout=30)
+            sag(f"  ✗ DURCHGEKOMMEN: {zweig} (HTTP {r.status_code}) — wird aufgeraeumt")
+            weg("/".join(pfad.split("/")[:2]), admin)
 
-    # b) ANGEMELDET schreiben — muss klappen, sonst ist das Spiel tot
-    tok = anon_token()
-    if not tok:
-        fehler.append("kein anonymes Token zu bekommen — Anmeldung pruefen")
-        sag("  ✗ kein anonymes Anmelde-Token")
-        return fehler
-    r = requests.put(f"{DB}/games/{marke}2.json",
-                     json={"createdAt": 1, "numPlayers": 2}, params={"auth": tok}, timeout=30)
-    if r.status_code == 200:
-        sag("  ✓ angemeldet schreiben klappt (Spiel bleibt spielbar)")
-        requests.delete(f"{DB}/games/{marke}2.json", params={"auth": tok}, timeout=30)
-    else:
-        fehler.append(f"ANGEMELDETER Schreibzugriff abgewiesen (HTTP {r.status_code}) "
-                      f"— die Regeln sperren echte Spieler aus")
-        sag(f"  ✗ angemeldet abgewiesen (HTTP {r.status_code}) — das sperrt Spieler aus")
+    # b) ANGEMELDET schreiben — muss klappen, sonst ist das Spiel tot.
+    #    JEDER Zweig einzeln, nicht nur einer stellvertretend: `players` und
+    #    `leaderboard` haengen an `auth.uid === $schluessel`, `games` nicht.
+    #    Ein Tippfehler genau dort faellt nur auf, wenn man den Zweig auch
+    #    anfasst — sonst ist die Bestenliste still tot und die Probe gruen.
+    proben = [
+        (f"games/{m}2",        {"createdAt": 1, "numPlayers": 2}),
+        (f"queue2/{m}",        {"ts": 1, "status": "warte"}),
+        (f"queue3/{m}",        {"ts": 1, "status": "warte"}),
+        (f"leaderboard/{uid}", {"name": "__probe", "wins": 0, "games": 0}),
+        (f"players/{uid}",     {"p": "{}", "updatedAt": 1}),
+        (f"telemetry/{m}",     {"ts": 1, "mode": "probe", "rounds": 1, "per": 1}),
+        (f"funnel/{m}",        {"ts": 1, "schritt": "probe"}),
+    ]
+    for pfad, wert in proben:
+        zweig = pfad.split("/")[0]
+        r = requests.put(f"{DB}/{pfad}.json", json=wert, params={"auth": anon}, timeout=30)
+        if r.status_code == 200:
+            sag(f"  ✓ angemeldet schreiben klappt: {zweig}")
+        else:
+            fehler.append(f"ANGEMELDETER Schreibzugriff auf {zweig} abgewiesen "
+                          f"(HTTP {r.status_code}) — die Regeln sperren echte Spieler aus")
+            sag(f"  ✗ angemeldet abgewiesen: {zweig} (HTTP {r.status_code}) — {r.text[:120]}")
+        weg(pfad, admin)
     return fehler
 
 
@@ -266,10 +313,16 @@ def main() -> int:
     sag(f"identisch               : {'ja' if gleich else 'NEIN'}\n")
 
     if "--stand" in arg or not arg:
-        sag("Nur gelesen. --trocken zeigt den Unterschied, --veroeffentlichen spielt ein.")
+        anon, uid, warum = anon_konto()
+        if anon:
+            sag(f"Anonyme Anmeldung  : geht (uid {uid[:6]}…)")
+            anon_weg(anon)
+        else:
+            sag(f"Anonyme Anmeldung  : GEHT NICHT — {warum}")
+        sag("\nNur gelesen. --trocken zeigt den Unterschied, --veroeffentlichen spielt ein.")
         return 0
 
-    if gleich:
+    if gleich and "--veroeffentlichen" not in arg:
         sag("Nichts zu tun — die Datenbank hat bereits diese Regeln.")
         return 0
 
@@ -284,32 +337,64 @@ def main() -> int:
         sag("Unbekannter Aufruf. --stand | --trocken | --veroeffentlichen")
         return 2
 
+    # Reihenfolge-Riegel: ERST feststellen, ob sich ueberhaupt jemand anmelden
+    # kann, DANN schreiben. Die neuen Regeln verlangen `auth != null`. Ist die
+    # anonyme Anmeldung im Projekt aus, sperren sie JEDEN aus — das faellt sonst
+    # erst der Probe auf, also NACH dem Schreiben, mit einem Rueckrollen
+    # dazwischen, das seinerseits schiefgehen kann. Hier kostet es einen
+    # HTTP-Aufruf, es vorher zu wissen.
+    anon, uid, warum = anon_konto()
+    if not anon:
+        sag("ABBRUCH — es wurde NICHTS geschrieben.")
+        sag(f"  Anonyme Anmeldung nicht moeglich: {warum}")
+        sag("  Die neuen Regeln verlangen auth != null; ohne Anmeldung sperren sie")
+        sag("  jeden Spieler aus. Erst die Anmeldung einschalten, dann erneut starten.")
+        return 1
+    sag(f"Anonyme Anmeldung funktioniert (uid {uid[:6]}…) — die Reihenfolge stimmt.\n")
+
     # Sicherung IMMER ausgeben, bevor geschrieben wird — steht damit im
     # Ablauf-Protokoll, auch wenn danach alles schiefgeht.
     sag("--- SICHERUNG DER ALTEN REGELN (fuer die Hand-Rueckkehr) ---")
     sag(alt)
     sag("--- ENDE SICHERUNG ---\n")
 
-    sag("Spiele die neuen Regeln ein …")
-    if not regeln_schreiben(tok, neu):
-        return 1
-    sag("  ✓ eingespielt\n")
+    if gleich:
+        # Schon eingespielt — aber "identisch" ist ein Textvergleich, keine
+        # Aussage ueber Verhalten. Die Probe laeuft trotzdem: So laesst sich
+        # der Ablauf jederzeit erneut fahren, um zu BESTAETIGEN, dass die
+        # Regeln noch greifen, statt es aus einer Zeichenzahl zu schliessen.
+        sag("Die Datenbank hat bereits diese Regeln — nur nachpruefen, nichts schreiben.\n")
+    else:
+        sag("Spiele die neuen Regeln ein …")
+        if not regeln_schreiben(tok, neu):
+            return 1
+        sag("  ✓ eingespielt\n")
 
     sag("Pruefe sofort nach:")
-    fehler = probe()
+    fehler = probe(tok, anon, uid)
     if not fehler:
+        anon_weg(anon)
         sag("\nAlles wie vorgesehen. Die Regeln stehen.")
         return 0
 
     sag("\n!!! Die Pruefung ist durchgefallen:")
     for f in fehler:
         sag(f"  - {f}")
+    if gleich:
+        # Nichts geschrieben, also nichts zurueckzurollen. Ein Rueckrollen auf
+        # "die alten Regeln" waere hier ein Rueckrollen auf DIESELBEN.
+        sag("\nEs wurde nichts geschrieben — die Regeln standen schon so.")
+        sag("Der Fehlschlag betrifft also den ZUSTAND der Datenbank, nicht diesen Lauf.")
+        anon_weg(anon)
+        return 1
+
     sag("\nRolle auf die alten Regeln zurueck …")
     if regeln_schreiben(tok, alt):
         sag("  ✓ zurueckgerollt — der Zustand ist wie vorher.")
     else:
         sag("  ! ZURUECKROLLEN FEHLGESCHLAGEN. Die Sicherung steht oben im Protokoll,")
         sag("    sie muss von Hand in die Console eingefuegt werden.")
+    anon_weg(anon)
     return 1
 
 

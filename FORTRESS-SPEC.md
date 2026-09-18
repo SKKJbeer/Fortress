@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.107.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.108.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7215,3 +7215,127 @@ Beides behoben, danach mit 1250 Bytes (nicht durch 3 teilbar, also mit
 Auffüllung) nachgestellt: Der Detektor greift und meldet ~64.
 
 Tests grün (Typen 0, Unit 145/145, iOS 21/21, E2E 431/431).
+
+## v3.108.0 — Die Probe prüft alle sieben Zweige, nicht einen stellvertretend
+
+Der Dienstkonto-Zugang steht (`stand` gelesen: 1832 Zeichen in der Datenbank
+gegen 7683 in der Datei, also noch die alten Regeln). Vor dem Einspielen
+zwei Lücken in `scripts/firebase-regeln.py` geschlossen — beide von der Art,
+die eine grüne Probe erzeugt und trotzdem etwas kaputtmacht.
+
+**1. Die angemeldete Probe fasste nur `games` an.** Damit war sie stellvertretend
+gedacht, ist es aber nicht: `players` und `leaderboard` hängen an
+`auth.uid === $schlüssel`, `games` nur an `auth != null`. Ein Tippfehler genau
+in dieser Bedingung hätte `games` passieren lassen — Spiel läuft, Probe grün —
+und still die Bestenliste plus den Cloud-Speicherstand abgewürgt. Jetzt schreibt
+die Probe in **alle sieben Zweige einzeln** (games, queue2, queue3, leaderboard,
+players, telemetry, funnel) und räumt jeden wieder ab.
+
+**2. Der Reihenfolge-Riegel lief hinterher.** Die anonyme Anmeldung wurde erst
+NACH dem Schreiben geholt. Ist sie im Projekt aus, sperren die neuen Regeln
+jeden aus, und das fällt erst der Probe auf — mit einem Zurückrollen dazwischen,
+das seinerseits fehlschlagen kann. Jetzt wird das Wegwerf-Konto VOR dem ersten
+Schreiben geholt; klappt das nicht, bricht das Skript ab, ohne ein Zeichen
+geschrieben zu haben, und nennt den Grund (`ADMIN_ONLY_OPERATION` heißt: Anmeldung
+in der Console einschalten).
+
+Nebenbei zwei kleine Sachen, die beim Bauen der Probe auffielen:
+
+- **Aufgeräumt wird als Admin, nicht als Spieler.** `telemetry` und `funnel`
+  tragen `newData.exists()` in der Schreibregel — ein Löschen ist damit für
+  Spieler verboten, und zwar mit Absicht (niemand soll fremde Messpunkte
+  tilgen). Die Probe hätte ihren eigenen Abfall also nicht wegbekommen.
+  Das Dienstkonto umgeht die Regeln und kommt durch.
+- **Das Wegwerf-Konto wird gelöscht.** `accounts:signUp` legt einen echten
+  anonymen Nutzer an. Jeder Lauf hätte einen zurückgelassen.
+
+`--stand` meldet jetzt zusätzlich, ob die anonyme Anmeldung überhaupt geht —
+lesend, ohne irgendetwas zu verändern.
+
+### Drei Flatter-Prüfungen derselben Bauart — abgestellt und gegengeprüft
+
+Beim Verifizieren fielen drei Prüfungen auf, die kamen und gingen, ohne dass
+sich am Spiel etwas geändert hätte. Zwei Läufe desselben Baums ergaben einmal
+1 ❌, einmal 2 ❌ — das ist Flattern, kein Befund. Alle drei hatten dieselbe
+Bauart: **eine Momentaufnahme statt einer Wartebedingung.**
+
+1. **Stück-Vorschau-Panel.** Wurde in dem Augenblick gezählt, in dem die
+   Bauphase gerade begonnen hatte — React hatte da nicht zwingend gerendert.
+   Jetzt bis zu 8 s gepollt; im Normalfall ist das Panel nach 3–21 ms da.
+2. **Phasen-Sync Host/Gast (2P und 3P).** Unter `TIMER_SPEEDUP` wird aus
+   1000 ms ein 50-ms-Tick — **eine Phase dauert im Test rund eine Sekunde.**
+   Host und Gast sind dabei nie dauerhaft gleich: der Host rechnet, pusht
+   (höchstens 8/s), der Gast rendert danach. Der alte 2P-Check versuchte es
+   3× im Abstand von 400 ms, also über eine *ganze Phase* hinweg — er konnte
+   der wandernden Grenze hinterherlaufen. Der 3P-Check sah nur einmal hin.
+   Jetzt: bis zu 3 s in 100-ms-Schritten, und es genügt EINE gemeinsame
+   Stichprobe, in der alle übereinstimmen. Die Aussage bleibt: Bleiben sie
+   über 3 s in *jeder* Stichprobe verschieden, hängt der Gast wirklich fest —
+   der Fehler aus v3.0.7, den dieser Check bewacht.
+3. **Bot-Hand versteckt (v3.30.1).** Einmal gezählt, also in beide Richtungen
+   unzuverlässig: zu früh gelesen ergab 0 (sieht aus wie ein Fehler), und eine
+   erst später auftauchende Bot-Hand wäre schlicht verpasst worden. Jetzt wird
+   die laufende Bauphase bis zu ihrem Ende beobachtet und das **Maximum**
+   bewertet — strenger als vorher, nicht nachsichtiger.
+
+**Jede der drei Änderungen wurde gegengeprüft**, indem der Fehlerfall künstlich
+erzeugt wurde (verfälschte Gast-Lesung, vorgetäuschte zweite Hand). Alle drei
+wurden rot. Eine Prüfung, die nach der Reparatur nicht mehr rot werden *kann*,
+hätte das Flattern nur versteckt.
+
+**Was die Gegenprobe nebenbei fand.** Beim Hand-Check sollte sie bei der
+dritten Stichprobe zuschlagen — und sprang gar nicht an. Grund: es gab nur
+zwei Stichproben, der Check stolperte ans Phasen*ende*. Der naheliegende Fix
+(erst raus aus der Bauphase, dann rein) brachte 21 Stichproben und riss die
+Suite an anderer Stelle: „Schussphase nicht erreicht". Die verbesserte Meldung
+nannte den Grund selbst — *„Rot siegt! Burg war nicht geschlossen"*. Eine
+Runde extra kostet den Test-Spieler das Spiel, weil der nie nachbaut: Der Bot
+schießt ihm die Mauer auf, und am nächsten Bauende ist die Burg offen. Kein
+Produktfehler, sondern der Preis der Wartezeit — deshalb wird nur der Rest der
+laufenden Phase beobachtet.
+
+Dazu sagt die Meldung „Schussphase nicht erreicht" jetzt, **was stattdessen auf
+dem Schirm steht** (Phase, Ergebnisschirm ja/nein, Anfang des Textes). Bei
+20 s Frist ist das kein Timing-Befund mehr, sondern heißt: das Spiel läuft
+nicht weiter. Dann muss die Meldung den Grund liefern, statt Raten auszulösen.
+
+### Zwei weitere, und die neue Meldung hat sie selbst erklärt
+
+Fünf Läufe hintereinander (deutlich mehr Last als im CI) brachten zwei weitere
+Flatterstellen ans Licht. Beide Male lieferte die eben eingebaute Diagnose den
+Grund frei Haus, statt eine Raterunde auszulösen:
+
+4. **Schuss-Timer.** `Schuss-Timer zählt nicht (25 → 25)` — und 25 ist die
+   Dauer der **Bau**phase, nicht der Schussphase. Zwei Werte im Abstand von
+   500 ms verglichen sind unter `TIMER_SPEEDUP` rund zehn Sekunden Spielzeit
+   auseinander; das Paar kann also über eine Phasengrenze fallen. Jetzt wird
+   engmaschig abgetastet, es genügt ein fallendes Paar irgendwo in der Folge,
+   und bei einem Fehlschlag steht **die ganze gelesene Folge** in der Meldung.
+5. **Versiegelungs-Frist.** Der Lauf meldete `Burg nach 60.0s immer noch offen
+   — 1 Bauphase(n) beobachtet: der Bot hatte Gelegenheit und dichtet nicht`,
+   und gleich darauf `Blau siegt! Burg war nicht geschlossen`: Der **Bot** hatte
+   verloren, die zwei Folgefehler waren nur Nachhall desselben Ereignisses.
+
+   Zwei Sachen daran waren falsch. Erstens wartete die Schleife die vollen 60 s
+   ab, obwohl das Spiel längst im Ergebnisschirm stand — dort kommt nie wieder
+   eine Bauphase. Zweitens, und schwerer: Aus **einer** beobachteten Bauphase
+   folgt nichts. Die Bresche entsteht mitten in einer Phase, der Bot bekommt
+   davon nur den Rest. Der Satz „der Bot hatte Gelegenheit und dichtet nicht"
+   war unter Last schlicht unwahr — eine Prüfung, die die Frage nicht stellen
+   konnte, darf sie auch nicht beantworten. Jetzt bricht die Schleife beim
+   Ergebnisschirm ab und unterscheidet drei Fälle: Spiel vorher zu Ende,
+   zu wenige Bauphasen für einen Schluss, oder tatsächlich säumiger Bot.
+
+Die Frist bleibt ein Fehlschlag, wenn der Lauf zu langsam war — nur eben mit
+der richtigen Begründung. Stillschweigend durchzuwinken hieße, eine echte
+Regression der Bau-KI unter Last zu verstecken.
+
+### `--veroeffentlichen` prüft jetzt auch, wenn es nichts zu schreiben gibt
+
+Bisher brach der Ablauf bei identischen Regeln mit „Nichts zu tun" ab — und
+prüfte damit nie. Aber „identisch" ist ein **Textvergleich, keine Aussage über
+Verhalten**. Jetzt läuft die Probe trotzdem: Der Ablauf lässt sich jederzeit
+erneut fahren, um zu *bestätigen*, dass die Regeln noch greifen, statt das aus
+einer Zeichenzahl zu schließen. Geschrieben wird dabei nichts, und ein
+Fehlschlag rollt folgerichtig auch nichts zurück — er sagt stattdessen, dass
+der Befund den Zustand der Datenbank betrifft und nicht diesen Lauf.

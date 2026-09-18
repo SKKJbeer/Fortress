@@ -4,3 +4,7 @@ dist-ios/
 ios/App/App/public/
 .DS_Store
 build/
+
+# Python-Zwischenstand (entsteht bei py_compile-Pruefungen)
+__pycache__/
+*.pyc
