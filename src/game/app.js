@@ -970,6 +970,15 @@ window.StackSiegeApp = function StackSiegeApp() {
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
+  // Beim Oeffnen des Online-Schirms EINMAL messen (v3.111.2).
+  useEffect(() => {
+    if (mpScreen !== "online") return;
+    let weg = false;
+    setNetzInfo(null);
+    pruefeVerbindung().then((i) => { if (!weg) setNetzInfo(i); }).catch(() => {});
+    return () => { weg = true; };
+  }, [mpScreen]);
+
   function openTutorial() { setOnboardStep(0); setShowOnboarding(true); }
   function finishOnboarding() {
     try { localStorage.setItem('fortress_onboarded', '1'); } catch (e) {}
@@ -1389,6 +1398,39 @@ window.StackSiegeApp = function StackSiegeApp() {
     const timer = setTimeout(() => { won ? SFX.win() : SFX.lose(); }, 250);
     return () => clearTimeout(timer);
   }, [screen, resultInfo]);
+  // ── Selbstauskunft zur Verbindung (v3.111.2) ───────────────────────────
+  //
+  // Anlass: Aus der TestFlight-App kam „geht gar nichts" — Matchmaking ohne
+  // Reaktion, Bestenliste ewig auf „Laedt…". Server, Regeln und Konfiguration
+  // waren nachweislich in Ordnung (WebSocket-Handshake 101, Bestenliste
+  // unangemeldet in 0,5 s lesbar). Der Fehler sitzt auf dem Geraet — und dort
+  // ist von aussen nichts zu sehen.
+  //
+  // Diese Zeile macht den Zustand LESBAR: Ist das SDK da? Gibt es eine uid?
+  // Wie lange braucht ein winziger Lesezugriff? Ohne sie bleibt jede weitere
+  // Diagnose Raten, und Raten hat in dieser Sitzung schon zweimal danebengelegen.
+  const [netzInfo, setNetzInfo] = useState(null);
+  async function pruefeVerbindung() {
+    const w = typeof window !== "undefined" ? window : {};
+    const s = sdk();
+    const info = {
+      sdk: !!s,
+      uid: s && s.uid ? String(s.uid).slice(0, 6) + "\u2026" : null,
+      bootFehler: w.__fbError || "",
+      authFehler: w.__fbAuthError || "",
+      lesen: null
+    };
+    if (!s) return info;
+    const t0 = Date.now();
+    // Ein winziger, oeffentlich lesbarer Pfad. Auch „gibt es nicht" ist eine
+    // Antwort — gemessen wird die Umlaufzeit, nicht der Inhalt.
+    const r = await Promise.race([
+      fb.get("leaderboard/ping"),
+      new Promise((x) => setTimeout(() => x("__zeit"), 6000))
+    ]);
+    info.lesen = r === "__zeit" ? "zeit" : Date.now() - t0;
+    return info;
+  }
   const [lbRaw, setLbRaw] = useState(null);
   // Warum die Bestenliste leer ist (v3.111.1) — null = kein Fehler.
   const [lbFehler, setLbFehler] = useState(null);
@@ -6836,7 +6878,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8034,7 +8076,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     fontSize: 14,
     borderRadius: 12,
     cursor: "pointer"
-  } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { fontSize: 11, lineHeight: 1.6, marginBottom: 14, padding: "8px 10px", borderRadius: 8, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(51,65,85,0.6)", color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? "#64748b" : "#f59e0b", letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
     background: "rgba(245,158,11,0.12)",
     border: "1px solid rgba(245,158,11,0.3)",
     borderRadius: 8,

@@ -3442,6 +3442,61 @@ async function suiteBestenliste(browser) {
     } finally { await ctx.close(); }
   }
 
+  // ── 3) Selbstauskunft im Online-Schirm (v3.111.2) ─────────────
+  //
+  // Sie ist der Ersatz fuer einen Debugger, den es auf dem Telefon nicht
+  // gibt. Deshalb muss sie GENAU DANN etwas sagen, wenn nichts geht — und
+  // darf nicht bloss im Gutfall huebsch aussehen. Beide Faelle werden
+  // geprueft.
+  for (const [name, init, erwartet] of [
+    ['heil',   `window.__fb.ref = (db, pfad) => ({ __pfad: String(pfad) });
+                window.__fb.uid = 'u_probe1';
+                window.__fb.get = async () => ({ exists: () => false, val: () => null });`,
+     { gut: true }],
+    ['stumm',  `window.__fb.ref = (db, pfad) => ({ __pfad: String(pfad) });
+                window.__fb.uid = null;
+                window.__fbAuthError = 'auth/network-request-failed';
+                window.__fb.get = () => new Promise(() => {});`,
+     { gut: false }],
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
+      serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    await page.addInitScript(init);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await loadMenu(page);
+      await jsClick(page, ['ONLINE']);
+      await page.waitForTimeout(500);
+      let zeile = '';
+      for (let i = 0; i < 60; i++) {
+        zeile = await page.evaluate(() => {
+          const e = document.querySelector('[data-netz]');
+          return e ? e.textContent.trim() : '';
+        });
+        if (zeile && !/wird gepr|Checking/.test(zeile)) break;
+        await page.waitForTimeout(250);
+      }
+      if (erwartet.gut) {
+        /SDK ✓/.test(zeile) && /u_prob/.test(zeile) && /\d+ ms/.test(zeile)
+          ? ok(`Verbindungsauskunft (heil): "${zeile}" ✓`)
+          : fail(`Verbindungsauskunft (heil) unvollstaendig: "${zeile}"`);
+      } else {
+        /keine Verbindung|no connection/.test(zeile)
+          ? ok(`Verbindungsauskunft (stumm): nennt die fehlende Verbindung ✓`)
+          : fail(`Verbindungsauskunft (stumm) schweigt: "${zeile}"`);
+        /keine Anmeldung|not signed in/.test(zeile)
+          ? ok('Verbindungsauskunft (stumm): nennt die fehlende Anmeldung ✓')
+          : fail(`Verbindungsauskunft (stumm) verschweigt die Anmeldung: "${zeile}"`);
+        /network-request-failed/.test(zeile)
+          ? ok('Verbindungsauskunft (stumm): nennt den technischen Grund ✓')
+          : fail(`Verbindungsauskunft (stumm) ohne Grund: "${zeile}"`);
+      }
+    } finally { await ctx.close(); }
+  }
+
   errs.length === 0 ? ok('Bestenliste: keine JS-Fehler ✓')
                     : errs.slice(0, 3).forEach(e => fail(`Bestenliste JS: ${e.slice(0, 90)}`));
   return { res, errs };

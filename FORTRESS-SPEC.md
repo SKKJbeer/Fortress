@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7666,3 +7666,48 @@ Browser-Kontext über **acht Sekunden** — das ist genau die Frist, deren Ablau
 sie prüft. Dieselbe Überlast, wegen der Matchmaking und 3P schon seriell stehen,
 und wovor der Code an drei Stellen warnt. Jetzt läuft sie seriell in
 `onlineHeavy`; zehn Sekunden dort sind billiger als ein Flattern im Deployment.
+
+## v3.111.2 — Die App sagt jetzt selbst, was ihr fehlt
+
+Rückmeldung vom Gerät: **„geht gar nichts"** — Matchmaking ohne Reaktion,
+Bestenliste weiter auf „Lädt…". Damit war klar, dass es nicht die Bestenliste
+ist, sondern die Firebase-Verbindung im WebView insgesamt.
+
+### Was nachweislich NICHT die Ursache ist
+
+| Geprüft | Ergebnis |
+|---|---|
+| Sicherheitsregeln | Bestenliste unangemeldet lesbar: **HTTP 200**, 0,5 s, 45 Einträge |
+| RTDB-WebSocket (der Weg des SDK) | **HTTP 101 Switching Protocols** + Server-Hello |
+| Konfiguration in Bau 29 | `apiKey`, `authDomain`, `databaseURL`, `projectId`, `appId` vollständig |
+| Content-Security-Policy | keine vorhanden |
+| App Transport Security (iOS) | kein einschränkender Eintrag |
+
+Server, Regeln und Konfiguration sind damit ausgeschlossen. Der Fehler sitzt
+auf dem Gerät — und dort ist von außen nichts zu sehen.
+
+### Also bekommt die App eine Selbstauskunft
+
+Im Online-Schirm steht jetzt eine Zeile, die den Zustand **lesbar** macht:
+
+```
+Verbindung: SDK ✓ · u_a1b2… · 420 ms
+Verbindung: SDK ✓ · keine Anmeldung · keine Verbindung · auth/network-request-failed
+```
+
+Drei Angaben, jede beantwortet eine eigene Frage: Ist das SDK überhaupt
+geladen? Gibt es eine anonyme Kennung? Wie lange braucht ein winziger, öffentlich
+lesbarer Zugriff — und kommt er überhaupt zurück? Dazu der technische Grund,
+falls einer vorliegt.
+
+Das ist der Ersatz für einen Debugger, den es auf dem Telefon nicht gibt.
+**Geprüft wird deshalb ausdrücklich der Fehlerfall**, nicht nur der Gutfall: Bei
+stummer Datenbank muss die Zeile die fehlende Verbindung, die fehlende
+Anmeldung *und* den Grund nennen. Eine Diagnose, die nur bei heiler Verbindung
+etwas sagt, wäre wertlos.
+
+> **Warum das hier steht und nicht „Ursache behoben":** Weil sie nicht bekannt
+> ist. Zweimal in dieser Sitzung hat eine plausible Erklärung nicht gehalten —
+> einmal die Blase-Zeit beim Bot, einmal die vermeintliche 3P-Regression. Statt
+> eine dritte zu bauen, macht die App den Zustand sichtbar und liefert beim
+> nächsten Versuch die Angabe, die dieser Runde gefehlt hat.
