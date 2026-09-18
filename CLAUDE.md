@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.101.0
+- **Aktuelle Version**: v3.102.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -154,6 +154,7 @@ Zahnrad-Glyphe ist ersatzlos entfallen.
 ## Online-Multiplayer-Architektur
 
 - **Firebase Schema**: `/games/{code}/` → `{ state, guestAction2, guestAction3, numPlayers, createdAt, updatedAt }`
+- **Drei Cloud-Zustände (seit v3.102.0)**: `gesichert` (uid + nicht anonym), `anonym` (uid vorhanden) und **`garNichts`** (kein `auth`, keine uid). Der dritte fehlte — ohne API-Schlüssel wirft `getAuth()` (`auth/invalid-api-key`), die Sicherung läuft nie an, und die App versprach trotzdem „wird automatisch gesichert". `linkAccount` kehrt bei fehlendem `F.auth` **stillschweigend** zurück, der Knopf entfällt dort deshalb. Geprüft in `suiteCloudSave`, und zwar in BEIDEN Zuständen der Plattform-Weiche — der falsche Satz stand nur im App-Zweig, im Browser konnte die Prüfung nicht rot werden.
 - **Anonymous Auth (seit v3.12.4)**: `signInAnonymously` best-effort; `window.__fb.uid` via `onAuthStateChanged`. Helfer `authUid()` / `writeId(localId)`. Leaderboard-Schlüssel = `writeId(p.id)` (= `auth.uid`, sonst Profil-ID). Ist Anon-Auth in der Console nicht aktiv → `uid=null` → Fallback, kein Bruch. `firebase-security-rules.json` enthält die auth-gebundenen Rules + Aktivierungsreihenfolge (erst Code, dann Auth aktivieren, dann Rules publishen).
 - **⚠️ KEIN onDisconnect-Auto-Löschen des Spielknotens (seit v3.14.10, Regression-Fix)**: `fb.onDisconnectRemove('games/'+code)` beim Create ist ENTFERNT und darf nicht wieder eingeführt werden — mobile Browser trennen die Verbindung schon beim kurzen App-Wechsel (Code teilen!) → Server löschte das Spiel → Gast fand den Code nicht. Sauberes Verlassen löscht explizit via `cleanupGame`; verwaiste Lobbys (kein State, >2h) werden beim Join-Versuch aufgeräumt. Queue-Tickets behalten onDisconnectRemove, heilen sich aber in `mmTick` selbst (`mmMyTicket`-Ref: Ticket komplett neu eintragen + onDisconnect re-registrieren, statt status-losen `{hb}`-Stub zu patchen).
 - **Gast-Disconnect-Ende (seit v3.12.4)**: `fb.subscribeRaw` + `guestStateHandler` erkennen Knoten-Löschung (`exists=false`, nach `everGotState`) → `warnHostEnded`; Watchdog-Hardtimeout 30s → `warnHostLost` via `endOnlineDisconnected`.

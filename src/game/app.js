@@ -6694,7 +6694,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.101.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.102.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7014,32 +7014,55 @@ window.StackSiegeApp = function StackSiegeApp() {
       } }, h(Icon, { name: "shoppingCart", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invMoreInShop'))
     );
   })(),
-  // ── Fortschritt sichern (v3.72.0) ──────────────────────────────────────
-  // Ohne verknuepftes Konto haengt der Spielstand an einer anonymen Kennung,
-  // die eine Neuinstallation nicht ueberlebt. Der Hinweis sagt genau das —
-  // schwammige Formulierungen fuehren dazu, dass niemand den Knopf drueckt.
+  // ── Fortschritt sichern (v3.72.0, dritter Zustand v3.102.0) ────────────
+  //
+  // **Drei Zustaende, nicht zwei.** Bis v3.101.0 kannte dieser Block nur
+  // „gesichert" und „nicht gesichert" — und zeigte im zweiten Fall
+  // „wird automatisch gesichert". Gemessen am 18.09.: `getAuth()` wirft ohne
+  // Firebase-API-Schluessel (`auth/invalid-api-key`), `__fb.auth` bleibt leer,
+  // `uid` bleibt null, und die Sicherung laeuft NIE an
+  // (`if (!uid) return;` im Upload). Jeder Tester las also ein Versprechen,
+  // das niemand gehalten hat.
+  //
+  // Der Unterschied ist nicht kosmetisch: „liegt auf diesem Geraet und wird
+  // gesichert" und „liegt auf diesem Geraet, Punkt" sind zwei verschiedene
+  // Auskuenfte, und nur eine davon war wahr. Schwammige Formulierungen fuehren
+  // dazu, dass niemand den Knopf drueckt — falsche dazu, dass er es fuer
+  // unnoetig haelt.
   MP_CONFIGURED && (() => {
     const h = React.createElement;
     const F = (typeof window !== "undefined" && window.__fb) || {};
     const gesichert = !!authUid() && F.anon === false;
+    // Kann ueberhaupt gesichert werden? Ohne Anmelde-Dienst nicht.
+    const anmeldungLaeuft = !!F.auth && !!authUid();
+    const garNichts = !gesichert && !anmeldungLaeuft;
+    const farbe = gesichert ? "#34d399" : garNichts ? "#f87171" : "#fbbf24";
+    const helle = gesichert ? "#6ee7b7" : garNichts ? "#fca5a5" : "#fcd34d";
+    const flaeche = gesichert ? "52,211,153" : garNichts ? "248,113,113" : "251,191,36";
     return h("div", { style: {
-      background: gesichert ? "rgba(52,211,153,0.07)" : "rgba(251,191,36,0.07)",
-      border: "1px solid " + (gesichert ? "rgba(52,211,153,0.28)" : "rgba(251,191,36,0.28)"),
+      background: "rgba(" + flaeche + ",0.07)",
+      border: "1px solid rgba(" + flaeche + ",0.28)",
       borderRadius: 16, padding: "11px 12px", marginBottom: 12, textAlign: "left"
     } },
       h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginBottom: 5 } },
-        h(Icon, { name: gesichert ? "shieldCheck" : "cloud", size: 14, color: gesichert ? "#34d399" : "#fbbf24" }),
-        h("span", { style: { fontSize: 12, fontWeight: 800, color: gesichert ? "#6ee7b7" : "#fcd34d" } },
+        h(Icon, { name: gesichert ? "shieldCheck" : "cloud", size: 14, color: farbe }),
+        h("span", { style: { fontSize: 12, fontWeight: 800, color: helle } },
           t(gesichert ? "cloudOnTitle" : "cloudOffTitle")),
         cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: "#64748b", marginLeft: "auto" } }, t("cloudSyncing")) : null,
         cloudState === "saved" ? h("span", { style: { fontSize: 9.5, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
       ),
       h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
-        gesichert ? t("cloudOnSub", { mail: F.mail || "" })
-                  : kontoVerknuepfbar() ? t("cloudOffSub") : t("cloudOffSubApp")),
+        gesichert   ? t("cloudOnSub", { mail: F.mail || "" })
+      : garNichts   ? t("cloudNoAuthSub")
+      : kontoVerknuepfbar() ? t("cloudOffSub") : t("cloudOffSubApp")),
       // In der App gibt es keinen Verknuepfungs-Knopf (ARCHITEKTUR.md E8) —
       // Cloud-Save laeuft dort ueber die anonyme Kennung.
-      (gesichert || !kontoVerknuepfbar()) ? null : h("button", { onClick: linkAccount, style: {
+      //
+      // Und OHNE Anmelde-Dienst gibt es ihn nirgends: `linkAccount` kehrt bei
+      // fehlendem `F.auth` stillschweigend zurueck. Ein Knopf, der nichts tut
+      // und nichts sagt, ist schlimmer als kein Knopf — man drueckt ihn
+      // zweimal und haelt dann das Spiel fuer kaputt.
+      (gesichert || garNichts || !kontoVerknuepfbar()) ? null : h("button", { onClick: linkAccount, style: {
         width: "100%", border: "none", cursor: "pointer", borderRadius: 10, padding: "9px",
         background: "linear-gradient(180deg,#fbbf24,#d97706)", color: "#2b1204",
         fontSize: 12, fontWeight: 900

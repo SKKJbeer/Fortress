@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.101.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.102.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6872,3 +6872,80 @@ Umzug eingebaute Fehler und eine Lücke in der E2E-Suite.
 verlangt, den Zustand umzubauen, nicht nur Code zu verschieben.
 
 Tests grün (Typen 0, Unit 141/141, iOS 21/21, E2E 425/425).
+
+---
+
+## v3.102.0 — Die App versprach eine Sicherung, die es nicht gab
+
+Aus einer Rückfrage des Gründers entstanden: *„brauche ich das überhaupt, wäre
+Apple-Login nicht besser?"* Die Antwort darauf hat einen Fehler in der
+**ausgelieferten Fassung** freigelegt.
+
+### Gemessen, nicht gefolgert
+
+Die echte `firebase-boot.js` im gebauten Bündel, ohne Firebase-API-Schlüssel:
+
+```
+uid                : null
+__fb.auth gesetzt  : false          ← getAuth() hat geworfen
+__fbAuthError      : Firebase: Error (auth/invalid-api-key)
+```
+
+Daraus folgen zwei Versprechen, die niemand gehalten hat:
+
+1. **In der App** stand im Profil „Dein Stand liegt auf diesem Gerät und **wird
+   automatisch gesichert.**" Der Upload beginnt mit `if (!uid) return;` — es
+   wurde **nie etwas** gesichert. Jeder TestFlight-Tester hat das gelesen.
+2. **Im Browser** stand der Knopf „Mit Google sichern". `linkAccount` prüft
+   `if (!F.auth) return;` und kehrt **stillschweigend** zurück. Kein Fehler,
+   keine Meldung, nichts. Ein Knopf, der nichts tut und nichts sagt, ist
+   schlimmer als keiner: Man drückt ihn zweimal und hält dann das Spiel für
+   kaputt.
+
+### Drei Zustände statt zwei
+
+Der Block kannte „gesichert" und „nicht gesichert". Es fehlte der Fall
+**„kann gar nicht sichern"**. Der Unterschied ist nicht kosmetisch: „liegt auf
+diesem Gerät und wird gesichert" und „liegt auf diesem Gerät, Punkt" sind zwei
+verschiedene Auskünfte, und nur eine war wahr. Neuer Text `cloudNoAuthSub`
+(de/en), rote Kennfarbe, und der Knopf entfällt, wo er nicht funktionieren kann.
+
+Sobald der Schlüssel eingetragen ist, kippt der Zustand von selbst — am Code
+ist dann nichts mehr zu tun.
+
+### Die Prüfung, und warum sie zweimal läuft
+
+`suiteCloudSave` prüft den Fall jetzt in **beiden** Zuständen der
+Plattform-Weiche. Beim ersten Anlauf lief sie nur im Browser — und die
+Gegenprobe deckte auf, dass die wichtigste Zeile dort **gar nicht rot werden
+konnte**: Der falsche Satz stand nur im App-Zweig. Mit
+`window.__NATIVE__ = true` greift sie; ohne sie prüfte sie ins Leere.
+
+Gegenprobe am Ende: dritter Zustand ausgeschaltet → **4 ❌**, wieder an → 0 ❌.
+
+Nebenwirkung, die dazugehört: `suitePlattform` wurde dadurch rot, **zu Recht** —
+sie verlangt den App-Text und den Google-Knopf, und beides gilt nur bei
+laufender Anmeldung. Sie prüft die **Plattform**-Weiche, nicht den
+Anmeldezustand, und täuscht jetzt eine anonyme Anmeldung vor. Ohne das hätte
+sie zweimal denselben Hinweis geprüft statt App gegen Web.
+
+### Und noch eine Meldung, die log
+
+`Bau-KI: Burg nach 25s immer noch offen` — die Frist stand seit v3.96.0 auf
+**60** s. Ich hatte die Konstante geändert und den Text vergessen. Dieselbe
+Sorte Fehler wie „Blase offen: false" zwei Versionen vorher: **zwei Kopien
+einer Zahl driften, sobald man sie anfasst.** Jetzt steht sie in einer
+Variablen, und die Meldung liest sie.
+
+Dazu sagt die Meldung nun, **was sie beobachtet hat**: wie viele Bauphasen
+während des Wartens vergingen. Ohne diese Zahl ist „Burg immer noch offen"
+nicht zu deuten. Sie unterscheidet „der Rechner war zu langsam, es kam gar
+keine Bauphase" von „der Bot hatte Gelegenheiten und hat sie nicht genutzt".
+
+Belegt, dass es Ersteres war: Derselbe Code riss einmal die 60-Sekunden-Frist
+(Gesamtlauf 141 s statt 105 s) und dichtete im nächsten vollen Lauf **in 3,0
+Sekunden** — schneller als in Isolation. Die Maschine war ausgehungert, nicht
+der Code. Das lässt sich nicht wegprogrammieren; die Meldung kann es aber
+benennen, statt in die Irre zu führen.
+
+Tests grün (Typen 0, Unit 141/141, iOS 21/21, E2E **431/431**).

@@ -1562,6 +1562,61 @@ async function suiteCloudSave(browser, fbPort) {
              : fail('Cloud-Save: Sicherungs-Knopf fehlt');
   } finally { await c3.close(); }
 
+  // ── 4) OHNE Anmelde-Dienst: kein falsches Versprechen (v3.102.0) ──────
+  //
+  // Gemessen am 18.09. an der ausgelieferten Fassung: Ohne
+  // Firebase-API-Schluessel wirft `getAuth()` (`auth/invalid-api-key`),
+  // `__fb.auth` bleibt leer, `uid` bleibt null — und die Sicherung laeuft nie
+  // an. Trotzdem stand im Profil „wird automatisch gesichert".
+  //
+  // **Zwei Durchgaenge, weil die Oberflaeche an dieser Stelle zwei Gesichter
+  // hat.** In der App gibt es keinen Verknuepfungs-Knopf (ARCHITEKTUR.md E8),
+  // im Browser schon. Der falsche Satz stand nur im App-Zweig, der tote Knopf
+  // kann nur im Browser auftreten. Ein einziger Durchgang haette also immer
+  // die eine Haelfte ins Leere geprueft — beim ersten Anlauf genau so
+  // passiert, die Gegenprobe hat es aufgedeckt.
+  for (const [modus, nativ] of [['App', true], ['Web', false]]) {
+    const { ctx: c4, page: p4 } = await makeOnlineCtx(browser, fbPort,
+      `window.__NATIVE__ = ${nativ};`); // kein __testUid → kein auth, wie ohne API-Schluessel
+    try {
+      await loadMenu(p4);
+      await p4.evaluate(() => {
+        for (const b of document.querySelectorAll('button')) {
+          if ((b.getAttribute('title') || '').startsWith('Profil')) { b.click(); return; }
+        }
+      });
+      await p4.waitForTimeout(600);
+      const ui = await p4.evaluate(() => ({
+        authDa: !!(window.__fb && window.__fb.auth),
+        uid: (window.__fb && window.__fb.uid) || null,
+        ehrlich: /Eine Sicherung ist derzeit nicht m|A backup is not possible right now/i.test(document.body.innerText),
+        luege: /wird automatisch gesichert|backed up automatically/i.test(document.body.innerText),
+        knopf: [...document.querySelectorAll('button')].some(b => /Mit Google sichern|Save with Google/i.test(b.textContent))
+      }));
+      (!ui.authDa && !ui.uid)
+        ? ok(`Ohne Anmeldung (${modus}): Zustand hergestellt (kein auth, keine uid) ✓`)
+        : fail(`Ohne Anmeldung (${modus}): Zustand nicht hergestellt (auth=${ui.authDa}, uid=${ui.uid})`);
+      // Gilt in beiden: Es muss dastehen, dass NICHT gesichert wird.
+      ui.ehrlich
+        ? ok(`Ohne Anmeldung (${modus}): sagt "Sicherung derzeit nicht möglich" ✓`)
+        : fail(`Ohne Anmeldung (${modus}): der ehrliche Hinweis fehlt`);
+      if (nativ) {
+        // Nur die App zeigte „wird automatisch gesichert".
+        !ui.luege
+          ? ok('Ohne Anmeldung (App): verspricht KEINE automatische Sicherung ✓')
+          : fail('Ohne Anmeldung (App): behauptet "wird automatisch gesichert" — es wird nichts gesichert');
+      } else {
+        // Nur im Browser gibt es den Knopf — und `linkAccount` kehrt bei
+        // fehlendem `F.auth` stillschweigend zurueck. Ein Knopf, der nichts
+        // tut und nichts sagt, ist schlimmer als keiner: Man drueckt ihn
+        // zweimal und haelt dann das Spiel fuer kaputt.
+        !ui.knopf
+          ? ok('Ohne Anmeldung (Web): kein toter Sicherungs-Knopf ✓')
+          : fail('Ohne Anmeldung (Web): Knopf da, tut aber nichts (linkAccount kehrt still zurück)');
+      }
+    } finally { await c4.close(); }
+  }
+
   errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
               : ok('Cloud-Save: keine JS-Fehler ✓');
   return { res, errs };
@@ -1672,6 +1727,17 @@ async function suitePlattform(browser) {
       // Riegel gegen die Produktivdatenbank — diese Suite legt sonst ein
       // echtes Firebase an und arbeitete beim Loeschtest dagegen.
       await page.addInitScript(FB_SPERRE);
+      // **Laufende anonyme Anmeldung vortaeuschen.** Diese Suite prueft die
+      // PLATTFORM-Weiche, nicht den Anmeldezustand. Seit v3.102.0 ueberdeckt
+      // der dritte Cloud-Zustand („Sicherung derzeit nicht moeglich") beide
+      // Zweige, solange `auth`/`uid` fehlen — dann prueft man nicht mehr App
+      // gegen Web, sondern zweimal denselben Hinweis. Laeuft NACH FB_SPERRE,
+      // damit es den dort angelegten Mock ergaenzt statt ihn zu verdraengen.
+      await page.addInitScript(`try{ if (window.__fb) {
+        window.__fb.uid = 'u_plattform';
+        window.__fb.anon = true;
+        window.__fb.auth = { currentUser: { uid: 'u_plattform', isAnonymous: true } };
+      } }catch(e){}`);
       await page.addInitScript(`try{ if(!localStorage.getItem('__geimpft')){ ${PROFILE_INIT}
         localStorage.setItem('__geimpft','1'); } }catch(e){}`);
       await page.addInitScript(`window.__NATIVE__ = ${nativ};`);
@@ -4385,19 +4451,45 @@ async function suiteBot(browser) {
         let sealed = false;
         // 60 s, nicht 25. Geprueft wird, DASS der Bot dichtet — nicht, wie
         // schnell. Unter voller Suitenlast (zwanzig Browserkontexte) kriecht
-        // der KI-Tick, und diese Frist hat am 17.09. eine Auslieferung
-        // aufgehalten, obwohl nichts kaputt war. Belegt: in Isolation 3/3
-        // gruen, im vollen Lauf einmal rot, im naechsten vollen Lauf mit
-        // DEMSELBEN Code wieder gruen. Die laengere Frist kostet nur dann
-        // Zeit, wenn der Bot wirklich nicht dichtet — und dann ist der Lauf
-        // ohnehin rot.
-        const sealDeadline = Date.now() + 60000;
-        while (Date.now() < sealDeadline) {
-          if (await page.evaluate(() => window.__castleClosed && window.__castleClosed(2) === true)) { sealed = true; break; }
+        // der KI-Tick, und die alte Frist hat am 17.09. eine Auslieferung
+        // aufgehalten, obwohl nichts kaputt war.
+        //
+        // **Die Frist steht in EINER Variablen, und die Meldung liest sie.**
+        // Vorher stand die Zahl doppelt da: als Konstante und als Text. Beim
+        // Hochsetzen auf 60 s habe ich die Konstante geaendert und den Text
+        // vergessen — die Meldung log dann „nach 25s" und schickte den
+        // naechsten Leser in die falsche Richtung. Genau dieselbe Sorte
+        // Fehler, die zwei Versionen vorher schon „Blase offen: false"
+        // behauptet hatte. Zwei Kopien einer Zahl driften, sobald man sie
+        // anfasst.
+        //
+        // Und die Meldung sagt jetzt, WAS sie beobachtet hat: Wie viele
+        // Bauphasen waehrend des Wartens vergingen. Ohne diese Zahl ist
+        // „Burg immer noch offen" nicht zu deuten — sie unterscheidet
+        // „Rechner war zu langsam, es kam gar keine Bauphase" von „der Bot
+        // hatte Gelegenheiten und hat sie nicht genutzt".
+        const SEAL_MS = 60000;
+        const sealStart = Date.now();
+        let bauphasen = 0, vorPhase = null;
+        while (Date.now() - sealStart < SEAL_MS) {
+          const st = await page.evaluate(() => ({
+            zu: !!(window.__castleClosed && window.__castleClosed(2) === true),
+            phase: window.__phase ? window.__phase() : null
+          }));
+          if (st.phase && st.phase !== vorPhase) {
+            if (st.phase === 'build') bauphasen++;
+            vorPhase = st.phase;
+          }
+          if (st.zu) { sealed = true; break; }
           await page.waitForTimeout(300);
         }
-        sealed ? ok('Bau-KI: Bot hat die Bresche wieder versiegelt (Burg zu) ✓')
-               : fail('Bau-KI: Burg nach 25s immer noch offen — Bot dichtet nicht');
+        const sek = ((Date.now() - sealStart) / 1000).toFixed(1);
+        sealed
+          ? ok(`Bau-KI: Bot hat die Bresche wieder versiegelt (Burg zu, nach ${sek}s) ✓`)
+          : fail(`Bau-KI: Burg nach ${sek}s (Frist ${SEAL_MS / 1000}s) immer noch offen — `
+                 + `${bauphasen} Bauphase(n) beobachtet`
+                 + (bauphasen === 0 ? ': es kam keine einzige, der Lauf war zu langsam'
+                                    : ': der Bot hatte Gelegenheit und dichtet nicht'));
       } else {
         fail(`Bau-KI: Bresche nicht erzeugbar (n=${blasted.n}, open=${blasted.open})`);
       }
