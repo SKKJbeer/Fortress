@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.110.1
+- **Aktuelle Version**: v3.111.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -394,6 +394,22 @@ npm run test:e2e
 - Firebase/gstatic werden abgeblockt
 - Alle Button-Clicks via `page.evaluate(() => btn.click())` — Overlay-Workaround
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)
+- **Gast-Aktionen beim HOST messen** (`suiteOnlineAktionen`, seit v3.111.0):
+  „Gast: Canvas-Tap ohne Crash" belegt KEINEN Multiplayer. Geprueft wird der
+  ganze Weg — Gast klickt → `guestAction{2,3}` → Host wendet an → **Gitter des
+  Hosts aendert sich** (`__zellen(p)`), fuer 2 UND 3 Spieler, Gast 2 UND Gast 3
+  (Regression v3.0.6). Dazu `__sektorHash()` (3P) und `__eliminiert()`.
+  **Diese Suite laeuft OHNE Zeitraffer** (`makeOnlineCtx(..., {langsam:true})`):
+  Im Zeitraffer dauert die Setup-Phase eine Sekunde, und zwischen
+  „Phase abfragen" und „klicken" liegt ein Roundtrip — das war ein Wuerfelspiel
+  und hat einmal faelschlich nach einer 3P-Regression ausgesehen.
+- **Sektorkarten-Abgleich** (seit v3.111.0): Der Host schickt
+  `sectorFingerprint` im Zustandsfeld `sh`, der Gast vergleicht mit seiner
+  NEU BERECHNETEN Karte, rechnet einmal neu und meldet erst dann. Zusaetzliches
+  Feld = rueckwaertsvertraeglich, `PROTO_VERSION` bleibt. Gegengeprueft in
+  beiden Richtungen: verfaelschte Karte heilt still, verbogenes GELAENDE wird
+  gemeldet. (Burgpositionen zu verbiegen taugt NICHT als Gegenprobe — die
+  schickt der Host in jedem Takt mit und ueberschreibt sie sofort.)
 - **Online immer mitgetestet**: Code-Join (Host+Gast, Phasen-Sync, Gast-Timer, Aktionen) UND Matchmaking-Suite (`suiteMatchmaking`, seit v3.14.15): Quick Match ×2 hintereinander (Geister-Listener-Regression), Ranked-Result ohne Rematch-Buttons, Queue-Leere nach Matches (Ticket-Leichen), Selbst-Match-Schutz (gleiche `DEVICE_ID` via `mmIdentInit`-Override in `makeOnlineCtx(browser, fbPort, extraInit)`)
 - **Regel: Kein Commit ohne grünen Test**
 - **Wartebedingung statt Momentaufnahme** (seit v3.108.0): Im Zeitraffer

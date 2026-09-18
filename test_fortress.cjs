@@ -1014,7 +1014,7 @@ function makeFbMock(port) {
 }
 
 // Browser-Kontext mit Firebase-Mock (für Online-Tests)
-async function makeOnlineCtx(browser, fbPort, extraInit) {
+async function makeOnlineCtx(browser, fbPort, extraInit, opt) {
   const ctx  = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
     // Service Worker BLOCKIEREN (seit v3.75.0). Er hat in der Suite nichts
     // zu suchen: er faengt Anfragen ab, liefert aus dem Cache und uebernimmt
@@ -1027,7 +1027,12 @@ async function makeOnlineCtx(browser, fbPort, extraInit) {
   // extraInit läuft NACH PROFILE_INIT → kann Profil/Device-ID pro Client
   // überschreiben (Matchmaking-Tests brauchen unterschiedliche Identitäten).
   if (extraInit) await page.addInitScript(extraInit);
-  await page.addInitScript(TIMER_SPEEDUP);
+  // `langsam: true` laesst den Zeitraffer WEG (v3.111.0). Gebraucht von der
+  // Aktions-Suite: Dort muss der Test in einer bestimmten Phase auf das Brett
+  // tippen. Im Zeitraffer dauert die Setup-Phase rund eine Sekunde — zwischen
+  // „Phase abfragen" und „klicken" liegt ein Roundtrip, das Fenster ist damit
+  // oft schon zu. Das ergab kein Ergebnis, sondern ein Wuerfelspiel.
+  if (!(opt && opt.langsam)) await page.addInitScript(TIMER_SPEEDUP);
   await page.addInitScript(makeFbMock(fbPort));
   await page.route('**firebase**',   r => r.abort());
   await page.route('**gstatic**',    r => r.abort());
@@ -3028,6 +3033,289 @@ async function suiteOnline3P(browser, fbPort) {
   } finally {
     await H.ctx.close(); await G2.ctx.close(); await G3.ctx.close();
   }
+  return { res, errs: errsAll };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Online-Aktionen — kommt die Gast-Aktion beim HOST an? (v3.111.0)
+//
+// Die Luecke, die das schliesst: Bis v3.110.1 pruefte die Online-Suite
+// Beitritt, Phasen-Sync, Timer, HUD und Emotes — und fuer Spielzuege
+// „Gast: Canvas-Tap ohne Crash". Das belegt keinen Multiplayer, sondern nur,
+// dass nichts explodiert. Ob der autoritative Zustand des HOSTS sich durch
+// eine Gast-Aktion wirklich aendert, stand nirgends.
+//
+// Genau dort sassen historisch die schlimmsten Fehler: v3.0.6 („pieces[3] fuer
+// P3-Gaeste nie initialisiert → P3 konnte nichts platzieren") und v2.8.2
+// („activeBuild-Reset fehlte P3"). Beide waren still — die Seite lief, der
+// Tap kam an, es passierte nur nichts.
+//
+// Geprueft wird deshalb der ganze Weg: Gast klickt → Aktion in
+// guestAction{2,3} → Host wendet sie an → Hosts Gitter aendert sich. Gemessen
+// wird beim HOST, nicht beim Gast.
+// ═══════════════════════════════════════════════════════════════
+async function suiteOnlineAktionen(browser, fbPort) {
+  const res = [], errsAll = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Online-Aktionen (Gast → Host)\n' + '='.repeat(50));
+
+  const mk = async (n, pid, dev) => {
+    const c = await makeOnlineCtx(browser, fbPort, mmIdentInit(n, pid, dev) + ';window.__mmDebug=true;',
+                                  { langsam: true });
+    c.page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errsAll.push(`${n}: ${e.message}`); });
+    await loadMenu(c.page);
+    return c;
+  };
+  const inGame = (p, t) => p.waitForSelector('canvas', { timeout: t }).then(() => true).catch(() => false);
+
+  /** Spiel erstellen und den Code aus dem Wartescreen lesen. */
+  const erstelle = async (page, spieler) => {
+    await jsClick(page, ['ONLINE']); await page.waitForTimeout(200);
+    await jsClick(page, [spieler === 3 ? '3 Spieler' : '2 Spieler']); await page.waitForTimeout(150);
+    await jsClick(page, ['Spiel erstellen']); await page.waitForTimeout(1200);
+    return page.evaluate(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
+      return null;
+    });
+  };
+  const tritt_bei = async (page, code) => {
+    await jsClick(page, ['ONLINE']); await page.waitForTimeout(200);
+    await jsClick(page, ['beitreten', 'Beitreten']); await page.waitForTimeout(200);
+    if (await page.evaluate(() => !!document.querySelector('input:not([type=range])')))
+      await page.fill('input:not([type=range])', code);
+    await page.waitForTimeout(100);
+    await jsClick(page, ['Beitreten']);
+    await page.waitForTimeout(400);
+  };
+
+  const zellenBeimHost = (hp, p) => hp.evaluate((q) => window.__zellen ? window.__zellen(q) : null, p);
+
+  /**
+   * Der Gast tippt auf sein Spielfeld, BIS beim Host etwas ankommt.
+   *
+   * Warum abtasten statt einmal an die „richtige" Stelle tippen: Welcher Teil
+   * des Bretts dem Gast gehoert, haengt an Terrain, Sektorkarte und der
+   * Spiegelung seiner Ansicht. Eine fest verdrahtete Stelle waere eine
+   * Annahme — und stille Annahmen sind genau das, was dieser Test aufdecken
+   * soll. Abgebrochen wird, sobald der HOST die Aenderung zeigt.
+   */
+  const gastSetztKanone = async (gastPage, hostPage, p, frist = 25000) => {
+    const vorher = await zellenBeimHost(hostPage, p);
+    const cb = await gastPage.evaluate(() => {
+      const c = document.querySelector('canvas'); if (!c) return null;
+      const r = c.getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    });
+    if (!cb) return { ok: false, grund: 'kein Canvas beim Gast', vorher, nachher: null, tipps: 0 };
+
+    const stellen = [];
+    for (const fy of [0.30, 0.70, 0.22, 0.78, 0.40, 0.60, 0.50])
+      for (const fx of [0.5, 0.35, 0.65, 0.25, 0.75])
+        stellen.push([fx, fy]);
+
+    const ende = Date.now() + frist;
+    let tipps = 0;
+    const phasenGesehen = new Set();
+    while (Date.now() < ende) {
+      for (const [fx, fy] of stellen) {
+        const ph = await hostPage.evaluate(() => window.__phase ? window.__phase() : null);
+        phasenGesehen.add(String(ph));
+        if (ph !== 'setup' && ph !== 'cannon') { await gastPage.waitForTimeout(150); continue; }
+        await gastPage.mouse.click(cb.x + cb.w * fx, cb.y + cb.h * fy);
+        tipps++;
+        await gastPage.waitForTimeout(160);
+        const jetzt = await zellenBeimHost(hostPage, p);
+        if (jetzt && vorher && jetzt.kanonen > vorher.kanonen)
+          return { ok: true, vorher, nachher: jetzt, tipps, ms: frist - (ende - Date.now()) };
+        if (Date.now() >= ende) break;
+      }
+    }
+    // Was der Lauf beobachtet hat, gehoert in die Meldung — sonst faengt
+    // beim naechsten Fehlschlag das Raten an (SPEC v3.108.0).
+    const wirt = await hostPage.evaluate(() => ({
+      phase: window.__phase ? window.__phase() : null,
+      eigene: window.__zellen ? window.__zellen(1) : null,
+      rolle: window.__myRole !== undefined ? window.__myRole : null,
+    }));
+    const gast = await gastPage.evaluate(() => ({
+      rolle: window.__myRole !== undefined ? window.__myRole : null,
+      phase: window.__phase ? window.__phase() : null,
+      zellen: window.__zellen ? window.__zellen(2) : null,
+    }));
+    return { ok: false, grund: 'Frist abgelaufen', vorher,
+             nachher: await zellenBeimHost(hostPage, p), tipps,
+             phasen: [...phasenGesehen].join(','), wirt, gast };
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // A) ZWEI SPIELER: Gast 2 wirkt auf das Gitter des Hosts
+  // ─────────────────────────────────────────────────────────────
+  {
+    const H = await mk('AktHost', 'p_akt_h', 'd_akt_h');
+    const G = await mk('AktGast', 'p_akt_g', 'd_akt_g');
+    try {
+      const code = await erstelle(H.page, 2);
+      if (!code) { fail('2P Aktionen: kein Spielcode'); }
+      else {
+        await tritt_bei(G.page, code);
+        const [a, b] = await Promise.all([inGame(H.page, 12000), inGame(G.page, 12000)]);
+        a && b ? ok('2P Aktionen: Host und Gast im Spiel ✓') : fail(`2P Aktionen: H=${a} G=${b}`);
+
+        if (a && b) {
+          // Die Haken selbst muessen greifen, sonst misst alles Weitere nichts.
+          const z0 = await zellenBeimHost(H.page, 1);
+          z0 && typeof z0.mauern === 'number'
+            ? ok(`2P Aktionen: Haken __zellen liefert Zahlen (P1: ${z0.mauern} Mauern) ✓`)
+            : fail(`2P Aktionen: __zellen liefert nichts (${JSON.stringify(z0)})`);
+
+          const r = await gastSetztKanone(G.page, H.page, 2);
+          r.ok
+            ? ok(`2P Aktionen: Gast setzt Kanone, HOST sieht sie `
+                 + `(${r.vorher.kanonen} → ${r.nachher.kanonen} Zellen, ${r.tipps} Tipps) ✓`)
+            : fail(`2P Aktionen: Gast-Kanone erreicht den Host NICHT — ${r.grund}, `
+                 + `${r.tipps} Tipps, Host sieht ${JSON.stringify(r.nachher)}`);
+
+          // Gegenprobe zur Messung selbst: Der Host darf NICHT zufaellig
+          // gewachsen sein, weil irgendwer irgendwo etwas tut. P3 gibt es im
+          // 2-Spieler-Spiel nicht — dort muss die Zahl null bleiben.
+          const z3 = await zellenBeimHost(H.page, 3);
+          (z3 && z3.kanonen === 0 && z3.mauern === 0)
+            ? ok('2P Aktionen: P3 bleibt leer (Messung zaehlt nicht wahllos) ✓')
+            : fail(`2P Aktionen: P3 hat Zellen im 2-Spieler-Spiel: ${JSON.stringify(z3)}`);
+        }
+      }
+    } finally { await H.ctx.close(); await G.ctx.close(); }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // B) DREI SPIELER: Sektorkarte einig, und Gast 3 kann wirklich bauen
+  // ─────────────────────────────────────────────────────────────
+  {
+    const H = await mk('Akt3Host', 'p_a3_h', 'd_a3_h');
+    const G2 = await mk('Akt3G2', 'p_a3_b', 'd_a3_b');
+    const G3 = await mk('Akt3G3', 'p_a3_c', 'd_a3_c');
+    try {
+      const code = await erstelle(H.page, 3);
+      if (!code) { fail('3P Aktionen: kein Spielcode'); }
+      else {
+        for (const G of [G2, G3]) await tritt_bei(G.page, code);
+        const [a, b, c] = await Promise.all([
+          inGame(H.page, 14000), inGame(G2.page, 14000), inGame(G3.page, 14000)]);
+        a && b && c ? ok('3P Aktionen: Host + 2 Gäste im Spiel ✓') : fail(`3P Aktionen: H=${a} G2=${b} G3=${c}`);
+
+        if (a && b && c) {
+          // ── Sektorkarte: wird beim Gast NEU BERECHNET, nicht uebertragen ──
+          //
+          // Weicht sie ab, darf ein Spieler scheinbar bauen und der Host lehnt
+          // ab (oder umgekehrt) — ein Fehler, der sich als „mein Stein wird
+          // nicht gesetzt" zeigt und nirgends als Fehler auftaucht.
+          const hashes = [];
+          const bis = Date.now() + 15000;
+          while (Date.now() < bis) {
+            const hs = await Promise.all([H.page, G2.page, G3.page].map(p =>
+              p.evaluate(() => window.__sektorHash ? window.__sektorHash() : null)));
+            if (hs.every(h => h && h.hash)) { hashes.push(...hs); break; }
+            await H.page.waitForTimeout(400);
+          }
+          if (hashes.length === 3) {
+            const [h1, h2, h3] = hashes;
+            // ERST pruefen, dass ueberhaupt etwas drinsteht. Der erste Anlauf
+            // meldete „alle drei identisch (0 Zellen)" — der Haken lief ueber
+            // ein flaches Int8Array wie ueber ein 2D-Feld und zaehlte nichts.
+            // Ein Vergleich von drei leeren Karten ist immer wahr.
+            (h1.zellen > 1000 && h1.belegt > 100)
+              ? ok(`3P Sektorkarte: gefuellt (${h1.zellen} Zellen, ${h1.belegt} zugeteilt) ✓`)
+              : fail(`3P Sektorkarte ist LEER — der Vergleich darunter waere wertlos `
+                   + `(${h1.zellen} Zellen, ${h1.belegt} zugeteilt)`);
+            (h1.hash === h2.hash && h1.hash === h3.hash)
+              ? ok(`3P Sektorkarte: alle drei Seiten identisch (${h1.hash}, ${h1.belegt} zugeteilt) ✓`)
+              : fail(`3P Sektorkarte WEICHT AB: Host ${h1.hash} (${h1.belegt}) / `
+                   + `G2 ${h2.hash} (${h2.belegt}) / G3 ${h3.hash} (${h3.belegt})`);
+            (h1.seed === h2.seed && h1.seed === h3.seed)
+              ? ok(`3P Terrain-Seed auf allen Seiten gleich (${h1.seed}) ✓`)
+              : fail(`3P Terrain-Seed weicht ab: ${h1.seed} / ${h2.seed} / ${h3.seed}`);
+          } else {
+            fail('3P Sektorkarte: kein Fingerabdruck zu bekommen (Haken oder mode3 fehlt)');
+          }
+
+          // ── Gast 3 muss bauen koennen (Regression v3.0.6) ──
+          const r3 = await gastSetztKanone(G3.page, H.page, 3, 30000);
+          r3.ok
+            ? ok(`3P Aktionen: GAST 3 setzt Kanone, Host sieht sie `
+                 + `(${r3.vorher.kanonen} → ${r3.nachher.kanonen} Zellen, ${r3.tipps} Tipps) ✓`)
+            : fail(`3P Aktionen: Gast 3 erreicht den Host NICHT — ${r3.grund}, `
+                 + `${r3.tipps} Tipps, Host sieht ${JSON.stringify(r3.nachher)}, `
+                 + `Phasen [${r3.phasen}], Host-eigene ${JSON.stringify(r3.wirt)}, `
+                 + `Gast ${JSON.stringify(r3.gast)}`);
+
+          const r2 = await gastSetztKanone(G2.page, H.page, 2, 30000);
+          r2.ok
+            ? ok(`3P Aktionen: Gast 2 setzt Kanone, Host sieht sie `
+                 + `(${r2.vorher.kanonen} → ${r2.nachher.kanonen} Zellen) ✓`)
+            : fail(`3P Aktionen: Gast 2 erreicht den Host NICHT — ${r2.grund}, ${r2.tipps} Tipps, `
+                 + `Phasen [${r2.phasen}], Gast ${JSON.stringify(r2.gast)}`);
+
+          // ── Der Abgleich muss WIRKEN: heilen, wo es geht — melden, wo nicht ──
+          //
+          // Ohne diese beiden Proben waere der Schutz aus v3.111.0 nur Code,
+          // der nie ausloest: im Normalfall stimmen die Karten ja ueberein.
+          // Geprueft wird deshalb der Fehlerfall, und zwar in beiden Formen.
+          const warnungDa = (pg) => pg.evaluate(() =>
+            /weicht vom Host ab|differs from host/i.test(document.body.innerText));
+
+          // (1) Nur die KARTE verfaelschen — die Eingaben stimmen noch, also
+          //     muss der Gast sie stillschweigend neu berechnen.
+          const v1 = await G2.page.evaluate(() =>
+            window.__sektorVerbiegen ? window.__sektorVerbiegen('karte') : null);
+          if (v1) {
+            const bis1 = Date.now() + 8000;
+            let geheilt = false;
+            while (Date.now() < bis1 && !geheilt) {
+              const h = await Promise.all([H.page, G2.page].map(pg =>
+                pg.evaluate(() => window.__sektorHash ? window.__sektorHash() : null)));
+              if (h[0] && h[1] && h[0].hash === h[1].hash) geheilt = true;
+              else await G2.page.waitForTimeout(300);
+            }
+            geheilt ? ok('3P Sektor-Abgleich: verfaelschte Karte wurde selbst geheilt ✓')
+                    : fail('3P Sektor-Abgleich: verfaelschte Karte blieb kaputt');
+            const gemeldet1 = await warnungDa(G2.page);
+            !gemeldet1 ? ok('3P Sektor-Abgleich: kein Fehlalarm beim blossen Schluckauf ✓')
+                       : fail('3P Sektor-Abgleich: Fehlalarm, obwohl die Karte heilbar war');
+          } else fail('3P Sektor-Abgleich: Haken __sektorVerbiegen fehlt');
+
+          // (2) Die EINGABEN verschieben — Neuberechnen hilft nicht mehr, die
+          //     Meldung muss kommen. Genau der Fall, der ohne Abgleich still
+          //     bliebe: der Spieler tippt, und nichts passiert.
+          const v2 = await G3.page.evaluate(() =>
+            window.__sektorVerbiegen ? window.__sektorVerbiegen('gelaende') : null);
+          if (v2) {
+            const bis2 = Date.now() + 12000;
+            let gemeldet = false;
+            while (Date.now() < bis2 && !gemeldet) {
+              gemeldet = await warnungDa(G3.page);
+              if (!gemeldet) await G3.page.waitForTimeout(300);
+            }
+            gemeldet
+              ? ok('3P Sektor-Abgleich: abweichende Eingaben werden GEMELDET ✓')
+              : fail('3P Sektor-Abgleich: Abweichung blieb still — der Schutz loest nicht aus');
+          } else fail('3P Sektor-Abgleich: Haken fehlt (Fall gelaende)');
+
+          // ── Ausscheide-Haken: im laufenden Spiel ist niemand raus ──
+          const elim = await H.page.evaluate(() => window.__eliminiert ? window.__eliminiert() : null);
+          Array.isArray(elim) && elim.length === 0
+            ? ok('3P Ausscheiden: im laufenden Spiel ist niemand ausgeschieden ✓')
+            : fail(`3P Ausscheiden: unerwarteter Stand ${JSON.stringify(elim)}`);
+        }
+      }
+    } finally { await H.ctx.close(); await G2.ctx.close(); await G3.ctx.close(); }
+  }
+
+  errsAll.length === 0 ? ok('Online-Aktionen: keine JS-Fehler ✓')
+                       : errsAll.slice(0, 3).forEach(e => fail(`Aktionen JS: ${e.slice(0, 90)}`));
   return { res, errs: errsAll };
 }
 
@@ -5276,6 +5564,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       onlineui: () => suiteOnlineUI(browser, FB_PORT),
       online2p: () => suiteOnline2P(browser, FB_PORT),
       online3p: () => suiteOnline3P(browser, FB_PORT),
+      aktionen: () => suiteOnlineAktionen(browser, FB_PORT),
       matchmaking: () => suiteMatchmaking(browser, FB_PORT),
       haerte: () => suiteOnlineHaerte(browser, FB_PORT),
       heartbeat: () => suiteHeartbeat(browser, FB_PORT),
@@ -5338,7 +5627,11 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // Spielkontexte gleichzeitig und braucht ein unbelastetes Zeitfenster,
     // sonst wird aus dem Beitritts-Rennen ein Lastproblem.
     const hrt = await suiteOnlineHaerte(browser, FB_PORT);
-    return { mm, mm3, hb, cs, tr, zm, hrt };
+    // Aktionen ebenfalls SERIELL hier: die Suite haelt bis zu drei
+    // Spielkontexte und tastet das Brett ab, bis der Host reagiert. Parallel
+    // dazu waere die Frist eine Lastmessung statt einer Funktionspruefung.
+    const akt = await suiteOnlineAktionen(browser, FB_PORT);
+    return { mm, mm3, hb, cs, tr, zm, hrt, akt };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -5370,14 +5663,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

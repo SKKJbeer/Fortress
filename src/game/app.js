@@ -19,7 +19,7 @@ import { CELL, COLS, ROWS_HALF, ROWS, W, H, BUILD_TIME, SHOOT_TIME, CANNON_TIME,
 import { SCRAP_WALL, SCRAP_CANNON, SCRAP_SURVIVE, SCRAP_REBUILD, SHOP } from '../engine/economy.ts';
 const SHOP_SLAYER = SHOP.slayer.price;
 const SALVO_LOCK_MS = 2600;   // Umruestzeit nach einem Wechsel der Kanonenart
-import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable } from '../engine/terrain.ts';
+import { makeRng, castle3Positions, WORLD_THEMES, worldThemeOf, generateTerrainFromSeed, generateTerrain, generateTerrain3FromSeed, sectorOf, buildSectorMap, isBuildable, sectorFingerprint } from '../engine/terrain.ts';
 import { computeOutsideMap, computeOutsideMapForCannons, isObjectClosed, isCastleClosed, closedCannons, isCannonClosed, findLeakPath, findSealCells } from '../engine/flood.ts';
 import { getLevelTier, eloDelta, goldDelta, xpToNextLevel, computeXpGain, applyXpGain, dropMigratedDupes } from '../engine/progression.ts';
 import { normalisiereProfil } from '../engine/profil.ts';
@@ -842,6 +842,88 @@ window.StackSiegeApp = function StackSiegeApp() {
       if (!g || !ct) return null;
       return isCastleClosed(g, p, ct);
     });
+    // Wie viele Zellen im autoritativen Gitter gehoeren Spieler p? (v3.111.0)
+    //
+    // Damit laesst sich eine Gast-AKTION bis in den Zustand des HOSTS
+    // verfolgen: Gast baut → Zahl beim Host steigt. Bis v3.110.1 pruefte die
+    // Online-Suite nur „Tap ohne Absturz" — das belegt keinen Multiplayer,
+    // sondern nur, dass nichts explodiert.
+    window.__zellen = gated((p) => {
+      const g = grid.current;
+      if (!g) return null;
+      const w = WALL_OF[p], k = CANNON_OF[p];
+      let mauern = 0, kanonen = 0;
+      for (let r = 0; r < g.length; r++)
+        for (let c = 0; c < g[r].length; c++) {
+          if (g[r][c] === w) mauern++;
+          else if (g[r][c] === k) kanonen++;
+        }
+      return { mauern, kanonen };
+    });
+    // Fingerabdruck der Sektorkarte (v3.111.0, nur 3 Spieler).
+    //
+    // Die Karte wird beim Gast NICHT uebertragen, sondern aus Seed und Burgen
+    // NEU BERECHNET (`buildSectorMap`). Weicht sie ab, darf ein Spieler
+    // scheinbar bauen, und der Host lehnt ab — oder umgekehrt. Ein
+    // Fingerabdruck laesst sich zwischen den Seiten vergleichen, ohne die
+    // ganze Karte durch die Pruefung zu schleifen.
+    window.__sektorHash = gated(() => {
+      const sm = terrain.current && terrain.current.sectorMap;
+      if (!sm) return null;
+      // `buildSectorMap` liefert ein FLACHES Int8Array (ROWS*COLS), kein
+      // 2D-Feld. Der erste Anlauf lief ueber sm[r][c] — bei einem Int8Array
+      // ist sm[r] eine Zahl, sm[r][c] also undefined, und die innere Schleife
+      // lief NIE. Der Fingerabdruck war ueber null Zellen gebildet und auf
+      // allen Seiten trivial gleich: eine Pruefung, die nicht rot werden
+      // KONNTE. Aufgefallen ist es nur, weil die Meldung die Zellenzahl
+      // mitnennt — „identisch (0 Zellen)" ist keine Uebereinstimmung.
+      let h = 2166136261;
+      const n = sm.length;
+      for (let i = 0; i < n; i++) {
+        h ^= (sm[i] | 0) + 1;
+        h = Math.imul(h, 16777619);
+      }
+      // Wie viele Zellen gehoeren ueberhaupt jemandem? Eine Karte aus lauter
+      // Nullen haette sonst ebenfalls einen huebschen, gleichen Hash.
+      let belegt = 0;
+      for (let i = 0; i < n; i++) if (sm[i]) belegt++;
+      return { hash: (h >>> 0).toString(16), zellen: n, belegt, seed: terrainSeed.current };
+    });
+    // Wer ist ausgeschieden? (v3.111.0) Die 3-Spieler-Regel: Wessen Burg am
+    // Bauende offen ist, fliegt raus; das Spiel endet bei hoechstens einem
+    // Verbliebenen. Ohne Haken war das von aussen nicht nachweisbar.
+    // Die Sektorkarte absichtlich verbiegen (v3.111.0) — NUR zum Pruefen des
+    // Abgleichs. Zwei Faelle, weil sie sich unterschiedlich verhalten MUESSEN:
+    //   'karte'  — nur die Karte verfaelschen. Die Eingaben stimmen noch, das
+    //              Neuberechnen stellt sie wieder her: SELBSTHEILUNG, keine
+    //              Meldung. Wer hier eine Meldung saehe, wuerde Spieler wegen
+    //              eines Schluckaufs erschrecken.
+    //   'gelaende' — das GELAENDE verbiegen, aus dem die Karte entsteht. Das
+    //              Neuberechnen hilft dann nicht, und die Meldung muss kommen.
+    //              Ohne diesen Fall waere der ganze Schutz Code, der nie
+    //              ausloest.
+    //
+    // Warum GELAENDE und nicht Burgpositionen: Die Burgen schickt der Host in
+    // jedem Zustand mit (`castles.current = s.castles`), eine Verfaelschung
+    // dort waere im naechsten Takt wieder weg — der erste Anlauf dieser
+    // Gegenprobe blieb genau deshalb still. Das Gelaende dagegen wird beim
+    // Gast aus dem Seed abgeleitet und NIE uebertragen; eine Abweichung dort
+    // ist dauerhaft. Sie bildet damit auch den echten Gefahrenfall ab.
+    window.__sektorVerbiegen = gated((modus) => {
+      const ter = terrain.current;
+      if (!ter || !ter.sectorMap) return false;
+      if (modus === "gelaende") {
+        const g = ter.grid;
+        if (!g || !g.length) return false;
+        // Einen Riegel Wasser (3) quer durchs Feld ziehen: `buildSectorMap`
+        // laeuft nicht durch Wasser, die Zuteilung faellt damit anders aus.
+        const reihe = Math.floor(g.length / 2);
+        for (let c = 0; c < g[reihe].length; c++) g[reihe][c] = 3;
+      }
+      for (let i = 0; i < ter.sectorMap.length; i += 97) ter.sectorMap[i] = 0;
+      return true;
+    });
+    window.__eliminiert = gated(() => Object.keys(eliminated.current || {}).map(Number).sort());
     window.__blastWall = gated((p, n) => {
       const g = grid.current, ct = castles.current[p];
       if (!g || !ct) return 0;
@@ -1850,6 +1932,18 @@ window.StackSiegeApp = function StackSiegeApp() {
       pv: PROTO_VERSION,
       grid: grid.current,
       terrainSeed: terrainSeed.current,
+      // Fingerabdruck der Sektorkarte (v3.111.0, nur 3 Spieler).
+      //
+      // Der Gast BERECHNET die Karte selbst neu, statt sie zu empfangen — das
+      // ist deterministisch, solange beide dieselben Eingaben haben. Laufen
+      // sie auseinander, darf der Gast scheinbar bauen und der Host lehnt ab:
+      // fuer den Spieler sieht das aus, als reagiere das Spiel nicht, und im
+      // Protokoll steht nichts, weil nichts abstuerzt.
+      //
+      // Ein zusaetzliches Feld ist rueckwaertsvertraeglich: Alte Gaeste lesen
+      // es nicht, alte Hosts schicken es nicht, und der Gast prueft nur, wenn
+      // es da ist. Deshalb bleibt PROTO_VERSION unveraendert.
+      sh: terrain.current && terrain.current.sectorMap ? sectorFingerprint(terrain.current.sectorMap) : null,
       numPlayers: numPlayersRef.current,
       castles: castles.current,
       cannons: cannons.current,
@@ -2144,6 +2238,23 @@ window.StackSiegeApp = function StackSiegeApp() {
         if (need3 && terrain.current && terrain.current.mode3 && castles.current && !terrain.current.sectorMap) {
           terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
         }
+        // Stimmt meine selbst berechnete Karte mit der des Hosts ueberein?
+        // (v3.111.0) Ein EINMALIGER Neuversuch, dann eine Meldung. Stillhalten
+        // waere hier das Schlimmste: Der Spieler tippt, nichts passiert, und
+        // niemand erfaehrt warum.
+        if (need3 && myRole.current !== 1 && s.sh && terrain.current && terrain.current.sectorMap
+            && !sektorGewarnt.current) {
+          const meine = sectorFingerprint(terrain.current.sectorMap);
+          if (meine && meine !== s.sh) {
+            if (!sektorNeuversuch.current) {
+              sektorNeuversuch.current = true;
+              terrain.current.sectorMap = buildSectorMap(terrain.current, castles.current);
+            } else if (sectorFingerprint(terrain.current.sectorMap) !== s.sh) {
+              sektorGewarnt.current = true;
+              showWarn(t('warnSektorAbweichung'));
+            }
+          }
+        }
         cannons.current = s.cannons || cannons.current;
         cannonBudget.current = s.cannonBudget || cannonBudget.current;
         if (s.scrap) scrap.current = s.scrap;
@@ -2344,6 +2455,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     pushState(true);
   }
   const joinedGuests = useRef({ 2: false, 3: false });
+  // Sektorkarten-Abgleich (v3.111.0): einmal neu berechnen, dann einmal melden.
+  const sektorNeuversuch = useRef(false);
+  const sektorGewarnt = useRef(false);
   const guestActionApplied = useRef({ 2: 0, 3: 0 });
   function handlePlayerLeft(player) {
     if (myRole.current !== 1) return;
@@ -6694,7 +6808,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.110.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

@@ -233,3 +233,31 @@ export function isBuildable(terrainObj: any, r: number, c: number, player: Playe
   if (player === 2 && r <= terrainObj.borderRow[c]) return false;
   return true;
 }
+
+/**
+ * Kurzer Fingerabdruck einer Sektorkarte (v3.111.0).
+ *
+ * **Wozu.** Die Sektorkarte wird beim Gast NICHT uebertragen, sondern aus Seed
+ * und Burgpositionen NEU BERECHNET (`buildSectorMap`). Das spart Uebertragung
+ * und ist deterministisch — solange beide Seiten dieselben Eingaben haben.
+ * Weichen sie ab, entsteht der unangenehmste Fehler, den dieses Spiel kennt:
+ * Der Gast darf scheinbar bauen, der Host lehnt ab. Fuer den Spieler sieht das
+ * aus, als „haenge" das Spiel; im Protokoll steht nichts, weil nichts
+ * abgestuerzt ist.
+ *
+ * Ein Fingerabdruck macht daraus etwas Nachweisbares: Der Host schickt ihn im
+ * Zustand mit, der Gast vergleicht ihn mit seiner eigenen Berechnung. 32 Bit
+ * ueber knapp 3000 Zellen reichen dafuer — es geht um das Erkennen eines
+ * Auseinanderlaufens, nicht um Faelschungssicherheit.
+ *
+ * FNV-1a, weil es in vier Zeilen passt und ohne Bibliothek auskommt.
+ */
+export function sectorFingerprint(sm: any): string | null {
+  if (!sm || typeof sm.length !== "number" || sm.length === 0) return null;
+  let h = 2166136261;
+  for (let i = 0; i < sm.length; i++) {
+    h ^= (sm[i] | 0) + 1;
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}

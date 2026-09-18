@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.110.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7518,3 +7518,76 @@ Vermutung und nicht als Befund.
 > was der Lauf nicht geprüft hat." Dieselbe Regel gilt für Erklärungen von
 > Fehlern, nicht nur für Testmeldungen. Die Gegenprobe ist das Mittel dagegen —
 > hier hat sie eine fertige, plausible, falsche Geschichte aufgehalten.
+
+## v3.111.0 — „Tap ohne Absturz" war kein Beleg für Multiplayer
+
+### Erst gemessen: Was schon da ist, ist stabil
+
+Fünf Läufe der bestehenden Online-Suiten (`online2p`, `online3p`, `matchmaking`,
+`haerte`, `heartbeat`): **5× 79 ✅ / 0 ❌**. Die Frage „läuft der Multiplayer
+stabil?" ist für das Abgedeckte also mit Ja zu beantworten — und mit einer
+Zahl, nicht mit einem Gefühl.
+
+### Dann nachgesehen, WAS abgedeckt war
+
+Geprüft wurden Beitritt, Phasen-Sync, Gast-Timer, HUD, Emotes, Warteschlange,
+Abweisungen. Für Spielzüge stand dort: **„Gast: Canvas-Tap ohne Crash ✓"**.
+
+Das belegt keinen Multiplayer, sondern nur, dass nichts explodiert. Ob eine
+Gast-Aktion den **autoritativen Zustand des Hosts** verändert, stand nirgends —
+und genau dort saßen die schlimmsten Fehler der Projektgeschichte: v3.0.6
+(„P3-Gäste konnten nichts platzieren") und v2.8.2. Beide waren still: Die Seite
+lief, der Tap kam an, es passierte nur nichts.
+
+### Neue Suite `suiteOnlineAktionen` — gemessen wird beim HOST
+
+Der ganze Weg: Gast klickt → Aktion in `guestAction{2,3}` → Host wendet sie an →
+**Gitter des Hosts ändert sich**. Dafür drei gated Haken (`__mmDebug`, also nie
+in Produktion): `__zellen(p)`, `__sektorHash()`, `__eliminiert()`.
+
+- **2 Spieler:** Gast setzt eine Kanone, der Host sieht 0 → 9 Zellen.
+- **3 Spieler:** **Gast 3 UND Gast 2** setzen je eine Kanone, der Host sieht sie.
+- **Gegenprobe zur Messung selbst:** Im 2-Spieler-Spiel muss P3 bei null
+  bleiben — sonst zählt der Haken irgendetwas statt etwas Bestimmtes.
+
+### Zwei eigene Fehler, die dabei aufgefallen sind
+
+**1. Ein Test, der nicht rot werden konnte.** Der erste Sektorkarten-Vergleich
+meldete stolz „alle drei Seiten identisch" — **bei 0 Zellen**. `buildSectorMap`
+liefert ein *flaches* `Int8Array`, mein Haken lief darüber wie über ein
+2D-Feld: `sm[r]` ist eine Zahl, `sm[r][c]` ist `undefined`, die innere Schleife
+lief nie. Drei leere Karten sind immer gleich. Aufgefallen ist es nur, weil die
+Meldung die Zellenzahl mitnennt. Jetzt verlangt der Test **erst** eine gefüllte
+Karte (>1000 Zellen, >100 zugeteilt) und **dann** Gleichheit — echt gemessen:
+2992 Zellen, 2655 zugeteilt, identischer Fingerabdruck auf allen drei Seiten.
+
+**2. Eine vorschnelle Fehlerdiagnose.** Der erste Lauf meldete „3P: Gast 3
+erreicht den Host NICHT" und nannte in der Fehlermeldung schon die Regression
+aus v3.0.6. Das war falsch. Im Zeitraffer dauert die Setup-Phase **eine
+Sekunde**, und zwischen „Phase abfragen" und „klicken" liegt ein Roundtrip —
+das Fenster war meist schon zu. Der Beweis kam, als auch **2P** in einem Lauf
+fiel, nachdem es zweimal mit sechs Tipps geklappt hatte: ein Würfelspiel, keine
+Regression. `makeOnlineCtx` nimmt jetzt `{ langsam: true }` und lässt den
+Zeitraffer für diese Suite weg. Seither: deterministisch dieselben Tippzahlen.
+
+### Neu im Spiel: Sektorkarten-Abgleich (Funktion, nicht nur Test)
+
+Die Sektorkarte wird beim Gast **neu berechnet**, nicht übertragen. Laufen die
+Eingaben auseinander, darf der Gast scheinbar bauen und der Host lehnt ab — für
+den Spieler sieht das aus, als reagiere das Spiel nicht, und im Protokoll steht
+nichts, weil nichts abstürzt. Bisher gab es dagegen **keinen Schutz**.
+
+Jetzt schickt der Host einen Fingerabdruck im Zustandsfeld `sh` mit
+(`sectorFingerprint` in `src/engine/terrain.ts`, rein und unit-getestet). Der
+Gast vergleicht, **berechnet einmal neu**, und meldet erst, wenn auch das nicht
+hilft. Ein zusätzliches Feld ist rückwärtsverträglich — alte Gäste lesen es
+nicht, alte Hosts schicken es nicht —, deshalb bleibt `PROTO_VERSION` bei 2.
+
+**Gegengeprüft, in beiden Richtungen:**
+- Nur die Karte verfälscht → **heilt sich still**, *kein* Fehlalarm.
+- Das Gelände verbogen (Eingabe, die der Host nie schickt) → **wird gemeldet**.
+
+Der erste Anlauf der zweiten Gegenprobe verfälschte Burgpositionen — und blieb
+still. Zu Recht: Die Burgen schickt der Host in *jedem* Zustand mit, die
+Verfälschung war im nächsten Takt wieder weg. Erst das Gelände, das aus dem Seed
+abgeleitet und nie übertragen wird, bildet den echten Gefahrenfall ab.
