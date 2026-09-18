@@ -19,9 +19,35 @@ import { initializeApp } from "firebase/app";
       window.dispatchEvent(new Event("fb-ready"));
     } else
     try {
+      // ── Firebase-Konfiguration ───────────────────────────────────────────
+      //
+      // **Der `apiKey` ist KEIN Geheimnis.** Er ist eine oeffentliche Kennung,
+      // die in jeder Firebase-Web-App im JavaScript mitgeliefert wird und fuer
+      // jeden mit den Entwicklerwerkzeugen lesbar ist. Er gewaehrt keinen
+      // Datenzugriff — darueber entscheiden allein die Security Rules. Deshalb
+      // steht er hier im Code und nicht in den GitHub-Secrets. Das echte
+      // Geheimnis des Projekts ist der Dienstkonto-Schluessel (Admin SDK), und
+      // der umgeht alle Regeln; er hat hier nichts zu suchen.
+      //
+      // Bis v3.102.0 fehlte der Schluessel. Ohne ihn wirft `getAuth()`
+      // (`auth/invalid-api-key`), `uid` bleibt null, Cloud-Save laeuft nie an
+      // und die auth-gebundenen Regeln liessen sich nicht veroeffentlichen.
+      //
+      // Nur die Felder, die dieses Spiel benutzt:
+      //   apiKey      — Auth (identitytoolkit) spricht ohne ihn nicht
+      //   authDomain  — Ziel der Google-Weiterleitung (signInWithRedirect)
+      //   databaseURL — Realtime Database
+      //   projectId   — Projektzuordnung
+      //   appId       — identifiziert diese App im Projekt
+      // Weggelassen: storageBucket (kein Storage), messagingSenderId (keine
+      // Push-Nachrichten), measurementId (kein Analytics). Was nicht drinsteht,
+      // kann auch nicht versehentlich Verbindungen aufbauen.
       const app = initializeApp({
+        apiKey: "AIzaSyBOmaWUaDKjSQCKZbEhYdy-PMl9LRQ-azg",
+        authDomain: "fortress-cbe30.firebaseapp.com",
         databaseURL: "https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "fortress-cbe30",
+        appId: "1:263415833676:web:73aed868626060a26c40e9",
       });
       // ── Firebase App Check (v3.39.2) ─────────────────────────────────────
       // Schützt Realtime Database + Queue vor Skript-/REST-Abuse und Flood-DoS.

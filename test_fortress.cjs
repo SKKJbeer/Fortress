@@ -1640,6 +1640,15 @@ async function suiteOffline(browser) {
   const page = await ctx.newPage();
   page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
   try {
+    // **Riegel gegen die Produktivdatenbank.** Diese Suite laedt die echte
+    // Seite (der Service Worker IST hier der Pruefling), also laeuft auch
+    // firebase-boot.js. Bis v3.102.0 war das zufaellig harmlos: Ohne
+    // API-Schluessel warf `getAuth()`, `uid` blieb null, es passierte nichts.
+    // Mit dem Schluessel (v3.103.0) meldet sich die Seite anonym an — und
+    // `pushLeaderboard` schreibt das Testprofil in die ECHTE Bestenliste.
+    // FB_SPERRE setzt `window.__fb` VOR dem Seitenskript; firebase-boot haelt
+    // sich dann heraus. Der Service Worker wird davon nicht beruehrt.
+    await page.addInitScript(FB_SPERRE);
     await page.addInitScript(PROFILE_INIT);
     await page.goto('http://localhost:8765/', { waitUntil: 'load' });
 

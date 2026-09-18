@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.102.0
+- **Aktuelle Version**: v3.103.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -26,7 +26,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 | `src/engine/*` | **Engine-Schicht**: pure Logik/Daten, kein DOM/React/Firebase → unit-testbar. Seit v3.77.0 grösstenteils **TypeScript**: `const.ts` (Grid/Zelltypen/Domänentypen), `economy.ts` (Beute/SHOP), `terrain.ts` (RNG, Welten, Generatoren), `flood.ts` (Umschlossen-Regel), `progression.ts` (ELO/XP/Gold), `catalog.ts` (Kosmetik/Rezepte), `cloudsave.ts` (Profil-Zusammenführung), `profil.ts` (`normalisiereProfil` — baut das Profil aus einer Whitelist NEU auf; fehlt dort ein Feld, ist es beim naechsten Speichern endgueltig weg, siehe v3.26.1/v3.33.0. `tests/profil.test.js` haelt alle 24 Felder fest), `bot.ts` (BOT_LEVELS/BOT_NAMES/BOT_WAPPEN — Balancing gehoert nicht inline), `speicher.ts` (ALLE localStorage-Schluessel an einer Stelle; `tests/speicher.test.js` durchsucht den Quellbaum nach unbekannten `fortress_`-Schluesseln — ein Tippfehler dort ist stiller Fortschrittsverlust), `daily.ts` (Tages-Belohnungen, Treue-Bonus, Aufgaben-Rotation — seit v3.97.0; `loadDailyState`/`saveDailyState` blieben in app.js, weil sie localStorage anfassen). Noch JavaScript: `achievements.js`, `shapes.js`. **Beim Import die Endung mitschreiben** — Node führt die Unit-Tests ohne Build aus. |
 | `src/i18n.js` | Alle UI-Texte (`LANGS`). de/en müssen identische Keys haben (Test erzwingt das). |
 | `src/ui/*` | `icons.js` (ICON_PATHS + Icon), **`modale.js`** (WinFx, rarityMeta, forgeItemVisual, AchievementPopup, AchievementsModal, ItemRevealModal, XpResultAnim, OnboardingModal, DailyRewardModal — seit v3.98.0/v3.99.0; `t`/`achTitle`/`achDesc` kommen als Requisiten, NICHT ueber einen Kontext: in der Signatur kann man sie lesen und im Test einsetzen), **`anzeigen.js`** (LevelBadge, ConfettiBurst, WappenAvatar, XpBarUI, MatPip, MatRow — seit v3.96.0; `MatRow` bekommt `t` als Requisite, nicht mehr aus dem Abschluss) und **`wappen.js`** (Avatar-Katalog: WAPPEN_SRC/WAPPEN/WAPPEN_GLOW/WAPPEN_MIGRATION/AVATAR_UNLOCKS, seit v3.95.0). Erster Schnitt beim Abtragen des Grossblocks. **`WAPPEN_SVG` ist entfallen** — 17,2 KB Inline-SVG, die nur noch `Object.keys()` lieferten; die Namensliste kommt aus `WAPPEN_SRC`. `tests/wappen.test.js` haelt den Katalog fest. |
-| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 141 Tests, ~0,6 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
+| `tests/*.test.js` | **Unit-Tests** (`npm run test:unit` = `node --test tests/*.test.js`, 145 Tests, ~0,6 s). Das Glob ist Absicht: bis v3.94.0 standen hier zwei Dateien namentlich, und `net.test.js` + `ui.test.js` liefen jahrelang nie mit. |
 | `test_fortress.cjs` | Playwright-E2E-Suite (CommonJS — deshalb `type:module` nur in `src/`+`tests/` package.json). |
 | `FORTRESS-SPEC.md` | Verbindliche Spielspezifikation + vollständiger Changelog. **Immer mitpflegen bei Änderungen.** |
 | `.github/workflows/deploy.yml` | Auto-Deployment: Push auf `main` → GitHub Pages + Git-Tag + GitHub Release. |
@@ -354,6 +354,12 @@ npm run test:e2e
 - **Riegel gegen die Produktivdatenbank**: `FB_SPERRE` setzt `window.__fb` VOR dem Seitenskript,
   `firebase-boot.js` haelt sich dann heraus. Ohne das schreibt `pushLeaderboard` das Testprofil
   in die ECHTE Bestenliste — Routen-Blockaden greifen bei der WebSocket-Verbindung nicht.
+  **Seit v3.103.0 erzwungen**: `tests/testsperre.test.js` verlangt, dass JEDER
+  `browser.newContext(` eine Sperre bekommt. Beim Eintragen des API-Schluessels
+  fiel auf, dass `suiteOffline` keine hatte — vorher zufaellig harmlos (ohne
+  Schluessel warf `getAuth()`), mit Schluessel haette sie das Testprofil in die
+  echte Bestenliste geschrieben. Die Pruefung ist STATISCH: ein Laufzeit-Test
+  merkt es erst, wenn schon geschrieben wurde.
 - Firebase/gstatic werden abgeblockt
 - Alle Button-Clicks via `page.evaluate(() => btn.click())` — Overlay-Workaround
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)

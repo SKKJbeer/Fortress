@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.102.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.103.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -6949,3 +6949,78 @@ der Code. Das lässt sich nicht wegprogrammieren; die Meldung kann es aber
 benennen, statt in die Irre zu führen.
 
 Tests grün (Typen 0, Unit 141/141, iOS 21/21, E2E **431/431**).
+
+---
+
+## v3.103.0 — Der Schlüssel ist drin, und er hat sofort ein Loch im Test-Riegel aufgedeckt
+
+Der Firebase-Web-Schlüssel steht in `src/firebase-boot.js`. Nur die Felder, die
+dieses Spiel benutzt: `apiKey`, `authDomain`, `databaseURL`, `projectId`,
+`appId`. Weggelassen: `storageBucket`, `messagingSenderId`, `measurementId` —
+kein Storage, keine Push-Nachrichten, kein Analytics. **Was nicht drinsteht,
+kann auch nicht versehentlich Verbindungen aufbauen.**
+
+Der `apiKey` ist kein Geheimnis: eine öffentliche Kennung, die in jeder
+Firebase-Web-App im JavaScript mitgeliefert wird. Er gewährt keinen
+Datenzugriff — darüber entscheiden die Security Rules. Deshalb steht er im
+Code und nicht in den GitHub-Secrets. Das echte Geheimnis wäre der
+Dienstkonto-Schlüssel (Admin SDK), der alle Regeln umgeht; der hat dort nichts
+zu suchen.
+
+### Der Fund: elf Kontexte, zehn Sperren
+
+Beim Eintragen fiel auf, dass `suiteOffline` die **echte Seite** lädt — der
+Service Worker ist dort der Prüfling — und dabei nur `PROFILE_INIT` setzt,
+**keine `FB_SPERRE`**.
+
+Bis hierher war das zufällig harmlos: Ohne API-Schlüssel warf `getAuth()`
+(`auth/invalid-api-key`), `uid` blieb null, es passierte nichts. **Mit dem
+Schlüssel meldet sich die Seite anonym an** — und `pushLeaderboard` schreibt
+das Testprofil „TestBot" in die **echte Bestenliste**, bei jedem CI-Lauf.
+`CLAUDE.md` warnt vor genau diesem Fall seit Langem; gemessen hat es nie
+jemand.
+
+Derselbe Schlüssel, der das Spiel reparieren soll, hätte also die
+Produktivdaten verschmutzt — und zwar unbemerkt, weil ein Eintrag in einer
+Bestenliste nichts rot werden lässt.
+
+### Der Wächter
+
+`tests/testsperre.test.js`, 4 Prüfungen in `test:unit`:
+
+- **Jeder** `browser.newContext(` in der E2E-Suite muss innerhalb von 40 Zeilen
+  eine `FB_SPERRE` oder einen `makeFbMock` bekommen.
+- Gegenprobe, dass das Muster überhaupt Kontexte findet.
+- Beide Sperren existieren und legen `window.__fb` **vorab** an
+  (`window.__fb = window.__fb || {`) — ein Überschreiben danach wäre zu spät,
+  die Verbindung stünde schon.
+- Und die andere Hälfte des Riegels: `firebase-boot.js` prüft weiterhin auf ein
+  vorhandenes `window.__fb`. Fällt diese Weiche weg, greift keine Sperre mehr,
+  egal wie viele Tests sie setzen.
+
+Die Prüfung ist **statisch** — sie liest die Suite, statt sie zu fahren. Ein
+Laufzeit-Test würde die Verbindung erst herstellen und dann bemerken; das ist
+zu spät, wenn dabei schon geschrieben wurde.
+
+Nicht-Hohlheit ist belegt, weil sie in dieser Reihenfolge entstanden ist:
+zuerst geschrieben → **rot**, mit der Zeilennummer `test_fortress.cjs:1639`;
+dann die Sperre eingesetzt → grün.
+
+### Noch ein Lastflackern, festgehalten
+
+Ein voller Lauf meldete 5 ❌ in Matchmaking und Trichter — Bereiche, die diese
+Änderung nicht berührt (beide laufen gegen den Mock). Derselbe Code im nächsten
+Lauf: **431 ✅, 0 ❌.** Dieselbe ausgehungerte Maschine wie am 17.09. beim
+Bot-Test. Es ist das dritte Mal; die Beobachtung gehört in die Akte, auch wenn
+sie sich nicht wegprogrammieren lässt.
+
+Tests grün (Typen 0, Unit **145/145**, iOS 21/21, E2E 431/431).
+
+### Was noch fehlt, in dieser Reihenfolge
+
+1. **Live nachmessen**, dass `window.__fb.uid` nicht mehr `null` ist.
+2. **Erst dann** die Regeln aus `firebase-rules-PASTE.json` veröffentlichen.
+3. Schreibprobe: unangemeldete Zugriffe müssen abgewiesen werden.
+4. Cloud-Save einmal ganz durchspielen.
+
+Umgekehrt sperrt Schritt 2 die Tester aus, die gerade spielen.
