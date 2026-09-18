@@ -118,6 +118,19 @@ def zugangsdaten() -> dict:
         if marker:
             sag("  → Der INHALT sieht richtig aus, nur die Verpackung nicht.")
             sag("    Wahrscheinlich beim Einfuegen escaped oder in Anfuehrungszeichen.")
+        else:
+            # Zeichen-ZAEHLUNGEN, kein Inhalt. Sie sagen, WAS fuer ein Gebilde
+            # das ist, ohne ein Zeichen davon preiszugeben — und ersparen die
+            # naechste Raterunde. `{` = 0 heisst: in keiner Verpackung ein JSON.
+            z = {"{": roh.count("{"), "}": roh.count("}"), '"': roh.count('"'),
+                 "\\": roh.count("\\"), "-": roh.count("-"),
+                 "Zeilenumbrueche": roh.count("\n"), "Doppelpunkte": roh.count(":")}
+            sag("  Zeichen       : " + ", ".join(f"{k}={v}" for k, v in z.items()))
+            sag(f"  nur ASCII     : {'ja' if roh.isascii() else 'nein'}")
+            sag(f"  letztes Zeichen: {roh[-1]!r}")
+            if z["{"] == 0:
+                sag("  → Kein '{' im Text: Das ist in KEINER Verpackung ein JSON-Objekt.")
+                sag("    Es ist also nicht der Dienstkonto-Schluessel, auch nicht verpackt.")
         sag("")
         sag("Gebraucht wird die JSON-DATEI aus:")
         sag("  Firebase-Console → Projekteinstellungen → Dienstkonten →")
