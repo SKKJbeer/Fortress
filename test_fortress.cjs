@@ -254,6 +254,34 @@ async function wartePhasenGleich(pages, waitMs = 3000) {
   return { gleich: false, phasen: letzte, versuche, ms: Date.now() - start };
 }
 
+// Auf den Spielcode WARTEN, nicht nach fester Frist danach sehen (v3.111.5).
+//
+// Vorher stand an ACHT Stellen dieselbe Kopie: `waitForTimeout(1200)` und ein
+// einziger Blick in den DOM. Unter voller Suitenlast reichen 1200 ms nicht —
+// die Folge war „Host: kein Spielcode → Suite abgebrochen", und mit dem Abbruch
+// fielen zwanzig weitere Pruefungen aus. Allein lief dieselbe Suite 4× grün;
+// es war also nie ein Fehler am Spiel, immer einer an der Messung.
+//
+// Genau die Bauart, vor der CLAUDE.md seit v3.108.0 warnt: Momentaufnahme statt
+// Wartebedingung. Acht Kopien davon sind acht Gelegenheiten, es zu vergessen.
+async function warteAufCode(page, frist = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < frist) {
+    const code = await page.evaluate(() => {
+      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        const t = w.currentNode.textContent.trim();
+        if (re.test(t)) return t;
+      }
+      return null;
+    }).catch(() => null);
+    if (code) return { code, ms: Date.now() - start };
+    await page.waitForTimeout(200);
+  }
+  return { code: null, ms: Date.now() - start };
+}
+
 // Auf das Stueck-Vorschau-Panel WARTEN statt einmal hinzusehen (v3.108.0).
 //
 // Der Check las den DOM in dem Augenblick, in dem die Bauphase gerade
@@ -1076,23 +1104,9 @@ async function suiteOnlineUI(browser, fbPort) {
 
     // "Spiel erstellen" → Wartescreen mit 6-stelligem Code
     await jsClick(page, ['Spiel erstellen']);
-    // Warte bis Code-TextNode erscheint (max 5s)
-    await page.waitForFunction(() => {
-      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) { if (re.test(w.currentNode.textContent.trim())) return true; }
-      return false;
-    }, { timeout: 5000 }).catch(() => {});
-
-    const code = await page.evaluate(() => {
-      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) {
-        const t = w.currentNode.textContent.trim();
-        if (re.test(t)) return t;
-      }
-      return null;
-    });
+    // `warteAufCode` wartet selbst — das fruehere waitForFunction davor war
+    // eine zweite, kuerzere Frist fuer dieselbe Bedingung.
+    const code = (await warteAufCode(page)).code;
 
     code ? ok(`"Spiel erstellen": Code "${code}" ✓`) : fail('"Spiel erstellen": kein Spielcode');
 
@@ -1138,20 +1152,13 @@ async function suiteOnline2P(browser, fbPort) {
     await jsClick(pH, ['ONLINE']);
     await pH.waitForTimeout(200);
     await jsClick(pH, ['Spiel erstellen']);
-    await pH.waitForTimeout(1200);
-
-    // Code-TextNode suchen (genau 6 Chars aus Game-Charset, kein I/O/0/1)
-    const code = await pH.evaluate(() => {
-      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) {
-        const t = w.currentNode.textContent.trim();
-        if (re.test(t)) return t;
-      }
-      return null;
-    });
+    const codeErg = await warteAufCode(pH);
+    const code = codeErg.code;
     if (!code) {
-      fail('Host: kein Spielcode → Suite abgebrochen'); return { res, errs: [...errs1,...errs2] };
+      // Die Wartezeit gehoert in die Meldung: Sie unterscheidet „der Code kam
+      // nie" von „die Frist war zu knapp" — und genau das war hier die Frage.
+      fail(`Host: kein Spielcode nach ${(codeErg.ms / 1000).toFixed(1)}s → Suite abgebrochen`);
+      return { res, errs: [...errs1, ...errs2] };
     }
     ok(`Host erstellt Spiel: Code "${code}" ✓`);
     await pH.screenshot({ path: '/tmp/s5_host_waiting.png' });
@@ -2845,13 +2852,7 @@ async function suiteHeartbeat(browser, fbPort) {
   try {
     await Promise.all([loadMenu(pH), loadMenu(pG)]);
     await jsClick(pH, ['ONLINE']); await pH.waitForTimeout(200);
-    await jsClick(pH, ['Spiel erstellen']); await pH.waitForTimeout(1200);
-    const code = await pH.evaluate(() => {
-      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
-      return null;
-    });
+    await jsClick(pH, ['Spiel erstellen']); const code = (await warteAufCode(pH)).code;
     if (!code) { fail('Herzschlag: kein Spielcode → Suite abgebrochen'); return { res, errs }; }
 
     await jsClick(pG, ['ONLINE']); await pG.waitForTimeout(200);
@@ -2965,13 +2966,7 @@ async function suiteOnline3P(browser, fbPort) {
     // ── Code-Join: Host erstellt 3P-Spiel, zwei Gäste treten bei ──
     await jsClick(H.page, ['ONLINE']); await H.page.waitForTimeout(200);
     await jsClick(H.page, ['3 Spieler']); await H.page.waitForTimeout(150);
-    await jsClick(H.page, ['Spiel erstellen']); await H.page.waitForTimeout(1200);
-    const code = await H.page.evaluate(() => {
-      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
-      return null;
-    });
+    await jsClick(H.page, ['Spiel erstellen']); const code = (await warteAufCode(H.page)).code;
     if (!code) { fail('3P Code-Join: kein Spielcode'); return { res, errs: errsAll }; }
     for (const G of [G2, G3]) {
       await jsClick(G.page, ['ONLINE']); await G.page.waitForTimeout(200);
@@ -3074,13 +3069,8 @@ async function suiteOnlineAktionen(browser, fbPort) {
   const erstelle = async (page, spieler) => {
     await jsClick(page, ['ONLINE']); await page.waitForTimeout(200);
     await jsClick(page, [spieler === 3 ? '3 Spieler' : '2 Spieler']); await page.waitForTimeout(150);
-    await jsClick(page, ['Spiel erstellen']); await page.waitForTimeout(1200);
-    return page.evaluate(() => {
-      const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
-      return null;
-    });
+    await jsClick(page, ['Spiel erstellen']);
+    return (await warteAufCode(page)).code;
   };
   const tritt_bei = async (page, code) => {
     await jsClick(page, ['ONLINE']); await page.waitForTimeout(200);
@@ -5442,13 +5432,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     try {
       await jsClick(H.page, ['ONLINE']);          await H.page.waitForTimeout(220);
       await jsClick(H.page, ['3 Spieler']);        await H.page.waitForTimeout(150);
-      await jsClick(H.page, ['Spiel erstellen']);  await H.page.waitForTimeout(1200);
-      const code = await H.page.evaluate(() => {
-        const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
-        return null;
-      });
+      await jsClick(H.page, ['Spiel erstellen']);  const code = (await warteAufCode(H.page)).code;
       if (!code) {
         fail('Slot-Rennen: Host liefert keinen Spielcode');
       } else {
@@ -5630,13 +5614,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     const G = await mk('ProtoGast', 'p_pg', 'd_pg');
     try {
       await jsClick(H.page, ['ONLINE']);         await H.page.waitForTimeout(220);
-      await jsClick(H.page, ['Spiel erstellen']); await H.page.waitForTimeout(1200);
-      const code = await H.page.evaluate(() => {
-        const re = /^[ABCDEFGHJKLMNPQRSTUVWXYZ2-9]{6}$/;
-        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        while (w.nextNode()) { const t = w.currentNode.textContent.trim(); if (re.test(t)) return t; }
-        return null;
-      });
+      await jsClick(H.page, ['Spiel erstellen']); const code = (await warteAufCode(H.page)).code;
       if (!code) { fail('Protokoll-Schranke: kein Spielcode'); }
       else {
         await beitrittVorbereiten(G.page, code);
@@ -5839,9 +5817,17 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // der Matchmaking und 3P schon seriell stehen. Zehn Sekunden seriell sind
     // billiger als ein Flattern im Deployment.
     const lb = await suiteBestenliste(browser);
-    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb };
+    // Bot-Suite seit v3.111.5 ebenfalls SERIELL. Ihre Versiegelungs-Pruefung
+    // haengt am KI-Tick: Der Bot dichtet die Bresche gemessen nach rund vier
+    // Sekunden, und das Bauende faellt auf denselben Moment. Fehlt ihm unter
+    // paralleler Last Rechenzeit, verliert er — und drei Pruefungen fallen als
+    // Nachhall mit. Genau die Ueberlast, wegen der zumauern, matchmaking und
+    // 3P schon hier stehen. Die Aussage bleibt unveraendert; nur bekommt der
+    // Bot die Gelegenheit, die sie voraussetzt.
+    const bot = await suiteBot(browser);
+    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot };
   })();
-  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rBot, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
     suitePlattform(browser),
@@ -5861,7 +5847,6 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteOnboarding(browser),
     suiteSound(browser),
     suiteI18n(browser),
-    suiteBot(browser),
     suiteTutorial(browser),
     suiteBallSettle(browser),
     suiteArmoryReady(browser),
@@ -5871,14 +5856,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rBot.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rBot.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

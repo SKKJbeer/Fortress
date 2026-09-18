@@ -7,9 +7,11 @@
 import { initializeApp } from "firebase/app";
     import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect }
       from "firebase/database";
-    import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
+    import { getAuth, initializeAuth, indexedDBLocalPersistence, browserLocalPersistence,
+             signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
              linkWithRedirect, signInWithRedirect, signInWithCredential, getRedirectResult, signOut }
       from "firebase/auth";
+    import { kontoVerknuepfbar } from "./platform.ts";
     // Ist bereits ein Firebase-Ersatz installiert, wird NICHT ueberschrieben.
     // Seit das SDK mitgebuendelt ist (Architektur E3), kann die Initialisierung
     // nicht mehr am Netz scheitern — ohne diese Weiche wuerde sie den in der
@@ -85,7 +87,34 @@ import { initializeApp } from "firebase/app";
       // Login fehl → uid bleibt null → das Spiel läuft unverändert mit der lokalen
       // Profil-ID weiter (kein Bruch). Erst nach Aktivierung + neuen Rules greift die Bindung.
       try {
-        const auth = getAuth(app);
+        // ── Auth-Start: in der APP ohne Weiterleitungs-Aufloeser (v3.111.4) ──
+        //
+        // GEMESSEN auf dem Geraet (Selbstauskunft aus v3.111.2):
+        //   „Verbindung: SDK ✓ · keine Anmeldung · keine Verbindung"
+        // Kein Anmeldefehler, kein `navigator.onLine=false` — die Anmeldung
+        // SCHLUG also nicht fehl, sie HING. Und mit ihr die Datenbank: Das
+        // RTDB-SDK holt vor dem Verbinden ein Auth-Token; bleibt die
+        // Auth-Initialisierung offen, kommt nie eine Verbindung zustande.
+        // Deshalb ging weder Matchmaking noch die oeffentlich lesbare
+        // Bestenliste — und im Safari desselben Telefons lief alles.
+        //
+        // URSACHE: `getAuth()` installiert den Popup-/Redirect-Aufloeser, und
+        // `getRedirectResult()` unten ERZWINGT dessen Start. Der laedt ein
+        // iframe von `<authDomain>/__/auth/iframe` — eine fremde Herkunft,
+        // geladen aus einer Seite unter eigenem Schema (`capacitor://localhost`).
+        // Im WebView bleibt dieser Ladevorgang haengen. Im Browser nicht.
+        //
+        // Und der Aufruf hatte dort nie einen Zweck: Konto-Verknuepfung ist in
+        // der App ausdruecklich AUS (`kontoVerknuepfbar()`, ARCHITEKTUR/CLAUDE.md,
+        // wegen Apple 5.1.1(v)/4.8). Die App bezahlte also mit ihrer gesamten
+        // Online-Faehigkeit fuer eine Funktion, die sie gar nicht anbietet.
+        //
+        // `initializeAuth` OHNE `popupRedirectResolver` startet die Anmeldung
+        // ohne dieses iframe. Die Persistenz wird ausdruecklich benannt, statt
+        // sie raten zu lassen.
+        const auth = kontoVerknuepfbar()
+          ? getAuth(app)
+          : initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
         window.__fb.auth = auth;
         onAuthStateChanged(auth, (user) => {
           window.__fb.uid = user ? user.uid : null;
@@ -97,6 +126,11 @@ import { initializeApp } from "firebase/app";
         });
         // Rueckkehr von der Google-Weiterleitung auswerten (v3.72.0).
         // REDIRECT statt Popup — ein Auth-Popup bricht in der TWA (siehe CLAUDE.md).
+        //
+        // NUR im Browser (v3.111.4): In der App gibt es keine Verknuepfung, von
+        // der man zurueckkehren koennte — und dieser Aufruf war es, der dort die
+        // ganze Anmeldung zum Haengen brachte (Begruendung oben).
+        if (kontoVerknuepfbar())
         getRedirectResult(auth)
           .then((res) => {
             if (res && res.user) window.dispatchEvent(new Event("fb-linked"));
@@ -121,7 +155,19 @@ import { initializeApp } from "firebase/app";
             }
             if (code) window.__fbLinkError = code;
           });
-        signInAnonymously(auth).catch((e) => { window.__fbAuthError = e && (e.code || e.message); });
+        // Eine HAENGENDE Anmeldung muss auffallen. Der Fehlerpfad allein
+        // genuegt nicht: In der App kam weder ein Ergebnis noch ein Fehler,
+        // und die Selbstauskunft hatte dadurch nichts zu melden ausser
+        // „keine Anmeldung". Zehn Sekunden sind grosszuegig — gemessen
+        // antwortet die Anmeldung in unter einer Sekunde.
+        let angemeldet = false;
+        signInAnonymously(auth)
+          .then(() => { angemeldet = true; })
+          .catch((e) => { window.__fbAuthError = e && (e.code || e.message); });
+        setTimeout(() => {
+          if (!angemeldet && !window.__fb.uid && !window.__fbAuthError)
+            window.__fbAuthError = "Anmeldung antwortet nicht (10s)";
+        }, 1e4);
       } catch (e) { window.__fbAuthError = e && e.message; }
     } catch (e) {
       console.error("Firebase init failed:", e);

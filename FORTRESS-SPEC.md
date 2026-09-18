@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7753,3 +7753,92 @@ diese Angabe wäre der Fall von „Netz weg" nicht zu unterscheiden.
 > wenn die Zeile auf dem Gerät `navigator.onLine=false` zeigt. Zweimal in dieser
 > Sitzung hat eine plausible Erklärung nicht gehalten; diese hier wird gemessen,
 > bevor sie behoben wird.
+
+## v3.111.4 — Gefunden: Die App wartete auf ein iframe, das sie nie brauchte
+
+Die Selbstauskunft aus v3.111.2 hat die Frage in einer Zeile beantwortet:
+
+```
+Verbindung: SDK ✓ · keine Anmeldung · keine Verbindung
+```
+
+Drei Angaben, drei Schlüsse: Das SDK **ist** geladen. Die Anmeldung schlug
+**nicht fehl** — es steht kein Fehlercode da —, sie **hing**. Und
+`navigator.onLine=false` steht dort **nicht**: Der Kandidat aus v3.111.3 ist
+damit erledigt. Gut, dass er nur gemessen und nicht eingebaut wurde.
+
+### Die Ursache
+
+`firebase-boot.js` rief **`getRedirectResult(auth)` bedingungslos** auf — auch
+in der App. Das erzwingt den Start des Popup-/Redirect-Auflösers, und der lädt
+ein **iframe von `<authDomain>/__/auth/iframe`**: eine fremde Herkunft, geladen
+aus einer Seite unter `capacitor://localhost`. Im WKWebView bleibt dieser
+Ladevorgang hängen, im Browser nicht.
+
+Damit hing die **Auth-Initialisierung**, und mit ihr die Datenbank: Das
+RTDB-SDK holt vor dem Verbinden ein Auth-Token. Kein Token → keine Verbindung →
+weder Matchmaking noch die *öffentlich lesbare* Bestenliste. Genau das Bild.
+
+**Und der Aufruf hatte in der App nie einen Zweck.** Konto-Verknüpfung ist dort
+ausdrücklich aus (`kontoVerknuepfbar()`, wegen Apple 5.1.1(v)/4.8). Die App
+bezahlte mit ihrer gesamten Online-Fähigkeit für eine Funktion, die sie gar
+nicht anbietet.
+
+### Was sich ändert
+
+- **App:** `initializeAuth(app, { persistence: [indexedDB, browserLocal] })` —
+  ohne Auflöser, mit ausdrücklich benannter Persistenz statt geratener.
+- **App:** kein `getRedirectResult` mehr; es gibt dort keine Rückkehr von einer
+  Verknüpfung, die es nicht gibt.
+- **Browser:** unverändert `getAuth` + `getRedirectResult` — die Google-
+  Verknüpfung muss dort weiter funktionieren.
+- **Beide:** Eine Anmeldung, die nach **10 s** weder Ergebnis noch Fehler
+  liefert, setzt jetzt selbst `__fbAuthError = "Anmeldung antwortet nicht"`.
+  Der Fehlerpfad allein genügte nicht — genau daran hat diese Suche gehangen.
+
+### `tests/authstart.test.js` — statisch, weil die Suite hier blind ist
+
+Die E2E-Suite sperrt Firebase aus (`FB_SPERRE`) und startet `firebase-boot.js`
+nie. Ein Laufzeit-Test würde den Rückfall also nicht bemerken. Fünf Zusagen im
+Quelltext: `getRedirectResult` nur hinter der Weiche, `initializeAuth` ohne
+`popupRedirectResolver` und mit Persistenz, `getAuth` nur im Browser-Zweig, die
+Frist um die Anmeldung, und die Plattform-Erkennung aus `platform.ts` statt aus
+einer zweiten Kopie.
+
+**Gegengeprüft:** Wächter entfernt → rot, mit Zeilennummer und Begründung.
+
+### Was diese Runde über das Vorgehen sagt
+
+Drei Erklärungen standen zur Wahl, zwei waren falsch: die Sicherheitsregeln
+(widerlegt durch HTTP 200 auf die Bestenliste) und `navigator.onLine`
+(widerlegt durch die Zeile auf dem Gerät). Gefunden hat es keine Überlegung,
+sondern **eine Messung an der richtigen Stelle** — die Selbstauskunft, die
+genau dafür gebaut wurde.
+
+### Nachtrag: zwei Laststellen in der Testinfrastruktur
+
+Die zwei neuen Suiten haben den vollen Lauf auf ~460 Prüfungen gebracht, und
+prompt fiel jeweils die Suite um, die gerade unter Spitzenlast lief. Beides
+Messfehler, keine Produktfehler — und beide nach demselben Muster behoben:
+
+**1. Der Spielcode wurde an ACHT Stellen nach fester Frist gelesen** —
+`waitForTimeout(1200)` und *ein* Blick in den DOM. Unter voller Last reichte das
+nicht: „Host: kein Spielcode → Suite abgebrochen", und mit dem Abbruch fielen
+zwanzig weitere Prüfungen aus (442 statt 462). Dieselbe Suite allein: **4× grün**.
+Genau die Bauart, vor der CLAUDE.md seit v3.108.0 warnt — acht Kopien davon sind
+acht Gelegenheiten, es zu vergessen. Jetzt **eine** Wartebedingung
+(`warteAufCode`), acht Aufrufer, und die Meldung nennt die Wartezeit: Sie
+unterscheidet „der Code kam nie" von „die Frist war zu knapp".
+
+**2. Die Bot-Suite lief parallel.** Ihre Versiegelungsprüfung hängt am KI-Tick:
+Der Bot dichtet die Bresche gemessen nach **rund vier Sekunden**, und das Bauende
+fällt auf denselben Moment. Fehlt ihm Rechenzeit, verliert er — und drei
+Prüfungen fallen als Nachhall mit. Jetzt seriell in `onlineHeavy`, wie
+`zumauern`, `matchmaking` und 3P aus genau demselben Grund. Die Aussage bleibt
+unverändert; der Bot bekommt nur die Gelegenheit, die sie voraussetzt.
+
+**Ein eigener Fehler beim Verschieben:** `rBot` blieb in der Positionszuweisung
+stehen, obwohl der Eintrag aus dem `Promise.all`-Feld raus war — damit hätten
+sich **alle folgenden Ergebnisse um eins verschoben**. Gefunden, bevor es lief.
+
+Gemessen danach: Matchmaking allein 3× 21/21, **zwei volle Läufe je 462 ✅ / 0 ❌**.
