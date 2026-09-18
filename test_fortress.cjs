@@ -302,16 +302,10 @@ async function waitForPhase(page, keywords, waitMs = 6000) {
 // Der Riegel setzt window.__fb VOR dem Seitenskript. firebase-boot.js prueft
 // genau darauf und haelt sich dann komplett heraus — es wird also gar keine
 // Verbindung aufgebaut, statt sie nachtraeglich abzufangen.
-const FB_SPERRE = `
-  window.__fb = window.__fb || {
-    __gesperrt: true, uid: null, anon: true, mail: null,
-    ref: () => ({}), set: async () => {}, update: async () => {}, remove: async () => {},
-    get: async () => ({ exists: () => false, val: () => null }),
-    onValue: () => () => {}, off: () => {},
-    runTransaction: async () => ({ committed: false, snapshot: { exists: () => false, val: () => null } }),
-    onDisconnect: () => ({ remove: () => {}, cancel: () => {} })
-  };
-`;
+// Die Sperre liegt seit v3.110.0 in `scripts/fb-sperre.cjs` — EINE Quelle.
+// Grund: `tools/make-screenshots.cjs` macht ebenfalls Browser-Kontexte auf und
+// hatte keine. Die Begruendung steht dort.
+const { FB_SPERRE } = require('./scripts/fb-sperre.cjs');
 
 async function makeCtx(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,

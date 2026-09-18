@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.109.0
+- **Aktuelle Version**: v3.110.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -375,7 +375,8 @@ npm run test:e2e
 - Test-Datei: `test_fortress.cjs` (Playwright, Chromium headless)
 - Prüft zuerst: Version in `index.html` auf Disk == Version vom Server (Mismatch → Abbruch)
 - React und Firebase kommen seit v3.74.0 aus dem Bundle — nichts wird mehr vom CDN gemockt
-- **Riegel gegen die Produktivdatenbank**: `FB_SPERRE` setzt `window.__fb` VOR dem Seitenskript,
+- **Riegel gegen die Produktivdatenbank**: `FB_SPERRE` liegt seit v3.110.0 in
+  **`scripts/fb-sperre.cjs`** — EINE Quelle fuer Suite UND Werkzeuge. Sie setzt `window.__fb` VOR dem Seitenskript,
   `firebase-boot.js` haelt sich dann heraus. Ohne das schreibt `pushLeaderboard` das Testprofil
   in die ECHTE Bestenliste — Routen-Blockaden greifen bei der WebSocket-Verbindung nicht.
   **Seit v3.103.0 erzwungen**: `tests/testsperre.test.js` verlangt, dass JEDER
@@ -384,6 +385,12 @@ npm run test:e2e
   Schluessel warf `getAuth()`), mit Schluessel haette sie das Testprofil in die
   echte Bestenliste geschrieben. Die Pruefung ist STATISCH: ein Laufzeit-Test
   merkt es erst, wenn schon geschrieben wurde.
+  **Seit v3.110.0 liest die Pruefung den GANZEN Baum**, nicht nur die Suite:
+  `tools/make-screenshots.cjs` hatte vier Kontexte ohne Sperre und haette das
+  Demo-Profil „ARIN" (ELO 1284) in die echte Bestenliste geschrieben — ueber
+  jeden echten Spieler (Spitzenwert dort 1046). Ausnahmen stehen benannt und
+  begruendet in `AUSNAHMEN`, und ein Test prueft, dass sie nicht ins Leere
+  zeigen.
 - Firebase/gstatic werden abgeblockt
 - Alle Button-Clicks via `page.evaluate(() => btn.click())` — Overlay-Workaround
 - Testet: 2-Spieler und 3-Spieler lokal (Navigation, Canvas, Bauphase, Drehen-Buttons, Touch, Beenden-Dialog)

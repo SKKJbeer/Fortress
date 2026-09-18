@@ -23,6 +23,38 @@ const WURZEL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SUITE = path.join(WURZEL, 'test_fortress.cjs');
 const zeilen = fs.readFileSync(SUITE, 'utf8').split('\n');
 
+// NACHTRAG v3.110.0: Die Pruefung las bis dahin NUR die Suite — und uebersah
+// damit vier Browser-Kontexte in `tools/make-screenshots.cjs`, die ebenfalls
+// die echte App von localhost:8765 laden. Seit v3.103.0 traegt die den
+// API-Schluessel; der naechste Bildschirmfoto-Lauf haette das Demo-Profil
+// „ARIN" mit ELO 1284 in die echte Bestenliste geschrieben, ueber jedem
+// echten Spieler (Spitzenwert dort: 1046). Gemessen: noch nicht passiert.
+//
+// Ein Riegel, der nur einen von zwei Aufrufern kennt, ist keiner. Deshalb
+// wird jetzt der GANZE Quellbaum gelesen.
+const UEBERSPRINGEN = new Set(['node_modules', 'dist', '.git', 'ios', 'android', 'store', 'docs']);
+
+function alleQuellen(verzeichnis = WURZEL, gesammelt = []) {
+  for (const e of fs.readdirSync(verzeichnis, { withFileTypes: true })) {
+    if (e.name.startsWith('.') || UEBERSPRINGEN.has(e.name)) continue;
+    const voll = path.join(verzeichnis, e.name);
+    if (e.isDirectory()) alleQuellen(voll, gesammelt);
+    else if (/\.(cjs|mjs|js)$/.test(e.name)) gesammelt.push(voll);
+  }
+  return gesammelt;
+}
+
+// Dateien, die einen Browser aufmachen, aber die App NICHT laden — mit Grund.
+// Wer hier etwas eintraegt, nimmt es ausdruecklich vom Schutz aus; deshalb
+// steht die Begruendung daneben und nicht in einem Commit-Text.
+const AUSNAHMEN = {
+  'tools/make-feature-graphic.cjs':
+    'setzt reines HTML per setContent, laedt die App nie — kein Firebase im Spiel',
+  'scripts/cloudsave-probe.cjs':
+    'MUSS an die echte Datenbank: spielt Cloud-Save durch und raeumt selbst auf. '
+    + 'Laeuft NIE im Dauerlauf, nur von Hand mit ausdruecklicher Freigabe.',
+};
+
 // Wie weit nach dem newContext darf die Sperre stehen? Die Kontexte werden
 // unmittelbar danach bestueckt; 40 Zeilen sind reichlich Luft.
 const FENSTER = 40;
@@ -40,6 +72,36 @@ test('Jeder Browser-Kontext der E2E-Suite bekommt eine Firebase-Sperre', () => {
     + ohne.join('\n  '));
 });
 
+test('KEIN Browser-Kontext im ganzen Baum ohne Sperre (ausser benannten Ausnahmen)', () => {
+  const ohne = [];
+  let gesehen = 0;
+  for (const datei of alleQuellen()) {
+    const rel = path.relative(WURZEL, datei).split(path.sep).join('/');
+    const zs = fs.readFileSync(datei, 'utf8').split('\n');
+    zs.forEach((z, i) => {
+      if (!z.includes('newContext(')) return;
+      if (rel === 'tests/testsperre.test.js') return;   // diese Datei selbst
+      gesehen++;
+      if (AUSNAHMEN[rel]) return;
+      const fenster = zs.slice(i, i + FENSTER).join('\n');
+      if (!(fenster.includes('FB_SPERRE') || fenster.includes('makeFbMock'))) ohne.push(`${rel}:${i + 1}`);
+    });
+  }
+  assert.ok(gesehen >= 12, `nur ${gesehen} Kontexte im Baum gefunden — Muster kaputt?`);
+  assert.deepStrictEqual(ohne, [],
+    'Browser-Kontext(e) ohne Firebase-Sperre — wuerden die ECHTE Datenbank erreichen:\n  '
+    + ohne.join('\n  '));
+});
+
+test('Jede Ausnahme existiert wirklich und hat eine Begruendung', () => {
+  // Eine Ausnahmeliste, die auf geloeschte Dateien zeigt, gibt falsche
+  // Sicherheit: Sie sieht nach Sorgfalt aus und schuetzt nichts mehr.
+  for (const [rel, grund] of Object.entries(AUSNAHMEN)) {
+    assert.ok(fs.existsSync(path.join(WURZEL, rel)), `Ausnahme zeigt ins Leere: ${rel}`);
+    assert.ok(grund && grund.length > 30, `Ausnahme ${rel} ohne brauchbare Begruendung`);
+  }
+});
+
 test('Die Pruefung sieht ueberhaupt Kontexte', () => {
   // Ohne diese Gegenprobe meldete ein kaputtes Muster alles gruen.
   const n = zeilen.filter(z => z.includes('browser.newContext(')).length;
@@ -47,7 +109,8 @@ test('Die Pruefung sieht ueberhaupt Kontexte', () => {
 });
 
 test('Beide Sperren existieren und setzen window.__fb VOR dem Seitenskript', () => {
-  const txt = zeilen.join('\n');
+  const txt = zeilen.join('\n')
+    + fs.readFileSync(path.join(WURZEL, 'scripts', 'fb-sperre.cjs'), 'utf8');
   assert.match(txt, /const FB_SPERRE = `/, 'FB_SPERRE fehlt');
   assert.match(txt, /function makeFbMock\(/, 'makeFbMock fehlt');
   // Entscheidend: `window.__fb = window.__fb || {` — firebase-boot.js haelt

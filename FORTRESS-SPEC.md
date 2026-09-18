@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.109.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.110.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7416,3 +7416,63 @@ Bereichen, die gar nicht angefasst wurden. Statt das wegzuerklären, gemessen:
 **5 gezielte Läufe der beiden Suiten: 5× 29 ✅ / 0 ❌**, und der CI-Lauf desselben
 Commits auf einem unbelasteten Runner grün. Der rote Lauf war Last auf dem
 Entwicklungsrechner (fünf volle Suiten hintereinander), keine Regression.
+
+## v3.110.0 — Der Riegel kannte nur einen von zwei Aufrufern
+
+Beim Vorbereiten der Cloud-Save-Probe (Schritt 5 der Marktstart-Checkliste)
+fiel etwas auf, das dort gar nicht gesucht wurde: **`tools/make-screenshots.cjs`
+macht vier Browser-Kontexte auf und hatte keine `FB_SPERRE`.** Das Werkzeug
+lädt die echte App von `localhost:8765` — und die trägt seit v3.103.0 den
+API-Schlüssel im Bündel.
+
+Die Folge wäre gewesen: anonyme Anmeldung, und `pushLeaderboard` schreibt das
+Demo-Profil **„ARIN" mit ELO 1284** in die echte Bestenliste. Der höchste Wert
+eines echten Spielers dort ist **1046** — das Demo-Profil hätte also die
+Rangliste angeführt. Einer der vier Kontexte (`fenster`) hat nicht einmal die
+Routen-Blockaden, die ohnehin nichts nützen: Die Realtime Database spricht
+über WebSocket.
+
+**Gemessen: noch nicht passiert.** Weder `ARIN` noch `demo` steht in der
+Bestenliste. Die Bilder entstanden vor v3.103.0, als `getAuth()` ohne
+Schlüssel noch warf — zufällig harmlos, genau wie `suiteOffline` davor.
+
+### Warum der Riegel es nicht gesehen hat
+
+`tests/testsperre.test.js` las **nur `test_fortress.cjs`**. Ein Riegel, der
+einen von zwei Aufrufern kennt, ist keiner. Drei Änderungen:
+
+1. **Eine Quelle:** Die Sperre liegt jetzt in `scripts/fb-sperre.cjs`. Suite
+   und Werkzeuge holen sie von dort; es gibt keine zweite Fassung mehr, die
+   abdriften könnte.
+2. **Der ganze Baum wird gelesen**, nicht eine Datei. Jedes `newContext(` in
+   `*.cjs`/`*.mjs`/`*.js` braucht eine Sperre.
+3. **Benannte Ausnahmen mit Begründung im Code** — nicht im Commit-Text:
+   `make-feature-graphic.cjs` (setzt reines HTML per `setContent`, lädt die App
+   nie) und `scripts/cloudsave-probe.cjs` (muss an die echte Datenbank).
+   Ein eigener Test prüft, dass jede Ausnahme **existiert** und eine
+   Begründung trägt — eine Ausnahmeliste, die auf gelöschte Dateien zeigt,
+   sieht nach Sorgfalt aus und schützt nichts.
+
+**Gegengeprüft:** Eine Sperre aus dem Werkzeug entfernt → der Test wird rot und
+nennt `tools/make-screenshots.cjs:121`. Und der Ausnahme-Test schlug beim
+ersten Lauf sofort an, weil die Probe-Datei noch nicht existierte.
+
+### `scripts/cloudsave-probe.cjs` — bereit, nicht gelaufen
+
+Die Probe für Schritt 5 ist geschrieben und versioniert: anmelden → Stand
+hochladen → örtlich löschen → neu laden → kommt er zurück? Sie räumt auf
+beiden Spuren auf (`players/{uid}` **und** `leaderboard/{uid}`, wie
+`wipeProgress()`) und sieht danach nach, statt zu glauben.
+
+**Ausgeführt wurde sie nicht.** Der Lauf wurde von der Sicherheitsstufe
+abgewiesen, Grund „verändert geteilte Ressourcen" — sie schreibt in die
+Produktivdatenbank. Das ist der richtige Riegel, und er wurde nicht umgangen.
+Die Probe wartet auf eine ausdrückliche Freigabe.
+
+### Zur Bestenliste, nebenbei belegt
+
+Die Namensliste der 45 Einträge (`Bierkönig`, `SKKJ`, `Steffen`, `Moni`,
+`Maddinator`, …) bestätigt, was die Spielzahlen nahelegten: Das sind **echte
+Menschen**, kein Testmüll. Die Empfehlung, sie nicht zu löschen, sondern beim
+nächsten Cloud-Speichern zusammenzuführen, steht damit auf Messwerten statt auf
+einer Vermutung.

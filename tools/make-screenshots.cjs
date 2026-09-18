@@ -24,6 +24,13 @@ const { chromium } = (() => {
 })();
 const fs = require('fs');
 const path = require('path');
+// Riegel gegen die PRODUKTIVDATENBANK (v3.110.0). Dieses Werkzeug laedt die
+// ECHTE App von localhost:8765 — und die traegt seit v3.103.0 den
+// API-Schluessel im Buendel. Ohne Sperre meldet sie sich anonym an, und
+// `pushLeaderboard` schreibt das Demo-Profil „ARIN" mit ELO 1284 in die echte
+// Bestenliste, also ueber jeden echten Spieler. Die Routen-Blockaden weiter
+// unten reichen dafuer nicht: die Realtime Database spricht ueber WebSocket.
+const { FB_SPERRE } = require('../scripts/fb-sperre.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const ZIELE = [
@@ -120,6 +127,7 @@ async function fuerZiel(browser, ziel) {
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+  await p.addInitScript(FB_SPERRE);
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
   if (ziel.sa) await p.addInitScript(saInit(ziel));
   for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
@@ -216,6 +224,7 @@ async function lokalePartie(browser, ziel, spieler) {
     isMobile: true, hasTouch: true, serviceWorkers: 'block'
   });
   const p = await ctx.newPage();
+  await p.addInitScript(FB_SPERRE);
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
   if (ziel.sa) await p.addInitScript(saInit(ziel));
   for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
@@ -271,6 +280,7 @@ async function welten(browser, ziel) {
     isMobile: true, hasTouch: true, serviceWorkers: 'block'
   });
   const p = await ctx.newPage();
+  await p.addInitScript(FB_SPERRE);
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
   if (ziel.sa) await p.addInitScript(saInit(ziel));
   for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
@@ -313,6 +323,7 @@ async function fenster(browser, ziel) {
     isMobile: true, hasTouch: true, serviceWorkers: 'block'
   });
   const p = await ctx.newPage();
+  await p.addInitScript(FB_SPERRE);
   await p.addInitScript(PROF); await p.addInitScript(SPEED);
   if (ziel.sa) await p.addInitScript(saInit(ziel));
   await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
