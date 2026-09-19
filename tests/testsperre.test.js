@@ -59,13 +59,36 @@ const AUSNAHMEN = {
 // unmittelbar danach bestueckt; 40 Zeilen sind reichlich Luft.
 const FENSTER = 40;
 
+/**
+ * Traegt dieses Fenster eine ECHTE Sperre?
+ *
+ * Gesucht wird der AUFRUF, nicht das Wort. Bis v3.111.6 stand hier
+ * `fenster.includes('FB_SPERRE')` — und damit erfuellte ein Kommentar wie
+ * „KEINE FB_SPERRE, Absicht" die Pruefung. Beim Bau der Boot-Suite bin ich
+ * genau da hineingetreten: Der Kontext hatte keine Sperre, der Riegel blieb
+ * gruen, weil das Wort im Kommentar stand. Eine Pruefung, die sich von einem
+ * Kommentar umstimmen laesst, ist keine.
+ *
+ * Drei Sperren gelten:
+ *   addInitScript(FB_SPERRE)  — firebase-boot laeuft gar nicht erst
+ *   makeFbMock(               — eigener Firebase-Ersatz der Online-Suiten
+ *   addInitScript(WS_SPERRE)  — fuer die Boot-Suite: der echte Start SOLL
+ *                               laufen, aber die Datenbank wird an ihrem
+ *                               Transport abgeschnitten (WebSocket, per Route
+ *                               nicht abfangbar)
+ */
+function gesperrt(fenster) {
+  return /addInitScript\(\s*FB_SPERRE\s*\)/.test(fenster)
+      || /addInitScript\(\s*WS_SPERRE\s*\)/.test(fenster)
+      || /makeFbMock\s*\(/.test(fenster);
+}
+
 test('Jeder Browser-Kontext der E2E-Suite bekommt eine Firebase-Sperre', () => {
   const ohne = [];
   zeilen.forEach((z, i) => {
     if (!z.includes('browser.newContext(')) return;
     const fenster = zeilen.slice(i, i + FENSTER).join('\n');
-    const gesperrt = fenster.includes('FB_SPERRE') || fenster.includes('makeFbMock');
-    if (!gesperrt) ohne.push(`test_fortress.cjs:${i + 1}`);
+    if (!gesperrt(fenster)) ohne.push(`test_fortress.cjs:${i + 1}`);
   });
   assert.deepStrictEqual(ohne, [],
     'Kontext(e) ohne Firebase-Sperre — wuerden die ECHTE Datenbank erreichen:\n  '
@@ -84,7 +107,7 @@ test('KEIN Browser-Kontext im ganzen Baum ohne Sperre (ausser benannten Ausnahme
       gesehen++;
       if (AUSNAHMEN[rel]) return;
       const fenster = zs.slice(i, i + FENSTER).join('\n');
-      if (!(fenster.includes('FB_SPERRE') || fenster.includes('makeFbMock'))) ohne.push(`${rel}:${i + 1}`);
+      if (!gesperrt(fenster)) ohne.push(`${rel}:${i + 1}`);
     });
   }
   assert.ok(gesehen >= 12, `nur ${gesehen} Kontexte im Baum gefunden — Muster kaputt?`);
@@ -106,6 +129,23 @@ test('Die Pruefung sieht ueberhaupt Kontexte', () => {
   // Ohne diese Gegenprobe meldete ein kaputtes Muster alles gruen.
   const n = zeilen.filter(z => z.includes('browser.newContext(')).length;
   assert.ok(n >= 8, `nur ${n} Kontexte gefunden — Muster kaputt?`);
+});
+
+test('Ein blosser KOMMENTAR gilt nicht als Sperre', () => {
+  // Die Gegenprobe zum Loch von oben: Wer „FB_SPERRE" nur erwaehnt, hat keine.
+  assert.equal(gesperrt('  // hier steht bewusst KEINE FB_SPERRE\n  const ctx = 1;'), false);
+  assert.equal(gesperrt('  await page.addInitScript(FB_SPERRE);'), true);
+  assert.equal(gesperrt('  await page.addInitScript(WS_SPERRE);'), true);
+  assert.equal(gesperrt('  await page.addInitScript(makeFbMock(port));'), true);
+});
+
+test('WS_SPERRE legt den WebSocket wirklich still', () => {
+  // Sie ist als Sperre zugelassen — dann muss sie auch eine sein.
+  const quelle = fs.readFileSync(path.join(WURZEL, 'scripts', 'fb-sperre.cjs'), 'utf8');
+  assert.match(quelle, /const WS_SPERRE = `/, 'WS_SPERRE fehlt');
+  const block = quelle.slice(quelle.indexOf('const WS_SPERRE'));
+  assert.match(block, /window\.WebSocket\s*=/, 'WS_SPERRE ersetzt window.WebSocket nicht');
+  assert.ok(!/new Echt\(/.test(block), 'WS_SPERRE baut doch eine echte Verbindung auf');
 });
 
 test('Beide Sperren existieren und setzen window.__fb VOR dem Seitenskript', () => {

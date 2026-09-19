@@ -333,7 +333,7 @@ async function waitForPhase(page, keywords, waitMs = 6000) {
 // Die Sperre liegt seit v3.110.0 in `scripts/fb-sperre.cjs` — EINE Quelle.
 // Grund: `tools/make-screenshots.cjs` macht ebenfalls Browser-Kontexte auf und
 // hatte keine. Die Begruendung steht dort.
-const { FB_SPERRE } = require('./scripts/fb-sperre.cjs');
+const { FB_SPERRE, WS_SPERRE } = require('./scripts/fb-sperre.cjs');
 
 async function makeCtx(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
@@ -3509,6 +3509,141 @@ async function suiteBestenliste(browser) {
   return { res, errs };
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Firebase-START — der echte, nicht der gesperrte (v3.111.6)
+//
+// DIE LUECKE, die das schliesst, ist die groesste dieser Sitzung:
+// `FB_SPERRE` setzt `window.__fb` VOR dem Seitenskript, und
+// `firebase-boot.js` haelt sich dann heraus. Das ist fuer die
+// Spielpruefungen richtig — hatte aber zur Folge, dass der ECHTE
+// Firebase-Start **in keinem einzigen Test je ausgefuehrt wurde**.
+//
+// Genau dort sass der Fehler aus v3.111.4: `getRedirectResult(auth)` wurde
+// bedingungslos aufgerufen, auch in der App. Er startet den
+// Popup-/Redirect-Aufloeser, und der laedt ein iframe von
+// `<authDomain>/__/auth/iframe`. Im WKWebView haengt dieser Ladevorgang — und
+// mit ihm die Auth-Initialisierung, auf die das RTDB vor dem Verbinden wartet.
+// Ergebnis auf dem Geraet: weder Matchmaking noch die oeffentlich lesbare
+// Bestenliste. 431 gruene Pruefungen sagten dazu nichts, weil keine davon den
+// Startpfad anfasste.
+//
+// SICHERHEIT: Hier laeuft der echte Start — deshalb KEINE `FB_SPERRE`, aber
+// zwei andere Riegel: `WS_SPERRE` schneidet die Realtime Database an ihrem
+// Transport ab (WebSocket, per Route nicht abfangbar), und alle Firebase-Hosts
+// sind zusaetzlich per Route gesperrt. Es kann nichts hinausgehen.
+// ═══════════════════════════════════════════════════════════════
+async function suiteFirebaseStart(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Firebase-Start (echt)\n' + '='.repeat(50));
+
+  /** Einen Kontext bauen, in dem firebase-boot.js WIRKLICH laeuft. */
+  const starte = async (nativ) => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+      hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    // KEINE FB_SPERRE — Absicht, siehe Kopf. Stattdessen WS_SPERRE plus Routen.
+    await page.addInitScript(WS_SPERRE);
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(`window.__NATIVE__ = ${nativ ? 'true' : 'false'};`);
+
+    const versuche = [];
+    page.on('request', r => versuche.push(r.url()));
+    // Nichts darf hinaus. Abgebrochene Anfragen bleiben in `versuche` sichtbar —
+    // gemessen wird, was die App VERSUCHT, nicht was ankommt.
+    for (const muster of ['**identitytoolkit**', '**googleapis**', '**firebaseapp.com**',
+                          '**firebaseio**', '**firebasedatabase**', '**gstatic**'])
+      await page.route(muster, r => r.abort());
+
+    await page.goto(`http://localhost:8765/`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+    // Dem Start Zeit geben: initializeApp, Auth, der erste Anmeldeversuch.
+    await page.waitForTimeout(2500);
+    return { ctx, page, versuche };
+  };
+
+  /** Was hat der Start im Auth-Objekt tatsaechlich angelegt? */
+  const authZustand = (page) => page.evaluate(() => {
+    const a = window.__fb && window.__fb.auth;
+    if (!a) return null;
+    return {
+      // Der Popup-/Redirect-Aufloeser. `getAuth()` installiert ihn immer;
+      // `initializeAuth` ohne `popupRedirectResolver` nicht.
+      aufloeser: !!a._popupRedirectResolver,
+      // Wird von `getRedirectResult()` angelegt — sein Vorhandensein zeigt
+      // also, dass der Aufruf gelaufen ist.
+      redirektSpeicher: Object.prototype.hasOwnProperty.call(a, "redirectPersistenceManager")
+                        && !!a.redirectPersistenceManager,
+      fertig: !!a._isInitialized,
+    };
+  });
+
+  // ── 1) APP: weder Aufloeser noch Redirect-Speicher ────────────
+  {
+    const { ctx, page, versuche } = await starte(true);
+    try {
+      const lief = await page.evaluate(() => !!(window.__fb && window.__fb.db));
+      lief ? ok('App-Start: firebase-boot lief WIRKLICH (window.__fb.db vorhanden) ✓')
+           : fail('App-Start: firebase-boot lief nicht — der Test prueft dann gar nichts');
+
+      const nativ = await page.evaluate(() => window.__NATIVE__ === true);
+      nativ ? ok('App-Start: Plattform-Weiche steht auf nativ ✓')
+            : fail('App-Start: Weiche steht NICHT auf nativ — die Messung waere wertlos');
+
+      const z = await authZustand(page);
+      if (!z) fail('App-Start: kein Auth-Objekt — nichts zu pruefen');
+      else {
+        z.aufloeser === false
+          ? ok('App-Start: KEIN Popup-/Redirect-Aufloeser angelegt ✓')
+          : fail('App-Start: Aufloeser angelegt — getAuth() statt initializeAuth (v3.111.4)');
+        z.redirektSpeicher === false
+          ? ok('App-Start: getRedirectResult lief NICHT (kein Redirect-Speicher) ✓')
+          : fail('App-Start: Redirect-Speicher vorhanden — getRedirectResult lief doch');
+        z.fertig ? ok('App-Start: Auth-Initialisierung ABGESCHLOSSEN ✓')
+                 : fail('App-Start: Auth-Initialisierung haengt — genau das Bild vom Geraet');
+      }
+
+      const ifr = versuche.filter(u => /__\/auth\/iframe/.test(u));
+      ifr.length === 0 ? ok('App-Start: kein Aufloeser-iframe angefragt ✓')
+                       : fail(`App-Start: iframe angefragt: ${ifr[0].slice(0, 90)}`);
+
+      const ws = await page.evaluate(() => (window.__wsVersuche || []).length);
+      ok(`App-Start: WebSocket stillgelegt (${ws} Versuch(e) abgefangen) ✓`);
+    } finally { await ctx.close(); }
+  }
+
+  // ── 2) GEGENPROBE — im BROWSER muss beides da sein ────────────
+  //
+  // Ohne sie waere Pruefung (1) nicht zu unterscheiden von „das kommt hier
+  // nie vor, egal was der Code tut". Erst der Unterschied zwischen den
+  // Zustaenden macht die Aussage belastbar — und haelt zugleich fest, dass
+  // die Google-Verknuepfung im Browser nicht mit kaputtgespart wurde.
+  {
+    const { ctx, page } = await starte(false);
+    try {
+      const lief = await page.evaluate(() => !!(window.__fb && window.__fb.db));
+      lief ? ok('Browser-Start: firebase-boot lief ✓') : fail('Browser-Start: firebase-boot lief nicht');
+
+      const z = await authZustand(page);
+      if (!z) fail('Browser-Start: kein Auth-Objekt');
+      else {
+        z.aufloeser === true
+          ? ok('Browser-Start: Aufloeser vorhanden — die Weiche unterscheidet wirklich ✓')
+          : fail('Browser-Start: KEIN Aufloeser — dann beweist Pruefung (1) nichts, und die '
+               + 'Google-Verknuepfung im Browser waere womoeglich mit kaputtgegangen');
+        z.redirektSpeicher === true
+          ? ok('Browser-Start: getRedirectResult lief (Redirect-Speicher da) ✓')
+          : fail('Browser-Start: getRedirectResult lief nicht — Rueckkehr von Google waere tot');
+      }
+    } finally { await ctx.close(); }
+  }
+
+  errs.length === 0 ? ok('Firebase-Start: keine JS-Fehler ✓')
+                    : errs.slice(0, 3).forEach(e => fail(`Start JS: ${e.slice(0, 90)}`));
+  return { res, errs };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SUITE 6: Progressionssystem (Level, XP, Daily Reward, Avatar-Locks)
 // ═══════════════════════════════════════════════════════════════
@@ -5744,6 +5879,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       online3p: () => suiteOnline3P(browser, FB_PORT),
       aktionen: () => suiteOnlineAktionen(browser, FB_PORT),
       bestenliste: () => suiteBestenliste(browser),
+      fbstart: () => suiteFirebaseStart(browser),
       matchmaking: () => suiteMatchmaking(browser, FB_PORT),
       haerte: () => suiteOnlineHaerte(browser, FB_PORT),
       heartbeat: () => suiteHeartbeat(browser, FB_PORT),
@@ -5825,7 +5961,11 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // 3P schon hier stehen. Die Aussage bleibt unveraendert; nur bekommt der
     // Bot die Gelegenheit, die sie voraussetzt.
     const bot = await suiteBot(browser);
-    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot };
+    // Der echte Firebase-Start ebenfalls SERIELL: Er haelt zwei Kontexte, in
+    // denen das SDK wirklich hochfaehrt, und wartet je 2,5 s auf den
+    // Anmeldeversuch. Parallel dazu waere das eine Lastmessung.
+    const fbs = await suiteFirebaseStart(browser);
+    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -5856,14 +5996,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

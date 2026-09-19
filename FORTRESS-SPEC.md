@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7842,3 +7842,67 @@ stehen, obwohl der Eintrag aus dem `Promise.all`-Feld raus war — damit hätten
 sich **alle folgenden Ergebnisse um eins verschoben**. Gefunden, bevor es lief.
 
 Gemessen danach: Matchmaking allein 3× 21/21, **zwei volle Läufe je 462 ✅ / 0 ❌**.
+
+## v3.111.6 — Der echte Firebase-Start wurde in keinem Test je ausgeführt
+
+Rückmeldung vom Gerät nach Bau 31: **„es geht wieder in eine Queue und
+Bestenliste lädt."** Die Behebung aus v3.111.4 trägt also.
+
+Dazu die berechtigte Frage: Warum hat das kein Test gefunden? Die Antwort ist
+strukturell und unangenehm.
+
+### Die Lücke
+
+`FB_SPERRE` setzt `window.__fb` **vor** dem Seitenskript, und `firebase-boot.js`
+hält sich dann heraus. Für die Spielprüfungen ist das richtig — es ist der
+Riegel gegen die Produktivdatenbank. Die Nebenwirkung: **Der echte Firebase-Start
+wurde in keinem einzigen Test je ausgeführt.** 462 grüne Prüfungen sagten nichts
+über `initializeApp`, `getAuth`, `signInAnonymously` oder `getRedirectResult` —
+und genau dort saß der Fehler.
+
+### `suiteFirebaseStart` — der Start läuft wirklich
+
+Zwei Kontexte, in denen `firebase-boot.js` **nicht** gesperrt ist, einmal mit
+`__NATIVE__ = true`, einmal mit `false`. Gemessen wird der Unterschied:
+
+| | App (nativ) | Browser |
+|---|---|---|
+| `_popupRedirectResolver` | **nicht vorhanden** | vorhanden |
+| `redirectPersistenceManager` | **nicht vorhanden** | vorhanden |
+| Auth-Initialisierung | abgeschlossen | abgeschlossen |
+
+Die zweite Zeile ist der Beleg, dass `getRedirectResult` in der App **nicht**
+läuft und im Browser sehr wohl — die Google-Verknüpfung ist also nicht
+mit kaputtgespart worden.
+
+**Sicherheit:** Hier gibt es bewusst keine `FB_SPERRE`. Stattdessen **`WS_SPERRE`**
+(neu, in `scripts/fb-sperre.cjs`): Die Realtime Database wird an ihrem Transport
+abgeschnitten, denn sie spricht über WebSocket — und WebSocket lässt sich mit
+Routen **nicht** abfangen (die Lehre aus v3.78.1). Dazu sind alle Firebase-Hosts
+per Route gesperrt. Es kann nichts hinausgehen.
+
+### Eine Korrektur am eigenen Changelog von v3.111.4
+
+Dort steht, `getRedirectResult` lade „ein iframe von `<authDomain>/__/auth/iframe`",
+und das sei der Hänger gewesen. **Diese Messung widerlegt den Mechanismus:**
+Weder in der App noch im Browser wird beim Start ein solches iframe angefragt —
+es geht nur eine einzige Anfrage hinaus, `accounts:signUp`.
+
+Was gemessen ist: In der App wird **kein Auflöser und kein Redirect-Speicher**
+angelegt, im Browser beides. Und auf dem Gerät läuft Online seither. **Warum
+genau diese Konstruktion im WKWebView hängt, ist nicht gemessen** — der WebView
+lässt sich hier nicht nachstellen. Die Behebung steht auf einer Beobachtung am
+Gerät und einer messbaren Eigenschaftsänderung, nicht auf einer belegten
+Kausalkette. Das gehört so dokumentiert und nicht schöner erzählt.
+
+### Ein Loch im Riegel, hineingetreten beim Bauen
+
+`tests/testsperre.test.js` prüfte mit `fenster.includes('FB_SPERRE')` — also auf
+das **Wort**. Der neue Kontext trug den Kommentar „KEINE FB_SPERRE — Absicht",
+und damit war der Riegel zufrieden. **Ein Kommentar, der das Gegenteil sagt,
+erfüllte die Prüfung.**
+
+Jetzt wird der **Aufruf** verlangt (`addInitScript(FB_SPERRE)`,
+`addInitScript(WS_SPERRE)`, `makeFbMock(`), und zwei neue Prüfungen halten das
+fest: dass eine bloße Erwähnung nicht zählt, und dass `WS_SPERRE` den WebSocket
+tatsächlich stilllegt. Gegengeprüft: `WS_SPERRE` entfernt → rot mit Zeilennummer.
