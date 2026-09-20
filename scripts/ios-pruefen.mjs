@@ -180,6 +180,46 @@ pruefe(ablauf.includes(MARKER), "Der Ablauf sucht denselben Marker",
   "Laufen die beiden auseinander, prueft der Probelauf ins Leere und meldet " +
   "trotzdem Erfolg oder Misserfolg — beides ohne Bezug zur Sache.");
 
+// ── Online-Probe auf dem Geraet ───────────────────────────────────────────
+//
+// WARUM das hier steht und nicht nur im Ablauf: In Bau 29 und 30 war Online in
+// der App vollstaendig tot — keine Anmeldung, keine Verbindung —, und die
+// E2E-Suite meldete 462 gruene Pruefungen. Keine davon konnte es sehen:
+// `FB_SPERRE` verhindert, dass firebase-boot.js ueberhaupt laeuft, und der
+// Simulator-Probelauf pruefte nur, DASS die App startet.
+//
+// Seit v3.111.7 meldet die App beim Start ihre Verbindungsauskunft ueber den
+// Kanal `pruefung` ins Systemprotokoll, und der Probelauf verlangt eine uid
+// UND eine gemessene Lesezeit. Diese drei Pruefungen halten die Kette
+// zusammen: Weboberflaeche → Huelle → Ablauf. Faellt ein Glied weg, prueft der
+// Probelauf ins Leere und meldet trotzdem Erfolg.
+abschnitt("Online-Probe (Kette Weboberflaeche → Huelle → Ablauf)");
+const NETZ_MARKER = "STACK-SIEGE-NETZ";
+// Gesucht wird die DEKLARATION, nicht der Namensanfang: `includes` haette
+// auch `meldeAnHuelleWEG` durchgelassen — in der Gegenprobe genau so passiert.
+pruefe(/export function meldeAnHuelle\s*\(/.test(lies("src/platform.ts")),
+  "platform.ts bietet meldeAnHuelle an",
+  "Ohne sie kann die Weboberflaeche der Huelle nichts melden, und die " +
+  "Online-Pruefung im Probelauf findet nie etwas.");
+const szene = lies("ios/App/App/SceneDelegate.swift");
+pruefe(szene.includes('name: "pruefung"') && szene.includes(NETZ_MARKER),
+  "Die Huelle meldet den Kanal `pruefung` an und protokolliert " + NETZ_MARKER,
+  "Fehlt der Kanal, verpufft die Meldung der Weboberflaeche. Fehlt NSLog mit " +
+  "dem Marker, steht sie nicht im Systemprotokoll — und nur dort liest der " +
+  "Probelauf nach (console.log kommt dort NIE an).");
+// Gesucht wird das MUSTER der Abbruchbedingung, nicht der Text. Der erste
+// Anlauf prueft mit `includes("uid=-")` — und das erfuellte schon der
+// Kommentar daneben. Dieselbe Falle wie im Sperren-Riegel eine Stunde zuvor:
+// Eine Pruefung, die sich von einer Erwaehnung umstimmen laesst, ist keine.
+pruefe(ablauf.includes(NETZ_MARKER)
+       && /\*"uid=-"\*/.test(ablauf)
+       && /\*"lesen=keine"\*/.test(ablauf)
+       && /lesen=\[0-9\]\+ms/.test(ablauf),
+  "Der Ablauf bricht bei fehlender uid oder fehlender Lesezeit ab",
+  "Nur auf den Marker zu pruefen wuerde genuegen, um gruen zu sein — auch " +
+  "wenn dort `uid=- lesen=keine` steht, also genau der kaputte Zustand aus " +
+  "Bau 29/30.");
+
 // ── Bilder ────────────────────────────────────────────────────────────────
 abschnitt("Symbole und Startbild");
 const iconOrdner = "ios/App/App/Assets.xcassets/AppIcon.appiconset";

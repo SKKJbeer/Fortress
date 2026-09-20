@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.111.6
+- **Aktuelle Version**: v3.111.7
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -419,6 +419,22 @@ npm run test:e2e
   „keine Eintraege" — nur das Nicht-Antworten fuehrt zum Haenger. Wer einen
   Ladezustand anzeigt, braucht eine Frist UND eine Meldung, die sagt, was
   fehlt. `suiteBestenliste` haelt beide Faelle fest.
+- **Eine Pruefung auf ein WORT ist keine Pruefung** (seit v3.111.7): Zweimal in
+  einer Sitzung hineingetreten. `tests/testsperre.test.js` suchte
+  `includes('FB_SPERRE')` — und ein Kommentar „KEINE FB_SPERRE, Absicht"
+  erfuellte sie. `scripts/ios-pruefen.mjs` suchte `includes('uid=-')` — und der
+  eigene Kommentar daneben erfuellte sie. `includes('export function xy')` ist
+  ausserdem bei `xyWEG` wahr. Verlangt gehoert die KONSTRUKTION:
+  `addInitScript(FB_SPERRE)`, `/export function xy\s*\(/`, das case-Muster
+  selbst. Und: **jede solche Pruefung gegenpruefen** — beim iOS-Riegel wurden
+  von sechs kuenstlichen Eingriffen anfangs nur zwei rot.
+- **Online auf dem GERAET pruefen** (seit v3.111.7): Der Simulator-Probelauf
+  verlangt jetzt die Selbstauskunft `STACK-SIEGE-NETZ` mit uid UND gemessener
+  Lesezeit. Kette: `meldeAnHuelle()` (platform.ts) → Kanal `pruefung`
+  (SceneDelegate, NSLog) → `ios.yml`. Drei statische Pruefungen halten die
+  Kette zusammen. Grund: In Bau 29/30 war Online tot, und 462 gruene
+  Pruefungen sagten nichts — `FB_SPERRE` verhindert, dass firebase-boot.js
+  ueberhaupt laeuft, und der Probelauf prueft sonst nur, DASS die App startet.
 - **Regel: Kein Commit ohne grünen Test**
 - **Wartebedingung statt Momentaufnahme** (seit v3.108.0): Im Zeitraffer
   (`TIMER_SPEEDUP`: 1000 ms → 50 ms) dauert eine Phase **rund eine Sekunde**.

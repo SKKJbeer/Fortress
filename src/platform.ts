@@ -114,3 +114,22 @@ export function vibriere(muster: number | number[]): void {
   }
   try { navigator.vibrate && navigator.vibrate(muster as any); } catch (e) {}
 }
+
+/**
+ * Eine Selbstauskunft an die native Huelle schicken (v3.111.7).
+ *
+ * Landet ueber den Kanal `pruefung` per NSLog im Systemprotokoll — dort, wo
+ * der Simulator-Probelauf nachliest. Im Browser passiert nichts; es gibt dort
+ * keine Huelle, und `console.log` waere ohnehin die falsche Adresse.
+ *
+ * Gebraucht wird das, weil der Probelauf bis v3.111.6 nur pruefen konnte, DASS
+ * die App startet. Ob sie online kommt, stand nirgends — und genau das war in
+ * Bau 29 und 30 kaputt, ohne dass ein Test es bemerkte.
+ */
+export function meldeAnHuelle(text: string): void {
+  if (typeof window === "undefined") return;
+  const w = window as any;
+  const kanal = w.webkit?.messageHandlers?.pruefung;
+  if (!kanal) return;
+  try { kanal.postMessage(String(text)); } catch (e) { /* ohne Bruecke: egal */ }
+}

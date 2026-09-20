@@ -27,7 +27,7 @@ import { BOT_LEVELS, BOT_NAMES, BOT_WAPPEN } from '../engine/bot.ts';
 import { SCHLUESSEL } from '../engine/speicher.ts';
 import { DAILY_REWARDS, DAILY_TASK_POOL, todayStr, msTillMidnight, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, rollDailyTasks, taskDef } from '../engine/daily.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
-import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung } from '../platform.ts';
+import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung, meldeAnHuelle } from '../platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES, forgeRarity } from '../engine/catalog.ts';
 import { LANGS } from '../i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction, EMOTES } from '../net/protocol.js';
@@ -970,6 +970,30 @@ window.StackSiegeApp = function StackSiegeApp() {
   }, []);
   // mpScreen früh deklarieren: finishOnboarding + Onboarding-Effect (oben) lesen es (v3.14.12).
   const [mpScreen, setMpScreen] = useState(null);
+  // In der APP einmal beim Start messen und der Huelle melden (v3.111.7).
+  //
+  // Das ist der Teil, der dem Simulator-Probelauf gefehlt hat: Er konnte
+  // pruefen, DASS die App startet — nicht, ob sie online kommt. Genau das war
+  // in Bau 29 und 30 kaputt, und 462 gruene Pruefungen sagten nichts dazu,
+  // weil keine davon den Startpfad anfasste.
+  //
+  // Laeuft NUR nativ (im Browser gibt es keine Huelle) und nur einmal. Der
+  // Lesezugriff geht auf einen winzigen, oeffentlich lesbaren Pfad.
+  useEffect(() => {
+    if (!istNativ()) return;
+    let weg = false;
+    const t = setTimeout(() => {
+      pruefeVerbindung().then((i) => {
+        if (weg || !i) return;
+        meldeAnHuelle(`sdk=${i.sdk ? 1 : 0} uid=${i.uid || "-"} `
+          + `lesen=${typeof i.lesen === "number" ? i.lesen + "ms" : "keine"} `
+          + `online=${i.online === null ? "?" : i.online ? 1 : 0}`
+          + (i.authFehler ? ` authfehler=${i.authFehler}` : "")
+          + (i.bootFehler ? ` bootfehler=${i.bootFehler}` : ""));
+      }).catch((e) => meldeAnHuelle("ausnahme=" + (e && e.message)));
+    }, 2500);
+    return () => { weg = true; clearTimeout(t); };
+  }, []);
   // Beim Oeffnen des Online-Schirms EINMAL messen (v3.111.2).
   useEffect(() => {
     if (mpScreen !== "online") return;
@@ -6888,7 +6912,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.6"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.7"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

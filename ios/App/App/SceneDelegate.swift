@@ -92,11 +92,29 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
         }
         steuerer.removeScriptMessageHandler(forName: "textfeld")
         steuerer.add(self, name: "textfeld")
+        // Zweiter Kanal, nur fuer Selbstauskuenfte der Weboberflaeche
+        // (v3.111.7). Bewusst GETRENNT von "textfeld": Der traegt einen
+        // Bool und heisst nach seiner Aufgabe; ihn mit Diagnosetexten zu
+        // beladen wuerde beide Zwecke verwischen.
+        //
+        // Wozu ueberhaupt: Der Simulator-Probelauf konnte bis dahin nur
+        // pruefen, DASS die App startet — nicht, ob sie online kommt. Genau
+        // das war in Bau 29 und 30 kaputt, und kein Test hat es bemerkt.
+        steuerer.removeScriptMessageHandler(forName: "pruefung")
+        steuerer.add(self, name: "pruefung")
         NSLog("STACK-SIEGE-HUELLE Kanal am WebView angemeldet")
     }
 
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
+        // Selbstauskunft der Weboberflaeche ins Systemprotokoll durchreichen.
+        // NSLog, nicht print: Nur os_log landet in `simctl spawn log show`,
+        // und genau dort liest der Probelauf nach (Lehre aus dem
+        // Huellen-Marker — console.log kommt dort NIE an).
+        if message.name == "pruefung", let text = message.body as? String {
+            NSLog("STACK-SIEGE-NETZ %@", text)
+            return
+        }
         guard message.name == "textfeld", let an = message.body as? Bool else { return }
         if !lebenszeichenGesendet {
             lebenszeichenGesendet = true

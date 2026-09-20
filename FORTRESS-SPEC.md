@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.6)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7906,3 +7906,51 @@ Jetzt wird der **Aufruf** verlangt (`addInitScript(FB_SPERRE)`,
 `addInitScript(WS_SPERRE)`, `makeFbMock(`), und zwei neue Prüfungen halten das
 fest: dass eine bloße Erwähnung nicht zählt, und dass `WS_SPERRE` den WebSocket
 tatsächlich stilllegt. Gegengeprüft: `WS_SPERRE` entfernt → rot mit Zeilennummer.
+
+## v3.111.7 — Ein echter Online-Test auf dem Gerät, nicht nur „die App startet"
+
+Der Simulator-Probelauf prüfte bis hierher: kein Absturzbericht, die Brücke
+zwischen Weboberfläche und Hülle steht, der Schirm zeigt etwas. Alles richtig —
+aber **nichts davon sagt, ob die App online kommt.** Genau das war in Bau 29 und
+30 tot, und 462 grüne Prüfungen schwiegen dazu.
+
+### Die Kette Weboberfläche → Hülle → Ablauf
+
+- **Zweiter Brücken-Kanal `pruefung`** (`SceneDelegate.swift`). Bewusst getrennt
+  von `textfeld`: Der trägt einen Bool und heißt nach seiner Aufgabe; ihn mit
+  Diagnosetexten zu beladen würde beide Zwecke verwischen. `NSLog`, nicht
+  `print` — nur `os_log` landet in `simctl spawn log show`, und genau dort liest
+  der Probelauf nach (dieselbe Lehre wie beim Hüllen-Marker: `console.log` kommt
+  dort **nie** an).
+- **`meldeAnHuelle()`** in `platform.ts` — die eine Datei für Plattform-
+  Unterschiede, wie die Architekturregel es verlangt.
+- **Die App meldet beim Start** (nur nativ, einmal, nach 2,5 s):
+  ```
+  STACK-SIEGE-NETZ sdk=1 uid=a1b2c3… lesen=412ms online=1
+  ```
+- **Der Probelauf verlangt beides** — eine uid **und** eine gemessene Lesezeit.
+  Nur die uid genügt nicht: Bei kaputter Datenbank hätte man eine Anmeldung und
+  trotzdem kein Spiel. Steht dort `uid=-` oder `lesen=keine`, bricht der Lauf ab.
+  **Das ist exakt der Zustand aus Bau 29/30** — er wäre vor dem Upload aufgefallen.
+
+Dazu drei statische Prüfungen in `scripts/ios-pruefen.mjs` (laufen in einer
+Sekunde, ohne Mac), die jedes Glied der Kette festhalten. Fällt eins weg, prüft
+der Probelauf ins Leere und meldet trotzdem Erfolg.
+
+### Derselbe eigene Fehler, zum zweiten Mal in einer Stunde
+
+Zwei der neuen Prüfungen waren **schwächer, als sie aussahen**:
+
+- `includes("export function meldeAnHuelle")` ist auch bei `meldeAnHuelleWEG`
+  wahr — ein Präfix genügt.
+- `includes("uid=-")` wurde schon vom **eigenen Kommentar daneben** erfüllt.
+
+Das ist dieselbe Falle wie eine Stunde zuvor im Sperren-Riegel (v3.111.6): eine
+Prüfung, die sich von einer Erwähnung umstimmen lässt. Gefunden hat es allein
+die Gegenprobe — von sechs künstlichen Eingriffen wurden anfangs nur **zwei**
+rot. Jetzt wird die Konstruktion verlangt (`/export function meldeAnHuelle\s*\(/`,
+`/\*"uid=-"\*/`, `/lesen=\[0-9\]\+ms/`), und **alle sechs Eingriffe werden rot.**
+
+> Die Lehre daraus steht nicht nur hier, sondern in `CLAUDE.md`: Eine Prüfung
+> auf ein *Wort* ist keine Prüfung. Zweimal in einer Sitzung hineingetreten
+> heißt, dass die Regel bisher nicht deutlich genug aufgeschrieben war.

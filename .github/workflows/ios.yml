@@ -221,7 +221,10 @@ jobs:
 
           # Warten, bis die Weboberflaeche wirklich steht: Splash rund eine
           # Sekunde, danach React und das Menue.
-          sleep 15
+          # 15 s reichten fuer den Start; die Verbindungsauskunft kommt nach
+          # 2,5 s Wartezeit plus Anmeldung und einem Lesezugriff. 25 s geben
+          # Luft, ohne den Lauf spuerbar zu verlaengern.
+          sleep 25
           mkdir -p "$RUNNER_TEMP/probe"
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/probe/start.png"
 
@@ -266,6 +269,40 @@ jobs:
             tail -25 "$RUNNER_TEMP/probe/app-log.txt" || true
             exit 1
           fi
+
+          # 2b) ONLINE FUNKTIONIERT WIRKLICH (v3.111.7).
+          #
+          # Das ist die Pruefung, die in Bau 29 und 30 gefehlt hat. Dort war
+          # Online tot — keine Anmeldung, keine Verbindung —, und die Suite
+          # meldete 462 gruene Pruefungen. Keine davon fasste den Startpfad
+          # an: `FB_SPERRE` verhindert, dass firebase-boot.js ueberhaupt
+          # laeuft, und der Probelauf pruefte nur, DASS die App startet.
+          #
+          # Hier laeuft echtes WKWebView gegen echtes Firebase. Die App meldet
+          # ihre Selbstauskunft ueber den Kanal `pruefung` ins Systemprotokoll:
+          #   STACK-SIEGE-NETZ sdk=1 uid=a1b2c3… lesen=412ms online=1
+          # Verlangt werden BEIDE Teile — eine uid UND eine gemessene Lesezeit.
+          # Nur die uid genuegt nicht: Bei kaputter Datenbank haette man eine
+          # Anmeldung und trotzdem kein Spiel.
+          NETZ=$(grep -o 'STACK-SIEGE-NETZ .*' "$RUNNER_TEMP/probe/app-log.txt" | head -1 || true)
+          echo "Selbstauskunft: ${NETZ:-(keine)}"
+          if [ -z "$NETZ" ]; then
+            echo "FEHLER: Die App hat keine Verbindungsauskunft gemeldet."
+            echo "Entweder ist der Kanal 'pruefung' nicht angemeldet, oder die"
+            echo "Messung lief nicht. Beides waere ein Rueckbau von v3.111.7."
+            exit 1
+          fi
+          case "$NETZ" in
+            *"uid=-"*|*"lesen=keine"*)
+              echo "FEHLER: Die App kommt nicht online."
+              echo "  $NETZ"
+              echo "uid=- heisst: keine Anmeldung. lesen=keine heisst: keine"
+              echo "Verbindung zur Datenbank. Genau der Zustand aus Bau 29/30."
+              exit 1 ;;
+          esac
+          echo "$NETZ" | grep -qE 'lesen=[0-9]+ms' || {
+            echo "FEHLER: keine gemessene Lesezeit in der Auskunft:"; echo "  $NETZ"; exit 1; }
+          echo "Online steht: Anmeldung und Lesezugriff auf dem Geraet belegt."
 
           # 3) Der Schirm zeigt etwas. Ein HILFSMASS, kein Beweis: Ein leerer
           #    Schirm komprimiert auf wenige Kilobyte, ein gerendertes Menue
