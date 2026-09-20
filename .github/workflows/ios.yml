@@ -461,6 +461,32 @@ jobs:
             --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
           rm -rf ~/private_keys ~/.appstoreconnect
 
+      # Der Upload allein bringt den Bau noch zu niemandem: Er muss der
+      # oeffentlichen Gruppe zugeordnet und zur Beta-Pruefung eingereicht
+      # werden. Das von Hand nachzuholen ist genau die Sorte Schritt, die man
+      # vergisst — am 18.09. lag Bau 30 deshalb stundenlang nur intern.
+      #
+      # ERWARTE_BAU ist der entscheidende Teil: Direkt nach dem Upload ist der
+      # eigene Bau bei Apple noch in Verarbeitung, und die Zuordnung nimmt
+      # sonst den neuesten FERTIGEN — also den VORHERIGEN. Genau so wurde
+      # einmal Bau 30 statt 31 zugeordnet, und der Ablauf meldete Erfolg.
+      # Mit der Nummer wartet das Skript auf GENAU diesen Bau und bricht ab,
+      # statt den falschen zu nehmen.
+      - name: Der oeffentlichen Gruppe zuordnen
+        if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        timeout-minutes: 25
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KONTAKT_NAME: ${{ secrets.ASC_KONTAKT_NAME }}
+          ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
+          ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
+          ERWARTE_BAU: ${{ github.run_number }}
+        run: |
+          pip install --quiet requests pyjwt cryptography
+          python3 scripts/asc-testflight.py --oeffentlich
+
       # Ohne Signierung endet der Lauf hier — das ist der nuetzliche Fall
       # "baut die App ueberhaupt?", den man ohne jedes Geheimnis fahren kann.
 

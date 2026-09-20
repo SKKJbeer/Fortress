@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.7)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7954,3 +7954,40 @@ rot. Jetzt wird die Konstruktion verlangt (`/export function meldeAnHuelle\s*\(/
 > Die Lehre daraus steht nicht nur hier, sondern in `CLAUDE.md`: Eine Prüfung
 > auf ein *Wort* ist keine Prüfung. Zweimal in einer Sitzung hineingetreten
 > heißt, dass die Regel bisher nicht deutlich genug aufgeschrieben war.
+
+## v3.111.8 — Der Upload ordnet jetzt selbst zu, und zwar dem richtigen Bau
+
+Anweisung des Gründers: **immer direkt der öffentlichen Gruppe zuordnen.** Das
+von Hand nachzuholen ist genau die Sorte Schritt, die man vergisst — am 18.09.
+lag Bau 30 deshalb stundenlang nur intern sichtbar.
+
+Der iOS-Ablauf hängt die Zuordnung jetzt selbst an den Upload.
+
+### Die Falle, die dabei zu umgehen war
+
+Die Zuordnung nimmt den **neuesten fertig verarbeiteten** Bau. Direkt nach einem
+Upload ist der eigene aber noch in Verarbeitung — sie würde also den
+**vorherigen** zuordnen. **Genau das ist am 18.09. passiert:** Der Lauf meldete
+„Bau 30 der Gruppe zugeordnet", obwohl Bau 31 gerade hochgeladen worden war.
+Grün, und trotzdem falsch.
+
+`ERWARTE_BAU` (= `github.run_number`, dieselbe Nummer, die als
+`CURRENT_PROJECT_VERSION` ins Bündel geht) schließt das:
+
+- Das Skript **wartet auf genau diese Nummer**, bis zu 20 Minuten, und nennt
+  bei jedem Durchgang den Zustand.
+- `INVALID`/`FAILED` → sofortiger Abbruch mit Grund statt endlosem Warten.
+- Zeitüberschreitung → **nichts zugeordnet**, mit der Begründung „sonst wäre es
+  der falsche". Lieber kein Ergebnis als ein falsches.
+- Und ein zweiter Riegel danach: Ist der gewählte Bau nicht der erwartete —
+  etwa weil ein fremder Upload dazwischenkam —, bricht es ab, statt ihn
+  zuzuordnen.
+
+### Drei statische Prüfungen halten die Kette
+
+In `scripts/ios-pruefen.mjs` (jetzt 27 Punkte, eine Sekunde, ohne Mac): dass der
+Schritt existiert, dass er `ERWARTE_BAU` auf `github.run_number` setzt, und dass
+das Skript die Variable **auch auswertet**. Der mittlere Punkt ist der wichtige —
+ohne ihn könnte der Ablauf die Nummer setzen, ohne dass sie irgendwo wirkt.
+
+**Gegengeprüft:** alle drei Eingriffe werden rot.

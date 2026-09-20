@@ -220,6 +220,29 @@ pruefe(ablauf.includes(NETZ_MARKER)
   "wenn dort `uid=- lesen=keine` steht, also genau der kaputte Zustand aus " +
   "Bau 29/30.");
 
+// ── Zuordnung an die oeffentliche Gruppe ──────────────────────────────────
+//
+// Der Upload allein bringt den Bau zu niemandem: Er muss der oeffentlichen
+// Gruppe zugeordnet und zur Beta-Pruefung eingereicht werden. Von Hand ist das
+// die Sorte Schritt, die man vergisst — am 18.09. lag Bau 30 deshalb
+// stundenlang nur intern.
+//
+// ERWARTE_BAU ist der heikle Teil: Direkt nach dem Upload ist der eigene Bau
+// noch in Verarbeitung, und die Zuordnung nimmt sonst den neuesten FERTIGEN,
+// also den VORHERIGEN. Genau so wurde einmal Bau 30 statt 31 zugeordnet, bei
+// gruenem Ablauf.
+abschnitt("Zuordnung an die oeffentliche Gruppe");
+pruefe(/- name: Der oeffentlichen Gruppe zuordnen/.test(ablauf),
+  "Der iOS-Ablauf ordnet nach dem Upload selbst zu",
+  "Sonst bleibt der Bau nur intern sichtbar, bis jemand daran denkt.");
+pruefe(/ERWARTE_BAU:\s*\$\{\{\s*github\.run_number\s*\}\}/.test(ablauf),
+  "Die Zuordnung wartet auf GENAU den eigenen Bau",
+  "Ohne ERWARTE_BAU ordnet sie den vorherigen Bau zu — und meldet Erfolg.");
+const tf = lies("scripts/asc-testflight.py");
+pruefe(/ERWARTE_BAU/.test(tf) && /Erwartet war Bau/.test(tf),
+  "Das Skript kennt ERWARTE_BAU und weist den falschen Bau ab",
+  "Der Ablauf koennte die Nummer setzen, ohne dass sie irgendwo wirkt.");
+
 // ── Bilder ────────────────────────────────────────────────────────────────
 abschnitt("Symbole und Startbild");
 const iconOrdner = "ios/App/App/Assets.xcassets/AppIcon.appiconset";

@@ -348,6 +348,44 @@ def main() -> int:
     app = treffer[0]["id"]
     print(f"App: {treffer[0]['attributes']['name']} ({app})")
 
+    # ── Auf den EIGENEN Bau warten, wenn einer erwartet wird ───────────────
+    #
+    # `ERWARTE_BAU` setzt der iOS-Ablauf direkt nach dem Upload auf die eigene
+    # Bau-Nummer (github.run_number). Ohne das nimmt die Auswahl unten den
+    # neuesten FERTIGEN Bau — und direkt nach einem Upload ist der eigene noch
+    # in Verarbeitung. Dann wuerde der VORHERIGE zugeordnet: genau das ist am
+    # 18.09. passiert (Bau 30 statt 31), und es faellt nicht auf, weil der
+    # Ablauf gruen meldet.
+    #
+    # Gewartet wird auf GENAU diese Nummer, nicht auf „irgendeinen neueren".
+    erwartet = (os.environ.get("ERWARTE_BAU") or "").strip()
+    if erwartet:
+        frist = time.time() + 20 * 60
+        print(f"Warte auf Bau {erwartet} (hoechstens 20 Minuten) …")
+        while True:
+            a = apple.get("builds", **{"filter[app]": app, "limit": 10,
+                                       "sort": "-uploadedDate"})
+            bauten = a.json().get("data", [])
+            meiner = [b for b in bauten
+                      if str(b["attributes"].get("version")) == erwartet]
+            if meiner:
+                zustand = meiner[0]["attributes"].get("processingState")
+                if zustand == "VALID":
+                    print(f"  Bau {erwartet} ist fertig verarbeitet.")
+                    break
+                if zustand in ("INVALID", "FAILED"):
+                    print(f"::error::Bau {erwartet} steht auf {zustand} — "
+                          f"Apple hat ihn abgelehnt. Nichts zuzuordnen.")
+                    return 1
+                print(f"  Bau {erwartet}: {zustand} …")
+            else:
+                print(f"  Bau {erwartet} noch nicht bei Apple sichtbar …")
+            if time.time() > frist:
+                print(f"::error::Bau {erwartet} wurde binnen 20 Minuten nicht "
+                      f"fertig. NICHTS zugeordnet — sonst waere es der falsche.")
+                return 1
+            time.sleep(30)
+
     a = apple.get("builds", **{"filter[app]": app, "limit": 10,
                                "sort": "-uploadedDate"})
     bauten = a.json().get("data", [])
@@ -376,6 +414,13 @@ def main() -> int:
               f"Apple ist noch nicht fertig. Spaeter erneut versuchen.")
         return 1
     bau = gueltig[0]
+    # Riegel gegen den stillen Fehlgriff: Wurde ein bestimmter Bau erwartet,
+    # darf auch nur dieser zugeordnet werden. Ohne ihn koennte ein fremder
+    # Upload dazwischenkommen und die Automatik ordnete ihn zu.
+    if erwartet and str(feld(bau, "version")) != erwartet:
+        print(f"::error::Erwartet war Bau {erwartet}, gewaehlt wurde "
+              f"{feld(bau, 'version')} — nichts zugeordnet.")
+        return 1
     # Steht etwas Neueres noch in der Verarbeitung, gehoert das gesagt — sonst
     # liest sich „Bau 16 fuer sie sichtbar" wie ein Abschluss, obwohl der
     # eigentlich erwartete Bau noch unterwegs ist.
