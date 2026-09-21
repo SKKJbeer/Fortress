@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.111.8)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -7991,3 +7991,174 @@ das Skript die Variable **auch auswertet**. Der mittlere Punkt ist der wichtige 
 ohne ihn könnte der Ablauf die Nummer setzen, ohne dass sie irgendwo wirkt.
 
 **Gegengeprüft:** alle drei Eingriffe werden rot.
+
+## v3.112.0 — Sicherheits-Review: ein ausnutzbares Loch, und was drumherum offenstand
+
+Vollständiges Review des Codestands (nicht nur eines Diffs) auf: Geheimnisse
+im Baum, Datenbankregeln, Vertrauensgrenze zwischen den Mitspielern,
+DOM-Senken, CI/CD, Abhängigkeiten, Service Worker, iOS-Hülle, Skripte mit
+Admin-Rechten. **Neun Befunde, sieben davon behoben, zwei bewusst offen
+gelassen — mit Begründung.**
+
+### B1 (hoch, NACHGEWIESEN) — Gespeichertes Cross-Site-Scripting in `stats.html`
+
+`telemetry` ist von **jedem angemeldeten Client** beschreibbar, und anonyme
+Anmeldung steht jedem offen. Die Felder `mode`, `world` und `winner` waren
+dort freie Zeichenketten und landeten in `public/stats.html` **unmaskiert in
+`innerHTML`**.
+
+**Nicht behauptet, sondern gemessen.** Eine Gegenprobe mit gestelltem
+SDK-Modul und dem Eintrag `mode: '<img src=x onerror=…>'`:
+
+```
+vorher:   Ausgefuehrt: true
+nachher:  Ausgefuehrt: false
+```
+
+Das lief auf `skkjbeer.github.io` — **derselben Herkunft wie das Spiel**.
+Damit: `localStorage` (`fortress_profile` mit ELO, Gold, Level, gekaufter
+Kosmetik), der Service Worker, alles. Ein Angreifer brauchte keinen Zugang,
+nur einen Schreibzugriff auf einen Knoten, der für Balancing-Zahlen gedacht war.
+
+Behoben: `txt()` maskiert `& < > " ' \`` und deckelt die Länge. **Jede**
+Einsetzung in `stats.html` läuft jetzt durch `txt(`, `num(` oder `fmt(` —
+ohne Ausnahmeliste. Die drei Stellen, die sich der Regel entzogen (Datum,
+Prozentwert, Balkenhöhe), wurden im Quelltext eindeutig gemacht, statt die
+Prüfung aufzuweichen.
+
+### B2 (mittel-hoch) — Die Regeln ließen unbegrenzt Fremddaten zu
+
+In der Realtime Database ist jedes **nicht aufgezählte** Kind erlaubt.
+`games/<code>/beliebig` mit einem 10-MB-String ging durch, solange
+`createdAt` existierte. Ebenso bei `telemetry`, `funnel`, `players` und den
+Warteschlangen. Der Spark-Plan hat 1 GB.
+
+Behoben: jeder schreibbare Knoten trägt jetzt `"$other": {".validate": false}`,
+und `telemetry`/`funnel` sind **feldweise** getypt und gedeckelt — das ist
+zugleich die zweite Linie hinter B1. `games/ping` bekam eine eigene Regel.
+
+> **Diese Regeln sind noch nicht live.** Sie stehen in
+> `firebase-rules-PASTE.json` und gehen über Actions → „Firebase (Regeln)" →
+> `trocken`, dann `regeln` in die Datenbank. Der Ablauf sichert die alten
+> Regeln, prüft nach dem Einspielen beide Richtungen und **rollt bei
+> Fehlschlag automatisch zurück**.
+
+### B3 (hoch, Datenmüll) — `diagnose.html` ließ bei jedem Lauf einen Knoten stehen
+
+Die Seite ist öffentlich erreichbar, meldet sich bei **jedem** Lauf unter
+einer neuen anonymen Kennung an (der Firebase-Anwendungsname trägt
+`Date.now()`) und schrieb `players/<uid>` — ohne es je wieder zu entfernen.
+Beliebig oft, von jedem. `games/ping` wurde aufgeräumt, das Cloud-Save-Profil
+nicht.
+
+Behoben: abgewartetes `remove`, wie eine Ebene darüber.
+
+### B4 (mittel) — Keine Inhaltsrichtlinie, nirgends
+
+Jetzt trägt **jede** ausgelieferte Seite eine Content-Security-Policy.
+`script-src` muss `'unsafe-inline'` behalten (das Registrierungs-Skript des
+Service Workers steht inline), die Richtlinie ist also **kein** Schutz gegen
+Einschleusung — der Wert liegt bei `connect-src`, `img-src`, `form-action`,
+`object-src` und `base-uri`: Eingeschleuster Code hätte keinen Weg nach außen.
+
+**Gemessen, welche Gegenstellen durchkommen** (Verstoß-Bericht des Browsers):
+
+| Ziel | Ergebnis |
+|---|---|
+| `https://identitytoolkit.googleapis.com` | erlaubt |
+| `https://securetoken.googleapis.com` | erlaubt |
+| `https://…firebasedatabase.app` (https **und** wss) | erlaubt |
+| `wss://…firebaseio.com` | erlaubt |
+| `https://content-firebaseappcheck.googleapis.com` | erlaubt (für später) |
+| eine fremde Adresse | **blockiert** |
+
+**Dabei ist die E2E-Suite zunächst rot geworden** — sieben Online-Prüfungen,
+ohne jede Fehlermeldung über die Ursache: Der Mock der Suite liegt auf einem
+zweiten lokalen Port, und ihr `fetch` fängt Fehler selbst ab. Die Suite öffnet
+die Richtlinie jetzt nur für ihre eigene Gegenstelle, und nur in der Antwort —
+`tests/sicherheit.test.js` hält fest, dass in der Datei kein `localhost` steht.
+
+### B5 (mittel) — Was der Mitspieler schickt, ging ungeprüft ins Rendern
+
+Es gibt **keinen Server**: Host ist ein beliebiger Mitspieler, und sein
+`playerInfo` landete direkt in den Refs des Gastes. Geprüft wurde davon nur
+`name`. `wappen`, `trail`, `frame`, `cannon`, `impact` und `color` gingen
+durch — als Nachschlage-Schlüssel, als Bildadresse, als Farbwert.
+`wappen: "constructor"` liefert aus einem Objektliteral eine **Funktion** aus
+der Prototypkette.
+
+Behoben: `istKatalogWort` (kurzes Wort, kein `__proto__`/`constructor`/
+`prototype`) und `istFarbe` in `sanitizeState` **und** `sanitizeAction`; der
+Host prüft `wappen` jetzt gegen den Katalog wie schon `cannon`/`impact`;
+`WappenAvatar` schlägt über `hasOwnProperty` nach. Gegengeprüft, dass **kein
+echter** Katalog-Schlüssel abgewiesen wird (alle 12 Wappen, alle Kosmetik-IDs).
+
+### B6 (niedrig) — Zwei Regeln für dieselbe Eingabe
+
+Der Tiefenlink filterte den Spielcode auf `[A-Z2-9]`, das Eingabefeld nicht.
+Ein Schrägstrich im Code legt in `games/${code}` einen Unterknoten an, statt
+eine Partie zu suchen. Jetzt gehen beide Wege durch `saeubereCode()`.
+
+### B7 (niedrig, Tiefenverteidigung) — Spielcode aus `Math.random()`
+
+Der Code ist der einzige Zugangsschutz einer Partie. `Math.random()` ist
+rekonstruierbar; jetzt `crypto.getRandomValues`. **Kein belegter Angriff** —
+die Zustände liegen je Browser getrennt. Der Wechsel kostet nichts, also gibt
+es keinen Grund, die Annahme stehen zu lassen.
+
+### B8 (niedrig) — Fremde GitHub-Actions an beweglichen Marken
+
+`softprops/action-gh-release@v2` läuft mit `contents: write` und dem
+GITHUB_TOKEN, `cloudflare/wrangler-action@v3` sieht das Cloudflare-Token.
+Eine Marke zeigt auf das, was der Eigentümer des fremden Repositories gerade
+darunterlegt. Beide hängen jetzt an einem Commit. `actions/*` (von GitHub
+selbst) bleiben bewusst auf der Marke — dort wäre ein fester Commit vor allem
+eine Quelle veralteter Abhängigkeiten.
+
+### Bewusst NICHT behoben — mit Begründung
+
+**Jeder mit dem Code kann eine laufende Partie überschreiben.**
+`games/$code` ist für jeden Angemeldeten schreibbar. Eine Bindung an die
+Kennung des Hosts wäre möglich (Feld `host`, Kindregeln für
+`guestAction2/3` und `hb2/hb3`), ist aber ein Eingriff ins laufende
+Online-Protokoll mit Übergangsfassung für ältere Clients. Praktisch ist der
+Weg verstellt: 32⁶ ≈ 10⁹ Codes gegen eine Handvoll gleichzeitiger Partien.
+**Eingeplant, nicht vergessen** — aber nicht in einem Sicherheits-Pass, der
+sonst nichts am Protokoll anfasst.
+
+**`npm audit` meldet 10 Verwundbarkeiten, eine davon „hoch".** Alle hängen an
+`undici` unter `@firebase/*`. **Gemessen: `undici` steht nicht im gebauten
+Bundle** (`grep` über `dist/assets/*.js` — kein Treffer). Es ist der
+Node-Pfad des SDK, den ein Browser nie nimmt. Im ausgelieferten Produkt also
+nicht ausnutzbar. Ein Anheben von `firebase` ist eine SDK-Aktualisierung mit
+eigenem Prüfbedarf und gehört nicht in denselben Commit.
+
+### Geprüft, und zwar gegengeprüft
+
+| Was | Gegenprobe |
+|---|---|
+| `tests/regeln.test.js` (8 Prüfungen) | 10 künstliche Eingriffe, **10 erkannt** |
+| `tests/net.test.js` (neu: 6 Prüfungen) | 5 künstliche Eingriffe, **5 erkannt** |
+| `tests/sicherheit.test.js` (9 Prüfungen) | 8 Eingriffe, **7 erkannt** → siehe unten |
+| XSS selbst | Gegenprobe vorher `true`, nachher `false` |
+| Inhaltsrichtlinie | Verstoß-Bericht je Endpunkt gemessen |
+
+**Eine Gegenprobe blieb grün** — dieselbe Falle wie in v3.111.7: Die Prüfung
+suchte den Text `D.remove(D.ref(db, "players/" + uid))`, und ein
+auskommentierter Aufruf erfüllte sie. Verlangt wird jetzt die ausgeführte
+Konstruktion (`await mitFrist(D.remove(…`), geprüft an einer von Kommentaren
+befreiten Fassung — und zusätzlich, dass der Schreibzugriff überhaupt noch da
+ist, damit die Schleife nicht still leer läuft. Danach: 5 von 5 rot.
+
+Gesamt: `typecheck` · `test:unit` **188** · `test:ios` **27** · `build` ·
+`test:e2e` **473 ✅ 0 ❌** · `check-website.mjs`.
+
+### Offen für den Betreiber (nicht aus dem Code zu erledigen)
+
+1. **Regeln einspielen** — Actions → „Firebase (Regeln)" → `trocken`, dann
+   `regeln`. Bis dahin gilt B2 in der Datenbank weiter.
+2. **App Check aktivieren** (reCAPTCHA v3, Site-Key in `firebase-boot.js`).
+   Das ist der einzige wirksame Hebel gegen Flut-Angriffe auf Warteschlange
+   und Telemetrie ohne kostenpflichtigen Plan — `auth != null` ist über eine
+   anonyme Anmeldung trivial zu erfüllen. Die Adressen stehen bereits in der
+   Inhaltsrichtlinie.

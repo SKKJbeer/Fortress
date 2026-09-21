@@ -115,3 +115,72 @@ test('computeMatchGroup: mutiert die Eingabeliste nicht', () => {
   computeMatchGroup(wait, 2, now, 's000');
   assert.equal(JSON.stringify(wait), before);
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// Sicherheits-Pass v3.112.0 — was vom Gegenueber hereinkommt
+//
+// Es gibt in diesem Spiel KEINEN Server. Host ist ein beliebiger Mitspieler,
+// und der Zustand, den er schickt, landet direkt in den Refs des Gastes. Was
+// hier durchrutscht, rutscht bis in die Zeichenschleife durch.
+// ═══════════════════════════════════════════════════════════════════════
+import { istKatalogWort, istFarbe } from '../src/net/protocol.js';
+
+const guterZustand = (extra) => Object.assign(
+  { grid: [[0, 0]], phase: 'build', timer: 10 }, extra || {});
+
+test('istKatalogWort: die echten Katalog-Schluessel kommen durch', () => {
+  for (const k of ['skelett', 'phoenix', 'golddrache', 'trail_gold', 'frame_bronze',
+                   'cannon_crystal', 'impact_lava', 'win_goldrain', 'a', 'A1-b_2'])
+    assert.equal(istKatalogWort(k), true, k + ' sollte durchkommen');
+});
+
+test('istKatalogWort: Prototyp-Schluessel und Sonderzeichen nicht', () => {
+  for (const k of ['__proto__', 'constructor', 'prototype', 'toString()', 'a b', 'a/b',
+                   'a.b', '<img>', '', 'x'.repeat(25), null, undefined, 42, {}])
+    assert.equal(istKatalogWort(k), false, JSON.stringify(k) + ' sollte abgewiesen werden');
+});
+
+test('istFarbe: nur Farbangaben, nichts mit Klammern oder Semikolon', () => {
+  for (const c of ['#fff', '#2563eb', '#2563EB', 'red', 'rebeccapurple'])
+    assert.equal(istFarbe(c), true, c);
+  for (const c of ['red);background:url(//fremd)', 'rgba(0,0,0,1)', 'url(x)', '#12345',
+                   'a'.repeat(21), '', null, 123])
+    assert.equal(istFarbe(c), false, JSON.stringify(c));
+});
+
+test('sanitizeState: Kosmetik-Schluessel eines boesartigen Hosts fallen weg', () => {
+  const s = sanitizeState(guterZustand({
+    playerInfo: { 1: {
+      name: 'x'.repeat(200), wappen: 'constructor', trail: '__proto__',
+      frame: 'frame_gold', cannon: 'a b', impact: 'impact_lava',
+      color: 'red);background-image:url(//fremd)', elo: 'viel'
+    } }
+  }));
+  const pi = s.playerInfo[1];
+  assert.equal(pi.name.length, 40, 'Name wird gekuerzt');
+  assert.equal(pi.wappen, undefined, 'constructor faellt weg');
+  assert.equal(pi.trail, undefined, '__proto__ faellt weg');
+  assert.equal(pi.cannon, undefined, 'Leerzeichen faellt weg');
+  assert.equal(pi.color, undefined, 'CSS-Einschleusung faellt weg');
+  assert.equal(pi.elo, undefined, 'ELO muss eine Zahl sein');
+  assert.equal(pi.frame, 'frame_gold', 'echte Werte bleiben');
+  assert.equal(pi.impact, 'impact_lava', 'echte Werte bleiben');
+});
+
+test('sanitizeState: ein ehrlicher Zustand geht unveraendert durch', () => {
+  const s = sanitizeState(guterZustand({
+    playerInfo: { 1: { name: 'Anna', wappen: 'phoenix', color: '#2563eb', elo: 1200,
+                       trail: 'trail_gold', frame: 'frame_bronze' } }
+  }));
+  assert.deepEqual(s.playerInfo[1],
+    { name: 'Anna', wappen: 'phoenix', color: '#2563eb', elo: 1200,
+      trail: 'trail_gold', frame: 'frame_bronze' });
+});
+
+test('sanitizeAction: Wappen und Kosmetik muessen schlichte Woerter sein', () => {
+  assert.equal(sanitizeAction({ type: 'join', wappen: 'constructor' }).wappen, undefined);
+  assert.equal(sanitizeAction({ type: 'join', wappen: '__proto__' }).wappen, undefined);
+  assert.equal(sanitizeAction({ type: 'join', trail: 'a/b' }).trail, undefined);
+  assert.equal(sanitizeAction({ type: 'join', wappen: 'phoenix' }).wappen, 'phoenix');
+  assert.equal(sanitizeAction({ type: 'join', cannon: 'cannon_dragon' }).cannon, 'cannon_dragon');
+});

@@ -299,11 +299,40 @@ async function getFirebase() {
     return null;
   }
 }
+const CODE_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function makeCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  // Der Spielcode ist der EINZIGE Zugangsschutz einer Partie: `games/<code>`
+  // ist fuer jeden angemeldeten Client les- und schreibbar, und anmelden kann
+  // sich jeder anonym. Wer einen fremden Code kennt, kann die laufende Partie
+  // ueberschreiben.
+  //
+  // Deshalb nicht `Math.random()`: dessen Zustand laesst sich aus wenigen
+  // Ausgaben rekonstruieren, und dann sind auch die FOLGENDEN Codes bekannt.
+  // Das ist hier Tiefenverteidigung, kein belegter Angriff — die Zustaende
+  // liegen je Browser getrennt, ein Angreifer sieht die eigenen, nicht die
+  // fremden. Der Wechsel kostet nichts, also gibt es keinen Grund dafuer,
+  // die Annahme stehen zu lassen.
+  //
+  // 32 Zeichen sind eine Zweierpotenz, deshalb ist `% 32` hier ohne
+  // Verzerrung — bei einer anderen Alphabetlaenge waere das falsch.
+  const n = CODE_ZEICHEN.length;
+  const roh = new Uint8Array(6);
+  try {
+    (globalThis.crypto || {}).getRandomValues(roh);
+  } catch (e) {
+    for (let i = 0; i < 6; i++) roh[i] = Math.floor(Math.random() * 256);
+  }
   let s = "";
-  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) s += CODE_ZEICHEN[roh[i] % n];
   return s;
+}
+// Ein Spielcode ist sechs Zeichen aus GENAU diesem Alphabet. Alles andere
+// gehoert nicht in einen Datenbankpfad: `games/${code}` mit einem Schraegstrich
+// im Code legt einen Unterknoten an, statt eine Partie zu suchen. Der
+// Tiefenlink filterte bereits so, das Eingabefeld nicht — dieselbe Eingabe,
+// zwei verschiedene Regeln (Sicherheits-Pass v3.112.0).
+function saeubereCode(roh) {
+  return String(roh == null ? "" : roh).toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6);
 }
 // Bot-Namen (v3.14.16): pro Bot-Spiel wird zufällig einer gezogen.
 // Burgen-/Belagerungs-Fantasy mit Augenzwinkern.
@@ -2456,7 +2485,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       const m3 = numPlayersRef.current === 3;
       playerInfo.current[p2] = {
         name: a.name || "Gast " + p2,
-        wappen: a.wappen || (p2 === 2 ? "\u265A" : "\u265C"),
+        // Gegen den Katalog pruefen, genau wie cannon/impact eine Zeile
+        // weiter unten (v3.112.0). Vorher wurde nur die Laenge begrenzt —
+        // ein Gast konnte damit einen beliebigen Nachschlage-Schluessel
+        // setzen, und der Host verteilte ihn an alle anderen weiter.
+        wappen: typeof a.wappen === "string" && Object.prototype.hasOwnProperty.call(WAPPEN_SRC, a.wappen) ? a.wappen
+                : (p2 === 2 ? "\u265A" : "\u265C"),
         color: a.color || (p2 === 2 ? "#dc2626" : "#059669"),
         elo: typeof a.elo === "number" ? a.elo : 1e3,
         trail: a.trail, frame: a.frame, // Kosmetik (v3.23.0), undefined = Standard
@@ -2737,7 +2771,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     setMpError("");
     // explicitCode kommt vom Deeplink (?join=CODE); als onClick-Handler wird
     // stattdessen ein Event übergeben → nur echte Strings akzeptieren.
-    const code = ((typeof explicitCode === "string" ? explicitCode : mpInput) || "").trim().toUpperCase();
+    const code = saeubereCode(typeof explicitCode === "string" ? explicitCode : mpInput);
     if (code.length !== 6) {
       setMpError(t('warnCode6'));
       return;
@@ -6912,7 +6946,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.111.8"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.112.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8243,7 +8277,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     "input",
     {
       value: mpInput,
-      onChange: (e) => setMpInput(e.target.value.toUpperCase().slice(0, 6)),
+      onChange: (e) => setMpInput(saeubereCode(e.target.value)),
       placeholder: "ABC123",
       style: {
         width: "100%",

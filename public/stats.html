@@ -2,6 +2,17 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<!-- Inhaltsrichtlinie (Sicherheits-Pass v3.112.0).
+     GitHub Pages kann keine Kopfzeilen setzen, also steht sie als meta-Angabe.
+     Das kostet `frame-ancestors` (nur als Kopfzeile wirksam) — der Rest gilt.
+
+     Was sie WIRKLICH abfaengt: `img-src`/`connect-src`/`form-action` schneiden
+     die Abflusswege ab. Ein eingeschleustes `<img src="https://fremd/?d=…">`
+     kommt damit nicht mehr aus der Seite heraus. `script-src` bleibt bei
+     'unsafe-inline' — die Seiten tragen ihr Skript inline, und ein Hash waere
+     bei jeder Textaenderung still falsch. Der eigentliche Schutz gegen
+     Einschleusung ist deshalb die Maskierung im Code, nicht diese Zeile. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stack &amp; Siege · Spiel-Statistik</title>
 <style>
@@ -95,6 +106,32 @@ const $ = (s) => document.querySelector(s);
 let ALL = [], FILTER = 'all';
 
 function num(v){ return typeof v === 'number' && isFinite(v) ? v : 0; }
+// Datum und Uhrzeit als EIN Text. Steht die Formatierung in der HTML-Vorlage,
+// enthaelt die Einsetzung eine geschweifte Klammer — und die Pruefung in
+// `tests/sicherheit.test.js`, die jede Einsetzung liest, bekommt dort einen
+// abgeschnittenen Ausdruck zu sehen. Ein Helfer macht beide Seiten eindeutig.
+function zeitText(d){
+  return d.toLocaleDateString('de-DE') + ' ' +
+         d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+// ── Jeder Fremdwert wird maskiert (Sicherheits-Pass v3.112.0) ──────────
+//
+// **Der telemetry-Knoten ist von jedem angemeldeten Client beschreibbar**, und
+// anonyme Anmeldung steht allen offen. `mode`, `world` und `winner` sind dort
+// freie Zeichenketten. Sie landeten hier ungefiltert in `innerHTML` — ein
+// Eintrag mit `<img src=x onerror=...>` fuehrte damit Code auf
+// skkjbeer.github.io aus, also auf DERSELBEN Herkunft wie das Spiel: Zugriff
+// auf `localStorage` (Profil, Fortschritt), auf den Service Worker, auf alles.
+// Nachgewiesen mit einer Gegenprobe, bevor diese Zeilen entstanden.
+//
+// `txt` maskiert, `len` deckelt zusaetzlich die Laenge — ein 200-KB-Feld waere
+// sonst ein Weg, die Seite unbrauchbar zu machen, ohne Code auszufuehren.
+function txt(v, max){
+  const s = String(v == null ? '' : v).slice(0, max || 40);
+  return s.replace(/[&<>"'`]/g, (c) => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'
+  }[c]));
+}
 function avg(arr, f){ if(!arr.length) return 0; return arr.reduce((s,x)=>s+f(x),0)/arr.length; }
 function fmt(v, d){ return (Math.round(v*(d?10**d:1))/(d?10**d:1)).toLocaleString('de-DE'); }
 
@@ -120,7 +157,7 @@ function render(){
   const hits  = rows.reduce((s,r)=>s+num(r.s.hits),0);
   const hitPct = shots ? (hits/shots*100) : 0;
 
-  const kpi = (n,l) => `<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  const kpi = (n,l) => `<div class="kpi"><div class="n">${num(n)}</div><div class="l">${txt(l, 40)}</div></div>`;
   let html = '<h2>Überblick</h2><div class="kpis">'
     + kpi(fmt(ms.length), 'Matches erfasst')
     + kpi(fmt(avg(ms, m=>num(m.rounds)),1), 'Runden pro Match')
@@ -137,8 +174,8 @@ function render(){
   const counts = buckets.map(([a,b]) => ms.filter(m=>num(m.rounds)>=a && num(m.rounds)<=b).length);
   const mx = Math.max(1, ...counts);
   html += '<h2>Matchlänge (Runden)</h2><div class="chart">'
-    + counts.map(n=>`<div class="b" style="height:${Math.max(3,n/mx*100)}%"><span>${n||''}</span></div>`).join('')
-    + '</div><div class="xlab">' + buckets.map(([a,b])=>`<span>${b>90?a+'+':a+'-'+b}</span>`).join('') + '</div>';
+    + counts.map(n=>`<div class="b" style="height:${num(Math.max(3,n/mx*100))}%"><span>${txt(n || '', 12)}</span></div>`).join('')
+    + '</div><div class="xlab">' + buckets.map(([a,b])=>`<span>${txt(b>90?a+'+':a+'-'+b, 12)}</span>`).join('') + '</div>';
 
   // Ausbaustufen
   html += '<h2>Ausbaustufen — was wird tatsächlich gekauft</h2><div class="kpis">'
@@ -154,9 +191,9 @@ function render(){
   for(const mo of modes){
     const sub = ALL.filter(m=>m.mode===mo), sr = perPlayerRows(sub);
     const sh = sr.reduce((s,r)=>s+num(r.s.shots),0), hi = sr.reduce((s,r)=>s+num(r.s.hits),0);
-    html += `<tr><td><b>${mo}</b></td><td>${sub.length}</td><td>${fmt(avg(sub,m=>num(m.rounds)),1)}</td>`
+    html += `<tr><td><b>${txt(mo, 24)}</b></td><td>${num(sub.length)}</td><td>${fmt(avg(sub,m=>num(m.rounds)),1)}</td>`
       + `<td>${fmt(avg(sr,r=>num(r.s.cannons)),1)}</td><td>${fmt(avg(sr,r=>num(r.s.walls)),0)}</td>`
-      + `<td>${sh?fmt(hi/sh*100,1)+' %':'–'}</td></tr>`;
+      + `<td>${txt(sh?fmt(hi/sh*100,1)+' %':'–', 12)}</td></tr>`;
   }
   html += '</tbody></table></div>';
 
@@ -170,9 +207,9 @@ function render(){
     const ws = ks.map(k=>num(per[k].walls)).join(' / ');
     const hs = ks.map(k=>num(per[k].hits)+'/'+num(per[k].shots)).join(' · ');
     const d = new Date(num(m.ts));
-    html += `<tr><td class="mono">${d.toLocaleDateString('de-DE')} ${d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</td>`
-      + `<td><span class="pill">${m.mode||'?'}</span></td><td>${m.world||'–'}</td><td><b>${num(m.rounds)}</b></td>`
-      + `<td><span class="pill w">${m.winner||'?'}</span></td><td>${cs}</td><td>${ws}</td><td class="mono">${hs}</td></tr>`;
+    html += `<tr><td class="mono">${txt(zeitText(d), 24)}</td>`
+      + `<td><span class="pill">${txt(m.mode, 24) || '?'}</span></td><td>${txt(m.world, 24) || '–'}</td><td><b>${num(m.rounds)}</b></td>`
+      + `<td><span class="pill w">${txt(m.winner, 12) || '?'}</span></td><td>${txt(cs, 40)}</td><td>${txt(ws, 40)}</td><td class="mono">${txt(hs, 60)}</td></tr>`;
   }
   html += '</tbody></table></div>';
   c.innerHTML = html;

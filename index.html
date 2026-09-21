@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.111.8</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.112.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -161,6 +161,31 @@
     #ios-hint p b{color:#22d3ee}
     #ios-hint button{margin-top:10px;width:100%;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:700}
   </style>
+
+  <!-- ── Inhaltsrichtlinie (Sicherheits-Pass v3.112.0) ─────────────────────
+       GitHub Pages kann keine Kopfzeilen setzen, also steht sie als
+       meta-Angabe. `frame-ancestors` wirkt so nicht — der Rest schon.
+
+       WAS SIE WIRKLICH BRINGT. `script-src` muss 'unsafe-inline' tragen (das
+       Skript zur Registrierung des Service Workers steht unten inline), also
+       ist sie KEIN Schutz gegen Einschleusung. Der Wert liegt woanders:
+       `connect-src` zaehlt die Gegenstellen auf, die das Spiel wirklich
+       braucht — kaeme je Code zur Ausfuehrung, hat er keinen Weg nach
+       draussen. `object-src`, `base-uri` und `form-action` schliessen drei
+       Einschleusungswege, die dieses Spiel ohnehin nie benutzt.
+
+       WER HIER ETWAS AENDERT, PRUEFT ZWEI WEGE. Die E2E-Suite deckt den
+       Browser ab (`suiteFirebaseStart` faehrt den echten Startpfad). Die App
+       deckt sie NICHT ab: dort laeuft WKWebView unter `capacitor://localhost`
+       und Capacitor schiebt seine Bruecke als Benutzerskript ein. Dafuer gibt
+       es den Simulator-Probelauf in `ios.yml` — er verlangt `STACK-SIEGE-
+       BEREIT` (Bruecke) UND `STACK-SIEGE-NETZ` mit uid und Lesezeit (Online).
+       Eine zu enge Richtlinie faellt dort auf, nicht erst bei Testern.
+
+       Die drei App-Check-Adressen stehen schon drin, obwohl App Check noch
+       aus ist (firebase-boot.js, leerer Site-Key). Sonst waere das Einschalten
+       eine Aenderung an zwei Stellen, und die zweite vergisst man. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://content-firebaseappcheck.googleapis.com; frame-src https://*.firebaseapp.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 
   <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
   <script type="module" async src="./src/firebase-boot.js"></script>

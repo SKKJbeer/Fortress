@@ -132,8 +132,15 @@ jobs:
             git push origin "$TAG"
           fi
 
+      # **Auf den Commit festgenagelt, nicht auf das bewegliche `v2`.**
+      # Ein Marken-Zeiger wie `v2` zeigt auf das, was der Eigentuemer des
+      # fremden Repositories gerade darunter legt. Dieser Schritt laeuft mit
+      # `contents: write` und dem GITHUB_TOKEN — wer den Zeiger verschiebt,
+      # bekommt beides. Genau so sind 2025 mehrere Lieferketten-Vorfaelle
+      # gelaufen. Der Commit unten ist der, auf den `v2` am 21.09.2026 zeigte.
+      # Zum Anheben: `git ls-remote https://github.com/softprops/action-gh-release refs/tags/v2`
       - name: GitHub Release erstellen
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65   # v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Stack & Siege v${{ steps.version.outputs.version }}

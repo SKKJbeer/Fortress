@@ -2,6 +2,17 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<!-- Inhaltsrichtlinie (Sicherheits-Pass v3.112.0).
+     GitHub Pages kann keine Kopfzeilen setzen, also steht sie als meta-Angabe.
+     Das kostet `frame-ancestors` (nur als Kopfzeile wirksam) — der Rest gilt.
+
+     Was sie WIRKLICH abfaengt: `img-src`/`connect-src`/`form-action` schneiden
+     die Abflusswege ab. Ein eingeschleustes `<img src="https://fremd/?d=…">`
+     kommt damit nicht mehr aus der Seite heraus. `script-src` bleibt bei
+     'unsafe-inline' — die Seiten tragen ihr Skript inline, und ein Hash waere
+     bei jeder Textaenderung still falsch. Der eigentliche Schutz gegen
+     Einschleusung ist deshalb die Maskierung im Code, nicht diese Zeile. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Stack &amp; Siege · Verbindungs-Diagnose</title>
 <style>
@@ -184,8 +195,21 @@ async function pruefe(apiKey) {
           p: JSON.stringify({ diagnose: true }), updatedAt: Date.now(), v: 1
         }), "Cloud-Save schreiben");
         const back = await mitFrist(D.get(D.ref(db, "players/" + uid)), "Cloud-Save lesen");
+        // **Wieder wegraeumen — aus demselben Grund wie oben bei games/ping,
+        // hier aber mit mehr Gewicht** (Sicherheits-Pass v3.112.0): Diese
+        // Seite ist oeffentlich erreichbar und meldet sich bei JEDEM Lauf
+        // unter einer NEUEN anonymen Kennung an (der Firebase-Anwendungsname
+        // traegt `Date.now()`, die Anmeldung wird also nicht wiederverwendet).
+        // Ohne diese Zeile bleibt pro Knopfdruck dauerhaft ein
+        // `players/<uid>`-Knoten stehen — von jedem, beliebig oft, ohne
+        // Obergrenze. Der Spark-Plan hat 1 GB, und niemand haette die Knoten
+        // je wieder zugeordnet bekommen.
+        //
+        // Abwarten, nicht nur anstossen: gleich danach folgt `deleteApp()`,
+        // und eine nicht abgewartete Loeschung wird dabei verworfen.
+        await mitFrist(D.remove(D.ref(db, "players/" + uid)), "Cloud-Save aufraeumen").catch(() => {});
         set("cloud", back.exists() ? "ok" : "bad",
-            back.exists() ? "Geschrieben und wieder gelesen — Fortschritt wird gesichert."
+            back.exists() ? "Geschrieben, wieder gelesen und entfernt — Fortschritt wird gesichert."
                           : "Geschrieben, aber nicht lesbar.");
       } catch (e) {
         const c = (e && e.code) || String(e);

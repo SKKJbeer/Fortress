@@ -65,7 +65,12 @@ export function ConfettiBurst({ active }) {
 }
 
 export function WappenAvatar({ id, size = 36 }) {
-  const src = WAPPEN_SRC[id] || WAPPEN_SRC.skelett;
+  // `hasOwnProperty`, nicht nur `WAPPEN_SRC[id]` (v3.112.0): `id` kann aus
+  // dem Netz kommen (playerInfo des Hosts). Bei `id = "constructor"` liefert
+  // ein Objektliteral eine FUNKTION aus der Prototypkette — die stuende dann
+  // als Bild-Adresse im DOM und der Browser fragte sie an.
+  const src = Object.prototype.hasOwnProperty.call(WAPPEN_SRC, id)
+    ? WAPPEN_SRC[id] : WAPPEN_SRC.skelett;
   return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
 
 export // Statische XP-Leiste (Profil-Karte, Profil-Editor)

@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.111.8
+- **Aktuelle Version**: v3.112.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -319,6 +319,54 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 - **`canvasRect.current`**: nur bei pointerdown/resize/scroll neu holen, nicht bei pointermove
 - Alle Spielzustände in **Refs** (keine React-Re-Renders im Render-Loop)
 - **Sprite-Cache `SPR` (seit v3.15.5)**: Mauern/Trümmer/Kanonenkuppel/-rohr/Bälle werden EINMAL offscreen vorgerendert und pro Frame nur geblittet. Zonen-Overlay in `zoneCanvas` (Key: gridVersion). NIE Gradients oder `shadowBlur` pro Objekt pro Frame in den Render-Loop — das war die Lag-Ursache ab ~15 Kanonen auf Mobilgeräten. Perf-Messung: `window.__perfDbg=true` → `__frameMs` (Zeichendauer, gated).
+
+---
+
+## Sicherheitsregeln (Sicherheits-Pass v3.112.0 — nicht aufweichen)
+
+- **Kein Fremdwert unmaskiert in `innerHTML`.** `telemetry` und `funnel` sind
+  von JEDEM angemeldeten Client beschreibbar, und anonyme Anmeldung steht
+  allen offen. In `public/stats.html` fuehrte das bis v3.112.0 zu
+  **ausfuehrbarem Code auf der Herkunft des Spiels** (nachgewiesen) — damit
+  Zugriff auf `localStorage`, Profil, Service Worker. Regel: In den
+  Nebenseiten laeuft JEDE Einsetzung durch `txt(`, `num(` oder `fmt(`, ohne
+  Ausnahmeliste. `tests/sicherheit.test.js` haelt das fest.
+- **Neue Felder in der Datenbank zuerst in die REGELN.** Jeder schreibbare
+  Knoten traegt `"$other": {".validate": false}` — sonst darf jeder
+  Angemeldete beliebige Kinder beliebiger Groesse anlegen (1 GB Spark-Plan).
+  Folge: Ein neues Feld im Spielcode wird ohne Regel-Eintrag ABGELEHNT, und
+  `pushTelemetry`/`trichter` verschlucken den Fehler absichtlich — stiller
+  Datenverlust. Zwei Dateien, eine Wahrheit: eingespielt wird
+  `firebase-rules-PASTE.json`, kommentiert ist `firebase-security-rules.json`;
+  `tests/regeln.test.js` erzwingt, dass sie identisch sind.
+- **Was vom Mitspieler kommt, ist nicht vertrauenswuerdig.** Es gibt keinen
+  Server — Host ist ein beliebiger Client. Jeder Katalog-Schluessel aus dem
+  Netz (`wappen`, `trail`, `frame`, `cannon`, `impact`) muss durch
+  `istKatalogWort` (src/net/protocol.js), jede Farbe durch `istFarbe`. Grund:
+  `wappen: "constructor"` liefert aus einem Objektliteral eine FUNKTION aus
+  der Prototypkette. Nachschlagen in Katalogen mit Netzdaten IMMER ueber
+  `Object.prototype.hasOwnProperty.call(...)`.
+- **Inhaltsrichtlinie auf jeder Seite.** `script-src` traegt
+  `'unsafe-inline'` (inline-Skript fuer den Service Worker) — der Schutz liegt
+  bei `connect-src`/`img-src`/`form-action`/`object-src`/`base-uri`: kein
+  Abflussweg. Wer sie aendert, prueft ZWEI Wege: die E2E-Suite (Browser) und
+  den Simulator-Probelauf in `ios.yml` (WKWebView unter `capacitor://localhost`
+  plus Capacitor-Bruecke als Benutzerskript). **In der ausgelieferten Datei
+  steht NIE `localhost`** — die Suite oeffnet die Richtlinie fuer ihren Mock
+  nur in der Antwort (`oeffneRichtlinieFuerTestgegenstelle`).
+- **Fremde GitHub-Actions haengen an einem Commit, nicht an `@v3`.** Diese
+  Schritte sehen GITHUB_TOKEN bzw. CLOUDFLARE_API_TOKEN. `actions/*` (von
+  GitHub selbst) bleiben bewusst auf der Marke.
+- **Oeffentliche Seiten raeumen ihre Probeknoten weg.** `diagnose.html` ist
+  von jedem erreichbar und meldet sich bei JEDEM Lauf unter einer neuen
+  anonymen Kennung an — ohne abgewartetes `remove` bliebe pro Knopfdruck
+  dauerhaft ein `players/<uid>`-Knoten stehen.
+- **Offen und bewusst so:** `games/$code` ist fuer jeden Angemeldeten
+  schreibbar (Bindung an die Host-Kennung waere ein Protokoll-Eingriff;
+  praktisch verstellt durch 32^6 Codes). `npm audit` meldet `undici` unter
+  `@firebase/*` — **gemessen nicht im gebauten Bundle**, es ist der Node-Pfad
+  des SDK. **App Check ist noch aus** und bleibt der einzige wirksame Hebel
+  gegen Flut-Angriffe (`auth != null` ist mit anonymer Anmeldung trivial).
 
 ---
 

@@ -335,6 +335,32 @@ async function waitForPhase(page, keywords, waitMs = 6000) {
 // hatte keine. Die Begruendung steht dort.
 const { FB_SPERRE, WS_SPERRE } = require('./scripts/fb-sperre.cjs');
 
+// ── Die Inhaltsrichtlinie fuer die Testgegenstelle oeffnen (v3.112.0) ───
+//
+// Seit dem Sicherheits-Pass traegt `index.html` eine Content-Security-Policy,
+// deren `connect-src` genau die Gegenstellen aufzaehlt, die das Spiel wirklich
+// braucht. Die Suite spricht aber mit ihrem EIGENEN Mock auf einem zweiten
+// lokalen Port — der ist weder die eigene Herkunft noch Firebase.
+//
+// Ohne diese Zeilen scheitert jeder `fetch` des Mocks, und zwar STILL: der
+// Mock faengt Fehler selbst ab und liefert null. Der erste Lauf danach sah
+// deshalb wie ein kaputter Multiplayer aus (sieben rote Pruefungen, keine
+// Fehlermeldung ueber die Ursache).
+//
+// Geaendert wird NUR die eine Direktive, und nur in der ausgelieferten Antwort
+// — die Datei im Repository bleibt, wie sie ist. `tests/sicherheit.test.js`
+// haelt fest, dass dort kein `localhost` steht.
+async function oeffneRichtlinieFuerTestgegenstelle(ctx) {
+  await ctx.route((url) => /^http:\/\/localhost:8765\/(index\.html)?(\?.*)?$/.test(url.href),
+    async (route) => {
+      const antwort = await route.fetch();
+      const text = (await antwort.text()).replace(
+        /(content="[^"]*connect-src )'self' /,
+        "$1'self' http://localhost:* ");
+      await route.fulfill({ response: antwort, body: text });
+    });
+}
+
 async function makeCtx(browser) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true,
     // Service Worker BLOCKIEREN (seit v3.75.0). Er hat in der Suite nichts
@@ -353,6 +379,7 @@ async function makeCtx(browser) {
   await page.route('**firebase**',   r => r.abort());
   await page.route('**gstatic**',    r => r.abort());
   await page.route('**googleapis**', r => r.abort());
+  await oeffneRichtlinieFuerTestgegenstelle(ctx);
   return { ctx, page };
 }
 
@@ -1065,6 +1092,7 @@ async function makeOnlineCtx(browser, fbPort, extraInit, opt) {
   await page.route('**firebase**',   r => r.abort());
   await page.route('**gstatic**',    r => r.abort());
   await page.route('**googleapis**', r => r.abort());
+  await oeffneRichtlinieFuerTestgegenstelle(ctx);
   return { ctx, page };
 }
 

@@ -49,13 +49,54 @@ export function sanitizeState(s) {
       if (Array.isArray(s.cannons[k]) && s.cannons[k].length > 400) return null;
     }
   }
+  // Security (v3.112.0): playerInfo kommt vom HOST, und Host ist in diesem
+  // Spiel jeder beliebige Mitspieler — es gibt keinen Server dazwischen. Bis
+  // hierher wurde davon nur `name` gekuerzt; `wappen`, `color`, `trail`,
+  // `frame`, `cannon` und `impact` gingen ungeprueft durch und landeten als
+  // Nachschlage-Schluessel in Katalogen, als Bild-Quelle und als Farbwert.
+  //
+  // Zwei konkrete Wege, die das schliesst:
+  //   - `wappen: "constructor"` liefert aus einem Objektliteral eine FUNKTION
+  //     statt einer Bild-Adresse (Nachschlagen trifft die Prototypkette). Das
+  //     Bild bleibt leer und der Browser fragt eine unsinnige relative
+  //     Adresse an. `istKatalogWort` verlangt deshalb ein enges Zeichenmuster.
+  //   - Ein `color` beliebiger Laenge geht in Zeichenketten fuer Schatten und
+  //     Verlaeufe ein. Erlaubt ist jetzt nur noch eine Farbangabe.
+  //
+  // Verworfen wird IMMER nur das einzelne Feld, nie der ganze Zustand: ein
+  // unbekannter Kosmetik-Schluessel eines neueren Clients darf das Spiel des
+  // aelteren nicht anhalten (Regel 1 oben).
   if (s.playerInfo && typeof s.playerInfo === "object") {
     for (const k in s.playerInfo) {
       const pi = s.playerInfo[k];
-      if (pi && typeof pi.name === "string" && pi.name.length > 40) pi.name = pi.name.slice(0, 40);
+      if (!pi || typeof pi !== "object") continue;
+      // `delete` statt `= undefined`: Der Schluessel soll verschwinden, nicht
+      // leer dastehen — sonst legt die Saeuberung Felder an, die der Host gar
+      // nicht geschickt hat.
+      if (typeof pi.name === "string") pi.name = pi.name.slice(0, 40); else delete pi.name;
+      if (!istFarbe(pi.color)) delete pi.color;
+      for (const f of ["wappen", "trail", "frame", "cannon", "impact"]) {
+        if (pi[f] !== void 0 && !istKatalogWort(pi[f])) delete pi[f];
+      }
+      if (pi.elo !== void 0 && (typeof pi.elo !== "number" || !isFinite(pi.elo))) delete pi.elo;
     }
   }
   return s;
+}
+
+// Ein Katalog-Schluessel ist ein kurzes Wort aus Buchstaben, Ziffern,
+// Unterstrich und Bindestrich — nichts sonst. Damit sind `__proto__`,
+// `constructor` und `toString` ausgeschlossen, ohne eine Liste pflegen zu
+// muessen, die beim naechsten neuen Wappen veraltet.
+export function istKatalogWort(v) {
+  return typeof v === "string" && v.length > 0 && v.length <= 24 && /^[A-Za-z0-9_-]+$/.test(v)
+    && v !== "__proto__" && v !== "constructor" && v !== "prototype";
+}
+// #rgb, #rrggbb oder ein schlichtes Farbwort. Kein `rgba(…)`, keine
+// Verlaeufe — nichts, was Klammern oder Semikolon tragen koennte.
+export function istFarbe(v) {
+  return typeof v === "string" && (/^#[0-9a-fA-F]{3}$/.test(v) || /^#[0-9a-fA-F]{6}$/.test(v)
+    || /^[a-zA-Z]{1,20}$/.test(v));
 }
 export function sanitizeAction(raw) {
   let a;
@@ -77,12 +118,16 @@ export function sanitizeAction(raw) {
   if (a.angle !== void 0 && (typeof a.angle !== "number" || !isFinite(a.angle))) return null;
   if (a.elo !== void 0 && (typeof a.elo !== "number" || !isFinite(a.elo) || a.elo < 1 || a.elo > 9999)) return null;
   if (a.name !== void 0) a.name = String(a.name).slice(0, 30);
-  if (a.wappen !== void 0) a.wappen = String(a.wappen).slice(0, 10);
   if (a.color !== void 0 && !/^#[0-9a-f]{6}$/i.test(String(a.color))) delete a.color;
-  // Kosmetik-IDs (v3.33.0): nur kurze Strings durchlassen; inhaltliche
-  // Validierung (gegen CANNON_SKIN/IMPACT_FX) macht der Host beim join.
-  if (a.cannon !== void 0 && (typeof a.cannon !== "string" || a.cannon.length > 24)) delete a.cannon;
-  if (a.impact !== void 0 && (typeof a.impact !== "string" || a.impact.length > 24)) delete a.impact;
+  // Kosmetik- und Wappen-Schluessel (v3.33.0, verschaerft v3.112.0): Bis
+  // hierher wurde nur die LAENGE begrenzt. Ein Gast konnte damit
+  // `wappen: "constructor"` schicken; der Host uebernimmt das Feld beim join
+  // unveraendert und verteilt es an alle. Gegen den Katalog prueft der Host
+  // nur `cannon` und `impact` — `wappen`, `trail` und `frame` gingen durch.
+  // Jetzt muss jeder dieser Schluessel ein schlichtes Wort sein.
+  for (const f of ["wappen", "cannon", "impact", "trail", "frame"]) {
+    if (a[f] !== void 0 && !istKatalogWort(a[f])) delete a[f];
+  }
   return a;
 }
 

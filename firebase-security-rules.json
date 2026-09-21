@@ -62,13 +62,47 @@
     "",
     "Neu (v3.47.0): Knoten 'telemetry' — anonyme Match-Zusammenfassungen fuers Balancing.",
     "Schreiben nur authentifiziert und nur als NEUER Eintrag (kein Ueberschreiben).",
-    "Lesen offen (Dashboard stats.html). Enthaelt KEINE Namen/Profil-IDs."
+    "Lesen offen (Dashboard stats.html). Enthaelt KEINE Namen/Profil-IDs.",
+    "",
+    "── Sicherheits-Pass v3.112.0 ──────────────────────────────────────",
+    "",
+    "1. JEDER schreibbare Knoten hat jetzt \"$other\": {\".validate\": false}.",
+    "   Vorher war in der Realtime Database jedes NICHT aufgezaehlte Kind",
+    "   erlaubt: `games/<code>/beliebig` mit einem 10-MB-String ging durch,",
+    "   solange `createdAt` existierte. Das war der offene Weg, den 1-GB-",
+    "   Spark-Plan zu fuellen — von jedem angemeldeten Client, und anonyme",
+    "   Anmeldung steht allen offen.",
+    "",
+    "   ACHTUNG BEIM WEITERENTWICKELN: Ein neues Feld im Spielcode MUSS",
+    "   zuerst hier stehen. Sonst lehnt die Datenbank den Schreibzugriff ab —",
+    "   und `pushTelemetry`/`trichter` verschlucken den Fehler absichtlich,",
+    "   damit Telemetrie nie das Spiel stoert. Es waere also ein STILLER",
+    "   Datenverlust, genau wie der fehlende telemetry-Knoten bis v3.70.1.",
+    "",
+    "2. telemetry und funnel sind jetzt feldweise getypt und gedeckelt.",
+    "   `mode`, `world` und `winner` waren freie Zeichenketten beliebiger",
+    "   Laenge. Sie landen in `stats.html` — und dort bis v3.112.0",
+    "   unmaskiert in `innerHTML`. Ein Eintrag mit `<img src=x onerror=…>`",
+    "   fuehrte damit Code auf skkjbeer.github.io aus, also auf derselben",
+    "   Herkunft wie das Spiel (localStorage, Profil, Service Worker).",
+    "   Die Maskierung in stats.html ist die eigentliche Behebung; diese",
+    "   Deckel sind die zweite Linie und begrenzen zugleich die Groesse.",
+    "",
+    "3. games/ping bekommt eine eigene Regel. Der Knoten ist der",
+    "   Verbindungstest (Spiel und diagnose.html) und traegt genau",
+    "   `createdAt`; ohne eigene Regel waere er ein unbegrenzter Ablageort."
   ],
   "rules": {
     "games": {
       "ping": {
         ".read": true,
-        ".write": "auth != null"
+        ".write": "auth != null",
+        "$other": {
+          ".validate": false
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        }
       },
       "$code": {
         ".read": true,
@@ -97,6 +131,9 @@
         },
         "hb3": {
           ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -104,7 +141,10 @@
       ".read": true,
       "$playerId": {
         ".write": "auth != null && auth.uid === $playerId",
-        ".validate": "newData.hasChildren(['name','wins','games']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && (!newData.child('wappen').exists() || (newData.child('wappen').isString() && newData.child('wappen').val().length <= 20)) && (!newData.child('color').exists() || (newData.child('color').isString() && newData.child('color').val().length <= 20)) && (!newData.child('elo').exists() || (newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999)) && (!newData.child('elo3').exists() || (newData.child('elo3').isNumber() && newData.child('elo3').val() >= 0 && newData.child('elo3').val() <= 9999)) && (!newData.child('peakElo').exists() || (newData.child('peakElo').isNumber() && newData.child('peakElo').val() >= 0 && newData.child('peakElo').val() <= 9999)) && (!newData.child('peakElo3').exists() || (newData.child('peakElo3').isNumber() && newData.child('peakElo3').val() >= 0 && newData.child('peakElo3').val() <= 9999)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000)) && (!newData.child('losses').exists() || (newData.child('losses').isNumber() && newData.child('losses').val() >= 0 && newData.child('losses').val() <= 1000000)) && (!newData.child('games').exists() || (newData.child('games').isNumber() && newData.child('games').val() >= 0 && newData.child('games').val() <= 1000000)) && (!newData.child('wins3').exists() || (newData.child('wins3').isNumber() && newData.child('wins3').val() >= 0 && newData.child('wins3').val() <= 1000000)) && (!newData.child('losses3').exists() || (newData.child('losses3').isNumber() && newData.child('losses3').val() >= 0 && newData.child('losses3').val() <= 1000000)) && (!newData.child('games3').exists() || (newData.child('games3').isNumber() && newData.child('games3').val() >= 0 && newData.child('games3').val() <= 1000000)) && (!newData.child('level').exists() || (newData.child('level').isNumber() && newData.child('level').val() >= 0 && newData.child('level').val() <= 1000)) && (!newData.child('xp').exists() || (newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000)) && (!newData.child('gold').exists() || (newData.child('gold').isNumber() && newData.child('gold').val() >= 0 && newData.child('gold').val() <= 1000000000)) && (!newData.child('updatedAt').exists() || newData.child('updatedAt').isNumber())"
+        ".validate": "newData.hasChildren(['name','wins','games']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && (!newData.child('wappen').exists() || (newData.child('wappen').isString() && newData.child('wappen').val().length <= 20)) && (!newData.child('color').exists() || (newData.child('color').isString() && newData.child('color').val().length <= 20)) && (!newData.child('elo').exists() || (newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999)) && (!newData.child('elo3').exists() || (newData.child('elo3').isNumber() && newData.child('elo3').val() >= 0 && newData.child('elo3').val() <= 9999)) && (!newData.child('peakElo').exists() || (newData.child('peakElo').isNumber() && newData.child('peakElo').val() >= 0 && newData.child('peakElo').val() <= 9999)) && (!newData.child('peakElo3').exists() || (newData.child('peakElo3').isNumber() && newData.child('peakElo3').val() >= 0 && newData.child('peakElo3').val() <= 9999)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000)) && (!newData.child('losses').exists() || (newData.child('losses').isNumber() && newData.child('losses').val() >= 0 && newData.child('losses').val() <= 1000000)) && (!newData.child('games').exists() || (newData.child('games').isNumber() && newData.child('games').val() >= 0 && newData.child('games').val() <= 1000000)) && (!newData.child('wins3').exists() || (newData.child('wins3').isNumber() && newData.child('wins3').val() >= 0 && newData.child('wins3').val() <= 1000000)) && (!newData.child('losses3').exists() || (newData.child('losses3').isNumber() && newData.child('losses3').val() >= 0 && newData.child('losses3').val() <= 1000000)) && (!newData.child('games3').exists() || (newData.child('games3').isNumber() && newData.child('games3').val() >= 0 && newData.child('games3').val() <= 1000000)) && (!newData.child('level').exists() || (newData.child('level').isNumber() && newData.child('level').val() >= 0 && newData.child('level').val() <= 1000)) && (!newData.child('xp').exists() || (newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000)) && (!newData.child('gold').exists() || (newData.child('gold').isNumber() && newData.child('gold').val() >= 0 && newData.child('gold').val() <= 1000000000)) && (!newData.child('updatedAt').exists() || newData.child('updatedAt').isNumber())",
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "players": {
@@ -120,6 +160,9 @@
         },
         "v": {
           ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -166,6 +209,9 @@
         },
         "role": {
           ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -212,6 +258,9 @@
         },
         "role": {
           ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -219,7 +268,75 @@
       ".read": true,
       "$id": {
         ".write": "auth != null && !data.exists() && newData.exists()",
-        ".validate": "newData.hasChildren(['ts','mode','rounds','per']) && newData.child('rounds').isNumber() && newData.child('rounds').val() <= 500"
+        ".validate": "newData.hasChildren(['ts','mode','rounds','per'])",
+        "ts": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "v": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "mode": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "botLvl": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "rounds": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+        },
+        "world": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "winner": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "players": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "per": {
+          "$p": {
+            ".validate": "newData.hasChildren()",
+            "walls": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+            },
+            "cannons": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+            },
+            "scrap": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+            },
+            "shots": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+            },
+            "hits": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+            },
+            "buys": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+            },
+            "reload": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+            },
+            "armor": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+            },
+            "repair": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+            },
+            "left": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+            },
+            "alive": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "funnel": {
@@ -228,10 +345,28 @@
         ".write": "auth != null && !data.exists() && newData.exists()",
         ".validate": "newData.hasChildren(['ts','schritt']) && newData.child('schritt').isString() && newData.child('schritt').val().length <= 30",
         "ts": {
-          ".validate": "newData.isNumber()"
+          ".validate": "newData.isNumber() && newData.val() >= 0"
         },
         "wartete": {
-          ".validate": "newData.isNumber() && newData.val() <= 3600"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+        },
+        "schritt": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "art": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "np": {
+          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 3"
+        },
+        "rolle": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+        },
+        "auto": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     }

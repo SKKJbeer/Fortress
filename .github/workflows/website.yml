@@ -178,7 +178,12 @@ jobs:
 
       - name: Zu Cloudflare Pages hochladen
         if: ${{ !inputs.nur_zugang && steps.zugang.outputs.bereit == 'ja' }}
-        uses: cloudflare/wrangler-action@v3
+        # Auf den Commit festgenagelt (Sicherheits-Pass v3.112.0): Dieser
+        # Schritt bekommt CLOUDFLARE_API_TOKEN. Ein bewegliches `v3` heisst,
+        # dass jemand anderes entscheidet, welcher Code das Token sieht.
+        # Stand 21.09.2026 zeigte `v3` auf diesen Commit (= v3.15.0).
+        # Zum Anheben: `git ls-remote https://github.com/cloudflare/wrangler-action refs/tags/v3`
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd   # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
