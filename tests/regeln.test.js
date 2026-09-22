@@ -72,6 +72,25 @@ test("die Wurzel ist weder les- noch schreibbar", () => {
   assert.equal(R[".write"], undefined);
 });
 
+test("ein Knoten mit $other hat auch benannte Kinder", () => {
+  // DIESE PRUEFUNG GIBT ES WEGEN EINES ECHTEN FEHLSCHLAGS (v3.112.4).
+  // `$other: {".validate": false}` weist JEDES Kind ab, das keine eigene
+  // Regel hat. Bei `leaderboard/$playerId` steckte die gesamte Pruefung in
+  // EINEM grossen Ausdruck am Elternknoten — kein einziges Feld hatte eine
+  // eigene Regel. Mit `$other` daneben konnte damit kein angemeldeter
+  // Spieler mehr seinen Eintrag schreiben.
+  //
+  // Die Probe in `firebase-regeln.py` hat es beim Einspielen gesehen und der
+  // Ablauf ist automatisch zurueckgerollt. Diese Zeilen sorgen dafuer, dass
+  // es gar nicht erst so weit kommt.
+  for (const [pfad, n] of knoten()) {
+    if (!(n.$other && n.$other[".validate"] === false)) continue;
+    const benannt = Object.keys(n).filter((k) => !k.startsWith(".") && k !== "$other");
+    assert.ok(benannt.length > 0,
+      `${pfad} hat $other, aber KEIN benanntes Kind — damit weist es alles ab`);
+  }
+});
+
 test("jeder schreibbare Knoten weist unbekannte Kinder ab", () => {
   for (const [pfad, n] of schreibbar()) {
     // Ein Knoten ohne eigene Kindregeln traegt einen Einzelwert (z. B.
@@ -104,6 +123,9 @@ test("die Felder, die der Spielcode schreibt, stehen in den Regeln", () => {
     "telemetry/$id": ["ts", "v", "mode", "botLvl", "rounds", "world", "winner", "players", "per"],
     "telemetry/$id/per/$p": ["walls", "cannons", "scrap", "shots", "hits", "buys", "reload", "armor", "repair", "left", "alive"],
     "funnel/$id": ["ts", "schritt", "art", "wartete", "np", "rolle", "auto"],
+    "leaderboard/$playerId": ["name", "wappen", "color", "elo", "elo3", "peakElo", "peakElo3",
+                              "wins", "losses", "games", "wins3", "losses3", "games3",
+                              "level", "xp", "gold", "updatedAt"],
     "queue2/$ticketId": ["name", "wappen", "color", "status", "pid", "dev", "elo", "ts", "hb", "claimBy", "claimTs", "code", "role"],
     "queue3/$ticketId": ["name", "wappen", "color", "status", "pid", "dev", "elo", "ts", "hb", "claimBy", "claimTs", "code", "role"]
   };

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8290,3 +8290,45 @@ ein Ergebnisschirm **nach** dem frischen Anlauf ein echter Befund wäre und
 kein Zeitproblem.
 
 Tests: Typen 0, Unit 188/188, iOS 27/27, E2E 476/476.
+
+## v3.112.4 — `$other` ohne Feldregeln sperrt alles aus
+
+Das Einspielen der Regeln aus v3.112.0 ist beim ersten Versuch **gescheitert**
+— und zwar genau so, wie es scheitern soll:
+
+```
+✓ unangemeldet abgewiesen: games, queue2, queue3, leaderboard, players,
+                           telemetry, funnel  (alle HTTP 401)
+✓ angemeldet schreiben klappt: games, queue2, queue3, players, telemetry, funnel
+✗ angemeldet abgewiesen: leaderboard (HTTP 401)
+
+!!! Die Pruefung ist durchgefallen:
+  - ANGEMELDETER Schreibzugriff auf leaderboard abgewiesen
+Rolle auf die alten Regeln zurueck …
+  ✓ zurueckgerollt — der Zustand ist wie vorher.
+```
+
+**Ursache.** `"$other": {".validate": false}` weist jedes Kind ab, das *keine
+eigene Regel* hat. Bei `leaderboard/$playerId` steckte die gesamte Prüfung in
+**einem großen Ausdruck am Elternknoten** — kein einziges Feld hatte eine
+eigene Regel. Mit `$other` daneben wurde damit `name`, `wins`, `games` und
+alles andere abgewiesen: Angemeldete Spieler hätten ihren Bestenlisten-Eintrag
+nicht mehr schreiben können.
+
+Bei allen anderen Knoten war es unauffällig, weil dort die Felder ohnehin
+einzeln aufgeführt sind — deshalb fiel genau dieser eine durch.
+
+**Behoben:** `leaderboard/$playerId` hat jetzt Einzelregeln für alle 17
+Felder (Typ + Grenze), der Elternausdruck schrumpft auf
+`hasChildren(['name','wins','games'])`.
+
+**Damit es nicht wiederkommt:** `tests/regeln.test.js` verlangt, dass ein
+Knoten mit `$other` überhaupt benannte Kinder hat — ohne sie weist er alles ab.
+Gegengeprüft mit dem alten Zustand (Feldregeln entfernt → rot) und mit einem
+fehlenden Einzelfeld (→ rot).
+
+**Was hier gut funktioniert hat, gehört auch gesagt:** Der Ablauf hat die alten
+Regeln gesichert, sofort in beide Richtungen geprüft, den Fehler benannt und
+von selbst zurückgerollt. Die Datenbank war zu keinem Zeitpunkt in einem
+Zustand, der echte Spieler ausgesperrt hätte. Genau dafür steht in CLAUDE.md,
+dass Regeln **nie** von Hand in der Console eingespielt werden.

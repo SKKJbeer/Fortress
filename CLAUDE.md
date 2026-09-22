@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.112.3
+- **Aktuelle Version**: v3.112.4
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -331,6 +331,16 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   Zugriff auf `localStorage`, Profil, Service Worker. Regel: In den
   Nebenseiten laeuft JEDE Einsetzung durch `txt(`, `num(` oder `fmt(`, ohne
   Ausnahmeliste. `tests/sicherheit.test.js` haelt das fest.
+- **`$other` braucht fuer JEDES erlaubte Feld eine eigene Regel (v3.112.4,
+  echter Fehlschlag).** `$other: {".validate": false}` weist jedes Kind ab,
+  das keine eigene Regel hat. Bei `leaderboard/$playerId` steckte die ganze
+  Pruefung in EINEM grossen Ausdruck am Elternknoten — kein Feld hatte eine
+  eigene Regel, also wies `$other` auch `name`, `wins` und `games` ab, und
+  angemeldete Spieler haetten ihren Eintrag nicht mehr schreiben koennen. Die
+  Probe in `firebase-regeln.py` hat es beim Einspielen gesehen und der Ablauf
+  ist AUTOMATISCH ZURUECKGEROLLT — genau wofuer beides gebaut wurde.
+  `tests/regeln.test.js` verlangt seitdem, dass ein Knoten mit `$other`
+  ueberhaupt benannte Kinder hat.
 - **Neue Felder in der Datenbank zuerst in die REGELN.** Jeder schreibbare
   Knoten traegt `"$other": {".validate": false}` — sonst darf jeder
   Angemeldete beliebige Kinder beliebiger Groesse anlegen (1 GB Spark-Plan).

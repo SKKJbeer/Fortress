@@ -90,7 +90,24 @@
     "",
     "3. games/ping bekommt eine eigene Regel. Der Knoten ist der",
     "   Verbindungstest (Spiel und diagnose.html) und traegt genau",
-    "   `createdAt`; ohne eigene Regel waere er ein unbegrenzter Ablageort."
+    "   `createdAt`; ohne eigene Regel waere er ein unbegrenzter Ablageort.",
+    "",
+    "── Nachtrag v3.112.4: warum das Einspielen beim ersten Mal scheiterte ──",
+    "",
+    "`$other` weist jedes Kind ab, das KEINE eigene Regel hat. Bei",
+    "`leaderboard/$playerId` steckte die gesamte Pruefung in EINEM grossen",
+    "Ausdruck am Elternknoten — kein einziges Feld hatte eine eigene Regel.",
+    "Mit `$other` daneben wurde damit `name`, `wins`, `games` und alles",
+    "andere abgewiesen: angemeldete Spieler haetten ihren Eintrag nicht mehr",
+    "schreiben koennen.",
+    "",
+    "Die Probe in `firebase-regeln.py` hat es sofort gesehen und der Ablauf",
+    "ist automatisch zurueckgerollt — genau wofuer beides gebaut wurde.",
+    "",
+    "REGEL DARAUS: Ein Knoten mit `$other` braucht fuer JEDES erlaubte Feld",
+    "eine eigene Regel. `tests/regeln.test.js` verlangt jetzt, dass ein",
+    "Knoten mit `$other` ueberhaupt benannte Kinder hat — ohne sie weist er",
+    "alles ab."
   ],
   "rules": {
     "games": {
@@ -141,7 +158,58 @@
       ".read": true,
       "$playerId": {
         ".write": "auth != null && auth.uid === $playerId",
-        ".validate": "newData.hasChildren(['name','wins','games']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && (!newData.child('wappen').exists() || (newData.child('wappen').isString() && newData.child('wappen').val().length <= 20)) && (!newData.child('color').exists() || (newData.child('color').isString() && newData.child('color').val().length <= 20)) && (!newData.child('elo').exists() || (newData.child('elo').isNumber() && newData.child('elo').val() >= 0 && newData.child('elo').val() <= 9999)) && (!newData.child('elo3').exists() || (newData.child('elo3').isNumber() && newData.child('elo3').val() >= 0 && newData.child('elo3').val() <= 9999)) && (!newData.child('peakElo').exists() || (newData.child('peakElo').isNumber() && newData.child('peakElo').val() >= 0 && newData.child('peakElo').val() <= 9999)) && (!newData.child('peakElo3').exists() || (newData.child('peakElo3').isNumber() && newData.child('peakElo3').val() >= 0 && newData.child('peakElo3').val() <= 9999)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000)) && (!newData.child('losses').exists() || (newData.child('losses').isNumber() && newData.child('losses').val() >= 0 && newData.child('losses').val() <= 1000000)) && (!newData.child('games').exists() || (newData.child('games').isNumber() && newData.child('games').val() >= 0 && newData.child('games').val() <= 1000000)) && (!newData.child('wins3').exists() || (newData.child('wins3').isNumber() && newData.child('wins3').val() >= 0 && newData.child('wins3').val() <= 1000000)) && (!newData.child('losses3').exists() || (newData.child('losses3').isNumber() && newData.child('losses3').val() >= 0 && newData.child('losses3').val() <= 1000000)) && (!newData.child('games3').exists() || (newData.child('games3').isNumber() && newData.child('games3').val() >= 0 && newData.child('games3').val() <= 1000000)) && (!newData.child('level').exists() || (newData.child('level').isNumber() && newData.child('level').val() >= 0 && newData.child('level').val() <= 1000)) && (!newData.child('xp').exists() || (newData.child('xp').isNumber() && newData.child('xp').val() >= 0 && newData.child('xp').val() <= 100000000)) && (!newData.child('gold').exists() || (newData.child('gold').isNumber() && newData.child('gold').val() >= 0 && newData.child('gold').val() <= 1000000000)) && (!newData.child('updatedAt').exists() || newData.child('updatedAt').isNumber())",
+        ".validate": "newData.hasChildren(['name','wins','games'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "wappen": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "color": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "elo": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999"
+        },
+        "elo3": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999"
+        },
+        "peakElo": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999"
+        },
+        "peakElo3": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999"
+        },
+        "wins": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+        },
+        "losses": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+        },
+        "games": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+        },
+        "wins3": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+        },
+        "losses3": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+        },
+        "games3": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+        },
+        "level": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+        },
+        "xp": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "gold": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
         "$other": {
           ".validate": false
         }
