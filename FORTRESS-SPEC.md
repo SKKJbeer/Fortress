@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8222,3 +8222,35 @@ der Browser gar nichts meldet.
 | Long Poll `/.lp` | **csp-blockiert** | erlaubt |
 | WebSocket zur Datenbank | erlaubt | erlaubt |
 | fremde Adresse | blockiert | blockiert |
+
+## v3.112.2 — Dieselbe Lücke eine Stufe tiefer: der Long-Poll-iframe
+
+Nach dem Fix aus v3.112.1 dieselbe Messung noch einmal gegen die Live-Seite —
+und ein weiterer Verstoß, der vorher vom ersten verdeckt war:
+
+```
+frame-src -> https://s-gke-euw1-nssi2-0.europe-west1.firebasedatabase.app
+```
+
+Der Long-Poll-Transport der Realtime Database legt seine Skripte in einen
+**eigenen iframe** (`FirebaseIFrameScriptHolder`). Dafür gilt `frame-src` —
+eine dritte Direktive für dieselbe Gegenstelle, neben `connect-src` und
+`script-src`.
+
+**Die Lehre, und sie ist die eigentliche:** Eine Gegenstelle kann in
+*mehreren* Direktiven gebraucht werden, und welche das sind, hängt an der
+inneren Bauart einer fremden Bibliothek. Die Aufzählung ist erst vollständig,
+wenn sie **gemessen** ist — und zwar erneut nach jedem Fix, weil ein Verstoß
+den nächsten verdecken kann.
+
+Behoben: `frame-src` enthält jetzt ebenfalls `https://*.firebasedatabase.app`
+und `https://*.firebaseio.com`. Der Riegel in `suiteFirebaseStart` hängt
+zusätzlich einen iframe ein und wurde gegengeprüft:
+`frame-src` künstlich verengt → `❌ … sperrt den Datenbankweg — frame-src -> …`,
+zurückgenommen → grün.
+
+| Weg der Datenbank | Direktive | v3.112.0 | v3.112.1 | v3.112.2 |
+|---|---|---|---|---|
+| WebSocket | `connect-src` | ✓ | ✓ | ✓ |
+| Long Poll `/.lp` | `script-src` | **gesperrt** | ✓ | ✓ |
+| Long-Poll-iframe | `frame-src` | **gesperrt** | **gesperrt** | ✓ |

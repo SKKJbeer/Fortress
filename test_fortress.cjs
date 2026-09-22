@@ -3694,6 +3694,18 @@ async function suiteFirebaseStart(browser) {
         });
         await skript(DB + '/.lp?start=t&ser=1');          // Long-Poll: MUSS erlaubt sein
         try { new WebSocket(DB.replace('https', 'wss') + '/.ws?v=5'); } catch (e) {}
+        // Derselbe Transport legt seine Skripte in einen EIGENEN IFRAME
+        // (`FirebaseIFrameScriptHolder`) — dafuer gilt `frame-src`. Auch das
+        // fehlte in v3.112.0 und war erst auf der Live-Seite zu sehen,
+        // NACHDEM `script-src` schon stimmte.
+        await new Promise((fertig) => {
+          const f = document.createElement('iframe');
+          f.src = DB + '/.lp?start=t&ser=2';
+          f.style.display = 'none';
+          f.onload = f.onerror = () => { f.remove(); fertig(); };
+          document.body.appendChild(f);
+          setTimeout(fertig, 700);
+        });
         const nachErlaubtem = gemeldet.length;
         await skript('https://verboten.invalid/x');        // Gegenprobe: MUSS gemeldet werden
         try { new WebSocket('wss://verboten.invalid/x'); } catch (e) {}
@@ -3703,7 +3715,7 @@ async function suiteFirebaseStart(browser) {
       });
 
       richtlinie.nachErlaubtem === 0
-        ? ok('App-Start: Richtlinie laesst Long Poll UND WebSocket der Datenbank durch ✓')
+        ? ok('App-Start: Richtlinie laesst Long Poll, iframe UND WebSocket der Datenbank durch ✓')
         : fail('App-Start: die Inhaltsrichtlinie sperrt den Datenbankweg — '
              + richtlinie.liste.slice(0, 2).join(' | '));
       // Ohne diese Gegenprobe waere die Zeile darueber auch dann gruen, wenn
