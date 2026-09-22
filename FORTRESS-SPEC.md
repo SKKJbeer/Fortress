@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8254,3 +8254,39 @@ zurückgenommen → grün.
 | WebSocket | `connect-src` | ✓ | ✓ | ✓ |
 | Long Poll `/.lp` | `script-src` | **gesperrt** | ✓ | ✓ |
 | Long-Poll-iframe | `frame-src` | **gesperrt** | **gesperrt** | ✓ |
+
+## v3.112.3 — Die Bot-Suite rannte gegen eine Uhr, die niemand kennt
+
+Der Deploy von v3.112.2 wurde rot — **nicht** an der Änderung, sondern an
+einer Stelle, die schon vorher sporadisch riss und diesmal die Auslieferung
+eines Sicherheits-Fixes aufhielt:
+
+```
+❌ Schussphase nicht erreicht — Phase "KANONE", Ergebnisschirm: JA
+   | ♚ Rot siegt! Burg war nicht geschlossen ♔ 0 : 1 ♚
+```
+
+**Die Ursache ist keine Frist.** Die Bot-Suite sieht dem Bot beim Versiegeln
+zu und **baut dabei selbst nie**. Der Bot schießt derweil die eigene Burg auf,
+und irgendwann endet die Partie. Alles, was danach noch eine *laufende* Partie
+braucht — Schussphase, Rüstphase, Shop —, lief also gegen eine Uhr, deren
+Stand von der Last des Läufers abhängt. Lokal 156 s, in CI 197 s; dort reichte
+es nicht mehr.
+
+Eine längere Frist hilft hier **grundsätzlich nicht**: Nach dem Ergebnisschirm
+kommt keine Schussphase mehr, egal wie lange man wartet. Das ist der
+Unterschied zu den Timing-Befunden aus v3.108.0 — dort war der Zustand nur
+noch nicht da, hier kommt er nie.
+
+Behoben: Vor diesem Block prüft die Suite, ob die Partie noch läuft, und
+startet sonst eine frische. **Runde 1 hat keine Bauphase** (`endSetup` ruft
+direkt `startShoot`), die Schussphase ist also nach rund einer Sekunde
+Zeitraffer da — und sie kann nicht „schon vorbei" sein.
+
+Gegengeprüft, indem der Wiederanlauf-Pfad erzwungen wurde (Bedingung auf
+`true`): Er trägt die gesamte Rest-Suite — Schussphase, Rüstphase, Shop,
+Kanonenkauf, alle 26 Prüfungen grün. Und die Fehlermeldung sagt jetzt, dass
+ein Ergebnisschirm **nach** dem frischen Anlauf ein echter Befund wäre und
+kein Zeitproblem.
+
+Tests: Typen 0, Unit 188/188, iOS 27/27, E2E 476/476.

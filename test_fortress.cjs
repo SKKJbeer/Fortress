@@ -5370,6 +5370,37 @@ async function suiteBot(browser) {
       } else fail('Bot-Modus: Bauphase für Hand-Check nicht erreicht');
     }
 
+    // ── Erst sicherstellen, dass ueberhaupt noch eine Partie laeuft ──────
+    //
+    // DIESE ZEILEN GIBT ES WEGEN EINER AUSLIEFERUNG, DIE SIE AUFGEHALTEN HAT
+    // (22.09., CI 197 s gegen 156 s lokal): „Schussphase nicht erreicht —
+    // Phase KANONE, Ergebnisschirm: JA | ♚ Rot siegt! Burg war nicht
+    // geschlossen ♔".
+    //
+    // Der Grund ist keine Frist. Die Suite sieht dem Bot beim Dichten zu und
+    // BAUT DABEI SELBST NIE — der Bot schiesst derweil die eigene Burg auf,
+    // und irgendwann endet die Partie. Alles danach, was eine LAUFENDE Partie
+    // braucht (Schussphase, Ruestphase, Shop), lief also gegen eine Uhr, die
+    // niemand kennt. Wie schnell das geht, haengt an der Last des Laeufers.
+    //
+    // Eine laengere Frist hilft hier grundsaetzlich NICHT: Nach dem
+    // Ergebnisschirm kommt keine Schussphase mehr, egal wie lange man wartet.
+    // Stattdessen wird eine frische Partie gestartet. Runde 1 hat KEINE
+    // Bauphase (`endSetup` ruft direkt `startShoot`, CLAUDE.md), die
+    // Schussphase ist also nach rund einer Sekunde Zeitraffer da — und sie
+    // kann nicht „schon vorbei" sein.
+    const spielBeendet = await page.evaluate(
+      () => /SIEG|NIEDERLAGE|ERGEBNIS/i.test(document.body.innerText));
+    if (spielBeendet) {
+      console.log('↻ Partie war zu Ende — frischer Anlauf fuer den Rest der Suite');
+      await jsClick(page, ['Hauptmenü', 'Main menu']);
+      await page.waitForTimeout(400);
+      await startBotGame(page);
+      const da = await page.waitForFunction(() => !!document.querySelector('canvas'),
+        { timeout: 8000 }).then(() => true).catch(() => false);
+      if (!da) fail('Bot-Spiel: frischer Anlauf nach Spielende gescheitert');
+    }
+
     // ── Stabil über mehrere Phasen (KI-Tick läuft in allen Phasen) ──
     //
     // Geprüft wird, dass das Spiel WEITERLÄUFT — nicht, wie schnell. Die Frist
@@ -5390,7 +5421,10 @@ async function suiteBot(browser) {
         text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 160),
       }));
       fail(`Schussphase nicht erreicht — Phase "${lage.phase}", `
-         + `Ergebnisschirm: ${lage.ergebnis ? 'JA' : 'nein'} | ${lage.text}`);
+         + `Ergebnisschirm: ${lage.ergebnis ? 'JA' : 'nein'}`
+         + (lage.ergebnis ? ' (und das NACH dem frischen Anlauf — dann ist die '
+                          + 'Partie sofort wieder zu Ende, das waere ein echter Befund)' : '')
+         + ` | ${lage.text}`);
     }
     await waitForPhase(page, ['KANONE'], 20000);
     await page.evaluate(() => { window.__mmDebug = true; });
