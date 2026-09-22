@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.112.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.112.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -184,8 +184,20 @@
 
        Die drei App-Check-Adressen stehen schon drin, obwohl App Check noch
        aus ist (firebase-boot.js, leerer Site-Key). Sonst waere das Einschalten
-       eine Aenderung an zwei Stellen, und die zweite vergisst man. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://content-firebaseappcheck.googleapis.com; frame-src https://*.firebaseapp.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+       eine Aenderung an zwei Stellen, und die zweite vergisst man.
+
+       WARUM DIE DATENBANK AUCH IN `script-src` STEHT. Der Long-Poll-Rueckfall
+       der Realtime Database (`/.lp?…`) laedt ueber eingehaengte
+       `<script>`-Elemente, nicht ueber `fetch` — dafuer gilt `script-src`,
+       nicht `connect-src`. Steht der Host dort nicht, bleibt der Rueckfall
+       gesperrt, und wer keine WebSocket-Verbindung aufbauen kann (strenge
+       Firmennetze, manche Proxys), kommt gar nicht mehr online. Gemessen auf
+       der LIVE-Seite: `requestfailed … errorText: "csp"`. Weder die E2E-Suite
+       noch der Auslieferungs-Riegel haben das gesehen — die Suite legt den
+       WebSocket still und prueft nur, dass die Anmeldung durchkommt. Seitdem
+       verlangt `suiteFirebaseStart`, dass KEINE Anfrage an der Richtlinie
+       scheitert. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebasedatabase.app https://*.firebaseio.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://content-firebaseappcheck.googleapis.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 
   <!-- Firebase SDK als ES-Module (gratis, Spark-Plan) -->
   <script type="module" async src="./src/firebase-boot.js"></script>

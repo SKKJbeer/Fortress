@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.112.0
+- **Aktuelle Version**: v3.112.1
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -346,6 +346,21 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   `wappen: "constructor"` liefert aus einem Objektliteral eine FUNKTION aus
   der Prototypkette. Nachschlagen in Katalogen mit Netzdaten IMMER ueber
   `Object.prototype.hasOwnProperty.call(...)`.
+- **Die Datenbank steht in `script-src`, nicht nur in `connect-src`
+  (v3.112.1, echter Fehler).** Der Long-Poll-Rueckfall der Realtime Database
+  (`/.lp?…`) laedt ueber eingehaengte `<script>`-Elemente — dafuer gilt
+  `script-src`. In v3.112.0 fehlte der Host dort, und wer keinen WebSocket
+  aufbauen kann (strenge Firmennetze, manche Proxys), kam gar nicht mehr
+  online. **Der Auslieferungs-Riegel war gruen**: `suiteFirebaseStart` prueft,
+  DASS die Anmeldung durchkommt, und die lief. Gefunden wurde es erst bei
+  einer Messung gegen die LIVE-Seite (`requestfailed … errorText: "csp"`).
+  Seitdem haengt die Suite die drei echten Konstruktionen selbst ein
+  (Long-Poll-Skript, WebSocket) und liest den Verstossbericht — NICHT ueber
+  das SDK: mit stillgelegtem WebSocket faellt es erst nach eigener Frist auf
+  Long Poll zurueck, in den Sekunden eines Tests passiert nichts, und die
+  Pruefung waere gruen, ohne den Weg angefasst zu haben. Genau so ist sie im
+  ersten Anlauf gelaufen — gemeldet hat es nur die Zeile, die verlangt, dass
+  der Weg wirklich beobachtet wurde.
 - **Inhaltsrichtlinie auf jeder Seite.** `script-src` traegt
   `'unsafe-inline'` (inline-Skript fuer den Service Worker) — der Schutz liegt
   bei `connect-src`/`img-src`/`form-action`/`object-src`/`base-uri`: kein

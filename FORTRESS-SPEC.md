@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8162,3 +8162,63 @@ Gesamt: `typecheck` · `test:unit` **188** · `test:ios` **27** · `build` ·
    und Telemetrie ohne kostenpflichtigen Plan — `auth != null` ist über eine
    anonyme Anmeldung trivial zu erfüllen. Die Adressen stehen bereits in der
    Inhaltsrichtlinie.
+
+## v3.112.1 — Die Inhaltsrichtlinie sperrte den Rückfallweg der Datenbank
+
+**Ein Fehler aus v3.112.0, gefunden durch Messen — nicht durch Tests.**
+
+Die neue Content-Security-Policy zählte die Firebase-Gegenstellen in
+`connect-src` auf. Übersehen: Der **Long-Poll-Rückfall** der Realtime
+Database (`/.lp?start=t&ser=…`) lädt über eingehängte `<script>`-Elemente,
+nicht über `fetch`. Dafür gilt **`script-src`** — und dort fehlte der Host.
+
+Gemessen gegen die Live-Seite, direkt nach dem Deploy:
+
+```
+200            https://identitytoolkit.googleapis.com/v1/accounts:signUp
+FEHLGESCHLAGEN https://…firebasedatabase.app/.lp?start=t&ser=1779   csp
+FEHLGESCHLAGEN https://…firebasedatabase.app/.lp?start=t&ser=9698   csp
+```
+
+**Wirkung:** Wer keine WebSocket-Verbindung aufbauen kann — strenge
+Firmennetze, manche Proxys, Netze mit WebSocket-Filter — wäre gar nicht mehr
+online gekommen. Anmeldung und Menü funktionierten, nur die Datenbank blieb
+stumm. Auf normalen Netzen trägt der WebSocket, dort war nichts zu merken.
+
+Behoben: `script-src` enthält jetzt `https://*.firebasedatabase.app` und
+`https://*.firebaseio.com` (dazu `https://apis.google.com` für die
+Google-Anmeldung im Browser und `https://*.firebaseapp.com` in `connect-src`).
+
+### Warum keiner der 473 Tests das gesehen hat
+
+`suiteFirebaseStart` fährt den echten Startpfad und prüft, **dass die
+Anmeldung durchkommt** — und die lief ja. Den Datenbankweg hat sie nie
+angefasst.
+
+Der Riegel dafür steht jetzt dort, und zwar **nicht über das SDK**: Mit
+stillgelegtem WebSocket fällt das SDK erst nach eigener Frist auf Long Poll
+zurück; in den Sekunden eines Tests passiert gar nichts. Die Suite hängt
+deshalb die **echten Konstruktionen selbst** ein — ein Long-Poll-`<script>`
+und einen WebSocket auf den Datenbank-Host — und liest den Verstoßbericht des
+Browsers.
+
+**Der erste Anlauf lief genau in diese Falle.** Er beobachtete das SDK und
+meldete grün bei *null* Long-Poll-Versuchen. Aufgefallen ist das nur, weil
+daneben eine Zeile steht, die verlangt, dass der Weg **wirklich beobachtet**
+wurde — sie wurde rot. Dieselbe Regel wie in v3.108.0: nichts behaupten, was
+der Lauf nicht geprüft hat.
+
+Gegengeprüft: `script-src` künstlich wieder verengt →
+`❌ die Inhaltsrichtlinie sperrt den Datenbankweg — script-src-elem -> …firebasedatabase.app`.
+Zurückgenommen → grün. Dazu eine Gegenprobe in der Prüfung selbst (eine
+verbotene Adresse **muss** gemeldet werden), damit sie nicht grün ist, weil
+der Browser gar nichts meldet.
+
+### Live nachgemessen
+
+| | v3.112.0 | v3.112.1 |
+|---|---|---|
+| Anmeldung (uid) | ✓ | ✓ |
+| Long Poll `/.lp` | **csp-blockiert** | erlaubt |
+| WebSocket zur Datenbank | erlaubt | erlaubt |
+| fremde Adresse | blockiert | blockiert |

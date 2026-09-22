@@ -3579,6 +3579,28 @@ async function suiteFirebaseStart(browser) {
 
     const versuche = [];
     page.on('request', r => versuche.push(r.url()));
+    // ── An der Inhaltsrichtlinie gescheiterte Anfragen sammeln (v3.112.0) ──
+    //
+    // DIESE ZEILEN GIBT ES WEGEN EINES ECHTEN FEHLERS. Die Richtlinie aus
+    // v3.112.0 zaehlte die Firebase-Gegenstellen in `connect-src` auf — und
+    // vergass, dass der Long-Poll-Rueckfall der Realtime Database (`/.lp?…`)
+    // ueber eingehaengte `<script>`-Elemente laedt. Dafuer gilt `script-src`.
+    // Wer keinen WebSocket aufbauen kann (strenge Firmennetze, manche
+    // Proxys), kam damit gar nicht mehr online.
+    //
+    // Der Auslieferungs-Riegel war gruen: Diese Suite prueft, DASS die
+    // Anmeldung durchkommt, und die lief ja. Gefunden wurde es erst bei einer
+    // Messung gegen die LIVE-Seite. Deshalb steht hier jetzt die allgemeine
+    // Frage — scheitert IRGENDEINE Anfrage an der Richtlinie? —, statt einer
+    // Liste erwarteter Adressen, die denselben blinden Fleck wieder haette.
+    //
+    // Abgebrochene Anfragen (die Routen unten) melden `net::ERR_*`, nicht
+    // `csp` — sie schlagen hier also nicht faelschlich an.
+    const richtlinienOpfer = [];
+    page.on('requestfailed', r => {
+      const grund = ((r.failure() || {}).errorText || '');
+      if (/csp|content security/i.test(grund)) richtlinienOpfer.push(r.url().slice(0, 100));
+    });
     // Nichts darf hinaus. Abgebrochene Anfragen bleiben in `versuche` sichtbar —
     // gemessen wird, was die App VERSUCHT, nicht was ankommt.
     for (const muster of ['**identitytoolkit**', '**googleapis**', '**firebaseapp.com**',
@@ -3588,7 +3610,7 @@ async function suiteFirebaseStart(browser) {
     await page.goto(`http://localhost:8765/`, { waitUntil: 'domcontentloaded' }).catch(() => {});
     // Dem Start Zeit geben: initializeApp, Auth, der erste Anmeldeversuch.
     await page.waitForTimeout(2500);
-    return { ctx, page, versuche };
+    return { ctx, page, versuche, richtlinienOpfer };
   };
 
   /** Was hat der Start im Auth-Objekt tatsaechlich angelegt? */
@@ -3609,7 +3631,7 @@ async function suiteFirebaseStart(browser) {
 
   // ── 1) APP: weder Aufloeser noch Redirect-Speicher ────────────
   {
-    const { ctx, page, versuche } = await starte(true);
+    const { ctx, page, versuche, richtlinienOpfer } = await starte(true);
     try {
       const lief = await page.evaluate(() => !!(window.__fb && window.__fb.db));
       lief ? ok('App-Start: firebase-boot lief WIRKLICH (window.__fb.db vorhanden) ✓')
@@ -3638,6 +3660,62 @@ async function suiteFirebaseStart(browser) {
 
       const ws = await page.evaluate(() => (window.__wsVersuche || []).length);
       ok(`App-Start: WebSocket stillgelegt (${ws} Versuch(e) abgefangen) ✓`);
+
+      // ── Die Inhaltsrichtlinie an den echten Konstruktionen messen ──
+      //
+      // DIESE PRUEFUNG GIBT ES WEGEN EINES ECHTEN FEHLERS (v3.112.0): Die
+      // Richtlinie zaehlte die Firebase-Gegenstellen in `connect-src` auf —
+      // und uebersah, dass der Long-Poll-Rueckfall der Realtime Database
+      // (`/.lp?…`) ueber eingehaengte `<script>`-Elemente laedt. Dafuer gilt
+      // `script-src`. Wer keinen WebSocket aufbauen kann (strenge
+      // Firmennetze, manche Proxys), kam damit gar nicht mehr online.
+      // Der Auslieferungs-Riegel war gruen; gefunden wurde es erst bei einer
+      // Messung gegen die LIVE-Seite.
+      //
+      // NICHT ueber das SDK gemessen: Mit stillgelegtem WebSocket faellt es
+      // erst nach einer eigenen Frist auf Long Poll zurueck — in den
+      // Sekunden dieses Tests passiert nichts, und die Pruefung waere gruen,
+      // ohne den Weg je angefasst zu haben (beim ersten Anlauf genau so
+      // gesehen). Stattdessen werden die drei Konstruktionen selbst
+      // eingehaengt und der Verstossbericht des Browsers gelesen.
+      // Stand VOR der Messung festhalten: Die Gegenprobe unten schiesst
+      // absichtlich auf eine verbotene Adresse und landete sonst hier mit.
+      const opferVorProbe = richtlinienOpfer.length;
+      const richtlinie = await page.evaluate(async () => {
+        const gemeldet = [];
+        const horcher = (e) => gemeldet.push(e.violatedDirective + ' -> ' + String(e.blockedURI).slice(0, 70));
+        document.addEventListener('securitypolicyviolation', horcher);
+        const DB = 'https://fortress-cbe30-default-rtdb.europe-west1.firebasedatabase.app';
+        const skript = (url) => new Promise((fertig) => {
+          const el = document.createElement('script');
+          el.src = url; el.onload = el.onerror = () => { el.remove(); fertig(); };
+          document.head.appendChild(el);
+          setTimeout(fertig, 700);
+        });
+        await skript(DB + '/.lp?start=t&ser=1');          // Long-Poll: MUSS erlaubt sein
+        try { new WebSocket(DB.replace('https', 'wss') + '/.ws?v=5'); } catch (e) {}
+        const nachErlaubtem = gemeldet.length;
+        await skript('https://verboten.invalid/x');        // Gegenprobe: MUSS gemeldet werden
+        try { new WebSocket('wss://verboten.invalid/x'); } catch (e) {}
+        await new Promise((r) => setTimeout(r, 500));
+        document.removeEventListener('securitypolicyviolation', horcher);
+        return { nachErlaubtem, gesamt: gemeldet.length, liste: gemeldet };
+      });
+
+      richtlinie.nachErlaubtem === 0
+        ? ok('App-Start: Richtlinie laesst Long Poll UND WebSocket der Datenbank durch ✓')
+        : fail('App-Start: die Inhaltsrichtlinie sperrt den Datenbankweg — '
+             + richtlinie.liste.slice(0, 2).join(' | '));
+      // Ohne diese Gegenprobe waere die Zeile darueber auch dann gruen, wenn
+      // der Browser ueberhaupt keine Verstoesse meldet.
+      richtlinie.gesamt > richtlinie.nachErlaubtem
+        ? ok(`App-Start: Verstossmeldung funktioniert (${richtlinie.gesamt - richtlinie.nachErlaubtem} bei der Gegenprobe) ✓`)
+        : fail('App-Start: die Gegenprobe wurde NICHT gemeldet — die Pruefung darueber '
+             + 'beweist damit nichts');
+
+      opferVorProbe === 0
+        ? ok(`App-Start: keine Anfrage des Starts an der Richtlinie gescheitert (${versuche.length} Anfragen) ✓`)
+        : fail(`App-Start: ${opferVorProbe} Anfrage(n) blockiert — z. B. ${richtlinienOpfer[0]}`);
     } finally { await ctx.close(); }
   }
 
