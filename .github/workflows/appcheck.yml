@@ -39,9 +39,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Abhaengigkeiten
-        # recaptcha-pruefen kommt mit der Standardbibliothek aus — und hat es
-        # eilig: Das Token gilt nur zwei Minuten.
-        if: inputs.modus != 'recaptcha-pruefen'
         run: pip install --quiet google-auth requests "pyjwt[crypto]"
       - name: App Check
         env:
