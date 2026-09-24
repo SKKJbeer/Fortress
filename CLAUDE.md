@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.113.2
+- **Aktuelle Version**: v3.113.3
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---

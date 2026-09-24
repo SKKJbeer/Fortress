@@ -447,10 +447,14 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             DEVELOPMENT_TEAM="$TEAM" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFIL_NAME" \
             archive
+          # Signierart, Identitaet und Profil stehen seit v3.113.3 in der
+          # Release-Konfiguration des APP-ZIELS (project.pbxproj), nicht mehr
+          # hier. Auf der Kommandozeile gelten sie fuer ALLE Ziele — seit
+          # Firebase dabei ist, auch fuer dessen Ressourcen-Buendel, und die
+          # tragen kein Profil: „Firebase_FirebaseCore does not support
+          # provisioning profiles, but provisioning profile … has been
+          # manually specified". Bau 35 ist genau daran gescheitert.
 
       - name: IPA exportieren
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8456,3 +8456,35 @@ wäre das Bild aus Bau 29/30. Der `CustomProvider` hat deshalb eine Frist von
 hält die Frist fest (gegengeprüft: ohne Frist rot).
 
 Tests: Unit 190 · iOS **34** · E2E 478/478.
+
+## v3.113.3 — iOS: Simulator grün, Archivieren scheiterte an globaler Signierung
+
+**Zweiter Probelauf (ohne Upload): komplett grün.**
+
+```
+STACK-SIEGE-NETZ sdk=1 uid=yXWMph… anmeldung=0ms lesen=158ms online=1 ac=ok(debug)
+```
+
+Das `uid=-` aus dem ersten Lauf war also Zeitpunkt, nicht Defekt — erst die
+genauere Messung aus v3.113.2 kann das belegen.
+
+**Bau 35 (mit Upload) scheiterte beim Archivieren:**
+
+```
+Firebase_FirebaseCore does not support provisioning profiles, but provisioning
+profile Stack and Siege App Store has been manually specified.
+```
+
+`PROVISIONING_PROFILE_SPECIFIER`, `CODE_SIGN_STYLE` und `CODE_SIGN_IDENTITY`
+standen auf der **Kommandozeile** — und gelten dort für **alle** Ziele. Bis
+v3.113.0 gab es nur das App-Ziel und Capacitors Pakete ohne eigene Bündel.
+Seit Firebase dabei ist, bauen dessen Pakete Ressourcen-Bündel, und die
+können kein Profil tragen.
+
+Behoben: Die drei Einstellungen stehen in der **Release-Konfiguration des
+App-Ziels** (`project.pbxproj`). Auf der Kommandozeile bleibt nur, was für
+alle Ziele gilt: Team und Baunummer. Zwei statische Prüfungen halten das
+fest, dazu, dass der Profilname **genau** der ist, den `asc-profil.py`
+anlegt. Gegengeprüft: 3/3 künstliche Eingriffe rot.
+
+Tests: iOS **36**.

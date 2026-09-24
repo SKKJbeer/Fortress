@@ -275,6 +275,26 @@ pruefe(/SIMCTL_CHILD_FIRAAppCheckDebugToken="\$APPCHECK_DEBUG_TOKEN"/.test(ablau
   "Ohne `ac=ok(` waere der Probelauf gruen, auch wenn App Check nie ein " +
   "Token liefert. Ohne das Wegraeumen bliebe ein Generalschluessel liegen.");
 
+// ── Signierung am App-Ziel, nicht auf der Kommandozeile (v3.113.3) ────────
+//
+// Bau 35: `PROVISIONING_PROFILE_SPECIFIER` auf der Kommandozeile gilt fuer
+// ALLE Ziele, auch fuer die Ressourcen-Buendel der Firebase-Pakete — und die
+// koennen kein Profil tragen. Archivieren scheiterte an jedem einzelnen.
+abschnitt("Signierung (Regression Bau 35)");
+const archivZeilen = (ablauf.match(/- name: Archivieren[\s\S]*?\n      - name:/) || [""])[0]
+  .split("\n").filter((z) => !z.trim().startsWith("#")).join("\n");
+pruefe(archivZeilen.length > 0 && !/PROVISIONING_PROFILE_SPECIFIER=|CODE_SIGN_STYLE=|CODE_SIGN_IDENTITY=/.test(archivZeilen),
+  "Der Archivschritt gibt Profil und Signierart NICHT global mit",
+  "Auf der Kommandozeile treffen sie auch die Firebase-Buendel, die kein " +
+  "Profil tragen koennen — genau daran ist Bau 35 gescheitert.");
+const profilName = (lies("scripts/asc-profil.py").match(/^NAME = "([^"]+)"/m) || [])[1];
+const releaseZiel = (projekt.match(/504EC3181FED79650016851F \/\* Release \*\/ = \{[\s\S]*?name = Release;/) || [""])[0];
+pruefe(!!profilName && releaseZiel.includes(`PROVISIONING_PROFILE_SPECIFIER = "${profilName}";`)
+       && /CODE_SIGN_STYLE = Manual;/.test(releaseZiel),
+  `Das App-Ziel signiert in Release manuell mit „${profilName}"`,
+  "Der Name muss GENAU der sein, den asc-profil.py anlegt — sonst findet " +
+  "xcodebuild das Profil nicht.");
+
 // ── Zuordnung an die oeffentliche Gruppe ──────────────────────────────────
 //
 // Der Upload allein bringt den Bau zu niemandem: Er muss der oeffentlichen
