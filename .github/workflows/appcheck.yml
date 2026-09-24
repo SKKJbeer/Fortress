@@ -17,10 +17,15 @@ on:
           - apple-faehigkeit  # App Attest an der Bundle-Kennung einschalten
           - einrichten # iOS-App registrieren, App Attest + reCAPTCHA als Anbieter (OHNE Durchsetzung)
           - recaptcha-pruefen  # passt das Secret zum Site-Key? (braucht 'token')
+          - schwelle   # Diagnose: Mindestbewertung reCAPTCHA setzen (braucht 'wert')
       token:
         description: 'Nur fuer recaptcha-pruefen: ein frisches reCAPTCHA-Token (gilt 2 Minuten)'
         type: string
         default: ''
+      wert:
+        description: 'Nur fuer schwelle: Mindestbewertung 0.0 bis 1.0 (Voreinstellung 0.5)'
+        type: string
+        default: '0.5'
 
 permissions:
   contents: read
@@ -51,11 +56,13 @@ jobs:
           # Ueber die Umgebung, NICHT in das Skript eingesetzt: Eine Eingabe ist
           # Text von aussen und gehoert nie direkt in eine Shell-Zeile.
           RECAPTCHA_TOKEN: ${{ inputs.token }}
+          SCHWELLE: ${{ inputs.wert }}
           RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         run: |
           case "${{ inputs.modus }}" in
             apple-faehigkeit) python3 scripts/appcheck.py --apple-faehigkeit ;;
             einrichten) python3 scripts/appcheck.py --einrichten ;;
             recaptcha-pruefen) python3 scripts/appcheck.py --recaptcha-pruefen ;;
+            schwelle) python3 scripts/appcheck.py --schwelle ;;
             *) python3 scripts/appcheck.py --stand ;;
           esac

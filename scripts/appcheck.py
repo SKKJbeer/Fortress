@@ -379,6 +379,32 @@ def recaptcha_pruefen() -> int:
     return 0
 
 
+def schwelle() -> int:
+    """Mindestbewertung fuer reCAPTCHA im Browser setzen (Diagnose).
+
+    Nur fuer die Frage „lehnt Firebase wegen der Bewertung ab?" gedacht —
+    mit 0 muss der Austausch durchgehen, wenn es daran liegt. Danach wieder
+    auf 0.5 (Voreinstellung). Solange nicht durchgesetzt ist, hat der Wert
+    keine Wirkung auf Spieler.
+    """
+    import os
+    try:
+        wert = float(os.environ.get("SCHWELLE", ""))
+    except ValueError:
+        print("::error::SCHWELLE fehlt oder ist keine Zahl")
+        return 1
+    if not 0.0 <= wert <= 1.0:
+        print("::error::SCHWELLE muss zwischen 0 und 1 liegen")
+        return 1
+    tok = gtoken()
+    s, d = g(tok, f"https://firebase.googleapis.com/v1beta1/projects/{PROJEKT}/webApps")
+    web = d["apps"][0]["appId"]
+    s, d = g(tok, f"https://firebaseappcheck.googleapis.com/v1/projects/{PROJEKT}/apps/{web}"
+                  f"/recaptchaV3Config?updateMask=minValidScore", "PATCH", {"minValidScore": wert})
+    print(f"  {'✓' if s == 200 else '✗'} minValidScore = {d.get('minValidScore', '?')} (HTTP {s})")
+    return 0 if s == 200 else 1
+
+
 def apple_faehigkeit() -> int:
     """App Attest an der Bundle-Kennung einschalten.
 
@@ -409,6 +435,8 @@ def main() -> int:
         return apple_faehigkeit()
     if "--einrichten" in sys.argv:
         return einrichten()
+    if "--schwelle" in sys.argv:
+        return schwelle()
     if "--recaptcha-pruefen" in sys.argv:
         return recaptcha_pruefen()
     if "--debug-token-anlegen" in sys.argv:
