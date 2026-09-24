@@ -1,0 +1,45 @@
+# App Check (Firebase) — Bestandsaufnahme und Einrichtung.
+#
+# Beide Zugaenge liegen ausschliesslich in den Secrets: FIREBASE_SA_JSON
+# (Dienstkonto, umgeht alle Regeln) und ASC_KEY_P8 (App Store Connect).
+# Dieser Ablauf ist der einzige Weg, auf dem sie hier zusammenkommen.
+name: App Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'Was soll passieren?'
+        type: choice
+        default: stand
+        options:
+          - stand      # nur lesen: was gibt es, was darf der Zugang?
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appcheck
+  cancel-in-progress: false
+
+jobs:
+  appcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Abhaengigkeiten
+        run: pip install --quiet google-auth requests "pyjwt[crypto]"
+      - name: App Check
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          case "${{ inputs.modus }}" in
+            *) python3 scripts/appcheck.py --stand ;;
+          esac
