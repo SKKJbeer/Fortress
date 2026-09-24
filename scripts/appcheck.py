@@ -164,9 +164,36 @@ def apple_stand() -> None:
               f"{'JA' if any('appattest' in k for k in schluessel) else 'nein'}")
 
 
+def apple_faehigkeit() -> int:
+    """App Attest an der Bundle-Kennung einschalten.
+
+    Die Schnittstelle von App Store Connect nennt die erlaubten Werte selbst,
+    wenn einer nicht passt — deshalb wird nacheinander versucht und jede
+    Antwort ausgegeben, statt einen Namen zu raten und still zu scheitern.
+    Unschaedlich: Der iOS-Ablauf legt das Verteilprofil bei JEDEM Bau neu an,
+    ein durch die neue Faehigkeit ungueltig gewordenes altes Profil stoert also
+    nicht.
+    """
+    asc = lade("asc", "asc.py")
+    apple = asc.Apple()
+    s, a = apple.holen("v1/bundleIds", **{"filter[identifier]": BUNDLE})
+    bid = a.json()["data"][0]["id"]
+    for art in ("APP_ATTEST",):
+        s, a = apple.anlegen("v1/bundleIdCapabilities", {"data": {
+            "type": "bundleIdCapabilities",
+            "attributes": {"capabilityType": art},
+            "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": bid}}}}})
+        print(f"  {art}: HTTP {s} — {asc.kurz(a) if s >= 300 else 'angelegt'}")
+        if s < 300:
+            return 0
+    return 1
+
+
 def main() -> int:
+    if "--apple-faehigkeit" in sys.argv:
+        return apple_faehigkeit()
     if "--stand" not in sys.argv:
-        print("Nur --stand ist bisher vorgesehen.")
+        print("Modi: --stand, --apple-faehigkeit")
         return 2
     fehler = 0
     for teil in (firebase_stand, apple_stand):

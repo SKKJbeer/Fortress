@@ -14,6 +14,7 @@ on:
         default: stand
         options:
           - stand      # nur lesen: was gibt es, was darf der Zugang?
+          - apple-faehigkeit  # App Attest an der Bundle-Kennung einschalten
 
 permissions:
   contents: read
@@ -41,5 +42,6 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           case "${{ inputs.modus }}" in
+            apple-faehigkeit) python3 scripts/appcheck.py --apple-faehigkeit ;;
             *) python3 scripts/appcheck.py --stand ;;
           esac
