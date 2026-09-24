@@ -209,6 +209,92 @@ def probeprofil() -> None:
     print("  (Probeprofil wieder geloescht)")
 
 
+def warte_auf(tok: str, op: dict) -> dict:
+    """Firebase legt Apps als lang laufenden Vorgang an — abwarten, mit Frist."""
+    import time
+    name = op.get("name")
+    for _ in range(30):
+        if op.get("done"):
+            if op.get("error"):
+                raise RuntimeError(f"Vorgang gescheitert: {op['error']}")
+            return op.get("response", {})
+        time.sleep(2)
+        s, op = g(tok, f"https://firebase.googleapis.com/v1beta1/{name}")
+        if s != 200:
+            raise RuntimeError(f"Vorgang nicht lesbar: HTTP {s} {fehlertext(op)}")
+    raise RuntimeError("Vorgang nach 60 s nicht fertig")
+
+
+def einrichten() -> int:
+    """Alles, was sich am Firebase-Projekt einrichten laesst — wiederholbar.
+
+    Jeder Schritt prueft zuerst, ob es ihn schon gibt. Ein zweiter Lauf aendert
+    also nichts, statt eine zweite iOS-App anzulegen.
+    """
+    import os
+    team = os.environ.get("APPLE_TEAM_ID", "").strip()
+    if not team:
+        print("::error::APPLE_TEAM_ID fehlt — App Attest braucht die Team-Kennung")
+        return 1
+    tok = gtoken()
+    basis = f"https://firebase.googleapis.com/v1beta1/projects/{PROJEKT}"
+
+    # 1) iOS-App registrieren (mit Team-Kennung — ohne sie lehnt App Attest ab)
+    s, d = g(tok, f"{basis}/iosApps")
+    ios = next((x for x in d.get("apps", []) if x.get("bundleId") == BUNDLE), None)
+    if not ios:
+        s, op = g(tok, f"{basis}/iosApps", "POST",
+                  {"bundleId": BUNDLE, "displayName": "Stack & Siege iOS", "teamId": team})
+        if s not in (200, 201):
+            print(f"  ✗ iOS-App nicht angelegt: HTTP {s} {fehlertext(op)}")
+            return 1
+        ios = warte_auf(tok, op)
+        print(f"  ✓ iOS-App angelegt: {ios.get('appId')}")
+    else:
+        print(f"  = iOS-App vorhanden: {ios.get('appId')}")
+        if ios.get("teamId") != team:
+            s, d = g(tok, f"https://firebase.googleapis.com/v1beta1/{ios['name']}?updateMask=teamId",
+                     "PATCH", {"teamId": team})
+            print(f"  {'✓' if s == 200 else '✗'} Team-Kennung nachgetragen (HTTP {s})")
+    ios_id = ios["appId"]
+
+    # 2) Konfiguration der iOS-App — die Werte gehen in die App-Huelle.
+    #    Alles davon ist oeffentlich (wie der Web-Schluessel), nichts geheim.
+    s, d = g(tok, f"{basis}/iosApps/{ios_id}/config")
+    if s == 200:
+        import base64, re
+        plist = base64.b64decode(d.get("configFileContents", "")).decode("utf-8", "replace")
+        for k in ("API_KEY", "GCM_SENDER_ID", "GOOGLE_APP_ID", "PROJECT_ID"):
+            m = re.search(rf"<key>{k}</key>\s*<string>([^<]*)</string>", plist)
+            print(f"  KONFIG {k}={m.group(1) if m else '?'}")
+    else:
+        print(f"  ✗ Konfiguration nicht lesbar: HTTP {s} {fehlertext(d)}")
+
+    ac = f"https://firebaseappcheck.googleapis.com/v1/projects/{PROJEKT}/apps"
+
+    # 3) App Attest als Anbieter der iOS-App
+    s, d = g(tok, f"{ac}/{ios_id}/appAttestConfig?updateMask=tokenTtl", "PATCH",
+             {"tokenTtl": "3600s"})
+    print(f"  {'✓' if s == 200 else '✗'} App Attest fuer iOS (HTTP {s}) {'' if s == 200 else fehlertext(d)}")
+
+    # 4) reCAPTCHA v3 als Anbieter der Web-App — mit dem Secret aus den Secrets
+    geheim = os.environ.get("RECAPTCHA_SECRET", "").strip()
+    s, d = g(tok, f"{basis}/webApps")
+    web = (d.get("apps") or [{}])[0].get("appId")
+    if geheim and web:
+        s, d = g(tok, f"{ac}/{web}/recaptchaV3Config?updateMask=siteSecret,tokenTtl", "PATCH",
+                 {"siteSecret": geheim, "tokenTtl": "3600s"})
+        print(f"  {'✓' if s == 200 else '✗'} reCAPTCHA v3 fuer Web (HTTP {s}) {'' if s == 200 else fehlertext(d)}")
+    else:
+        print("  ✗ reCAPTCHA fuer Web uebersprungen (Secret oder Web-App fehlt)")
+
+    # 5) Durchsetzung wird hier NICHT angefasst — das kommt erst, wenn alle
+    #    Clients nachweislich Tokens schicken. Nur ausgeben, wie es steht.
+    s, d = g(tok, f"https://firebaseappcheck.googleapis.com/v1/projects/{PROJEKT}/services")
+    print(f"  Durchsetzung: {[(x['name'].split('/')[-1], x.get('enforcementMode')) for x in d.get('services', [])] or 'nirgends'}")
+    return 0
+
+
 def apple_faehigkeit() -> int:
     """App Attest an der Bundle-Kennung einschalten.
 
@@ -237,6 +323,8 @@ def apple_faehigkeit() -> int:
 def main() -> int:
     if "--apple-faehigkeit" in sys.argv:
         return apple_faehigkeit()
+    if "--einrichten" in sys.argv:
+        return einrichten()
     if "--stand" not in sys.argv:
         print("Modi: --stand, --apple-faehigkeit")
         return 2

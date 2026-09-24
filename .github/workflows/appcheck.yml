@@ -15,6 +15,7 @@ on:
         options:
           - stand      # nur lesen: was gibt es, was darf der Zugang?
           - apple-faehigkeit  # App Attest an der Bundle-Kennung einschalten
+          - einrichten # iOS-App registrieren, App Attest + reCAPTCHA als Anbieter (OHNE Durchsetzung)
 
 permissions:
   contents: read
@@ -41,9 +42,11 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           RECAPTCHA_SECRET: ${{ secrets.RECAPTCHA_SECRET }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         run: |
           case "${{ inputs.modus }}" in
             apple-faehigkeit) python3 scripts/appcheck.py --apple-faehigkeit ;;
+            einrichten) python3 scripts/appcheck.py --einrichten ;;
             *) python3 scripts/appcheck.py --stand ;;
           esac
