@@ -144,6 +144,25 @@ def apple_stand() -> None:
     else:
         print(f"  Faehigkeiten: HTTP {s} {asc.kurz(a)}")
 
+    # Die entscheidende Frage fuer App Attest: Traegt ein Verteilprofil dieser
+    # Kennung die Berechtigung `com.apple.developer.devicecheck.appattest-
+    # environment`? Wenn ja, braucht es KEINE Faehigkeit im Portal (die
+    # Schnittstelle kennt keine fuer App Attest). Gelesen wird das Profil,
+    # das der iOS-Ablauf zuletzt angelegt hat — nichts wird veraendert.
+    import base64, re
+    s, a = apple.holen(f"v1/bundleIds/{bid}/profiles", limit=20)
+    profile = a.json().get("data", []) if s == 200 else []
+    print(f"  Profile zur Kennung: {len(profile)}")
+    for pr in profile[:3]:
+        at = pr["attributes"]
+        roh = base64.b64decode(at.get("profileContent") or "").decode("latin-1")
+        m = re.search(r"<key>Entitlements</key>\s*<dict>(.*?)</dict>", roh, re.S)
+        schluessel = re.findall(r"<key>([^<]+)</key>", m.group(1)) if m else []
+        print(f"    - {at.get('name')} ({at.get('profileType')}, {at.get('profileState')})")
+        print(f"      Berechtigungen: {', '.join(schluessel) or '—'}")
+        print(f"      App Attest enthalten: "
+              f"{'JA' if any('appattest' in k for k in schluessel) else 'nein'}")
+
 
 def main() -> int:
     if "--stand" not in sys.argv:
