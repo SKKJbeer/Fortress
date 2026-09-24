@@ -164,6 +164,51 @@ def apple_stand() -> None:
               f"{'JA' if any('appattest' in k for k in schluessel) else 'nein'}")
 
 
+def zugaenge_stand() -> None:
+    """Liegen die Werte aus den beiden Handgriffen vor? Nur Laenge, nie Inhalt."""
+    import os
+    print("=== Secrets aus den Handgriffen ===")
+    for name in ("RECAPTCHA_SECRET", "RECAPTCHA_SITE_KEY"):
+        wert = os.environ.get(name, "")
+        print(f"  {'✓' if wert else '✗'} {name}" + (f" ({len(wert)} Zeichen)" if wert else " fehlt"))
+
+
+def probeprofil() -> None:
+    """Traegt ein FRISCHES Verteilprofil jetzt die App-Attest-Berechtigung?
+
+    Das bestehende Profil stammt von vor dem Haken im Portal und sagt darueber
+    nichts. Also wird ein Probeprofil unter eigenem Namen angelegt, gelesen und
+    sofort wieder geloescht. Das Profil des iOS-Ablaufs bleibt unberuehrt.
+    """
+    import base64, re
+    print("=== Probeprofil ===")
+    ap = lade("asc_profil", "asc-profil.py")
+    apple = ap.Apple(ap.anmeldung())
+    name = "Stack and Siege AppCheck Probe"
+    for alt in apple.holen("profiles", **{"filter[name]": name, "limit": 50}).get("data", []):
+        apple.loeschen(f"profiles/{alt['id']}")
+    a = apple.anlegen("profiles", {"data": {
+        "type": "profiles",
+        "attributes": {"name": name, "profileType": ap.ART},
+        "relationships": {
+            "bundleId": {"data": {"type": "bundleIds", "id": ap.kennung(apple)}},
+            "certificates": {"data": ap.zertifikate(apple)}}}})
+    if a.status_code != 201:
+        print(f"  ✗ Probeprofil abgelehnt: HTTP {a.status_code} {a.text[:200]}")
+        return
+    d = a.json()["data"]
+    roh = base64.b64decode(d["attributes"]["profileContent"]).decode("latin-1")
+    apple.loeschen(f"profiles/{d['id']}")
+    m = re.search(r"<key>Entitlements</key>\s*<dict>(.*?)</dict>", roh, re.S)
+    inhalt = m.group(1) if m else ""
+    schluessel = re.findall(r"<key>([^<]+)</key>", inhalt)
+    wert = re.search(r"appattest-environment</key>\s*<string>([^<]*)</string>", inhalt)
+    print(f"  Berechtigungen: {', '.join(schluessel)}")
+    print(f"  App Attest: " + (f"JA ({wert.group(1)})" if wert else
+          ("JA" if any('appattest' in k for k in schluessel) else "NEIN — Haken im Portal fehlt")))
+    print("  (Probeprofil wieder geloescht)")
+
+
 def apple_faehigkeit() -> int:
     """App Attest an der Bundle-Kennung einschalten.
 
@@ -196,7 +241,7 @@ def main() -> int:
         print("Modi: --stand, --apple-faehigkeit")
         return 2
     fehler = 0
-    for teil in (firebase_stand, apple_stand):
+    for teil in (zugaenge_stand, firebase_stand, apple_stand, probeprofil):
         try:
             teil()
         except SystemExit:
