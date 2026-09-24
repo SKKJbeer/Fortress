@@ -120,6 +120,17 @@ def firebase_stand() -> None:
     else:
         print(f"  App-Check-Dienste: HTTP {s} {fehlertext(d)}")
 
+    # 4b) Was ist an den Apps WIRKLICH hinterlegt? Zurueckgelesen, nicht
+    #     angenommen — ein PATCH mit HTTP 200 sagt nicht, dass das Feld sass.
+    ac = f"https://firebaseappcheck.googleapis.com/v1/projects/{PROJEKT}/apps"
+    for art, pfad in (("webApps", "recaptchaV3Config"), ("webApps", "recaptchaEnterpriseConfig"),
+                      ("iosApps", "appAttestConfig"), ("iosApps", "deviceCheckConfig")):
+        s2, d2 = g(tok, f"https://firebase.googleapis.com/v1beta1/projects/{PROJEKT}/{art}")
+        for app in d2.get("apps", []):
+            s3, d3 = g(tok, f"{ac}/{app['appId']}/{pfad}")
+            felder = {k: v for k, v in d3.items() if k != "name"} if s3 == 200 else fehlertext(d3)
+            print(f"  {pfad} @ {app['appId'][-24:]}: HTTP {s3} {felder}")
+
     # 5) Abrechnungskonto verbunden? (reCAPTCHA Enterprise haengt womoeglich daran)
     s, d = g(tok, f"https://cloudbilling.googleapis.com/v1/projects/{PROJEKT}/billingInfo")
     print(f"  Abrechnung: " + (f"aktiv={d.get('billingEnabled')}" if s == 200
