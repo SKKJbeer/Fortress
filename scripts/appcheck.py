@@ -131,6 +131,15 @@ def firebase_stand() -> None:
             felder = {k: v for k, v in d3.items() if k != "name"} if s3 == 200 else fehlertext(d3)
             print(f"  {pfad} @ {app['appId'][-24:]}: HTTP {s3} {felder}")
 
+    # 4c) Liegt der reCAPTCHA-Schluessel IN DIESEM Projekt? Seit 2024 gehoert
+    #     jeder neu angelegte Schluessel zu einem Google-Cloud-Projekt. 404
+    #     heisst: nicht hier; 403: keine Berechtigung bzw. Schnittstelle aus.
+    site = "6LffVMwtAAAAANSbtQ5sZe2ERcBXIt2agDUfWsWr"
+    s4, d4 = g(tok, f"https://recaptchaenterprise.googleapis.com/v1/projects/{PROJEKT}/keys/{site}")
+    print(f"  reCAPTCHA-Schluessel im Projekt {PROJEKT}: HTTP {s4} "
+          + (str({k: d4.get(k) for k in ('displayName', 'webSettings', 'createTime')}) if s4 == 200
+             else fehlertext(d4)))
+
     # 5) Abrechnungskonto verbunden? (reCAPTCHA Enterprise haengt womoeglich daran)
     s, d = g(tok, f"https://cloudbilling.googleapis.com/v1/projects/{PROJEKT}/billingInfo")
     print(f"  Abrechnung: " + (f"aktiv={d.get('billingEnabled')}" if s == 200
