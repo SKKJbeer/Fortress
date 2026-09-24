@@ -341,6 +341,33 @@ def debug_token_weg() -> int:
     return 0
 
 
+def recaptcha_pruefen() -> int:
+    """Passen Site-Key und Secret zusammen — und welche Bewertung gab es?
+
+    Firebase antwortet auf einen abgelehnten Austausch nur mit
+    „App attestation failed". Das trennt zwei Ursachen nicht: falsches Secret
+    oder zu niedrige Bewertung (ein automatisierter Browser bekommt von
+    reCAPTCHA wenig Vertrauen). Googles eigene Pruefstelle sagt beides.
+
+    Das Token kommt als Eingabe des Ablaufs (gilt zwei Minuten, einmalig).
+    Ausgegeben wird nur, was nicht geheim ist: Erfolg, Bewertung, Aktion,
+    Herkunft, Fehlercodes.
+    """
+    import json, os, urllib.parse, urllib.request
+    token = os.environ.get("RECAPTCHA_TOKEN", "").strip()
+    geheim = os.environ.get("RECAPTCHA_SECRET", "").strip()
+    if not token or not geheim:
+        print("::error::RECAPTCHA_TOKEN (Eingabe) oder RECAPTCHA_SECRET fehlt")
+        return 1
+    daten = urllib.parse.urlencode({"secret": geheim, "response": token}).encode()
+    with urllib.request.urlopen("https://www.google.com/recaptcha/api/siteverify",
+                                data=daten, timeout=30) as r:
+        a = json.load(r)
+    for k in ("success", "score", "action", "hostname", "challenge_ts", "error-codes"):
+        print(f"  {k}: {a.get(k)}")
+    return 0
+
+
 def apple_faehigkeit() -> int:
     """App Attest an der Bundle-Kennung einschalten.
 
@@ -371,6 +398,8 @@ def main() -> int:
         return apple_faehigkeit()
     if "--einrichten" in sys.argv:
         return einrichten()
+    if "--recaptcha-pruefen" in sys.argv:
+        return recaptcha_pruefen()
     if "--debug-token-anlegen" in sys.argv:
         return debug_token_anlegen()
     if "--debug-token-weg" in sys.argv:

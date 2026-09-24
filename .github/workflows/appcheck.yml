@@ -16,6 +16,11 @@ on:
           - stand      # nur lesen: was gibt es, was darf der Zugang?
           - apple-faehigkeit  # App Attest an der Bundle-Kennung einschalten
           - einrichten # iOS-App registrieren, App Attest + reCAPTCHA als Anbieter (OHNE Durchsetzung)
+          - recaptcha-pruefen  # passt das Secret zum Site-Key? (braucht 'token')
+      token:
+        description: 'Nur fuer recaptcha-pruefen: ein frisches reCAPTCHA-Token (gilt 2 Minuten)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -34,6 +39,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Abhaengigkeiten
+        # recaptcha-pruefen kommt mit der Standardbibliothek aus — und hat es
+        # eilig: Das Token gilt nur zwei Minuten.
+        if: inputs.modus != 'recaptcha-pruefen'
         run: pip install --quiet google-auth requests "pyjwt[crypto]"
       - name: App Check
         env:
@@ -43,10 +51,14 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           RECAPTCHA_SECRET: ${{ secrets.RECAPTCHA_SECRET }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Ueber die Umgebung, NICHT in das Skript eingesetzt: Eine Eingabe ist
+          # Text von aussen und gehoert nie direkt in eine Shell-Zeile.
+          RECAPTCHA_TOKEN: ${{ inputs.token }}
           RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         run: |
           case "${{ inputs.modus }}" in
             apple-faehigkeit) python3 scripts/appcheck.py --apple-faehigkeit ;;
             einrichten) python3 scripts/appcheck.py --einrichten ;;
+            recaptcha-pruefen) python3 scripts/appcheck.py --recaptcha-pruefen ;;
             *) python3 scripts/appcheck.py --stand ;;
           esac
