@@ -11,7 +11,7 @@ import { initializeApp } from "firebase/app";
              signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
              linkWithRedirect, signInWithRedirect, signInWithCredential, getRedirectResult, signOut }
       from "firebase/auth";
-    import { initializeAppCheck, CustomProvider, ReCaptchaV3Provider } from "firebase/app-check";
+    import { initializeAppCheck, CustomProvider, ReCaptchaV3Provider, getToken as appCheckToken } from "firebase/app-check";
     import { kontoVerknuepfbar, istNativ, hatAppCheckKanal, nativesAppCheckToken } from "./platform.ts";
     // Ist bereits ein Firebase-Ersatz installiert, wird NICHT ueberschrieben.
     // Seit das SDK mitgebuendelt ist (Architektur E3), kann die Initialisierung
@@ -104,11 +104,23 @@ import { initializeApp } from "firebase/app";
           });
           window.__appCheck = { art: "nativ" };
         } else if (APPCHECK_SITE_KEY && !istNativ()) {
-          initializeAppCheck(app, {
+          const instanz = initializeAppCheck(app, {
             provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
             isTokenAutoRefreshEnabled: true
           });
           window.__appCheck = { art: "recaptcha" };
+          // Bekommt DIESER Browser ein Token? (v3.113.4) Firebase bewertet
+          // strenger als Googles siteverify: Ein automatisierter Browser bekam
+          // dort 0,9 und bei Firebase trotzdem 403, erst mit Schwelle 0 ein
+          // Token. Wie es echten Spielern ergeht, weiss nur die Messung — und
+          // von ihr haengt ab, ob die Durchsetzung je eingeschaltet werden
+          // darf. Das Ergebnis zaehlt app.js anonym im Trichter.
+          appCheckToken(instanz, false)
+            .then(() => { window.__appCheck.ok = true; })
+            .catch((e) => {
+              window.__appCheck.ok = false;
+              window.__appCheck.fehler = String((e && (e.code || e.message)) || e).slice(0, 80);
+            });
         }
       } catch (e) {
         window.__appCheck = { art: "fehler", fehler: e && (e.code || e.message) };

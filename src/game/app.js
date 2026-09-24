@@ -1045,6 +1045,22 @@ window.StackSiegeApp = function StackSiegeApp() {
     }, 2500);
     return () => { weg = true; clearTimeout(t); };
   }, []);
+  // App Check im Browser (v3.113.4): einmal je Seitenaufruf anonym zaehlen,
+  // ob der Browser ein Token bekam — Gegenstueck zum Schritt `appcheck` der
+  // App. Eigener Schrittname statt eines neuen Feldes: Ein neues Feld haette
+  // zuerst in die Datenbankregeln gemusst (v3.112.4), der Name ist frei.
+  useEffect(() => {
+    if (istNativ()) return;
+    let weg = false, n = 0;
+    const t = setInterval(() => {
+      const ac = typeof window !== "undefined" && window.__appCheck;
+      if (weg || !ac || ac.art !== "recaptcha") { if (++n > 60) clearInterval(t); return; }
+      if (typeof ac.ok !== "boolean") { if (++n > 60) clearInterval(t); return; }
+      clearInterval(t);
+      trichter("appcheck_web", ac.ok ? { ok: true } : { ok: false, fehler: ac.fehler || "?" });
+    }, 500);
+    return () => { weg = true; clearInterval(t); };
+  }, []);
   // Beim Oeffnen des Online-Schirms EINMAL messen (v3.111.2).
   useEffect(() => {
     if (mpScreen !== "online") return;
@@ -6985,7 +7001,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.113.3"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.113.4"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

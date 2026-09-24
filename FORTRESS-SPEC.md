@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8488,3 +8488,37 @@ fest, dazu, dass der Profilname **genau** der ist, den `asc-profil.py`
 anlegt. Gegengeprüft: 3/3 künstliche Eingriffe rot.
 
 Tests: iOS **36**.
+
+## v3.113.4 — Browser: Firebase lehnte wegen der Bewertung ab — gemessen, nicht geraten
+
+Nach dem Eintragen des Site-Keys antwortete Firebase beim Austausch des
+reCAPTCHA-Tokens mit **403 „App attestation failed"** — eine Meldung, die
+zwei Ursachen nicht trennt. Nacheinander ausgeschlossen, jede mit einer
+Messung:
+
+| Vermutung | Messung | Ergebnis |
+|---|---|---|
+| Secret passt nicht zum Site-Key | Googles `siteverify` mit dem Secret aus den Secrets | `success: True`, `hostname: skkjbeer.github.io` — passt |
+| Bewertung zu niedrig (laut Google) | dasselbe | `score: 0.9` |
+| Das Token von App Check selbst ist anders | Anfrage abgefangen, bevor Firebase es verbraucht, dann `siteverify` | `success: True`, `score: 0.9`, `action: fire_app_check` |
+| Firebase hat ein altes Secret | neu gesetzt, 15 Minuten Übernahmezeit | weiter 403 |
+| Firebase bewertet strenger | `minValidScore` kurz auf **0** | **200, Token ausgegeben** |
+
+**Ursache:** Firebase bewertet strenger als Googles `siteverify`, und der
+Messbrowser ist automatisiert und läuft über einen Rechenzentrums-Proxy —
+genau die Sorte Client, die reCAPTCHA aussortieren soll. Die Einrichtung
+selbst ist korrekt. Die Schwelle steht wieder auf **0,5** (Voreinstellung).
+
+Offene Meldungen bei Firebase beschreiben dasselbe Bild auch für echte
+Nutzer (etwa im privaten Modus). Wie es **unseren** Spielern ergeht, weiß
+deshalb nur eine Messung: Der Browser zählt jetzt anonym im Trichter
+(`schritt: "appcheck_web"`, `ok`, bei Fehlschlag `fehler`), ob er ein Token
+bekam — das Gegenstück zum Schritt `appcheck` der App. Eigener Schrittname
+statt eines neuen Feldes, damit keine Regeländerung nötig ist.
+
+**Davon hängt die Durchsetzung ab.** Wird sie bei Schwelle 0,5
+eingeschaltet und bekommt ein nennenswerter Teil der Browser kein Token,
+sperrt sie echte Spieler aus. Die Zahl entscheidet, nicht die Vermutung.
+
+Neu in `appcheck.yml`: Modi `recaptcha-pruefen` (siteverify mit einem
+frischen Token) und `schwelle` (Mindestbewertung setzen).
