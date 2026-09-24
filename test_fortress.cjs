@@ -5438,6 +5438,7 @@ async function suiteBot(browser) {
     // Eine großzügige Frist prüft dieselbe Aussage und wird nicht grundlos rot.
     const sawShoot = await waitForPhase(page, ['FEUER'], 20000);
     if (sawShoot) ok('Bot-Spiel erreicht Schussphase ✓');
+
     else {
       // Bei 20 s Frist ist "nicht erreicht" kein Timing-Befund mehr, sondern
       // heisst: das Spiel laeuft nicht weiter. Dann muss die Meldung sagen,
@@ -5453,6 +5454,59 @@ async function suiteBot(browser) {
          + (lage.ergebnis ? ' (und das NACH dem frischen Anlauf — dann ist die '
                           + 'Partie sofort wieder zu Ende, das waere ein echter Befund)' : '')
          + ` | ${lage.text}`);
+    }
+    // ── Salven-Schalter (v3.114.0): NICHT ueber dem Spielfeld ──────────────
+    //
+    // Bis v3.113 schwebte er oben rechts ueber dem Brett — dort, wo in der
+    // Schussphase die gegnerische Burg liegt, also genau das Ziel. Gemeldet
+    // vom Spieler. Jetzt steht er in der Unterleiste; geprueft wird die
+    // LAGE (kein Pixel Ueberschneidung mit dem Canvas), nicht nur, dass es
+    // ihn gibt.
+    //
+    // Im Zeitraffer dauert eine Schussphase rund eine Sekunde. Die Pruefung
+    // laeuft deshalb in EINEM Zug in der Seite und setzt nur am Anfang einer
+    // frischen Schussphase an (Timer >= 15), mit mehreren Anlaeufen.
+    {
+      const r = await page.evaluate(async () => {
+        window.__mmDebug = true;
+        const warte = (ms) => new Promise((f) => setTimeout(f, ms));
+        const bild = () => new Promise((f) => requestAnimationFrame(() => requestAnimationFrame(f)));
+        const ende = Date.now() + 15000;
+        let letzte = null;
+        while (Date.now() < ende) {
+          if (window.__phase() !== 'shoot' || (window.__readTimer() || 0) < 15) { await warte(20); continue; }
+          if (!window.__machBezwinger(1)) { letzte = { grund: 'keine lebende Kanone' }; await warte(200); continue; }
+          await bild();
+          const sch = document.querySelector('[data-salvenschalter]');
+          const cv = document.querySelector('canvas');
+          if (!sch || !cv) { letzte = { grund: 'Schalter nicht gerendert', phase: window.__phase() }; await warte(50); continue; }
+          const a = sch.getBoundingClientRect(), b = cv.getBoundingClientRect();
+          const ueberlappt = !(a.bottom <= b.top + 0.5 || a.top >= b.bottom - 0.5
+                              || a.right <= b.left + 0.5 || a.left >= b.right - 0.5);
+          const std = sch.querySelector('[data-salve="std"]');
+          const sl = sch.querySelector('[data-salve="slayer"]');
+          const vorher = { std: std && std.getAttribute('aria-pressed'), sl: sl && sl.getAttribute('aria-pressed') };
+          sl && sl.click();
+          await bild();
+          const sch2 = document.querySelector('[data-salvenschalter]');
+          const nachher = sch2 ? {
+            sl: sch2.querySelector('[data-salve="slayer"]').getAttribute('aria-pressed'),
+            stdGesperrt: sch2.querySelector('[data-salve="std"]').disabled
+          } : null;
+          return { ok: true, ueberlappt, schalterOben: Math.round(a.top), brettUnten: Math.round(b.bottom),
+                   hoehe: Math.round(a.height), vorher, nachher, phase: window.__phase() };
+        }
+        return { ok: false, letzte };
+      });
+      if (!r.ok) fail(`Salven-Schalter: nicht pruefbar — ${JSON.stringify(r.letzte)}`);
+      else {
+        !r.ueberlappt
+          ? ok(`Salven-Schalter liegt NICHT ueber dem Spielfeld (Schalter ab y=${r.schalterOben}, Brett endet y=${r.brettUnten}) ✓`)
+          : fail(`Salven-Schalter UEBERDECKT das Spielfeld (Schalter ab y=${r.schalterOben}, Brett endet y=${r.brettUnten})`);
+        r.vorher.std === 'true' && r.nachher && r.nachher.sl === 'true' && r.nachher.stdGesperrt
+          ? ok('Salven-Schalter: Umschalten auf Bezwinger wirkt, waehrend des Umruestens gesperrt ✓')
+          : fail(`Salven-Schalter: Umschalten wirkt nicht wie erwartet (vorher ${JSON.stringify(r.vorher)}, nachher ${JSON.stringify(r.nachher)}, Phase ${r.phase})`);
+      }
     }
     await waitForPhase(page, ['KANONE'], 20000);
     await page.evaluate(() => { window.__mmDebug = true; });

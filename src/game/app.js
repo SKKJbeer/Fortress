@@ -955,6 +955,29 @@ window.StackSiegeApp = function StackSiegeApp() {
       return true;
     });
     window.__eliminiert = gated(() => Object.keys(eliminated.current || {}).map(Number).sort());
+    // Test-Hebel (v3.114.0): macht die erste lebende Kanone von p zum
+    // Bezwinger, damit die Suite den Salven-Schalter pruefen kann, ohne
+    // eine ganze Ruestphase samt Einkauf durchzuspielen.
+    window.__machBezwinger = gated((p) => {
+      const k = (cannons.current[p] || []).find((c) => c.hp > 0);
+      if (k) { k.kt = "slayer"; setUiTick((t) => t + 1); return true; }
+      // Keine Kanone da (in der Bot-Suite setzt der Mensch keine): eine ECHTE
+      // setzen — ueber placeCannon, dieselbe Funktion wie im Spiel, mit
+      // Budget und Art aus der Warteschlange.
+      const g = grid.current, ter = terrain.current;
+      if (!g) return false;
+      for (let r = 2; r < ROWS - 2; r++) for (let c = 2; c < COLS - 2; c++) {
+        let frei = true;
+        for (let dr = -1; dr <= 1 && frei; dr++) for (let dc = -1; dc <= 1 && frei; dc++)
+          if (g[r + dr][c + dc] !== EMPTY || !isBuildable(ter, r + dr, c + dc, p)) frei = false;
+        if (!frei) continue;
+        cannonBudget.current[p] = (cannonBudget.current[p] || 0) + 1;
+        (cannonTypeQueue.current[p] = cannonTypeQueue.current[p] || []).unshift("slayer");
+        placeCannon(p, r, c);
+        return (cannons.current[p] || []).some((x) => x.kt === "slayer" && x.hp > 0);
+      }
+      return false;
+    });
     window.__blastWall = gated((p, n) => {
       const g = grid.current, ct = castles.current[p];
       if (!g || !ct) return 0;
@@ -7001,7 +7024,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.113.4"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.114.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8819,15 +8842,109 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Schussphase: zeigt, wie viele eigene Kanonen DIESE Runde feuern dürfen.
   // Die Regel „nur rundum eingemauerte Kanonen schießen" war bislang nirgends
   // beziffert — man sah nur, dass weniger Kugeln kamen als erwartet.
+  // ── Salven-Schalter (v3.58.0; seit v3.114.0 in der Unterleiste) ──────
+  //
+  // BIS v3.113 schwebte der Schalter oben rechts UEBER dem Spielfeld, direkt
+  // unter der Kopfzeile. In der Schussphase liegt dort die GEGNERISCHE Burg —
+  // also genau die Flaeche, auf die man zielt. Gemeldet vom Spieler: „das
+  // verdeckt die Flaeche, die man kaputtschiessen will."
+  //
+  // Jetzt steht er im eigenen „feuerbereit"-Feld der Unterleiste: unter dem
+  // Brett, neben der eigenen Burg, nie ueber einem Ziel. Inhaltlich gehoert
+  // er ohnehin dorthin — das Feld beantwortet „was feuert?", der Schalter
+  // entscheidet es.
+  //
+  // Ein Wechsel kostet Umruestzeit (SALVO_LOCK_MS); solange feuert NIEMAND.
+  // Deshalb bleibt er eine bewusste Handlung: zwei getrennte, beschriftete
+  // Knoepfe statt eines Kippschalters, der aktive ist gesperrt, waehrend des
+  // Umruestens sind beide gesperrt und ein Balken zeigt die Restzeit.
+  function salvenSchalter(pl) {
+    const ich = online.current ? myRole.current : (botMode.current ? 1 : null);
+    if (!ich || pl !== ich || phase_r.current !== "shoot") return null;
+    const mine = (cannons.current[pl] || []).filter((c) => c.hp > 0);
+    if (!mine.some((c) => c.kt === "slayer")) return null;   // erst ab dem 1. Bezwinger
+    const frozen = new Set(frozenReady.current[pl] || []);
+    const zaehl = (art) => mine.filter((c) => (c.kt || "std") === art && frozen.has(c.id)).length;
+    const modus = salvenModus.current[pl] || "std";
+    const restMs = Math.max(0, SALVO_LOCK_MS - (performance.now() - (salvoSwitchAt.current[pl] || -99999)));
+    const gesperrt = restMs > 0;
+    // Fingerziel: 44 pt (Apples Mindestmass), bei knapper Leiste kompakter.
+    const hoch = Math.max(30, Math.min(44, barH - 30));
+    const mitZeile = barH >= 80;
+    const knopf = (art, icon, label) => {
+      const aktiv = modus === art, n = zaehl(art);
+      return React.createElement("button", {
+        key: art,
+        "data-salve": art,
+        "aria-label": label,
+        "aria-pressed": aktiv,
+        disabled: gesperrt || aktiv,
+        onPointerDown: (e) => e.stopPropagation(),
+        onClick: () => {
+          if (gesperrt || salvenModus.current[pl] === art) return;
+          salvenModus.current[pl] = art;
+          salvoSwitchAt.current[pl] = performance.now();
+          if (online.current && myRole.current !== 1) sendAction({ type: "salvo", m: art });
+          SFX.buy && SFX.buy();
+          setUiTick((t2) => t2 + 1);
+          // Countdown weiterlaufen lassen — die UI rendert sonst nur beim
+          // naechsten Timer-Tick und der Balken stuende still.
+          const iv = setInterval(() => setUiTick((t2) => t2 + 1), 100);
+          setTimeout(() => { clearInterval(iv); setUiTick((t2) => t2 + 1); }, SALVO_LOCK_MS + 120);
+        },
+        style: {
+          flex: "1 1 0", minWidth: 0, height: hoch,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          cursor: gesperrt || aktiv ? "default" : "pointer",
+          padding: "0 8px", borderRadius: 10, fontSize: 12, fontWeight: 800,
+          border: "1px solid " + (aktiv ? "rgba(96,165,250,0.85)" : "rgba(255,255,255,0.14)"),
+          background: aktiv
+            ? "linear-gradient(180deg,#2563eb,#1d4ed8)"
+            : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
+          color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b"),
+          boxShadow: aktiv ? "0 3px 12px rgba(37,99,235,0.4)" : "none",
+          opacity: gesperrt && !aktiv ? 0.45 : (n ? 1 : 0.65),
+          touchAction: "manipulation", whiteSpace: "nowrap", overflow: "hidden"
+        }
+      },
+        React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b") }),
+        React.createElement("span", { style: { overflow: "hidden", textOverflow: "ellipsis" } }, label),
+        React.createElement("span", { style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
+    };
+    return React.createElement("div", { key: "salve", "data-salvenschalter": "1", style: {
+      // Hoechstens 440 px: Auf dem iPad waere jeder Knopf sonst ~660 px breit
+      // fuer ein einziges Wort — ein Schalter, kein Balken.
+      flex: "1 1 auto", minWidth: 0, maxWidth: 440,
+      display: "flex", flexDirection: "column", gap: 4, justifyContent: "center"
+    } },
+      mitZeile ? React.createElement("div", { style: {
+        fontSize: 9.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+        color: gesperrt ? "#fbbf24" : "#64748b", textAlign: "center"
+      } }, gesperrt ? t("salvoLock") + " " + (restMs / 1000).toFixed(1) + "s" : t("salvoHint")) : null,
+      React.createElement("div", { style: { display: "flex", gap: 6 } },
+        knopf("std", "bricks", t("salvoWalls")),
+        knopf("slayer", "crosshair", t("salvoSlayer"))),
+      // Umruest-Balken: macht die Wartezeit sichtbar, statt sie nur zu spueren
+      React.createElement("div", { style: {
+        height: 3, borderRadius: 2, background: gesperrt ? "rgba(255,255,255,0.10)" : "transparent", overflow: "hidden"
+      } }, gesperrt ? React.createElement("div", { style: {
+        height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#f59e0b,#fbbf24)",
+        width: (100 - restMs / SALVO_LOCK_MS * 100).toFixed(1) + "%"
+      } }) : null)
+    );
+  }
+  // Schussphase: zeigt, wie viele eigene Kanonen DIESE Runde feuern dürfen.
+  // Die Regel „nur rundum eingemauerte Kanonen schießen" war bislang nirgends
+  // beziffert — man sah nur, dass weniger Kugeln kamen als erwartet.
   function readyPanel(pl) {
     const col = PANEL_COL[pl];
     const alle = (cannons.current[pl] || []).filter((c) => c.hp > 0).length;
     const bereit = (frozenReady.current[pl] || []).length;
     const stumm = Math.max(0, alle - bereit);
-    return React.createElement("div", { key: "rp" + pl, style: {
-      flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      gap: 3, padding: "8px 6px", background: "rgba(" + col.a + ",0.08)",
-      border: "1px solid rgba(" + col.a + ",0.22)", borderRadius: 10, minHeight: 36
+    const schalter = salvenSchalter(pl);
+    const zahl = React.createElement("div", { key: "zahl", style: {
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 3, flexShrink: 0
     } },
       React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 3 } },
         React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: col.d, textShadow: "0 0 10px rgba(" + col.a + ",0.6)", lineHeight: 1 } }, bereit),
@@ -8839,6 +8956,13 @@ window.StackSiegeApp = function StackSiegeApp() {
       } }, t("panelReady")),
       stumm > 0 ? React.createElement("div", { style: { fontSize: 8.5, fontWeight: 700, color: "#fca5a5" } }, stumm + " " + t("panelMute")) : null
     );
+    return React.createElement("div", { key: "rp" + pl, style: {
+      flex: 1, display: "flex", flexDirection: schalter ? "row" : "column",
+      alignItems: "center", justifyContent: "center",
+      gap: schalter ? 12 : 3, padding: schalter ? "6px 10px" : "8px 6px",
+      background: "rgba(" + col.a + ",0.08)",
+      border: "1px solid rgba(" + col.a + ",0.22)", borderRadius: 10, minHeight: 36
+    } }, zahl, schalter);
   }
   return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
     background: "#04080d",
@@ -9208,81 +9332,6 @@ window.StackSiegeApp = function StackSiegeApp() {
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)"
         } }, "✓ " + t("shopInfoClose"))
       )
-    );
-  })(),
-  // ── Salven-Schalter (v3.58.0): welche Kanonenart feuert? ──────────────
-  // Oben rechts, ausserhalb der Daumen-Zone: ein Wechsel soll eine bewusste
-  // Entscheidung sein, kein Reflex. Er kostet Umruestzeit — solange feuert
-  // NIEMAND, und das zeigt ein Fortschrittsring am Knopf.
-  phase === "shoot" && (() => {
-    const meS = online.current ? myRole.current : (botMode.current ? 1 : null);
-    if (!meS) return null;
-    const mine = (cannons.current[meS] || []).filter((c) => c.hp > 0);
-    if (!mine.some((c) => c.kt === "slayer")) return null;   // erst ab dem 1. Bezwinger
-    const frozen = new Set(frozenReady.current[meS] || []);
-    const zaehl = (art) => mine.filter((c) => (c.kt || "std") === art && frozen.has(c.id)).length;
-    const modus = salvenModus.current[meS] || "std";
-    const restMs = Math.max(0, SALVO_LOCK_MS - (performance.now() - (salvoSwitchAt.current[meS] || -99999)));
-    const gesperrt = restMs > 0;
-    const knopf = (art, icon, label) => {
-      const aktiv = modus === art, n = zaehl(art);
-      return /* @__PURE__ */ React.createElement("button", {
-        key: art,
-        disabled: gesperrt || aktiv,
-        onClick: () => {
-          if (gesperrt || salvenModus.current[meS] === art) return;
-          salvenModus.current[meS] = art;
-          salvoSwitchAt.current[meS] = performance.now();
-          if (online.current && myRole.current !== 1) sendAction({ type: "salvo", m: art });
-          SFX.buy && SFX.buy();
-          setUiTick((t2) => t2 + 1);
-          // Countdown weiterlaufen lassen — die UI rendert sonst nur beim
-          // naechsten Timer-Tick und der Balken stuende still.
-          const iv = setInterval(() => setUiTick((t2) => t2 + 1), 100);
-          setTimeout(() => { clearInterval(iv); setUiTick((t2) => t2 + 1); }, SALVO_LOCK_MS + 120);
-        },
-        "aria-label": label,
-        style: {
-          position: "relative", overflow: "hidden",
-          display: "flex", alignItems: "center", gap: 6,
-          cursor: gesperrt || aktiv ? "default" : "pointer",
-          padding: "7px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 800,
-          border: "1px solid " + (aktiv ? "rgba(96,165,250,0.85)" : "rgba(255,255,255,0.14)"),
-          background: aktiv
-            ? "linear-gradient(180deg,#2563eb,#1d4ed8)"
-            : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
-          color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b"),
-          boxShadow: aktiv ? "0 4px 16px rgba(37,99,235,0.45)" : "0 3px 12px rgba(0,0,0,0.45)",
-          opacity: gesperrt && !aktiv ? 0.4 : (n ? 1 : 0.6)
-        }
-      },
-        React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b") }),
-        label,
-        /* @__PURE__ */ React.createElement("span", {
-          style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
-    };
-    return /* @__PURE__ */ React.createElement("div", { key: "salvo", style: {
-      // 118px statt 58px (v3.64.0): Auf 58 lag der Schalter GENAU unter dem
-      // Warnbanner ("Kanonen werden umgeruestet") und wurde davon verdeckt —
-      // ausgerechnet von der Meldung, die zum Schalter gehoert.
-      position: "fixed", right: 8, top: `calc(var(--sa-top,0px) + ${hudH + 66}px)`,
-      zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5
-    } },
-      /* @__PURE__ */ React.createElement("span", { style: {
-        fontSize: 9.5, fontWeight: 800, letterSpacing: "0.08em",
-        color: gesperrt ? "#fbbf24" : "#64748b",
-        textTransform: "uppercase", paddingRight: 4,
-        textShadow: "0 1px 3px rgba(0,0,0,0.8)"
-      } }, gesperrt ? t("salvoLock") + " " + (restMs / 1000).toFixed(1) + "s" : t("salvoHint")),
-      knopf("std", "bricks", t("salvoWalls")),
-      knopf("slayer", "crosshair", t("salvoSlayer")),
-      // Umruest-Balken: macht die Wartezeit sichtbar, statt sie nur zu spueren
-      gesperrt && /* @__PURE__ */ React.createElement("div", { style: {
-        width: 110, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.10)", overflow: "hidden"
-      } }, /* @__PURE__ */ React.createElement("div", { style: {
-        height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#f59e0b,#fbbf24)",
-        width: (100 - restMs / SALVO_LOCK_MS * 100).toFixed(1) + "%"
-      } }))
     );
   })(),
   // ── Emotes (v3.25.0): Button + Leiste (nur online) ──

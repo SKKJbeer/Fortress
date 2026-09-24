@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.114.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8522,3 +8522,34 @@ sperrt sie echte Spieler aus. Die Zahl entscheidet, nicht die Vermutung.
 
 Neu in `appcheck.yml`: Modi `recaptcha-pruefen` (siteverify mit einem
 frischen Token) und `schwelle` (Mindestbewertung setzen).
+
+## v3.114.0 — Der Salven-Schalter verdeckte das Ziel
+
+**Gemeldet vom Spieler:** Wer einen Bezwinger kauft, bekommt in der
+Schussphase den Schalter „Mauerbrecher / Bezwinger". Der schwebte oben rechts
+**über dem Spielfeld**, direkt unter der Kopfzeile — und dort liegt in der
+Schussphase die gegnerische Burg. Er verdeckte also genau die Fläche, die man
+treffen will.
+
+**Lösung:** Der Schalter ist vom Spielfeld weg und steht jetzt im eigenen
+„feuerbereit"-Feld der Unterleiste — unter dem Brett, neben der eigenen Burg,
+nie über einem Ziel. Inhaltlich gehört er ohnehin dorthin: Das Feld sagt, was
+feuern kann, der Schalter entscheidet, was feuert.
+
+- Zwei getrennte, beschriftete Knöpfe mit Anzahl der feuerbereiten Kanonen je
+  Art, 44 pt hoch (Apples Mindestmaß für Fingerziele), bei knapper Leiste
+  kompakter. Auf dem iPad höchstens 440 pt breit.
+- Ein Wechsel bleibt eine bewusste Handlung: Der aktive Knopf ist gesperrt,
+  während der Umrüstzeit beide; Restzeit als Text und Balken darunter.
+
+**Geprüft wird die LAGE, nicht nur das Vorhandensein.** Neuer Test in der
+Bot-Suite: Er gibt dem Spieler in einer frischen Schussphase einen Bezwinger
+(Test-Hebel `__machBezwinger`, gated, setzt über `placeCannon` eine echte
+Kanone), misst, dass der Schalter das Canvas an **keiner** Stelle
+überschneidet, und schaltet einmal um.
+
+Gegengeprüft: Schalter künstlich an die alte Stelle gelegt →
+`❌ Salven-Schalter UEBERDECKT das Spielfeld (Schalter ab y=119, Brett endet y=653)`.
+Zurückgenommen → grün. Bildschirmfotos auf iPhone und iPad angesehen.
+
+Bis hierher war der Schalter von **keinem** Test erfasst.
