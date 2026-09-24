@@ -3603,8 +3603,12 @@ async function suiteFirebaseStart(browser) {
     });
     // Nichts darf hinaus. Abgebrochene Anfragen bleiben in `versuche` sichtbar —
     // gemessen wird, was die App VERSUCHT, nicht was ankommt.
+    // `**recaptcha**` seit v3.113.0: Im Browser laedt App Check jetzt das
+    // reCAPTCHA-Skript von www.google.com. Hier hat es nichts zu suchen — der
+    // Test soll den Start messen, nicht Googles Bot-Erkennung anfragen.
     for (const muster of ['**identitytoolkit**', '**googleapis**', '**firebaseapp.com**',
-                          '**firebaseio**', '**firebasedatabase**', '**gstatic**'])
+                          '**firebaseio**', '**firebasedatabase**', '**gstatic**',
+                          '**recaptcha**'])
       await page.route(muster, r => r.abort());
 
     await page.goto(`http://localhost:8765/`, { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -3658,6 +3662,10 @@ async function suiteFirebaseStart(browser) {
       ifr.length === 0 ? ok('App-Start: kein Aufloeser-iframe angefragt ✓')
                        : fail(`App-Start: iframe angefragt: ${ifr[0].slice(0, 90)}`);
 
+      const acApp = await page.evaluate(() => window.__appCheck || null);
+      acApp && acApp.art !== 'recaptcha'
+        ? ok(`App-Start: KEIN reCAPTCHA in der App (App Check: ${acApp.art}) ✓`)
+        : fail(`App-Start: reCAPTCHA in der App — unter capacitor://localhost wertlos (${JSON.stringify(acApp)})`);
       const ws = await page.evaluate(() => (window.__wsVersuche || []).length);
       ok(`App-Start: WebSocket stillgelegt (${ws} Versuch(e) abgefangen) ✓`);
 
@@ -3742,6 +3750,15 @@ async function suiteFirebaseStart(browser) {
     try {
       const lief = await page.evaluate(() => !!(window.__fb && window.__fb.db));
       lief ? ok('Browser-Start: firebase-boot lief ✓') : fail('Browser-Start: firebase-boot lief nicht');
+
+      // App Check (v3.113.0): Im Browser muss reCAPTCHA der Anbieter sein. In
+      // der App-Pruefung oben darf er es NICHT sein — dort kommt das Token aus
+      // der Huelle, und reCAPTCHA kann unter capacitor://localhost nie ein
+      // gueltiges liefern.
+      const ac = await page.evaluate(() => window.__appCheck || null);
+      ac && ac.art === 'recaptcha'
+        ? ok('Browser-Start: App Check mit reCAPTCHA eingerichtet ✓')
+        : fail(`Browser-Start: App Check nicht mit reCAPTCHA (${JSON.stringify(ac)})`);
 
       const z = await authZustand(page);
       if (!z) fail('Browser-Start: kein Auth-Objekt');

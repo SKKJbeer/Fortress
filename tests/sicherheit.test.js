@@ -154,3 +154,17 @@ test("die Suite oeffnet die Richtlinie ueberhaupt fuer ihren Mock", () => {
   assert.ok(aufrufe >= 2,
     `nur ${aufrufe} Kontext-Fabrik(en) oeffnen die Richtlinie — makeCtx UND makeOnlineCtx brauchen es`);
 });
+
+// ── 7. App Check im Browser: der Site-Key hat die Form eines Site-Keys ──
+//
+// Ein Tippfehler dort faellt sonst niemandem auf: Solange nicht durchgesetzt
+// ist, laeuft der Browser ohne Token genau wie vorher — erst die Durchsetzung
+// wuerde ihn aussperren. Und ein versehentlich eingesetztes SECRET (gleiche
+// Laenge, gleicher Anfang) waere hier oeffentlich. Pruefbar ist nur die Form;
+// dass es der richtige Schluessel ist, zeigt die Messung auf der Live-Seite.
+test("der reCAPTCHA-Site-Key steht in der Form eines Site-Keys im Code", () => {
+  const q = lies("src", "firebase-boot.js");
+  const m = q.match(/const APPCHECK_SITE_KEY = "([^"]*)";/);
+  assert.ok(m, "APPCHECK_SITE_KEY nicht gefunden");
+  assert.match(m[1], /^6L[0-9A-Za-z_-]{38}$/, "keine Site-Key-Form: " + m[1]);
+});

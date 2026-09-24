@@ -263,6 +263,11 @@ pruefe(/export function nativesAppCheckToken\s*\(/.test(lies("src/platform.ts"))
   "Die Weboberflaeche holt das Token ueber die Bruecke, VOR der Datenbank",
   "Wird App Check erst nach getDatabase eingerichtet, gehen die ersten " +
   "Anfragen ohne Token hinaus.");
+pruefe(/getToken:\s*async\s*\(\)\s*=>\s*\{[\s\S]{0,300}Promise\.race\(\[[\s\S]{0,120}nativesAppCheckToken\(false\)[\s\S]{0,200}setTimeout\(/
+         .test(ohneKom(lies("src/firebase-boot.js"))),
+  "Das Token aus der Huelle hat eine Frist",
+  "Ohne Frist haengt die ANMELDUNG, sobald die Huelle beim Token haengt — " +
+  "App Attest wartet bis zu 60 s aufs Netz. Das waere das Bild aus Bau 29/30.");
 pruefe(/SIMCTL_CHILD_FIRAAppCheckDebugToken="\$APPCHECK_DEBUG_TOKEN"/.test(ablauf)
        && /grep -qE 'ac=ok\\\('/.test(ablauf)
        && /if: always\(\)[\s\S]{0,200}--debug-token-weg/.test(ablauf),

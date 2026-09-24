@@ -71,14 +71,31 @@ import { initializeApp } from "firebase/app";
       // bzw. `appcheck.yml`. Solange nicht durchgesetzt ist, laeuft ein Client
       // ohne Token genau wie bisher. Genau deshalb darf dieser Block scheitern,
       // ohne das Spiel mitzunehmen.
-      const APPCHECK_SITE_KEY = ""; // reCAPTCHA v3 Site-Key (oeffentlich)
+      // reCAPTCHA-v3-Site-Key fuer skkjbeer.github.io. OEFFENTLICH wie der
+      // API-Schluessel — das Gegenstueck (Secret) liegt nur in den Secrets
+      // und bei Firebase (appcheck.yml, Modus einrichten).
+      const APPCHECK_SITE_KEY = "6LffVMwtAAAAANSbtQ5sZe2ERcBXIt2agDUfWsWr";
       window.__appCheck = { art: "aus" };
       try {
         if (hatAppCheckKanal()) {
           initializeAppCheck(app, {
             provider: new CustomProvider({
+              // MIT FRIST. Anmeldung und Datenbank warten auf dieses Token,
+              // bevor sie ihre erste Anfrage stellen. Haengt die Huelle —
+              // App Attest auf einem echten Geraet braucht beim ersten Start
+              // Schluesselerzeugung, Bestaetigung bei Apple und Austausch bei
+              // Firebase; das iOS-SDK wartet dabei bis zu 60 s auf das Netz —,
+              // dann haengt sonst die ANMELDUNG mit. Genau das Bild aus
+              // Bau 29/30 („keine Anmeldung, keine Verbindung"). Mit Frist
+              // scheitert nur das Token; das SDK stellt die Anfrage dann ohne
+              // und versucht es spaeter erneut. Solange nicht durchgesetzt
+              // ist, merkt der Spieler davon nichts.
               getToken: async () => {
-                const r = await nativesAppCheckToken(false);
+                const r = await Promise.race([
+                  nativesAppCheckToken(false),
+                  new Promise((_, nein) => setTimeout(
+                    () => nein(new Error("App-Check-Token: Frist 8s")), 8000))
+                ]);
                 window.__appCheck = { art: "nativ", anbieter: r.anbieter, ok: true };
                 return { token: r.token, expireTimeMillis: r.ablauf };
               }

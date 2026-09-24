@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8406,3 +8406,53 @@ erzwungen **und** Neustart weggelassen → `frischer Anlauf … gescheitert`, ro
 Erst die zweite Probe zeigt, dass die erste etwas prüft.
 
 Tests: Typen 0 · Unit 189 · iOS **33** · E2E 476/476.
+
+## v3.113.1 — App Check im Browser (reCAPTCHA v3)
+
+Der Site-Key ist eingetragen (`src/firebase-boot.js`). Er ist öffentlich wie
+der API-Schlüssel; das Secret liegt nur in den Secrets und bei Firebase.
+
+- `suiteFirebaseStart` belegt je Plattform den Anbieter: im Browser
+  **reCAPTCHA**, in der App **nicht** (dort kommt das Token aus der Hülle —
+  reCAPTCHA kann unter `capacitor://localhost` nie ein gültiges liefern).
+- Die Suite blockt `**recaptcha**`: Sie misst den Start, nicht Googles
+  Bot-Erkennung.
+- `tests/sicherheit.test.js` prüft die **Form** des Site-Keys. Ein Tippfehler
+  fiele sonst erst bei der Durchsetzung auf — und ein versehentlich
+  eingesetztes Secret (gleiche Länge, gleicher Anfang) stünde öffentlich im
+  Code.
+
+Durchsetzung weiterhin **aus**.
+
+## v3.113.2 — Erster Simulator-Probelauf mit App Check: Kette steht, Messung war zu grob
+
+Der erste iOS-Probelauf nach v3.113.0:
+
+```
+STACK-SIEGE-HUELLE App Check eingerichtet (debug)
+STACK-SIEGE-NETZ sdk=1 uid=- lesen=1100ms online=1 ac=ok(debug)
+```
+
+- **`ac=ok(debug)`** — die ganze Kette steht: SDK in der Hülle → Kanal
+  `appcheck` → `CustomProvider` in der Weboberfläche. Übersetzt mit
+  Firebase iOS SDK 11.15.0 für Gerät und Simulator.
+- **`uid=-`** — und genau diese Angabe war **zu grob, um etwas zu sagen**.
+  `pruefeVerbindung` las die uid 2,5 s nach dem Start ab, ohne zu warten.
+  Mit App Check wartet die Anmeldung aber auf ein Token aus der Hülle, und das
+  kommt über das Netz. „Noch nicht" und „nicht" sahen gleich aus.
+
+Jetzt wartet die Selbstauskunft bis zu 10 s und meldet die gemessene Zeit
+(`anmeldung=…ms`); `uid=-` heißt erst dann wirklich „keine". Die Anzeige im
+Online-Schirm wartet **nicht** — sie soll im hängenden Fall sofort „keine
+Anmeldung" sagen; der erste Anlauf ließ auch sie warten, und die Suite hat
+es mit drei roten Prüfungen gemeldet.
+
+**Dabei ein echtes Risiko gefunden:** Anmeldung und Datenbank warten auf das
+App-Check-Token. Hängt die Hülle dabei — App Attest braucht beim ersten Start
+Schlüsselerzeugung, Bestätigung bei Apple und Austausch bei Firebase, das
+iOS-SDK wartet bis zu 60 s aufs Netz —, dann hinge die **Anmeldung** mit. Das
+wäre das Bild aus Bau 29/30. Der `CustomProvider` hat deshalb eine Frist von
+8 s; danach scheitert nur das Token, nicht das Spiel. Eine statische Prüfung
+hält die Frist fest (gegengeprüft: ohne Frist rot).
+
+Tests: Unit 190 · iOS **34** · E2E 478/478.

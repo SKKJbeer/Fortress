@@ -1024,9 +1024,10 @@ window.StackSiegeApp = function StackSiegeApp() {
         ]).catch((e) => ({ ac: "fehler", ok: false,
                            fehler: String((e && e.message) || e).slice(0, 80) }));
       };
-      Promise.all([pruefeVerbindung(), appCheckProbe()]).then(([i, ac]) => {
+      Promise.all([pruefeVerbindung(10000), appCheckProbe()]).then(([i, ac]) => {
         if (weg || !i) return;
         meldeAnHuelle(`sdk=${i.sdk ? 1 : 0} uid=${i.uid || "-"} `
+          + `anmeldung=${typeof i.anmeldung === "number" ? i.anmeldung + "ms" : "keine"} `
           + `lesen=${typeof i.lesen === "number" ? i.lesen + "ms" : "keine"} `
           + `online=${i.online === null ? "?" : i.online ? 1 : 0} `
           + `ac=${ac.ac}`
@@ -1484,7 +1485,10 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Wie lange braucht ein winziger Lesezugriff? Ohne sie bleibt jede weitere
   // Diagnose Raten, und Raten hat in dieser Sitzung schon zweimal danebengelegen.
   const [netzInfo, setNetzInfo] = useState(null);
-  async function pruefeVerbindung() {
+  // `warteAufAnmeldung` (ms): Nur die Selbstauskunft fuer den Probelauf wartet.
+  // Die Anzeige im Online-Schirm NICHT — sie soll im haengenden Fall sofort
+  // „keine Anmeldung" sagen (suiteBestenliste/-Online pruefen genau das).
+  async function pruefeVerbindung(warteAufAnmeldung = 0) {
     const w = typeof window !== "undefined" ? window : {};
     const s = sdk();
     const info = {
@@ -1505,6 +1509,20 @@ window.StackSiegeApp = function StackSiegeApp() {
       lesen: null
     };
     if (!s) return info;
+    // Auf die Anmeldung WARTEN, mit Frist, statt sie im ersten Augenblick
+    // abzulesen (v3.113.2). Der erste Probelauf mit App Check meldete
+    // `uid=-` — gelesen 2,5 s nach dem Start, ohne zu warten. Das hiess nur
+    // „noch nicht", nicht „nicht": Mit App Check wartet die Anmeldung auf ein
+    // Token aus der Huelle, und das kommt erst ueber das Netz. Die Meldung
+    // konnte „langsam" nicht von „kaputt" unterscheiden. Jetzt steht die
+    // gemessene Zeit bis zur Anmeldung dabei (`anmeldung=…ms`), und `uid=-`
+    // heisst wirklich: nach 10 s noch keine.
+    const tA = Date.now();
+    while (!s.uid && !w.__fbAuthError && Date.now() - tA < warteAufAnmeldung)
+      await new Promise((r) => setTimeout(r, 200));
+    info.uid = s.uid ? String(s.uid).slice(0, 6) + "\u2026" : null;
+    info.anmeldung = s.uid ? Date.now() - tA : null;
+    info.authFehler = w.__fbAuthError || "";
     const t0 = Date.now();
     // Ein winziger, oeffentlich lesbarer Pfad. Auch „gibt es nicht" ist eine
     // Antwort — gemessen wird die Umlaufzeit, nicht der Inhalt.
@@ -6967,7 +6985,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.113.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.113.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
