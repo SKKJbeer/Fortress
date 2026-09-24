@@ -107,7 +107,13 @@
     "REGEL DARAUS: Ein Knoten mit `$other` braucht fuer JEDES erlaubte Feld",
     "eine eigene Regel. `tests/regeln.test.js` verlangt jetzt, dass ein",
     "Knoten mit `$other` ueberhaupt benannte Kinder hat — ohne sie weist er",
-    "alles ab."
+    "alles ab.",
+    "",
+    "── v3.113.0: funnel/ok und funnel/fehler ──",
+    "Schritt 'appcheck': ob die App-Huelle ein App-Check-Token bekam, und bei",
+    "Fehlschlag die (generische) Meldung. Damit ist auf ECHTEN Geraeten",
+    "messbar, ob die Durchsetzung eingeschaltet werden darf. Keine Namen,",
+    "keine Kennungen."
   ],
   "rules": {
     "games": {
@@ -432,6 +438,12 @@
         },
         "auto": {
           ".validate": "newData.isBoolean()"
+        },
+        "ok": {
+          ".validate": "newData.isBoolean()"
+        },
+        "fehler": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
         },
         "$other": {
           ".validate": false

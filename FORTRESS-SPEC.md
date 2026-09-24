@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.112.4)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.113.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8332,3 +8332,77 @@ Regeln gesichert, sofort in beide Richtungen geprüft, den Fehler benannt und
 von selbst zurückgerollt. Die Datenbank war zu keinem Zeitpunkt in einem
 Zustand, der echte Spieler ausgesperrt hätte. Genau dafür steht in CLAUDE.md,
 dass Regeln **nie** von Hand in der Console eingespielt werden.
+
+## v3.113.0 — App Check in der iOS-App (App Attest), vorbereitet, nicht durchgesetzt
+
+**Wozu.** Die Datenbank lässt jeden angemeldeten Client schreiben, und
+angemeldet ist man anonym mit einem einzigen Aufruf. App Check verlangt
+zusätzlich einen Nachweis, dass die Anfrage aus **dieser** App stammt — auf
+dem iPhone über Apples **App Attest**, das Apple selbst bestätigt.
+
+### Erst gemessen, was ohne Handarbeit geht
+
+Ein eigener Ablauf (`appcheck.yml`, Modus `stand`) hat vorher nachgesehen,
+statt es anzunehmen:
+
+| | Ergebnis |
+|---|---|
+| iOS-App in Firebase registrieren, App Attest einrichten, Debug-Tokens, Durchsetzung | ✓ kann das Dienstkonto |
+| App Attest an der Kennung bei Apple | ✗ Die Schnittstelle kennt den Wert nicht: `'APP_ATTEST' is not a valid value … Expected one of: 'ICLOUD', 'IN_APP_PURCHASE', …` |
+| reCAPTCHA-Schlüssel anlegen | ✗ `recaptchaenterprise.keys.create` und `serviceusage.services.enable` fehlen |
+
+Diese zwei Handgriffe hat der Betreiber gemacht. Danach gemessen: Die Kennung
+trägt `APP_ATTEST`, und ein **frisch angelegtes Probeprofil** enthält
+`com.apple.developer.devicecheck.appattest-environment` (das bestehende Profil
+stammte von vorher und sagte darüber nichts; das Probeprofil wird sofort
+wieder gelöscht).
+
+### Was eingebaut ist
+
+- **Firebase** (`appcheck.yml`, Modus `einrichten`, wiederholbar): iOS-App
+  `1:263415833676:ios:1e4837bea6c760ca6c40e9` mit Team-Kennung, App Attest als
+  Anbieter, reCAPTCHA v3 als Anbieter der Web-App (Secret aus den Secrets).
+- **Hülle:** Firebase-SDK über Swift Package Manager (`FirebaseAppCheck`,
+  `FirebaseCore`), `AppCheckBruecke.swift`, Entitlements. Release nimmt App
+  Attest, Debug/Simulator den Debug-Anbieter.
+- **Brücke:** Kanal `appcheck` *mit Antwort* (`WKScriptMessageHandlerWithReply`)
+  — JavaScript kommt an App Attest nicht heran, die Hülle holt das Token.
+- **Weboberfläche:** `initializeAppCheck` mit `CustomProvider` über die
+  Brücke, **vor** `getDatabase`. Im Browser reCAPTCHA v3, sobald der Site-Key
+  eingetragen ist.
+
+### Was geprüft wird
+
+- **Simulator-Probelauf:** Die Selbstauskunft trägt jetzt `ac=…`, und der
+  Lauf verlangt `ac=ok(`. Dafür legt `ios.yml` für **genau diesen Lauf** ein
+  Debug-Token an und löscht es danach (`if: always()`) — ein dauerhaftes wäre
+  ein Generalschlüssel an App Check vorbei.
+- **Sechs statische Prüfungen** in `ios-pruefen.mjs` halten die Kette
+  zusammen. Gegengeprüft: sechs künstliche Eingriffe, **6/6 rot**.
+- **Echte Geräte:** App Attest lässt sich nur dort prüfen. Die App zählt
+  deshalb anonym im Trichter (`schritt: "appcheck"`, `ok`, bei Fehlschlag
+  `fehler`), ob sie ein Token bekam. Die beiden Felder stehen **zuerst** in den
+  Regeln (Lehre aus v3.112.4).
+
+### Bewusst NICHT eingeschaltet: die Durchsetzung
+
+Sie gilt für die **ganze Datenbank**. Eingeschaltet wird sie erst, wenn
+belegt ist, dass **alle** Clients Tokens schicken: TestFlight-Geräte (Trichter),
+Browser (reCAPTCHA, Site-Key fehlt noch), Probeläufe und die Regelprüfung in
+`firebase.yml`. Vorher würde sie genau die Spieler aussperren, die sie
+schützen soll.
+
+**Nebenbefund: meine Reparatur aus v3.112.3 war lückenhaft.** Der
+„frische Anlauf" der Bot-Suite klickte „Hauptmenü" und dann „gegen Bot" — der
+Knopf steht aber im Untermenü LOKAL. In einem Lauf, in dem die Partie wirklich
+früh endete, stand deshalb `frischer Anlauf nach Spielende gescheitert`.
+Die damalige Gegenprobe hatte das **nicht** gesehen: Sie erzwang den Zweig,
+während die Partie noch lief — es gab keinen Hauptmenü-Knopf, nichts
+passierte, die Partie lief weiter, alles grün. Eine leere Probe.
+
+Jetzt lädt die Suite neu (funktioniert aus jedem Zustand) und geht über
+LOKAL. Diesmal zweifach gegengeprüft: Zweig erzwungen → 26/26 grün; Zweig
+erzwungen **und** Neustart weggelassen → `frischer Anlauf … gescheitert`, rot.
+Erst die zweite Probe zeigt, dass die erste etwas prüft.
+
+Tests: Typen 0 · Unit 189 · iOS **33** · E2E 476/476.

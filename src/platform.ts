@@ -133,3 +133,31 @@ export function meldeAnHuelle(text: string): void {
   if (!kanal) return;
   try { kanal.postMessage(String(text)); } catch (e) { /* ohne Bruecke: egal */ }
 }
+
+/**
+ * App-Check-Token aus der Huelle holen (v3.113.0).
+ *
+ * App Attest ist eine native Schnittstelle; die Huelle holt das Token und gibt
+ * es ueber den Kanal `appcheck` zurueck (ios/App/App/AppCheckBruecke.swift).
+ * Der Kanal ist einer MIT Antwort — `postMessage` liefert hier ein Promise.
+ *
+ * `null` heisst: Es gibt keinen solchen Kanal (Browser, alte Huelle). Das ist
+ * etwas anderes als ein Fehler — die Aufrufer unterscheiden beides.
+ */
+export function hatAppCheckKanal(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(window as any).webkit?.messageHandlers?.appcheck;
+}
+
+export function nativesAppCheckToken(
+  neu: boolean
+): Promise<{ token: string; ablauf: number; anbieter: string }> | null {
+  if (!hatAppCheckKanal()) return null;
+  const kanal = (window as any).webkit.messageHandlers.appcheck;
+  return Promise.resolve(kanal.postMessage({ neu: !!neu })).then((r: any) => {
+    if (!r || typeof r.token !== "string" || !r.token)
+      throw new Error("Huelle lieferte kein Token");
+    return { token: r.token, ablauf: Number(r.ablauf) || Date.now() + 5 * 60e3,
+             anbieter: String(r.anbieter || "?") };
+  });
+}

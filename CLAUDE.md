@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.112.4
+- **Aktuelle Version**: v3.113.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -386,6 +386,15 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   von jedem erreichbar und meldet sich bei JEDEM Lauf unter einer neuen
   anonymen Kennung an — ohne abgewartetes `remove` bliebe pro Knopfdruck
   dauerhaft ein `players/<uid>`-Knoten stehen.
+- **App Check (seit v3.113.0) — vorbereitet, NICHT durchgesetzt.** iOS nimmt
+  App Attest ueber das Firebase-SDK in der Huelle (`AppCheckBruecke.swift`),
+  das Token geht ueber den Kanal `appcheck` (mit Antwort) an einen
+  `CustomProvider` in `firebase-boot.js`. Einrichtung wiederholbar ueber
+  `appcheck.yml` (Modi `stand`, `einrichten`). **Die Durchsetzung gilt fuer die
+  GANZE Datenbank** — erst einschalten, wenn App (Trichter-Schritt
+  `appcheck`), Browser (reCAPTCHA-Site-Key), Probelaeufe und die Regelpruefung
+  in `firebase.yml` nachweislich Tokens schicken. Das Debug-Token fuer den
+  Simulator wird je Lauf angelegt und geloescht — nie ein dauerhaftes.
 - **Offen und bewusst so:** `games/$code` ist fuer jeden Angemeldeten
   schreibbar (Bindung an die Host-Kennung waere ein Protokoll-Eingriff;
   praktisch verstellt durch 32^6 Codes). `npm audit` meldet `undici` unter

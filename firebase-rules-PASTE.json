@@ -323,6 +323,12 @@
         "auto": {
           ".validate": "newData.isBoolean()"
         },
+        "ok": {
+          ".validate": "newData.isBoolean()"
+        },
+        "fehler": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
         "$other": {
           ".validate": false
         }

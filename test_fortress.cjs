@@ -5392,9 +5392,20 @@ async function suiteBot(browser) {
     const spielBeendet = await page.evaluate(
       () => /SIEG|NIEDERLAGE|ERGEBNIS/i.test(document.body.innerText));
     if (spielBeendet) {
+      // NEU LADEN statt „Hauptmenue" klicken (v3.113.0). Der erste Anlauf
+      // (v3.112.3) klickte „Hauptmenue" und dann „gegen Bot" — der Knopf steht
+      // aber im Untermenue LOKAL, nicht im Hauptmenue. Bemerkt hat das die
+      // damalige Gegenprobe NICHT: Sie erzwang den Zweig, waehrend die Partie
+      // noch LIEF — es gab keinen Hauptmenue-Knopf, nichts passierte, die
+      // Partie lief einfach weiter, und alles war gruen. Eine leere Probe.
+      //
+      // Neu laden funktioniert aus JEDEM Zustand (laufend oder Ergebnis), die
+      // Init-Skripte (Profil, Zeitraffer, Sperre) greifen erneut — und damit
+      // prueft eine erzwungene Gegenprobe wirklich denselben Weg.
       console.log('↻ Partie war zu Ende — frischer Anlauf fuer den Rest der Suite');
-      await jsClick(page, ['Hauptmenü', 'Main menu']);
-      await page.waitForTimeout(400);
+      await loadMenu(page);
+      await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+      await page.waitForTimeout(250);
       await startBotGame(page);
       const da = await page.waitForFunction(() => !!document.querySelector('canvas'),
         { timeout: 8000 }).then(() => true).catch(() => false);

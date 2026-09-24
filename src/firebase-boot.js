@@ -11,7 +11,8 @@ import { initializeApp } from "firebase/app";
              signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
              linkWithRedirect, signInWithRedirect, signInWithCredential, getRedirectResult, signOut }
       from "firebase/auth";
-    import { kontoVerknuepfbar } from "./platform.ts";
+    import { initializeAppCheck, CustomProvider, ReCaptchaV3Provider } from "firebase/app-check";
+    import { kontoVerknuepfbar, istNativ, hatAppCheckKanal, nativesAppCheckToken } from "./platform.ts";
     // Ist bereits ein Firebase-Ersatz installiert, wird NICHT ueberschrieben.
     // Seit das SDK mitgebuendelt ist (Architektur E3), kann die Initialisierung
     // nicht mehr am Netz scheitern — ohne diese Weiche wuerde sie den in der
@@ -51,30 +52,49 @@ import { initializeApp } from "firebase/app";
         projectId: "fortress-cbe30",
         appId: "1:263415833676:web:73aed868626060a26c40e9",
       });
-      // ── Firebase App Check (v3.39.2) ─────────────────────────────────────
-      // Schützt Realtime Database + Queue vor Skript-/REST-Abuse und Flood-DoS.
-      // INAKTIV, solange der reCAPTCHA-v3-Site-Key leer ist (kein Bruch, kein
-      // Netzwerk-Load). So aktivierst du App Check:
-      //   1. Firebase Console → App Check → Web-App registrieren → reCAPTCHA v3.
-      //      Site-Key wird bei google.com/recaptcha/admin/create für die Domain
-      //      skkjbeer.github.io erstellt (Typ: reCAPTCHA v3).
-      //   2. Den SITE-Key (NICHT das Secret) unten eintragen und deployen.
-      //   3. Erst wenn in der App-Check-Console Tokens ankommen (Metrics):
-      //      Realtime Database auf "Erzwungen/Enforced" stellen.
-      // Dynamischer Import → ein Ausfall des App-Check-Moduls bricht NIE die
-      // Firebase-Initialisierung (Spiel läuft weiter).
-      const APPCHECK_SITE_KEY = ""; // <-- reCAPTCHA v3 Site-Key hier eintragen
-      if (APPCHECK_SITE_KEY) {
-        import("firebase/app-check")
-          .then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
-            try {
-              initializeAppCheck(app, {
-                provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
-                isTokenAutoRefreshEnabled: true
-              });
-            } catch (e) { window.__appCheckError = e && (e.code || e.message); }
-          })
-          .catch((e) => { window.__appCheckError = e && e.message; });
+      // ── Firebase App Check (v3.113.0) ──────────────────────────────────
+      //
+      // App Check legt jeder Anfrage an die Datenbank einen Nachweis bei, dass
+      // sie aus DIESER App stammt. Ohne ihn genuegt eine anonyme Anmeldung —
+      // und die bekommt jeder mit einem einzigen Aufruf.
+      //
+      // **Vor `getDatabase`**, damit die Datenbank den Anbieter von Anfang an
+      // kennt.
+      //
+      // Zwei Wege, je nach Plattform:
+      //   - App: Das Token kommt aus der Huelle (App Attest bei Apple;
+      //     ios/App/App/AppCheckBruecke.swift). JavaScript kommt an App Attest
+      //     nicht heran, deshalb der `CustomProvider` ueber die Bruecke.
+      //   - Browser: reCAPTCHA v3, sobald der Site-Key eingetragen ist.
+      //
+      // DURCHGESETZT wird hier nichts — das entscheidet die Firebase-Konsole
+      // bzw. `appcheck.yml`. Solange nicht durchgesetzt ist, laeuft ein Client
+      // ohne Token genau wie bisher. Genau deshalb darf dieser Block scheitern,
+      // ohne das Spiel mitzunehmen.
+      const APPCHECK_SITE_KEY = ""; // reCAPTCHA v3 Site-Key (oeffentlich)
+      window.__appCheck = { art: "aus" };
+      try {
+        if (hatAppCheckKanal()) {
+          initializeAppCheck(app, {
+            provider: new CustomProvider({
+              getToken: async () => {
+                const r = await nativesAppCheckToken(false);
+                window.__appCheck = { art: "nativ", anbieter: r.anbieter, ok: true };
+                return { token: r.token, expireTimeMillis: r.ablauf };
+              }
+            }),
+            isTokenAutoRefreshEnabled: true
+          });
+          window.__appCheck = { art: "nativ" };
+        } else if (APPCHECK_SITE_KEY && !istNativ()) {
+          initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
+            isTokenAutoRefreshEnabled: true
+          });
+          window.__appCheck = { art: "recaptcha" };
+        }
+      } catch (e) {
+        window.__appCheck = { art: "fehler", fehler: e && (e.code || e.message) };
       }
       const db = getDatabase(app);
       window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, uid: null,

@@ -65,6 +65,10 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
     /// kommt beim Aufbau des Menues (`textbedienung` in src/platform.ts).
     private var lebenszeichenGesendet = false
 
+    /// Stark gehalten, weil der Nachrichtenkanal es auch tut — die Ansicht ist
+    /// die Wurzel der App und lebt ohnehin so lange wie sie.
+    private let appCheckKanal = AppCheckKanal()
+
     /// **Hier wird der Kanal wirklich angemeldet.**
     ///
     /// Die Anmeldung an der Konfiguration oben reicht nicht — das ist keine
@@ -102,6 +106,11 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
         // das war in Bau 29 und 30 kaputt, und kein Test hat es bemerkt.
         steuerer.removeScriptMessageHandler(forName: "pruefung")
         steuerer.add(self, name: "pruefung")
+        // Dritter Kanal (v3.113.0): App Check. Dieser braucht eine ANTWORT
+        // (das Token), deshalb die Variante mit Antwort und ausdruecklicher
+        // Inhaltswelt `.page` — dort laeuft das Spiel.
+        steuerer.removeScriptMessageHandler(forName: "appcheck", contentWorld: .page)
+        steuerer.addScriptMessageHandler(appCheckKanal, contentWorld: .page, name: "appcheck")
         NSLog("STACK-SIEGE-HUELLE Kanal am WebView angemeldet")
     }
 

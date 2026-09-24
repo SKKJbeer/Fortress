@@ -122,7 +122,7 @@ test("die Felder, die der Spielcode schreibt, stehen in den Regeln", () => {
     "players/$uid": ["p", "updatedAt", "v"],
     "telemetry/$id": ["ts", "v", "mode", "botLvl", "rounds", "world", "winner", "players", "per"],
     "telemetry/$id/per/$p": ["walls", "cannons", "scrap", "shots", "hits", "buys", "reload", "armor", "repair", "left", "alive"],
-    "funnel/$id": ["ts", "schritt", "art", "wartete", "np", "rolle", "auto"],
+    "funnel/$id": ["ts", "schritt", "art", "wartete", "np", "rolle", "auto", "ok", "fehler"],
     "leaderboard/$playerId": ["name", "wappen", "color", "elo", "elo3", "peakElo", "peakElo3",
                               "wins", "losses", "games", "wins3", "losses3", "games3",
                               "level", "xp", "gold", "updatedAt"],

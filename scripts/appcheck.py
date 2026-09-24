@@ -295,6 +295,52 @@ def einrichten() -> int:
     return 0
 
 
+IOS_APP = "1:263415833676:ios:1e4837bea6c760ca6c40e9"
+DEBUG_NAME = "ci-simulator-probe"
+
+
+def debug_token_anlegen() -> int:
+    """Ein Debug-Token NUR fuer diesen Probelauf.
+
+    App Attest gibt es im Simulator nicht; der Debug-Bau nimmt dort den
+    Debug-Anbieter, und der braucht ein in Firebase hinterlegtes Token. Ein
+    dauerhaftes Token waere ein Generalschluessel an App Check vorbei — also
+    wird fuer jeden Lauf ein frisches angelegt und danach geloescht
+    (`--debug-token-weg`, im Ablauf mit `if: always()`).
+
+    Das Token geht maskiert nach $GITHUB_ENV und erscheint nie im Protokoll.
+    """
+    import os, uuid
+    wert = str(uuid.uuid4())
+    print(f"::add-mask::{wert}")
+    tok = gtoken()
+    s, d = g(tok, f"https://firebaseappcheck.googleapis.com/v1/projects/{PROJEKT}/apps/{IOS_APP}/debugTokens",
+             "POST", {"displayName": DEBUG_NAME, "token": wert})
+    if s != 200:
+        print(f"::error::Debug-Token nicht angelegt: HTTP {s} {fehlertext(d)}")
+        return 1
+    ziel = os.environ.get("GITHUB_ENV")
+    if ziel:
+        with open(ziel, "a", encoding="utf-8") as f:
+            f.write(f"APPCHECK_DEBUG_TOKEN={wert}\n")
+    print(f"  ✓ Debug-Token fuer den Probelauf angelegt ({d.get('name', '').split('/')[-1]})")
+    return 0
+
+
+def debug_token_weg() -> int:
+    """Alle Probelauf-Tokens loeschen — auch die liegengebliebener Laeufe."""
+    tok = gtoken()
+    basis = f"https://firebaseappcheck.googleapis.com/v1/projects/{PROJEKT}/apps/{IOS_APP}/debugTokens"
+    s, d = g(tok, basis)
+    weg = 0
+    for t in d.get("debugTokens", []):
+        if t.get("displayName") == DEBUG_NAME:
+            s2, _ = g(tok, f"https://firebaseappcheck.googleapis.com/v1/{t['name']}", "DELETE")
+            weg += s2 == 200
+    print(f"  ✓ {weg} Probelauf-Token(s) geloescht")
+    return 0
+
+
 def apple_faehigkeit() -> int:
     """App Attest an der Bundle-Kennung einschalten.
 
@@ -325,6 +371,10 @@ def main() -> int:
         return apple_faehigkeit()
     if "--einrichten" in sys.argv:
         return einrichten()
+    if "--debug-token-anlegen" in sys.argv:
+        return debug_token_anlegen()
+    if "--debug-token-weg" in sys.argv:
+        return debug_token_weg()
     if "--stand" not in sys.argv:
         print("Modi: --stand, --apple-faehigkeit")
         return 2

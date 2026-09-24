@@ -195,6 +195,18 @@ jobs:
       #
       # Er ersetzt die fruehere reine Probe-Uebersetzung fuer den Simulator:
       # Wer startet, hat auch uebersetzt.
+      # App Check (v3.113.0): Der Debug-Bau im Simulator nimmt den
+      # Debug-Anbieter — App Attest gibt es dort nicht. Dafuer braucht es ein
+      # in Firebase hinterlegtes Token, und zwar nur fuer DIESEN Lauf: Ein
+      # dauerhaftes waere ein Generalschluessel an App Check vorbei. Der
+      # Schritt hinter dem Probelauf loescht es wieder (if: always()).
+      - name: App-Check-Token fuer den Probelauf
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+        run: |
+          pip3 install --quiet --break-system-packages google-auth requests
+          python3 scripts/appcheck.py --debug-token-anlegen
+
       - name: Simulator-Probelauf
         run: |
           set -e
@@ -217,7 +229,10 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl install "$UDID" "$APP"
           rm -f ~/Library/Logs/DiagnosticReports/App-*.ips 2>/dev/null || true
-          xcrun simctl launch "$UDID" de.skkjbeer.stackandsiege
+          # SIMCTL_CHILD_… reicht die Variable in den Prozess der App durch;
+          # der Debug-Anbieter von App Check liest dort FIRAAppCheckDebugToken.
+          SIMCTL_CHILD_FIRAAppCheckDebugToken="$APPCHECK_DEBUG_TOKEN" \
+            xcrun simctl launch "$UDID" de.skkjbeer.stackandsiege
 
           # Warten, bis die Weboberflaeche wirklich steht: Splash rund eine
           # Sekunde, danach React und das Menue.
@@ -304,6 +319,18 @@ jobs:
             echo "FEHLER: keine gemessene Lesezeit in der Auskunft:"; echo "  $NETZ"; exit 1; }
           echo "Online steht: Anmeldung und Lesezugriff auf dem Geraet belegt."
 
+          # 2c) APP CHECK (v3.113.0): Die Huelle muss ein Token liefern. Im
+          #     Simulator ueber den Debug-Anbieter — belegt damit die ganze
+          #     Kette SDK → Kanal `appcheck` → Weboberflaeche. App Attest selbst
+          #     laesst sich nur auf einem echten Geraet pruefen; dafuer zaehlt
+          #     der Trichter-Schritt `appcheck` (siehe FORTRESS-SPEC v3.113.0).
+          echo "$NETZ" | grep -qE 'ac=ok\(' || {
+            echo "FEHLER: Die Huelle liefert kein App-Check-Token:"; echo "  $NETZ"
+            echo "ac=kanal-fehlt: Kanal 'appcheck' nicht angemeldet."
+            echo "ac=fehler/frist: SDK eingerichtet, aber kein Token (Debug-Token?)."
+            exit 1; }
+          echo "App Check steht: Die Huelle liefert ein Token."
+
           # 3) Der Schirm zeigt etwas. Ein HILFSMASS, kein Beweis: Ein leerer
           #    Schirm komprimiert auf wenige Kilobyte, ein gerendertes Menue
           #    liegt deutlich darueber. Seit Pruefung 2 ist das nur noch die
@@ -316,6 +343,12 @@ jobs:
                  "vermutlich leer. Sieh dir das Artefakt 'simulator-probe' an."; exit 1; }
 
           echo "Die App startet, meldet sich, stuerzt nicht ab und zeigt etwas."
+
+      - name: App-Check-Token des Probelaufs entfernen
+        if: always()
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+        run: python3 scripts/appcheck.py --debug-token-weg || true
 
       - name: Bildschirmfoto des Probelaufs sichern
         if: always()

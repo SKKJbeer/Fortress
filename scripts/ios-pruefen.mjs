@@ -220,6 +220,56 @@ pruefe(ablauf.includes(NETZ_MARKER)
   "wenn dort `uid=- lesen=keine` steht, also genau der kaputte Zustand aus " +
   "Bau 29/30.");
 
+// ── App Check (v3.113.0) ──────────────────────────────────────────────────
+//
+// Eine Kette aus sechs Gliedern: Start des SDK in der Huelle → Anbieter
+// (App Attest bzw. Debug) → Kanal `appcheck` mit Antwort → Brueckenfunktion in
+// platform.ts → CustomProvider in firebase-boot.js → Probelauf verlangt
+// `ac=ok(`. Faellt ein Glied weg, meldet der Rest trotzdem Erfolg — oder die
+// App kommt nach dem Einschalten der Durchsetzung nicht mehr online.
+// Gesucht wird ueberall die KONSTRUKTION (Aufruf, Anmeldung, Muster), an
+// einer von Kommentaren befreiten Fassung.
+abschnitt("App Check (Huelle → Weboberflaeche → Probelauf)");
+const ohneKom = (t) => t.split("\n").filter((z) => !z.trim().startsWith("//")).join("\n");
+const delegat = ohneKom(lies("ios/App/App/AppDelegate.swift"));
+pruefe(/AppCheckStart\.einrichten\(\)/.test(delegat),
+  "Die Huelle richtet App Check beim Start ein",
+  "Ohne den Aufruf steht keine Firebase-App in der Huelle, und der Kanal " +
+  "`appcheck` liefert nie ein Token.");
+const bruecke = ohneKom(lies("ios/App/App/AppCheckBruecke.swift"));
+pruefe(/#if DEBUG[\s\S]*AppCheckDebugProviderFactory\(\)[\s\S]*#else[\s\S]*AppAttestFabrik\(\)[\s\S]*#endif/.test(bruecke)
+       && /AppAttestProvider\(app:\s*app\)/.test(bruecke),
+  "Release nimmt App Attest, Debug den Debug-Anbieter",
+  "Waere es umgekehrt, liefe die TestFlight-App mit dem Debug-Anbieter — und " +
+  "der ist ohne hinterlegtes Token wertlos.");
+pruefe(/addScriptMessageHandler\(\s*appCheckKanal\s*,\s*contentWorld:\s*\.page\s*,\s*name:\s*"appcheck"\s*\)/
+         .test(ohneKom(szene)),
+  "Die Huelle meldet den Kanal `appcheck` (mit Antwort) an",
+  "Ohne ihn findet die Weboberflaeche den Kanal nicht und nimmt still gar " +
+  "keinen Anbieter — nach der Durchsetzung kaeme die App nicht mehr online.");
+const recht = lies("ios/App/App/App.entitlements");
+const projekt = lies("ios/App/App.xcodeproj/project.pbxproj");
+pruefe(/appattest-environment<\/key>\s*<string>production<\/string>/.test(recht)
+       && (projekt.match(/CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/g) || []).length === 2
+       && /productName = FirebaseAppCheck;/.test(projekt)
+       && /AppCheckBruecke\.swift in Sources \*\/,/.test(projekt),
+  "Entitlements, Firebase-Paket und Bruecke stecken im Xcode-Projekt",
+  "Eine Datei, die nicht im Projekt steht, wird nicht uebersetzt — und ohne " +
+  "die Berechtigung lehnt App Attest auf dem Geraet jede Anfrage ab.");
+pruefe(/export function nativesAppCheckToken\s*\(/.test(lies("src/platform.ts"))
+       && /new CustomProvider\(/.test(ohneKom(lies("src/firebase-boot.js")))
+       && lies("src/firebase-boot.js").indexOf("initializeAppCheck(app")
+          < lies("src/firebase-boot.js").indexOf("getDatabase(app)"),
+  "Die Weboberflaeche holt das Token ueber die Bruecke, VOR der Datenbank",
+  "Wird App Check erst nach getDatabase eingerichtet, gehen die ersten " +
+  "Anfragen ohne Token hinaus.");
+pruefe(/SIMCTL_CHILD_FIRAAppCheckDebugToken="\$APPCHECK_DEBUG_TOKEN"/.test(ablauf)
+       && /grep -qE 'ac=ok\\\('/.test(ablauf)
+       && /if: always\(\)[\s\S]{0,200}--debug-token-weg/.test(ablauf),
+  "Der Probelauf verlangt ein Token und raeumt sein Debug-Token weg",
+  "Ohne `ac=ok(` waere der Probelauf gruen, auch wenn App Check nie ein " +
+  "Token liefert. Ohne das Wegraeumen bliebe ein Generalschluessel liegen.");
+
 // ── Zuordnung an die oeffentliche Gruppe ──────────────────────────────────
 //
 // Der Upload allein bringt den Bau zu niemandem: Er muss der oeffentlichen

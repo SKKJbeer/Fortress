@@ -27,7 +27,7 @@ import { BOT_LEVELS, BOT_NAMES, BOT_WAPPEN } from '../engine/bot.ts';
 import { SCHLUESSEL } from '../engine/speicher.ts';
 import { DAILY_REWARDS, DAILY_TASK_POOL, todayStr, msTillMidnight, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, rollDailyTasks, taskDef } from '../engine/daily.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
-import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung, meldeAnHuelle } from '../platform.ts';
+import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung, meldeAnHuelle, nativesAppCheckToken } from '../platform.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES, forgeRarity } from '../engine/catalog.ts';
 import { LANGS } from '../i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction, EMOTES } from '../net/protocol.js';
@@ -1012,13 +1012,34 @@ window.StackSiegeApp = function StackSiegeApp() {
     if (!istNativ()) return;
     let weg = false;
     const t = setTimeout(() => {
-      pruefeVerbindung().then((i) => {
+      // App Check (v3.113.0): Bekommt die Huelle ein Token? Gefragt wird
+      // AUSDRUECKLICH, mit Frist — nicht aus dem Nebenbei-Zustand des SDK
+      // gelesen, denn der steht erst nach dem ersten Datenbankzugriff fest.
+      const appCheckProbe = () => {
+        const p = nativesAppCheckToken(false);
+        if (!p) return Promise.resolve({ ac: "kanal-fehlt", ok: false, fehler: "kein Kanal" });
+        return Promise.race([
+          p.then((r) => ({ ac: "ok(" + r.anbieter + ")", ok: true, fehler: null })),
+          new Promise((f) => setTimeout(() => f({ ac: "frist", ok: false, fehler: "Frist 10s" }), 1e4))
+        ]).catch((e) => ({ ac: "fehler", ok: false,
+                           fehler: String((e && e.message) || e).slice(0, 80) }));
+      };
+      Promise.all([pruefeVerbindung(), appCheckProbe()]).then(([i, ac]) => {
         if (weg || !i) return;
         meldeAnHuelle(`sdk=${i.sdk ? 1 : 0} uid=${i.uid || "-"} `
           + `lesen=${typeof i.lesen === "number" ? i.lesen + "ms" : "keine"} `
-          + `online=${i.online === null ? "?" : i.online ? 1 : 0}`
+          + `online=${i.online === null ? "?" : i.online ? 1 : 0} `
+          + `ac=${ac.ac}`
           + (i.authFehler ? ` authfehler=${i.authFehler}` : "")
-          + (i.bootFehler ? ` bootfehler=${i.bootFehler}` : ""));
+          + (i.bootFehler ? ` bootfehler=${i.bootFehler}` : "")
+          + (ac.fehler ? ` acfehler=${ac.fehler.replace(/\s+/g, "_")}` : ""));
+        // Auf ECHTEN Geraeten gibt es kein Systemprotokoll, das jemand liest.
+        // Die Durchsetzung darf aber erst an, wenn belegt ist, dass echte
+        // Geraete Tokens bekommen — sonst sperrt sie genau die Spieler aus,
+        // die sie schuetzen soll. Deshalb eine anonyme Zaehlung im Trichter:
+        // ob es klappte, und bei Fehlschlag die Meldung. Keine Namen, keine
+        // Kennungen (Trichter-Regel).
+        trichter("appcheck", ac.fehler ? { ok: ac.ok, fehler: ac.fehler } : { ok: ac.ok });
       }).catch((e) => meldeAnHuelle("ausnahme=" + (e && e.message)));
     }, 2500);
     return () => { weg = true; clearTimeout(t); };
@@ -6946,7 +6967,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.112.4"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.113.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

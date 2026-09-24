@@ -7,6 +7,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // App Check VOR allem anderen: Die Weboberflaeche fragt beim ersten
+        // Datenbankzugriff nach einem Token, und bis dahin muss die Firebase-
+        // App der Huelle stehen (AppCheckBruecke.swift).
+        AppCheckStart.einrichten()
         // Override point for customization after application launch.
         return true
     }
