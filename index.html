@@ -12,13 +12,19 @@
   <meta property="og:title" content="Stack &amp; Siege"/>
   <meta property="og:description" content="Mauern bauen. Festungen brechen. 2–3 Spieler, online, kostenlos."/>
   <meta property="og:image" content="https://skkjbeer.github.io/Fortress/social-card.png"/>
+  <meta property="og:image:width" content="1024"/>
+  <meta property="og:image:height" content="500"/>
+  <!-- Massgebliche Adresse des Spiels. Die Website (stack-and-siege.pages.dev)
+       ist die Landeseite fuer Suchende; das Spiel verweist unten ohne
+       JavaScript auf sie (v3.115.0). -->
+  <link rel="canonical" href="https://skkjbeer.github.io/Fortress/"/>
   <meta property="og:url" content="https://skkjbeer.github.io/Fortress/"/>
   <meta name="twitter:card" content="summary_large_image"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.114.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.115.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -234,6 +240,17 @@
     <button onclick="this.closest('#ios-hint').style.display='none'">Verstanden ✓</button>
   </div>
   <div id="root"></div>
+  <!-- Fuer alles, was kein JavaScript ausfuehrt (manche Suchmaschinen,
+       Vorschau-Dienste, Vorleser): ein Satz, worum es geht, und ein Weg
+       weiter. Sonst stuende dort nur der Ladebildschirm (v3.115.0). -->
+  <noscript>
+    <h1>Stack &amp; Siege – kostenloses Burgenspiel</h1>
+    <p>Mauern aus fallenden Steinen bauen, die gegnerische Festung beschießen:
+    für 1–3 Spieler, online, gegen den Bot oder zu dritt an einem Gerät.
+    Das Spiel braucht JavaScript.</p>
+    <p><a href="https://stack-and-siege.pages.dev/">Mehr über Stack &amp; Siege</a> ·
+    <a href="impressum.html">Impressum</a> · <a href="privacy.html">Datenschutz</a></p>
+  </noscript>
   <script type="module" src="./src/game/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

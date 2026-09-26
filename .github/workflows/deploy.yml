@@ -34,7 +34,13 @@ jobs:
       - name: Versionsnummer aus index.html lesen
         id: version
         run: |
-          VERSION=$(grep -oP '(?<=Stack & Siege v)[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
+          # `&amp;` ODER `&` (v3.115.0). Im Titel steht `Stack &amp; Siege` —
+          # das alte Muster suchte nur `Stack & Siege` und fand seit v3.79.0
+          # NICHTS mehr. Folge: kein Versions-Tag, kein Release seit dem
+          # 15.08.; stattdessen ein Release mit dem Tag `v` und dem Namen
+          # „Stack & Siege v". Und leer darf die Version hier nie weiterlaufen.
+          VERSION=$(grep -oP 'Stack &(amp;)? Siege v\K[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
+          [ -n "$VERSION" ] || { echo "::error::Keine Version in index.html gefunden"; exit 1; }
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Gefundene Version: $VERSION"
 

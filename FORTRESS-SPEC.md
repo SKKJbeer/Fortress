@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.114.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8553,3 +8553,74 @@ Gegengeprüft: Schalter künstlich an die alte Stelle gelegt →
 Zurückgenommen → grün. Bildschirmfotos auf iPhone und iPad angesehen.
 
 Bis hierher war der Schalter von **keinem** Test erfasst.
+
+## v3.115.0 — Auffindbarkeit: die Website war für Suchmaschinen unsichtbar
+
+**Befund.** Eine Websuche nach „Stack & Siege" und nach der Website-Adresse
+fand im September 2026 **nichts** — nur fremde Burgenspiele. Die Website war
+technisch ordentlich (Titel, Beschreibung, Vorschau-Angaben, Sitemap,
+strukturierte Daten, Alternativtexte), aber Suchmaschinen kannten sie nicht.
+Dazu mehrere Stellen, an denen Suche und Vorschau schlechter bedient wurden
+als nötig.
+
+### Was geändert ist
+
+**Website (`stack-and-siege.pages.dev`)**
+- **Titel** „Burgenduell fürs iPhone" → „kostenloses Burgenspiel für iPhone &
+  Browser" (60 Zeichen). „Burgenduell" sucht niemand; „Burgenspiel",
+  „kostenlos" und „Browser" schon — und das Spiel läuft auch im Browser, was
+  der alte Titel verschwieg.
+- **Beschreibung** 151 Zeichen, mit Spielerzahl und den drei Spielweisen.
+- **Symbol als Datei** (`favicon.svg`, `icon-192.png`). Vorher eine
+  Datenadresse — eine Anfrage gespart, aber Google zeigt neben einem Treffer
+  nur Symbole, die es unter eigener Adresse abrufen kann.
+- **Vorschaubild quer** (1024×500, 48 kB statt 385 kB als PNG). Vorher ein
+  hochkant aufgenommener Bildschirm (780×1688); WhatsApp, iMessage und Co.
+  zeigen Vorschauen quer und schnitten ihn mittig ab. Maße und Bildtext jetzt
+  angegeben.
+- **Strukturierte Daten** als `@graph`: `WebSite` (Seitenname in Treffern) und
+  `VideoGame` mit Bild, Screenshots, Betriebssystem, Verfügbarkeit, Sprachen
+  und Verweis auf das Spiel.
+- **IndexNow**: Nach jeder Veröffentlichung meldet `website.yml` die Seiten an
+  Bing, Yandex, Seznam und Naver — ein offenes Verfahren, kein Konto, keine
+  Kosten. Nachweis ist eine Schlüsseldatei im Wurzelverzeichnis. **Google
+  nimmt daran nicht teil**; dafür braucht es die Search Console (unten).
+
+**Spiel (GitHub Pages)**
+- **Acht interne Seiten** (Balancing, Diagnose, Kanonen-Taktik, Design-Review,
+  Telemetrie, Vortrag, Übersicht, Waffen) tragen `noindex`. Erreichbar bleiben
+  sie; in Treffern standen sonst Sätze wie „Für AAA fehlen drei Dinge" neben
+  dem Spiel.
+- **Rechtstexte** liegen auf zwei Adressen (Spiel und Website) und nennen
+  jetzt die Website als maßgeblich — sonst wählt die Suche selbst.
+- **Spielseite**: maßgebliche Adresse und ein Text für alles, was kein
+  JavaScript ausführt, mit Weg zur Website. Vorher stand dort nur der
+  Ladebildschirm.
+- Der **Titel mit Versionsnummer** bleibt: Auslieferung und Tests lesen die
+  Version dort. Die Landeseite für Suchende ist die Website.
+
+### Nebenbefund: seit v3.79.0 keine Releases mehr
+
+`deploy.yml` suchte die Version mit `Stack & Siege v…`, im Titel steht aber
+`Stack &amp; Siege`. Das Muster fand **seit dem 15. August nichts** — kein
+Versions-Tag, kein Release; stattdessen ein Release mit dem Tag `v` und dem
+Namen „Stack & Siege v", das bei jeder Auslieferung überschrieben wurde.
+Jetzt `&(amp;)?`, und eine leere Version bricht den Lauf ab. Das alte
+Release `v` ist nicht gelöscht (Löschen auf GitHub ist eine Außenwirkung).
+
+### Geprüft
+
+`tests/auffindbarkeit.test.js` (8 Prüfungen): Titel- und Beschreibungslänge,
+Vorschaubild quer und Maße stimmen mit der Datei, Symbol als Datei und vom
+Bau mitgeliefert, strukturierte Daten gültig mit Bild, IndexNow-Schlüssel in
+Datei und Ablauf gleich, `noindex`/Kanonisch je Seite, **jede neue Seite in
+`public/` muss eingeordnet werden**, und das Versionsmuster aus `deploy.yml`
+wird in JavaScript nachgebildet und gegen `index.html` angewendet.
+Gegengeprüft: 9 künstliche Eingriffe, **9/9 rot** — darunter der alte
+`&`-Fehler.
+
+### Offen — braucht einen Handgriff
+
+**Google Search Console.** Ohne Anmeldung dort erfährt Google von der Seite
+nur zufällig. Eigentum bestätigen geht per Meta-Angabe; den Wert erzeugt die
+Search Console für das Konto des Betreibers.

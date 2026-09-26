@@ -193,6 +193,46 @@ jobs:
           # das ist hier der frisch gebaute Ordner selbst.
           command: pages deploy build/website --project-name=stack-and-siege --branch=main --commit-dirty=true
 
+      # **Suchmaschinen Bescheid geben (v3.115.0).** IndexNow ist ein offenes
+      # Verfahren, das Bing, Yandex, Seznam und Naver gemeinsam nutzen: Eine
+      # Anfrage genuegt, alle erfahren davon. Kein Konto, keine Kosten. Der
+      # Nachweis, dass die Meldung von hier kommt, ist die Schluesseldatei im
+      # Wurzelverzeichnis der Website — derselbe Schluessel steht unten.
+      #
+      # Google nimmt an IndexNow NICHT teil; dafuer braucht es die Search
+      # Console (siehe FORTRESS-SPEC v3.115.0).
+      #
+      # Nur nach einer echten Veroeffentlichung und nur bei Aenderungen —
+      # der taegliche Lauf aendert in der Regel nichts, und wiederholte Meldungen
+      # unveraenderter Seiten sieht IndexNow ungern. Ein Fehlschlag haelt die
+      # Veroeffentlichung nicht auf.
+      - name: Suchmaschinen benachrichtigen (IndexNow)
+        if: ${{ !inputs.nur_zugang && steps.zugang.outputs.bereit == 'ja' && github.event_name != 'schedule' }}
+        env:
+          INDEXNOW_KEY: eda6a55025c32a0a9b73aaeb57afc0d0
+        run: |
+          python3 - <<'PYENDE'
+          import json, os, urllib.request
+          schluessel = os.environ["INDEXNOW_KEY"]
+          basis = "https://stack-and-siege.pages.dev"
+          daten = {
+            "host": "stack-and-siege.pages.dev",
+            "key": schluessel,
+            "keyLocation": f"{basis}/{schluessel}.txt",
+            "urlList": [f"{basis}/", f"{basis}/impressum", f"{basis}/privacy", f"{basis}/agb"],
+          }
+          anfrage = urllib.request.Request("https://api.indexnow.org/indexnow",
+            data=json.dumps(daten).encode(), method="POST",
+            headers={"Content-Type": "application/json; charset=utf-8"})
+          try:
+            with urllib.request.urlopen(anfrage, timeout=30) as a:
+              print(f"IndexNow: HTTP {a.status} — {len(daten['urlList'])} Adressen gemeldet")
+          except urllib.error.HTTPError as e:
+            print(f"::warning::IndexNow antwortete HTTP {e.code}: {e.read()[:200]!r}")
+          except Exception as e:
+            print(f"::warning::IndexNow nicht erreichbar: {e}")
+          PYENDE
+
       # Ein Lauf, der nur geprüft hat, sieht im Actions-Tab genauso grün aus
       # wie einer, der veröffentlicht hat. Genau daran ist der iOS-Bau einmal
       # vorbeigelaufen; deshalb sagt der Lauf hier selbst, was er getan hat.

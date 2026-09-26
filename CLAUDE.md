@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.114.0
+- **Aktuelle Version**: v3.115.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -401,6 +401,24 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   `@firebase/*` — **gemessen nicht im gebauten Bundle**, es ist der Node-Pfad
   des SDK. **App Check ist noch aus** und bleibt der einzige wirksame Hebel
   gegen Flut-Angriffe (`auth != null` ist mit anonymer Anmeldung trivial).
+
+---
+
+## Auffindbarkeit (seit v3.115.0)
+
+- **Landeseite fuer Suchende ist die Website** (`docs/website/`,
+  `stack-and-siege.pages.dev`), nicht die Spielseite. Die Spielseite behaelt
+  die Versionsnummer im Titel (Auslieferung und Tests lesen sie dort).
+- **Jede Seite in `public/` ist eingeordnet**: intern (`noindex`) oder
+  oeffentlich (Rechtstexte, Kanonisch auf die Website).
+  `tests/auffindbarkeit.test.js` laesst eine neue, nicht eingeordnete Seite
+  nicht durch.
+- **IndexNow** meldet Aenderungen an Bing/Yandex/Seznam/Naver
+  (`website.yml`); der Schluessel steht in der Datei `docs/website/<schluessel>.txt`
+  UND im Ablauf — ein Test haelt beide gleich. Google braucht die Search Console.
+- **Versionsnummer in `deploy.yml`**: Im Titel steht `&amp;`. Das Muster
+  `Stack & Siege v` fand seit v3.79.0 nichts — kein Tag, kein Release. Jetzt
+  `&(amp;)?`, leere Version bricht ab.
 
 ---
 

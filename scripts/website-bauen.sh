@@ -38,6 +38,11 @@ done
 # Cloudflare-Adresse liegt dort die Werbeseite; der Verweis fuehrte also auf
 # sich selbst, und „/Fortress/" ins Leere. Hier bekommen sie die vollstaendige
 # Adresse. `public/` bleibt unangetastet.
+# Symbol als Datei (v3.115.0): Google zeigt neben einem Suchtreffer nur ein
+# Symbol, das es unter einer eigenen Adresse abrufen kann. Eine Quelle — das
+# App-Symbol aus public/ —, damit Spiel und Website dasselbe zeigen.
+cp public/icon-192.png "$ZIEL/icon-192.png"
+
 SPIEL="https://skkjbeer.github.io/Fortress/"
 for datei in impressum privacy agb; do
   sed -i.bak \
