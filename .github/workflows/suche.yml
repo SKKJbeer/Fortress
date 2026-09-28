@@ -1,0 +1,36 @@
+# Google Search Console — Anmeldung und Sitemap ohne Klick in der Oberflaeche.
+# Nutzt das Dienstkonto aus FIREBASE_SA_JSON (siehe scripts/suche.py).
+name: Suchmaschinen (Google)
+
+on:
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'Was soll passieren?'
+        type: choice
+        default: stand
+        options:
+          - stand       # nur lesen: erreichbar? welche Bestaetigungs-Angabe?
+          - einrichten  # bestaetigen, anmelden, Sitemap einreichen
+
+permissions:
+  contents: read
+
+jobs:
+  suche:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet google-auth requests
+      - name: Search Console
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+        run: |
+          case "${{ inputs.modus }}" in
+            einrichten) python3 scripts/suche.py --einrichten ;;
+            *) python3 scripts/suche.py --stand ;;
+          esac
