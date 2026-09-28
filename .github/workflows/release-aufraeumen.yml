@@ -1,0 +1,37 @@
+# Fehlerhafte Releases samt Tag entfernen — NUR die hier benannten.
+#
+# Anlass: deploy.yml fand die Versionsnummer von v3.79.0 bis v3.114.x nicht
+# (`&` gegen `&amp;`) und legte einmal ein Release mit dem leeren Tag `v` an.
+# Kein Eingabefeld, genau wie bei scripts/firebase-aufraeumen.py: Was geloescht
+# wird, steht hier und geht durch git. Ein freies Feld waere ein Knopf, der
+# mit einem Tippfehler das falsche Release wegnimmt.
+name: Release aufraeumen
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  aufraeumen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Benannte Releases und Tags loeschen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for tag in v; do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release delete "$tag" --cleanup-tag --yes
+              echo "Release und Tag '$tag' geloescht"
+            else
+              echo "Release '$tag' gibt es nicht (mehr)"
+            fi
+            if gh api "repos/$GH_REPO/git/refs/tags/$tag" >/dev/null 2>&1; then
+              gh api -X DELETE "repos/$GH_REPO/git/refs/tags/$tag"
+              echo "Tag '$tag' geloescht"
+            fi
+          done
