@@ -132,3 +132,11 @@ test("deploy.yml findet die Versionsnummer wirklich (seit v3.79.0 leer)", () => 
   assert.equal(m[m.length - 1], version);
   assert.match(ablauf, /\[ -n "\$VERSION" \] \|\| \{/, "leere Version darf nicht weiterlaufen");
 });
+
+test("Search Console: Bestaetigungsangabe steht im Kopf der Website", () => {
+  // Google prueft das Eigentum regelmaessig nach. Faellt die Angabe weg, ist
+  // die Bestaetigung still verloren — und damit Sitemap und Suchdaten.
+  // Der Wert kommt aus `suche.yml` (Modus stand, Zeile META-WERT=).
+  const wert = meta(KOPF, "name", "google-site-verification");
+  assert.ok(wert && /^[A-Za-z0-9_-]{40,}$/.test(wert), `Bestaetigungsangabe fehlt oder ist verstuemmelt: ${wert}`);
+});

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8624,3 +8624,25 @@ Gegengeprüft: 9 künstliche Eingriffe, **9/9 rot** — darunter der alte
 **Google Search Console.** Ohne Anmeldung dort erfährt Google von der Seite
 nur zufällig. Eigentum bestätigen geht per Meta-Angabe; den Wert erzeugt die
 Search Console für das Konto des Betreibers.
+
+## v3.115.1 — Google Search Console eingerichtet, Release `v` entfernt
+
+- **Search Console ohne Handarbeit am Konto:** `scripts/suche.py` +
+  `.github/workflows/suche.yml`. Das Dienstkonto (Secret `FIREBASE_SA_JSON`)
+  holt über die Site-Verification-Schnittstelle den Meta-Wert, bestätigt nach
+  der Auslieferung das Eigentum an `https://stack-and-siege.pages.dev/`,
+  meldet die Seite in der Search Console an und reicht die Sitemap ein.
+  Modi: `stand` (nur lesen) und `einrichten`. Voraussetzung, einmalig vom
+  Betreiber: Site Verification API und Search Console API im Projekt
+  eingeschaltet (das Dienstkonto darf Schnittstellen nicht selbst
+  einschalten — gewollt).
+- Die Angabe `google-site-verification` steht im Kopf von
+  `docs/website/index.html`. Google prüft regelmäßig nach — fällt sie weg,
+  ist die Bestätigung still verloren. `tests/auffindbarkeit.test.js` hält sie
+  fest (gegengeprüft: ohne Angabe rot).
+- **Release `v` entfernt** über `.github/workflows/release-aufraeumen.yml`:
+  feste Namensliste im Ablauf, kein Eingabefeld (wie bei
+  `scripts/firebase-aufraeumen.py`). Beim ersten Lauf gemessen: die
+  GitHub-Abfrage `git/refs/tags/v` passt als **Präfix** auf jedes `v3.x`;
+  gelöscht wurde nichts Falsches (DELETE trifft nur exakt), die Abfrage nutzt
+  jetzt `git/ref/tags/…` (Einzahl, exakt). Alle Versions-Tags stehen.
