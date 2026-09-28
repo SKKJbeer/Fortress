@@ -30,7 +30,9 @@ jobs:
             else
               echo "Release '$tag' gibt es nicht (mehr)"
             fi
-            if gh api "repos/$GH_REPO/git/refs/tags/$tag" >/dev/null 2>&1; then
+            # `git/ref/` (Einzahl) sucht GENAU diesen Namen. `git/refs/tags/v`
+            # passt als PRAEFIX auf jedes v3.x — beim ersten Lauf gemessen.
+            if gh api "repos/$GH_REPO/git/ref/tags/$tag" >/dev/null 2>&1; then
               gh api -X DELETE "repos/$GH_REPO/git/refs/tags/$tag"
               echo "Tag '$tag' geloescht"
             fi
