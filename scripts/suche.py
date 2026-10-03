@@ -101,7 +101,43 @@ def einrichten() -> int:
     return 0
 
 
+def besitzer() -> int:
+    """Ein Google-Konto als weiteren Eigentuemer eintragen — damit der
+    Betreiber die Suchdaten in SEINER Search Console sieht.
+
+    Die Adresse kommt aus der Eingabe des Laufs, gelesen aus der
+    Ereignisdatei — NICHT ueber `env:`. Werte aus `env:` druckt GitHub im
+    Kopf des Schritts aus, und die Protokolle sind bei einem oeffentlichen
+    Repository fuer jeden lesbar. Vor jeder Ausgabe wird sie maskiert.
+    """
+    import json, os, re
+    ereignis = json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+    adresse = str((ereignis.get("inputs") or {}).get("besitzer") or "").strip()
+    if adresse:
+        print(f"::add-mask::{adresse}")
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", adresse, re.I):
+        print("::error::Eingabe 'besitzer' fehlt oder ist keine Mailadresse")
+        return 1
+    t = tok()
+    kennung = urllib.parse.quote(SEITE, safe="")
+    url = f"https://www.googleapis.com/siteVerification/v1/webResource/{kennung}"
+    s, d = anfrage(t, "GET", url)
+    if s != 200:
+        print(f"::error::Eigentum nicht lesbar (HTTP {s}) {fehler(d)} — erst 'einrichten'")
+        return 1
+    alt = d.get("owners", [])
+    if adresse.lower() in (o.lower() for o in alt):
+        print(f"  Schon eingetragen ({len(alt)} Eigentuemer)")
+        return 0
+    s, d = anfrage(t, "PUT", url, {"site": d["site"], "owners": alt + [adresse]})
+    print(f"  {'✓' if s == 200 else '✗'} Eigentuemer ergaenzt (HTTP {s}) {'' if s == 200 else fehler(d)}"
+          f" — jetzt {len(d.get('owners', alt))} Eigentuemer")
+    return 0 if s == 200 else 1
+
+
 if __name__ == "__main__":
+    if "--besitzer" in sys.argv:
+        sys.exit(besitzer())
     if "--einrichten" in sys.argv:
         sys.exit(einrichten())
     sys.exit(stand())
