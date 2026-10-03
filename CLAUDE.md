@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.115.2
+- **Aktuelle Version**: v3.115.3
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -567,6 +567,15 @@ npm run test:e2e
 - **Einzelne Suite fahren** (nur Entwicklung): `NUR=haerte npm run test:e2e`.
   Namen stehen in der `einzeln`-Tabelle in `test_fortress.cjs`. Ohne `NUR`
   läuft immer alles.
+- **Warteschlange und Wiedereinstieg** (seit v3.115.2/.3):
+  `suiteWarteschlangeMehrere` (`NUR=warteschlange`: 2P/3P mit mehr Wartenden
+  als in eine Partie passen, Nachzuegler, beide Schlangen parallel) und
+  `suiteVerlassenNeu` (`NUR=verlassen`: Host/Gast geht, Absturz, Abbrechen,
+  3P — jede Folgepartie muss GUELTIG sein: neuer Code, Rollen, DB-Knoten,
+  Phasen-Sync, keine fremden Namen; am Ende kein verwaister Spielknoten).
+  Beide ohne Zeitraffer, gemeinsame Helfer in `wqWerkzeug`. Der Knopf heisst
+  „Suche abbrechen" — ein Klick auf „Abbrechen" trifft NICHTS, und `jsClick`
+  meldet das nur ueber den Rueckgabewert. Wer klickt, prueft ihn.
 - **Online-Härte (`suiteOnlineHaerte`, seit v3.94.0)**: Beitritts-Rennen
   (v2.8.1), Abweisungen (unbekannter Code, verwaiste Lobby, volles Spiel),
   Warteschlangen-Selbstheilung (v3.14.10) und die Protokoll-Schranke (`pv`).

@@ -1589,31 +1589,11 @@ async function suiteMatchmaking(browser, fbPort) {
   return { res, errs: [...errsA, ...errsB] };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SUITE: Warteschlange mit MEHREREN Wartenden (v3.115.2)
-//
-// Die Matchmaking-Suite oben prueft zwei Spieler, die 3P-Suite drei — also
-// immer genau eine Partie. Ob die Verteilung stimmt, wenn mehr Leute warten,
-// als in eine Partie passen, stand nirgends. Genau dort sassen aber die
-// schweren Fehler: Livelock ab ~15 Wartenden (v3.14.13), Selbst-Match durch
-// das Echo des eigenen Claims (v3.15.2), Geister-Tickets (v3.15.3).
-//
-// Geprueft wird jede entstandene Partie EINZELN, gemessen am Client selbst
-// (Spielcode, Rolle, Spielerzahl): genau np Mitglieder, jede Rolle 1..np genau
-// einmal, niemand in zwei Partien, kein 2P-Spieler in einer 3P-Partie. Wer
-// uebrig bleibt, muss WEITER SUCHEN — und der naechste Nachzuegler muss ihn
-// finden.
-//
-// OHNE Zeitraffer: Im Zeitraffer endet eine Online-Partie, in der niemand
-// baut, nach wenigen Sekunden — der Test wuerde dann Ergebnisschirme statt
-// Partien zaehlen. Ausserdem liefe mmTick im 50-ms-Takt statt alle 2 s.
-// ═══════════════════════════════════════════════════════════════
-async function suiteWarteschlangeMehrere(browser, fbPort) {
-  const res = [], errs = [];
-  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
-  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
-  console.log('\n' + '='.repeat(50) + '\nTEST: Warteschlange mit mehreren Wartenden (2P + 3P)\n' + '='.repeat(50));
-
+// Werkzeug fuer Warteschlangen-Suiten (v3.115.2/.3): Clients mit eigener
+// Identitaet anlegen, Zustand lesen, suchen, sauber heraus. Gemeinsam fuer
+// suiteWarteschlangeMehrere und suiteVerlassenNeu — `praefix` haelt die
+// Profil- und Geraete-Kennungen der beiden Suiten auseinander.
+function wqWerkzeug(browser, fbPort, errs, praefix, namen) {
   // Merkt sich den Spielcode in dem Moment, in dem das Brett erscheint —
   // klebend, damit ein spaeterer Ergebnisschirm die Beobachtung nicht loescht.
   const SPIEL_MERKER = `setInterval(() => {
@@ -1621,17 +1601,17 @@ async function suiteWarteschlangeMehrere(browser, fbPort) {
   }, 200);`;
   const identitaet = (name, i) => `window.__mmDebug = true; try {
     const p = JSON.parse(localStorage.getItem('fortress_profile'));
-    p.id = 'p_wq_${i}'; p.name = '${name}';
+    p.id = 'p_${praefix}_${i}'; p.name = '${name}';
     // ELO leicht gestreut (innerhalb des Startradius) — eine Sortierung mit
     // lauter Gleichstaenden wuerde nur den Gleichstands-Zweig pruefen.
     p.elo = ${1020 + (i * 7) % 40}; p.elo3 = ${1020 + (i * 11) % 40};
     localStorage.setItem('fortress_profile', JSON.stringify(p));
-    localStorage.setItem('fortress_device_id', 'd_wq_${i}');
+    localStorage.setItem('fortress_device_id', 'd_${praefix}_${i}');
   } catch(e){}`;
 
   const pool = [];
   const neu = async (i) => {
-    const name = 'WQ' + String.fromCharCode(65 + i);
+    const name = namen + String.fromCharCode(65 + i);
     const c = await makeOnlineCtx(browser, fbPort, identitaet(name, i) + SPIEL_MERKER, { langsam: true });
     c.page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(`${name}: ${e.message}`); });
     await loadMenu(c.page);
@@ -1659,12 +1639,53 @@ async function suiteWarteschlangeMehrere(browser, fbPort) {
   };
   const raus = async (c) => {
     const z = await lese(c);
-    if (z.sucht) { await jsClick(c.page, ['Abbrechen']); await c.page.waitForTimeout(200); }
+    // Knopftext ist „Suche abbrechen" (klein) — ein Klick auf 'Abbrechen'
+    // traf NICHTS, und der Client suchte unbemerkt weiter (v3.115.3).
+    if (z.sucht) { await jsClick(c.page, ['Suche abbrechen', 'Cancel search']); await c.page.waitForTimeout(200); }
     if (await c.page.evaluate(() => !!document.querySelector('canvas'))) await mmQuitToMenu(c.page);
     await jsClick(c.page, ['Hauptmenü']);
     await jsClick(c.page, ['Zurück', 'Abbrechen']);
     await c.page.waitForTimeout(200);
   };
+
+  const queueLeer = async (c) => {
+    const q = await c.page.evaluate(async (port) => {
+      const hol = async (p) => { try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=' + p)).json(); } catch (e) { return 'ERR'; } };
+      return { q2: await hol('queue2'), q3: await hol('queue3') };
+    }, fbPort);
+    const n = (v) => v && v !== 'ERR' ? Object.keys(v).length : 0;
+    return { q2: n(q.q2), q3: n(q.q3) };
+  };
+
+  return { neu, lese, suche, raus, queueLeer, pool, zuruecksetzen };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Warteschlange mit MEHREREN Wartenden (v3.115.2)
+//
+// Die Matchmaking-Suite oben prueft zwei Spieler, die 3P-Suite drei — also
+// immer genau eine Partie. Ob die Verteilung stimmt, wenn mehr Leute warten,
+// als in eine Partie passen, stand nirgends. Genau dort sassen aber die
+// schweren Fehler: Livelock ab ~15 Wartenden (v3.14.13), Selbst-Match durch
+// das Echo des eigenen Claims (v3.15.2), Geister-Tickets (v3.15.3).
+//
+// Geprueft wird jede entstandene Partie EINZELN, gemessen am Client selbst
+// (Spielcode, Rolle, Spielerzahl): genau np Mitglieder, jede Rolle 1..np genau
+// einmal, niemand in zwei Partien, kein 2P-Spieler in einer 3P-Partie. Wer
+// uebrig bleibt, muss WEITER SUCHEN — und der naechste Nachzuegler muss ihn
+// finden.
+//
+// OHNE Zeitraffer: Im Zeitraffer endet eine Online-Partie, in der niemand
+// baut, nach wenigen Sekunden — der Test wuerde dann Ergebnisschirme statt
+// Partien zaehlen. Ausserdem liefe mmTick im 50-ms-Takt statt alle 2 s.
+// ═══════════════════════════════════════════════════════════════
+async function suiteWarteschlangeMehrere(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Warteschlange mit mehreren Wartenden (2P + 3P)\n' + '='.repeat(50));
+
+  const { neu, lese, suche, raus, queueLeer, pool } = wqWerkzeug(browser, fbPort, errs, 'wq', 'WQ');
 
   // Wartet, bis `erwartet` Clients im Spiel sind (oder die Frist ablaeuft),
   // und prueft dann die Verteilung. Die Meldung nennt, was beobachtet wurde.
@@ -1698,15 +1719,6 @@ async function suiteWarteschlangeMehrere(browser, fbPort) {
       : fail(`${titel}: ${fehler.join('; ')} — ${bild}`);
     return z;
   };
-  const queueLeer = async (c) => {
-    const q = await c.page.evaluate(async (port) => {
-      const hol = async (p) => { try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=' + p)).json(); } catch (e) { return 'ERR'; } };
-      return { q2: await hol('queue2'), q3: await hol('queue3') };
-    }, fbPort);
-    const n = (v) => v && v !== 'ERR' ? Object.keys(v).length : 0;
-    return { q2: n(q.q2), q3: n(q.q3) };
-  };
-
   try {
     for (let i = 0; i < 6; i++) await neu(i);
     const [A, B, C, D, E, F] = pool;
@@ -1790,6 +1802,249 @@ async function suiteWarteschlangeMehrere(browser, fbPort) {
     q.q2 === 0 && q.q3 === 0 ? ok('Beide Warteschlangen danach leer ✓')
                              : fail(`Ticket-Leichen: queue2=${q.q2} queue3=${q.q3}`);
     errs.length === 0 ? ok('Warteschlange: keine JS-Fehler ✓') : errs.slice(0, 3).forEach(e => fail(`WQ JS: ${e.slice(0, 100)}`));
+  } finally {
+    for (const c of pool) await c.ctx.close();
+  }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Spiel verlassen und neu einreihen (v3.115.3)
+//
+// Die Matchmaking-Suite prueft EIN Rematch nach Aufgabe des Hosts, die
+// 3P-Suite einen Rejoin nach Gast-Ausstieg — und beide nur, DASS wieder ein
+// Brett erscheint. Ob es eine GUELTIGE neue Partie ist, stand nirgends. Genau
+// dort sassen die stillen Fehler: Geister-Listener alter Spiele (v3.14.11),
+// screenRef-Drift — der Name erschien beim fremden Gegner (v3.14.17),
+// veraltetes `statRecorded` (v3.30.3).
+//
+// Gueltig heisst hier, gemessen und nicht angenommen:
+//   - neuer Spielcode, nie ein schon benutzter
+//   - jede Rolle 1..np genau einmal, Spielerzahl stimmt
+//   - Spielknoten in der Datenbank mit numPlayers und Spielstand
+//   - alle Mitglieder in derselben Phase (der Stand des Hosts kommt an)
+//   - niemand sieht Namen von Spielern, die NICHT in seiner Partie sind
+// Am Ende: beide Schlangen leer, KEIN verwaister Spielknoten.
+// ═══════════════════════════════════════════════════════════════
+async function suiteVerlassenNeu(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Spiel verlassen und neu einreihen\n' + '='.repeat(50));
+
+  const { neu, lese, suche, raus, queueLeer, pool } = wqWerkzeug(browser, fbPort, errs, 'vn', 'VN');
+  const alteCodes = new Set();
+  const dbHol = (c, pfad) => c.page.evaluate(async ([port, p]) => {
+    try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=' + encodeURIComponent(p))).json(); }
+    catch (e) { return 'ERR'; }
+  }, [fbPort, pfad]);
+  const zustand = (z) => z.code ? `${z.code.slice(0, 4)}/R${z.rolle}/${z.np}P` : (z.sucht ? 'sucht' : z.bot ? 'BOT' : 'weg');
+
+  // Wartet, bis alle Mitglieder in DERSELBEN Partie sind, und prueft dann,
+  // ob sie gueltig ist. Liefert den Code oder null.
+  const pruefeGueltig = async (titel, gruppe, np, fristMs = 25000) => {
+    const t0 = Date.now();
+    let z = [];
+    while (Date.now() - t0 < fristMs) {
+      z = await Promise.all(gruppe.map(lese));
+      if (z.every(x => x.code && x.code === z[0].code)) break;
+      await gruppe[0].page.waitForTimeout(300);
+    }
+    const ms = Date.now() - t0;
+    const bild = gruppe.map((c, i) => `${c.name}:${zustand(z[i])}`).join(' ');
+    if (!z.every(x => x.code && x.code === z[0].code)) {
+      fail(`${titel}: keine gemeinsame Partie nach ${ms} ms — ${bild}`);
+      return null;
+    }
+    const code = z[0].code, fehler = [];
+    if (alteCodes.has(code)) fehler.push(`alter Spielcode ${code} wiederverwendet`);
+    const rollen = z.map(x => x.rolle).sort().join(',');
+    const soll = Array.from({ length: np }, (_, k) => k + 1).join(',');
+    if (rollen !== soll) fehler.push(`Rollen ${rollen} statt ${soll}`);
+    if (z.some(x => x.np !== np)) fehler.push(`Spielerzahl ${z.map(x => x.np).join('/')}`);
+    const knoten = await dbHol(gruppe[0], 'games/' + code);
+    if (!knoten || knoten === 'ERR') fehler.push('Spielknoten fehlt in der Datenbank');
+    else {
+      if (knoten.numPlayers !== np) fehler.push(`Knoten numPlayers=${knoten.numPlayers}`);
+      if (!knoten.state) fehler.push('kein Spielstand im Knoten');
+    }
+    const sync = await wartePhasenGleich(gruppe.map(c => c.page), 6000);
+    if (!sync.gleich) fehler.push(`Phasen ungleich ueber ${sync.ms} ms: ${sync.phasen.join('/')}`);
+    const fremde = pool.filter(c => !gruppe.includes(c)).map(c => c.name);
+    for (const c of gruppe) {
+      const txt = await c.page.evaluate(() => document.body.innerText);
+      const gesehen = fremde.filter(n => new RegExp('\\b' + n + '\\b').test(txt));
+      if (gesehen.length) fehler.push(`${c.name} sieht Fremde: ${gesehen.join(',')}`);
+      if (np === 2) {
+        const gegner = gruppe.filter(x => x !== c).map(x => x.name);
+        if (!gegner.every(n => txt.includes(n))) fehler.push(`${c.name} sieht seinen Gegner nicht`);
+      }
+    }
+    alteCodes.add(code);
+    fehler.length === 0
+      ? ok(`${titel}: gueltige neue Partie ${code} (${ms} ms, Phase ${sync.phase}) ✓`)
+      : fail(`${titel}: ${fehler.join('; ')} — ${bild}`);
+    return fehler.length === 0 ? code : null;
+  };
+  const hostVon = async (gruppe) => {
+    for (const c of gruppe) if ((await lese(c)).rolle === 1) return c;
+    return gruppe[0];
+  };
+
+  try {
+    for (let i = 0; i < 6; i++) await neu(i);
+    const [A, B, C, D, E, F] = pool;
+
+    // ── 1) Dreimal: Partie, einer geht mitten im Spiel, beide neu ──
+    // Runde 1 und 3 geht der Host, Runde 2 der Gast.
+    for (let runde = 1; runde <= 3; runde++) {
+      await Promise.all([suche(A, 2), suche(B, 2)]);
+      if (!(await pruefeGueltig(`2P Runde ${runde}`, [A, B], 2))) break;
+      const host = await hostVon([A, B]);
+      const geht = runde === 2 ? (host === A ? B : A) : host;
+      await mmQuitToMenu(geht.page);
+      await (geht === A ? B : A).page.waitForTimeout(800);
+      for (const c of [A, B]) await raus(c);
+    }
+    await Promise.all([suche(A, 2), suche(B, 2)]);
+    await pruefeGueltig('2P Runde 4 nach drei Abgaengen', [A, B], 2);
+    for (const c of [A, B]) await raus(c);
+
+    // ── 2) Host geht und sucht SOFORT neu, Gast steht noch im Ergebnis ──
+    await Promise.all([suche(A, 2), suche(B, 2)]);
+    if (await pruefeGueltig('2P vor Sofort-Neustart', [A, B], 2)) {
+      const host = await hostVon([A, B]), gast = host === A ? B : A;
+      await mmQuitToMenu(host.page);
+      await suche(host, 2);
+      await gast.page.waitForTimeout(1500);   // Gast liest noch sein Ergebnis
+      await raus(gast);
+      await suche(gast, 2);
+      await pruefeGueltig('2P Host sofort neu, Gast spaeter', [A, B], 2);
+      for (const c of [A, B]) await raus(c);
+    }
+
+    // ── 3) Gast geht, waehrend ein Dritter schon wartet ──
+    // Der Gehende muss mit dem Wartenden eine NEUE Partie bilden — nie in
+    // seine alte zurueck. Der Zurueckgelassene findet danach einen Vierten.
+    await Promise.all([suche(A, 2), suche(B, 2)]);
+    if (await pruefeGueltig('2P vor Gast-Abgang', [A, B], 2)) {
+      await suche(C, 2);
+      await C.page.waitForTimeout(1500);
+      const z = await lese(C);
+      z.sucht && !z.code ? ok('Dritter wartet, waehrend die Partie laeuft ✓')
+                         : fail(`Dritter: ${zustand(z)} statt "sucht"`);
+      const host = await hostVon([A, B]), gast = host === A ? B : A;
+      await mmQuitToMenu(gast.page);
+      await suche(gast, 2);
+      await pruefeGueltig('2P Gehender + Wartender', [gast, C], 2);
+      await raus(host);
+      await Promise.all([suche(host, 2), suche(D, 2)]);
+      await pruefeGueltig('2P Zurueckgelassener + Vierter', [host, D], 2);
+      for (const c of pool) await raus(c);
+    }
+
+    // ── 4) Absturz: Gast laedt mitten im Spiel neu (neue Sitzung) ──
+    await Promise.all([suche(A, 2), suche(B, 2)]);
+    if (await pruefeGueltig('2P vor Absturz', [A, B], 2)) {
+      const host = await hostVon([A, B]), gast = host === A ? B : A;
+      await gast.page.reload();
+      await loadMenu(gast.page);
+      await Promise.all([suche(gast, 2), suche(E, 2)]);
+      await pruefeGueltig('2P nach Absturz mit Neuem', [gast, E], 2);
+      for (const c of pool) await raus(c);
+    }
+
+    // ── 5) Suche dreimal abbrechen und neu — genau EIN Ticket bleibt ──
+    // Nach JEDEM Abbruch muss das Ticket weg sein — nicht erst beim naechsten
+    // Suchen. Ein Abgebrochener, der noch in der Schlange steht, wird sonst
+    // als Gegner zugeteilt und erscheint nie (Gegenprobe v3.115.3: der
+    // Endzustand allein blieb gruen, weil die neue Suche eigene Altlasten
+    // wegraeumt).
+    const ticketsVon = async (pid) => {
+      const q = await dbHol(C, 'queue2');
+      return q && q !== 'ERR' ? Object.values(q).filter(t => t && t.pid === pid) : [];
+    };
+    const nachAbbruch = [];
+    for (let k = 0; k < 3; k++) {
+      await suche(C, 2);
+      await C.page.waitForTimeout(300);
+      const getroffen = await jsClick(C.page, ['Suche abbrechen']);
+      if (!getroffen) { fail(`Abbruch ${k + 1}: Knopf „Suche abbrechen" nicht gefunden`); break; }
+      let rest = [];
+      for (let w = 0; w < 8; w++) {
+        await C.page.waitForTimeout(150);
+        rest = await ticketsVon('p_vn_2');
+        if (rest.length === 0) break;
+      }
+      nachAbbruch.push(rest.length);
+      await jsClick(C.page, ['Zurück']);
+      await C.page.waitForTimeout(150);
+    }
+    nachAbbruch.every(n => n === 0)
+      ? ok('Abbrechen raeumt das Ticket sofort weg (3/3) ✓')
+      : fail(`Nach Abbrechen noch Tickets in der Schlange: ${nachAbbruch.join('/')} — ein Abgebrochener waere als Gegner zuteilbar`);
+    await suche(C, 2);
+    await C.page.waitForTimeout(1200);
+    {
+      const q = await dbHol(C, 'queue2');
+      const eigene = q && q !== 'ERR' ? Object.values(q).filter(t => t && t.pid === 'p_vn_2') : [];
+      eigene.length === 1 && eigene[0].status === 'waiting'
+        ? ok('Dreimal abgebrochen und neu: genau ein wartendes Ticket ✓')
+        : fail(`Nach Abbruch-Schleife: ${eigene.length} Ticket(s) von VNC (${eigene.map(t => t.status).join(',')})`);
+    }
+    await suche(D, 2);
+    await pruefeGueltig('2P nach Abbruch-Schleife', [C, D], 2);
+    for (const c of pool) await raus(c);
+
+    // ── 6) 3P: Gast geht, danach suchen alle sechs ──────────────
+    await Promise.all([suche(A, 3), suche(B, 3), suche(C, 3)]);
+    if (await pruefeGueltig('3P vor Gast-Abgang', [A, B, C], 3)) {
+      const host = await hostVon([A, B, C]);
+      const gast = [A, B, C].find(c => c !== host);
+      await mmQuitToMenu(gast.page);
+      await host.page.waitForTimeout(1200);
+      for (const c of [A, B, C]) await raus(c);
+      await Promise.all(pool.map(c => suche(c, 3)));
+      const t0 = Date.now(); let z = [];
+      while (Date.now() - t0 < 30000) {
+        z = await Promise.all(pool.map(lese));
+        if (z.every(x => x.code)) break;
+        await A.page.waitForTimeout(400);
+      }
+      const gruppen = {};
+      z.forEach((x, i) => { if (x.code) (gruppen[x.code] = gruppen[x.code] || []).push(pool[i]); });
+      const listen = Object.values(gruppen);
+      if (listen.length !== 2 || listen.some(g => g.length !== 3)) {
+        fail(`3P alle sechs neu: ${pool.map((c, i) => c.name + ':' + zustand(z[i])).join(' ')}`);
+      } else {
+        for (const [i, g] of listen.entries()) await pruefeGueltig(`3P neu, Partie ${i + 1}`, g, 3, 3000);
+      }
+      for (const c of pool) await raus(c);
+    }
+
+    // ── Aufraeumen: nichts bleibt liegen ────────────────────────
+    // 3,5 s: Der Host loescht seinen Spielknoten erst 2,5 s nach dem
+    // Verlassen (cleanupGame) — vorher waere „verwaist" eine Momentaufnahme.
+    await A.page.waitForTimeout(3500);
+    const q = await queueLeer(A);
+    q.q2 === 0 && q.q3 === 0 ? ok('Beide Warteschlangen danach leer ✓')
+                             : fail(`Ticket-Leichen: queue2=${q.q2} queue3=${q.q3}`);
+    // Auf den Zustand WARTEN statt ihn einmal zu lesen: Der Host loescht 2,5 s
+    // nach dem Verlassen per setTimeout — unter Last im vollen Lauf (neben den
+    // parallelen Suiten) kam die Einzelablesung einmal zu frueh. Gemessen,
+    // nicht geraten: Beide Abgangs-Reihenfolgen im 3P-Spiel raeumen auf.
+    let reste = [], wartete = 0;
+    for (const t0 = Date.now(); Date.now() - t0 < 12000; ) {
+      const spiele = await dbHol(A, 'games');
+      reste = spiele && spiele !== 'ERR' ? Object.keys(spiele).filter(k => alteCodes.has(k)) : [];
+      wartete = Date.now() - t0;
+      if (reste.length === 0) break;
+      await A.page.waitForTimeout(500);
+    }
+    reste.length === 0
+      ? ok(`Keine verwaisten Spielknoten (${alteCodes.size} Partien, ${wartete} ms nach dem letzten Abgang) ✓`)
+      : fail(`Verwaiste Spielknoten nach ${wartete} ms: ${reste.join(', ')} von ${alteCodes.size} Partien`);
+    errs.length === 0 ? ok('Verlassen/Neu: keine JS-Fehler ✓') : errs.slice(0, 3).forEach(e => fail(`VN JS: ${e.slice(0, 100)}`));
   } finally {
     for (const c of pool) await c.ctx.close();
   }
@@ -5502,78 +5757,100 @@ async function suiteBot(browser) {
       // einen neuen Fehler erzeugt — deshalb nur die Messung, nicht das
       // Warten. Faellt der Schritt im CI wieder, sagt die Phase mit, ob an
       // der Vermutung doch etwas dran war.
-      const phaseVorSprengung = await page.evaluate(() => window.__phase ? window.__phase() : null);
-
-      let blasted = { n: 0, open: false };
-      for (let versuch = 0; versuch < 8 && !blasted.open; versuch++) {
-        const r = await page.evaluate(() => {
-          const n = window.__blastWall ? window.__blastWall(2, 5) : 0;
-          return { n, open: window.__castleClosed ? window.__castleClosed(2) === false : false };
-        });
-        blasted = { n: blasted.n + r.n, open: r.open };
-        if (r.n === 0) break;               // keine Mauer mehr zu sprengen
-        if (!r.open) await page.waitForTimeout(120);
-      }
-      if (blasted.n >= 1 && blasted.open) {
-        ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen, `
-           + `in Phase "${phaseVorSprengung}") ✓`);
-        let sealed = false;
-        // 60 s, nicht 25. Geprueft wird, DASS der Bot dichtet — nicht, wie
-        // schnell. Unter voller Suitenlast (zwanzig Browserkontexte) kriecht
-        // der KI-Tick, und die alte Frist hat am 17.09. eine Auslieferung
-        // aufgehalten, obwohl nichts kaputt war.
-        //
-        // **Die Frist steht in EINER Variablen, und die Meldung liest sie.**
-        // Vorher stand die Zahl doppelt da: als Konstante und als Text. Beim
-        // Hochsetzen auf 60 s habe ich die Konstante geaendert und den Text
-        // vergessen — die Meldung log dann „nach 25s" und schickte den
-        // naechsten Leser in die falsche Richtung. Genau dieselbe Sorte
-        // Fehler, die zwei Versionen vorher schon „Blase offen: false"
-        // behauptet hatte. Zwei Kopien einer Zahl driften, sobald man sie
-        // anfasst.
-        //
-        // Und die Meldung sagt jetzt, WAS sie beobachtet hat: Wie viele
-        // Bauphasen waehrend des Wartens vergingen. Ohne diese Zahl ist
-        // „Burg immer noch offen" nicht zu deuten — sie unterscheidet
-        // „Rechner war zu langsam, es kam gar keine Bauphase" von „der Bot
-        // hatte Gelegenheiten und hat sie nicht genutzt".
-        const SEAL_MS = 60000;
-        const sealStart = Date.now();
-        let bauphasen = 0, vorPhase = null, spielVorbei = false;
-        while (Date.now() - sealStart < SEAL_MS) {
-          const st = await page.evaluate(() => ({
-            zu: !!(window.__castleClosed && window.__castleClosed(2) === true),
-            phase: window.__phase ? window.__phase() : null
-          }));
-          if (st.phase && st.phase !== vorPhase) {
-            if (st.phase === 'build') bauphasen++;
-            vorPhase = st.phase;
-          }
-          if (st.zu) { sealed = true; break; }
-          // Ist das Spiel vorbei, kommt keine Bauphase mehr — dann ist die
-          // Frist von 60 s reine Wartezeit, und am Ende stuende eine Aussage
-          // ueber den Bot, die der Lauf nie gepruefte hat.
-          if (st.phase === 'result') { spielVorbei = true; break; }
-          await page.waitForTimeout(300);
+      // Hatte der Bot KEINE Gelegenheit (Spiel vorbei, bevor eine Bauphase
+      // fuer ihn kam), ist das keine Aussage ueber den Bot — dann frische
+      // Partie und neu messen, hoechstens dreimal (v3.115.3). Im vollen Lauf
+      // mit den Warteschlangen-Suiten kam das einmal vor; allein 3/3 gruen.
+      // Ein echter Fehlschlag („Gelegenheit gehabt, nicht gedichtet") wird
+      // NICHT wiederholt, sondern sofort gemeldet.
+      for (let anlauf = 1; anlauf <= 3; anlauf++) {
+        if (anlauf > 1) {
+          console.log(`↻ Bau-KI: keine Gelegenheit im ${anlauf - 1}. Anlauf — frische Partie`);
+          await loadMenu(page);
+          await page.evaluate(() => { window.__mmDebug = true; });
+          await jsClick(page, ['LOKAL', 'PLAY LOCAL']);
+          await page.waitForTimeout(250);
+          await startBotGame(page);
+          await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 }).catch(() => {});
+          await page.waitForTimeout(400);
         }
-        const sek = ((Date.now() - sealStart) / 1000).toFixed(1);
-        sealed
-          ? ok(`Bau-KI: Bot hat die Bresche wieder versiegelt (Burg zu, nach ${sek}s) ✓`)
-          : fail(`Bau-KI: Burg nach ${sek}s (Frist ${SEAL_MS / 1000}s) immer noch offen — `
-                 + `${bauphasen} Bauphase(n) beobachtet`
-                 // Aus EINER Bauphase laesst sich nichts schliessen: Die
-                 // Bresche entsteht mitten in einer Phase, der Bot bekommt
-                 // davon nur den Rest. Erst ab zwei hatte er wirklich
-                 // Gelegenheit. Ein Lauf, der die Frage nicht stellen konnte,
-                 // darf sie auch nicht beantworten — sonst steht da „der Bot
-                 // dichtet nicht", und das ist dann schlicht unwahr.
-                 + (spielVorbei
-                      ? ': das Spiel endete vorher (Ergebnisschirm) — der Bot kam nicht mehr dazu'
-                      : bauphasen < 2
-                      ? ': zu wenige fuer einen Schluss, der Lauf war zu langsam'
-                      : ': der Bot hatte Gelegenheit und dichtet nicht'));
-      } else {
-        fail(`Bau-KI: Bresche nicht erzeugbar (n=${blasted.n}, open=${blasted.open})`);
+        let keineGelegenheit = false;
+        const phaseVorSprengung = await page.evaluate(() => window.__phase ? window.__phase() : null);
+
+        let blasted = { n: 0, open: false };
+        for (let versuch = 0; versuch < 8 && !blasted.open; versuch++) {
+          const r = await page.evaluate(() => {
+            const n = window.__blastWall ? window.__blastWall(2, 5) : 0;
+            return { n, open: window.__castleClosed ? window.__castleClosed(2) === false : false };
+          });
+          blasted = { n: blasted.n + r.n, open: r.open };
+          if (r.n === 0) break;               // keine Mauer mehr zu sprengen
+          if (!r.open) await page.waitForTimeout(120);
+        }
+        if (blasted.n >= 1 && blasted.open) {
+          ok(`Bau-KI: Bresche geschlagen (${blasted.n} Zellen, Burg offen, `
+             + `in Phase "${phaseVorSprengung}") ✓`);
+          let sealed = false;
+          // 60 s, nicht 25. Geprueft wird, DASS der Bot dichtet — nicht, wie
+          // schnell. Unter voller Suitenlast (zwanzig Browserkontexte) kriecht
+          // der KI-Tick, und die alte Frist hat am 17.09. eine Auslieferung
+          // aufgehalten, obwohl nichts kaputt war.
+          //
+          // **Die Frist steht in EINER Variablen, und die Meldung liest sie.**
+          // Vorher stand die Zahl doppelt da: als Konstante und als Text. Beim
+          // Hochsetzen auf 60 s habe ich die Konstante geaendert und den Text
+          // vergessen — die Meldung log dann „nach 25s" und schickte den
+          // naechsten Leser in die falsche Richtung. Genau dieselbe Sorte
+          // Fehler, die zwei Versionen vorher schon „Blase offen: false"
+          // behauptet hatte. Zwei Kopien einer Zahl driften, sobald man sie
+          // anfasst.
+          //
+          // Und die Meldung sagt jetzt, WAS sie beobachtet hat: Wie viele
+          // Bauphasen waehrend des Wartens vergingen. Ohne diese Zahl ist
+          // „Burg immer noch offen" nicht zu deuten — sie unterscheidet
+          // „Rechner war zu langsam, es kam gar keine Bauphase" von „der Bot
+          // hatte Gelegenheiten und hat sie nicht genutzt".
+          const SEAL_MS = 60000;
+          const sealStart = Date.now();
+          let bauphasen = 0, vorPhase = null, spielVorbei = false;
+          while (Date.now() - sealStart < SEAL_MS) {
+            const st = await page.evaluate(() => ({
+              zu: !!(window.__castleClosed && window.__castleClosed(2) === true),
+              phase: window.__phase ? window.__phase() : null
+            }));
+            if (st.phase && st.phase !== vorPhase) {
+              if (st.phase === 'build') bauphasen++;
+              vorPhase = st.phase;
+            }
+            if (st.zu) { sealed = true; break; }
+            // Ist das Spiel vorbei, kommt keine Bauphase mehr — dann ist die
+            // Frist von 60 s reine Wartezeit, und am Ende stuende eine Aussage
+            // ueber den Bot, die der Lauf nie gepruefte hat.
+            if (st.phase === 'result') { spielVorbei = true; break; }
+            await page.waitForTimeout(300);
+          }
+          const sek = ((Date.now() - sealStart) / 1000).toFixed(1);
+          keineGelegenheit = !sealed && (spielVorbei || bauphasen < 2) && anlauf < 3;
+          if (keineGelegenheit) continue;
+          sealed
+            ? ok(`Bau-KI: Bot hat die Bresche wieder versiegelt (Burg zu, nach ${sek}s${anlauf > 1 ? ', Anlauf ' + anlauf : ''}) ✓`)
+            : fail(`Bau-KI: Burg nach ${sek}s (Frist ${SEAL_MS / 1000}s) immer noch offen — `
+                   + `${bauphasen} Bauphase(n) beobachtet`
+                   // Aus EINER Bauphase laesst sich nichts schliessen: Die
+                   // Bresche entsteht mitten in einer Phase, der Bot bekommt
+                   // davon nur den Rest. Erst ab zwei hatte er wirklich
+                   // Gelegenheit. Ein Lauf, der die Frage nicht stellen konnte,
+                   // darf sie auch nicht beantworten — sonst steht da „der Bot
+                   // dichtet nicht", und das ist dann schlicht unwahr.
+                   + (spielVorbei
+                        ? ': das Spiel endete vorher (Ergebnisschirm) — der Bot kam nicht mehr dazu'
+                        : bauphasen < 2
+                        ? ': zu wenige fuer einen Schluss, der Lauf war zu langsam'
+                        : ': der Bot hatte Gelegenheit und dichtet nicht'));
+        } else {
+          fail(`Bau-KI: Bresche nicht erzeugbar (n=${blasted.n}, open=${blasted.open})`);
+        }
+        if (!keineGelegenheit) break;
       }
     }
 
@@ -6323,6 +6600,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       fbstart: () => suiteFirebaseStart(browser),
       matchmaking: () => suiteMatchmaking(browser, FB_PORT),
       warteschlange: () => suiteWarteschlangeMehrere(browser, FB_PORT),
+      verlassen: () => suiteVerlassenNeu(browser, FB_PORT),
       haerte: () => suiteOnlineHaerte(browser, FB_PORT),
       heartbeat: () => suiteHeartbeat(browser, FB_PORT),
       trichter: () => suiteTrichter(browser, FB_PORT),
@@ -6371,6 +6649,8 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // Mehrere Wartende (v3.115.2): sechs Clients gleichzeitig, deshalb
     // seriell und direkt hinter den beiden anderen Warteschlangen-Suiten.
     const wq = await suiteWarteschlangeMehrere(browser, FB_PORT);
+    // Verlassen und neu einreihen (v3.115.3): ebenfalls sechs Clients, seriell.
+    const vn = await suiteVerlassenNeu(browser, FB_PORT);
     // Herzschlag laeuft bewusst HIER (seriell) und nicht parallel: die Suite
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
@@ -6410,7 +6690,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // denen das SDK wirklich hochfaehrt, und wartet je 2,5 s auf den
     // Anmeldeversuch. Parallel dazu waere das eine Lastmessung.
     const fbs = await suiteFirebaseStart(browser);
-    return { mm, mm3, wq, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
+    return { mm, mm3, wq, vn, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -6441,14 +6721,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rWQ = rHeavy.wq, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rWQ = rHeavy.wq, rVN = rHeavy.vn, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

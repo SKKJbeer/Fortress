@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8686,3 +8686,60 @@ Hänger erkannt, zu kleine Partien fallen auf.
 
 Neue Testhaken, nur mit `__mmDebug`: `__mpCode`, `__mpNp` (in
 `startPolling`, neben `__myRole`) und `__mmSucht()`.
+
+## v3.115.3 — Spiel verlassen und neu einreihen: jede neue Partie muss gültig sein
+
+Bisher prüften Matchmaking- und 3P-Suite nach einem Abgang nur, DASS wieder
+ein Brett erscheint. Ob es eine gültige NEUE Partie ist, stand nirgends —
+dort saßen die stillen Fehler: Geister-Listener (v3.14.11), screenRef-Drift
+(v3.14.17), veraltetes `statRecorded` (v3.30.3).
+
+**E2E — `suiteVerlassenNeu`** (`NUR=verlassen`), sechs Clients, ohne
+Zeitraffer. Gültig heißt, gemessen am Client UND in der Datenbank: neuer
+Spielcode (nie ein schon benutzter), jede Rolle genau einmal, Spielknoten mit
+`numPlayers` und Spielstand, alle in derselben Phase, niemand sieht Namen von
+Spielern außerhalb seiner Partie.
+
+| Fall | Geprüft |
+|---|---|
+| 2P, viermal hintereinander: Host / Gast / Host geht mitten im Spiel | jede Folgepartie gültig |
+| Host geht und sucht sofort neu, Gast steht noch im Ergebnis | gültige neue Partie |
+| Gast geht, während ein Dritter wartet | Dritter wartet wirklich; Gehender + Wartender = neue Partie; Zurückgelassener + Vierter = neue Partie |
+| Absturz: Gast lädt mitten im Spiel neu | gültige Partie mit einem Neuen |
+| Suche dreimal abbrechen | nach JEDEM Abbruch kein Ticket mehr; danach genau eines, gültige Partie |
+| 3P: Gast geht, dann suchen alle sechs | zwei gültige 3P-Partien |
+| danach | beide Schlangen leer, **kein verwaister Spielknoten** |
+
+Gegengeprüft mit vier eingebauten Fehlern, **4/4 rot**: screenRef bleibt
+beim Verlassen auf `game` (v3.14.17), Listener alter Spiele werden nie
+abgemeldet (v3.14.11; fünf Wiedereintritte scheitern), Host löscht seinen
+Spielknoten nicht (15 verwaiste Knoten), Abbrechen löscht das Ticket nicht.
+
+**Zwei Fehler im Test selbst, beide durch Gegenproben gefunden:**
+- Die Abbruch-Prüfung sah anfangs nur den Endzustand — und blieb mit
+  eingebautem Fehler grün, weil eine neue Suche eigene Altlasten wegräumt.
+  Ein Abgebrochener stünde trotzdem als zuteilbarer Gegner in der Schlange.
+  Jetzt wird nach JEDEM Abbruch gemessen.
+- Der Knopf heißt „Suche abbrechen" (klein). Der Klick auf „Abbrechen"
+  traf NICHTS — mit und ohne eingebauten Fehler dasselbe Bild 1/1/1. Erst
+  der Vergleich beider Läufe zeigte, dass die Probe nichts unterscheidet.
+  Jetzt muss der Klick nachweislich treffen. Dieselbe Stelle im
+  gemeinsamen Werkzeug (`wqWerkzeug`) ist mit behoben.
+
+`wqWerkzeug` (neu): gemeinsame Helfer der beiden Warteschlangen-Suiten.
+Beide laufen in `deploy.yml` vor jeder Auslieferung (serieller Block).
+
+**Nebenbei — zwei Stellen, die im vollen Lauf flatterten (beide gemessen):**
+- *Verwaiste Spielknoten* meldete im ersten vollen Lauf einen Knoten. Gegen-
+  messung: beide Abgangs-Reihenfolgen im 3P-Spiel (Gäste zuerst / Host
+  zuerst) räumen sauber auf. Ursache war die Einzelablesung 3,5 s nach dem
+  Abgang, während der Host per `setTimeout(2500)` löscht — unter Last zu
+  früh. Jetzt wird bis zu 12 s auf den Zustand gewartet, die Meldung nennt
+  die Wartezeit.
+- *Bau-KI versiegelt die Bresche* fiel einmal mit „das Spiel endete vorher —
+  der Bot kam nicht mehr dazu" (allein 3/3 grün). Die Meldung war ehrlich,
+  aber ein Fehlschlag ohne Gelegenheit hält eine Auslieferung auf, ohne dass
+  etwas kaputt ist (wie am 22.09.). Jetzt: ohne Gelegenheit frische Partie,
+  höchstens drei Anläufe; „Gelegenheit gehabt und nicht gedichtet" wird
+  sofort gemeldet. Gegenprobe: Bot dichtet nie (`botSealCastle` stillgelegt)
+  → nach drei Anläufen rot.
