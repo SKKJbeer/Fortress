@@ -338,6 +338,37 @@ pruefe(gibt(splash) && fs.readdirSync(path.join(WURZEL, splash)).filter((d) => d
   "Startbild vorhanden",
   "Ohne Startbild zeigt iOS beim Start eine weisse Flaeche — auf einem dunklen Spiel besonders haesslich.");
 
+// ── Freigabe vor TestFlight (v3.115.3) ────────────────────────────────────
+// ios.yml faehrt selbst nur Typen, Unit-Tests und diese Pruefung. Die E2E-
+// Suite — Online, Warteschlange, Verlassen/Neu, iOS-App-Wechsel — laeuft in
+// deploy.yml. Ohne Riegel ginge ein von Hand gestarteter Upload an allen
+// Online-Pruefungen vorbei. Geprueft wird die Konstruktion, kein Wort.
+abschnitt("Freigabe vor TestFlight");
+{
+  const yml = lies(".github/workflows/ios.yml");
+  const schritt = (name) => yml.indexOf(`      - name: ${name}`);
+  const iFrei = schritt("Freigabe — volle Testkette fuer diesen Commit gruen");
+  pruefe(iFrei > 0, "Freigabe-Schritt vorhanden",
+    "Ohne ihn kann ein Upload nach TestFlight gehen, fuer den die E2E-Suite nie gruen war.");
+  const block = iFrei > 0 ? yml.slice(iFrei, yml.indexOf("\n      - name:", iFrei + 10)) : "";
+  pruefe(/^\s+if: \$\{\{ inputs\.upload \|\| startsWith\(github\.ref, 'refs\/tags\/'\) \}\}$/m.test(block),
+    "Freigabe greift bei Upload UND Tag",
+    "Dieselbe Bedingung wie die Signier- und Upload-Schritte — sonst gibt es einen Weg daran vorbei.");
+  pruefe(/actions\/workflows\/deploy\.yml\/runs/.test(block) && /\?head_sha=\{os\.environ\['SHA'\]\}/.test(block),
+    "Freigabe fragt deploy.yml fuer GENAU diesen Commit",
+    "Ein gruener Lauf irgendeines anderen Commits beweist nichts ueber diesen.");
+  pruefe(/r\.get\("conclusion"\) == "success"/.test(block) && /raise SystemExit\(f"::error::Kein gruener Testlauf/.test(block),
+    "Freigabe verlangt Erfolg und bricht sonst ab",
+    "Ein Schritt, der nur meldet, haelt nichts auf.");
+  const iZert = schritt("Zertifikat einlesen"), iArch = schritt("Archivieren"), iUp = schritt("Nach TestFlight hochladen");
+  pruefe(iFrei > 0 && iFrei < iZert && iFrei < iArch && iFrei < iUp,
+    "Freigabe steht VOR Signieren, Archivieren und Hochladen",
+    "Danach waere der Build schon unterwegs.");
+  pruefe(/^permissions:\n  contents: read\n  actions: read$/m.test(yml),
+    "ios.yml darf Laeufe lesen (actions: read)",
+    "Ohne diese Berechtigung antwortet die Schnittstelle mit 403, und die Freigabe scheitert immer.");
+}
+
 // ── Ergebnis ──────────────────────────────────────────────────────────────
 console.log(`\n${geprueft} Pruefungen, ${fehler} Fehler.`);
 process.exit(fehler ? 1 : 0);

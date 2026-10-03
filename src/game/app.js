@@ -1025,10 +1025,11 @@ window.StackSiegeApp = function StackSiegeApp() {
       const out = { fbOnline: fbOnline.current, opp: oppLostRef.current,
                     started: gameStarted.current, role: myRole.current,
                     online: online.current, screen: screenRef.current,
-                    watch: !!hbWatchdog.current, slots: {} };
+                    watch: !!hbWatchdog.current, slots: {},
+                    verbindungen: fbVerbindungen.current };
       for (const k of Object.keys(hbSeen.current)) {
         const r = hbSeen.current[k];
-        out.slots[k] = { ever: r.ever, ageMs: r.last ? Date.now() - r.last : null };
+        out.slots[k] = { ever: r.ever, ageMs: r.last ? Date.now() - r.last : null, weg: !!r.weg };
       }
       return out;
     });
@@ -2244,6 +2245,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   const [oppLost, setOppLost] = useState(null); // Name des vermissten Gegners
   const oppLostRef = useRef(null);
   const fbOnline = useRef(true);           // .info/connected — eigene Leitung
+  const fbVerbindungen = useRef(0);        // Zahl der (Wieder-)Verbindungen, v3.115.3
   // Fristen. `window.__hbFast` staucht sie fuer die E2E-Suite zusammen —
   // 30 s Wartezeit je Testfall waeren sonst untragbar (gleiche Bauart wie
   // __mmDebug/__balExp: Schalter nur fuer Diagnose und Tests).
@@ -2272,9 +2274,22 @@ window.StackSiegeApp = function StackSiegeApp() {
     if (!code || role === 1) return;
     hbMyRole.current = role;
     const path = `games/${code}/hb${role}`;
-    const beat = () => { fb.patch(`games/${code}`, { ["hb" + role]: Date.now() }); };
+    // onDisconnect feuert nur EINMAL (wie beim Warteschlangen-Ticket,
+    // v3.14.10). Nach einer Wiederverbindung — iPhone kommt aus dem
+    // Hintergrund — wird es deshalb neu registriert, sonst bemerkte der Host
+    // den naechsten Abriss erst ueber die 30-s-Frist.
+    let scharfFuer = -1;
+    const beat = () => {
+      fb.patch(`games/${code}`, { ["hb" + role]: Date.now() });
+      if (scharfFuer !== fbVerbindungen.current) {
+        scharfFuer = fbVerbindungen.current;
+        // KEIN cancel() davor: die alte Registrierung hat beim Abriss schon
+        // gefeuert, und ein cancel() koennte die neue gleich wieder abraeumen,
+        // wenn es sie ueberholt (im Mock gemessen).
+        try { hbCancel.current = fb.onDisconnectRemove(path); } catch (e) {}
+      }
+    };
     beat();
-    try { hbCancel.current = fb.onDisconnectRemove(path); } catch (e) {}
     hbTimer.current = setInterval(beat, HB_WRITE_MS);
   }
   function stopHeartbeat() {
@@ -2293,7 +2308,14 @@ window.StackSiegeApp = function StackSiegeApp() {
       hbChannels.current[p] = fb.subscribeRaw(`games/${code}/hb${p}`, (val, exists) => {
         const rec = hbSeen.current[p];
         if (!rec) return;
-        if (!exists) { if (rec.ever) rec.last = 0; return; }  // Knoten weg (onDisconnect) = sofort tot
+        // Knoten weg (onDisconnect) = Verbindung des Gastes abgerissen. Bis
+        // v3.115.3 hiess das „sofort tot" und die Partie endete binnen 2 s.
+        // Auf dem iPhone reisst die Verbindung aber schon beim kurzen
+        // App-Wechsel ab (iOS friert die App ein) — gemessen: Gast verlor die
+        // Partie samt ELO nach 8 s Abwesenheit, obwohl 30 s Kulanz vorgesehen
+        // sind. Jetzt: sofort warnen, beenden erst HB_DROP_MS nach dem letzten
+        // ECHTEN Lebenszeichen. Kommt der Gast zurueck, laeuft die Partie weiter.
+        if (!exists) { if (rec.ever) rec.weg = true; return; }
         if (typeof val !== "number") return;
         // NUR ein GEÄNDERTER Wert zählt als Lebenszeichen. Auf das blosse
         // Eintreffen eines Events zu vertrauen wäre falsch: liefert die
@@ -2303,7 +2325,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         // Der Abstand wird auf der HOST-Uhr gemessen, nie im Vergleich zum
         // Zeitstempel des Gastes: fremde Uhren dürfen hier nichts entscheiden.
         if (val === rec.val) return;
-        rec.val = val; rec.last = Date.now(); rec.ever = true;
+        rec.val = val; rec.last = Date.now(); rec.ever = true; rec.weg = false;
       });
     }
     hbWatchdog.current = setInterval(() => {
@@ -2322,9 +2344,9 @@ window.StackSiegeApp = function StackSiegeApp() {
         const rec = hbSeen.current[p];
         if (!rec || !rec.ever) continue;              // nie da gewesen → nicht unser Fall
         if (eliminated.current[p]) continue;          // schon raus
-        const still = rec.last === 0 ? HB_DROP_MS + 1 : Date.now() - rec.last;
+        const still = Date.now() - rec.last;
         if (still > HB_DROP_MS) { handlePlayerLeft(p); continue; }
-        if (still > HB_WARN_MS && !vermisst) {
+        if ((still > HB_WARN_MS || rec.weg) && !vermisst) {
           vermisst = (playerInfo.current[p] || {}).name || t('playerFallback', { n: p });
         }
       }
@@ -2378,7 +2400,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Stoppt den State-Listener und baut ihn neu auf, um Firebase zu einem
     // sofortigen Reconnect zu bewegen (onValue liefert den letzten Stand erneut).
     if (!online.current || myRole.current === 1 || !mpCodeRef.current) return;
-    try { if (mpChannel.current && mpChannel.current.stop) mpChannel.current.stop(); } catch (e) {}
+    const kanal = mpChannel.current;
+    if (kanal && kanal.nurListenerStop) {
+      // Nur den Listener tauschen — Herzschlag und Waechter laufen weiter.
+      try { kanal.nurListenerStop(); } catch (e) {}
+      kanal.nurListenerStop = fb.subscribeRaw(`games/${mpCodeRef.current}/state`, guestStateHandler).stop;
+      return;
+    }
+    try { if (kanal && kanal.stop) kanal.stop(); } catch (e) {}
     mpChannel.current = fb.subscribeRaw(`games/${mpCodeRef.current}/state`, guestStateHandler);
   }
   function applyState(raw) {
@@ -2799,11 +2828,18 @@ window.StackSiegeApp = function StackSiegeApp() {
         }
       }, 2e3);
       connWatchdog.current = timeoutCheck;
-      const origStop = mpChannel.current.stop;
-      mpChannel.current.stop = () => {
+      // Der Kanal bekommt ZWEI Stopps (v3.115.3): `stop` beendet alles
+      // (Verlassen), `nurListenerStop` nur den Zustands-Listener. Die
+      // Neuverbindung tauscht ausschliesslich den Listener — vorher rief sie
+      // `stop` und legte damit Herzschlag und Waechter still: Nach jedem
+      // Aussetzer > 6 s (iPhone-App-Wechsel, Funkloch, Knopf „Neu verbinden")
+      // sendete der Gast nichts mehr und flog 30 s spaeter aus der Partie.
+      const kanal = mpChannel.current;
+      kanal.nurListenerStop = kanal.stop;
+      kanal.stop = () => {
         clearInterval(timeoutCheck);
         stopHeartbeat();
-        origStop();
+        kanal.nurListenerStop();
       };
     } else {
       startHostHeartbeatWatch(code, numPlayersRef.current || 2);
@@ -3600,7 +3636,12 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Verbindungsstatus des SDK dauerhaft mitführen (v3.70.0) — siehe
   // fb.subscribeConnected: die Gegenprobe für den Herzschlag-Watchdog.
   useEffect(() => {
-    const sub = fb.subscribeConnected((up) => { fbOnline.current = up; });
+    const sub = fb.subscribeConnected((up) => {
+      // Jede NEUE Verbindung zaehlen (v3.115.3): der Herzschlag des Gastes
+      // stellt daran sein onDisconnect neu scharf.
+      if (up && !fbOnline.current) fbVerbindungen.current++;
+      fbOnline.current = up;
+    });
     return () => { try { sub.stop(); } catch (e) {} };
   }, []);
   useEffect(() => {
@@ -6858,6 +6899,46 @@ window.StackSiegeApp = function StackSiegeApp() {
     transformOrigin: (align === "right" ? "right" : align === "center" ? "center" : "left") + " center",
     animation: "closePulse 0.45s ease-in-out infinite"
   } }, "⚠ " + t('closeWarn'));
+  // Verbindungs-Banner (v3.115.3 aus dem Menue-Zweig hierher geholt): Sie
+  // standen seit v3.70.0 im MENUE-Return, verlangten aber screen === "game" —
+  // die Bedingung war dort nie erfuellt, kein Spieler hat sie je gesehen.
+  // Die Herzschlag-Pruefung war trotzdem gruen, weil sie den internen Merker
+  // mitzaehlte. Jetzt im Spiel-Zweig gerendert, Inhalt unveraendert.
+  const verbindungsBanner = () => React.createElement(React.Fragment, null,
+  connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
+  }, /* @__PURE__ */ React.createElement("div", {
+    style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(30,16,8,0.94)", border: "1px solid rgba(251,146,60,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
+  },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(251,146,60,0.35)", borderTopColor: "#fb923c", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
+    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fdba74", lineHeight: 1.2 } }, t('connLostTitle')),
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fed7aa", opacity: 0.85, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('connLostSub'))
+    ),
+    /* @__PURE__ */ React.createElement("button", {
+      onClick: () => {
+        lastStateAt.current = Date.now();
+        resubAttempted.current = false;
+        pushFails.current = 0;
+        if (myRole.current === 1) pushState(true); else resubscribeGuestState();
+      },
+      style: { flexShrink: 0, background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.5)", color: "#fdba74", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }
+    }, t('connReconnect'))
+  )),
+  // Gegner-Herzschlag ausgeblieben (v3.70.0). Eigenes Verbindungsproblem hat
+  // Vorrang — sonst stünden zwei Banner übereinander und das falsche würde
+  // dem Gegner die Schuld geben.
+  oppLost && !connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
+    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
+  }, /* @__PURE__ */ React.createElement("div", {
+    style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(40,10,10,0.94)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
+  },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(248,113,113,0.35)", borderTopColor: "#f87171", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
+    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fca5a5", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('oppLostTitle', { name: oppLost })),
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fecaca", opacity: 0.85, lineHeight: 1.25 } }, t('oppLostSub'))
+    )
+  )));
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
     background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
     // **100% statt 100dvh.** Der Koerper ist bereits um die Sicherheitsbereiche
@@ -7044,7 +7125,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.115.3"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.116.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8055,40 +8136,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         })()
       )
     );
-  })(), connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
-  }, /* @__PURE__ */ React.createElement("div", {
-    style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(30,16,8,0.94)", border: "1px solid rgba(251,146,60,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
-  },
-    /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(251,146,60,0.35)", borderTopColor: "#fb923c", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
-    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fdba74", lineHeight: 1.2 } }, t('connLostTitle')),
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fed7aa", opacity: 0.85, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('connLostSub'))
-    ),
-    /* @__PURE__ */ React.createElement("button", {
-      onClick: () => {
-        lastStateAt.current = Date.now();
-        resubAttempted.current = false;
-        pushFails.current = 0;
-        if (myRole.current === 1) pushState(true); else resubscribeGuestState();
-      },
-      style: { flexShrink: 0, background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.5)", color: "#fdba74", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }
-    }, t('connReconnect'))
-  )),
-  // Gegner-Herzschlag ausgeblieben (v3.70.0). Eigenes Verbindungsproblem hat
-  // Vorrang — sonst stünden zwei Banner übereinander und das falsche würde
-  // dem Gegner die Schuld geben.
-  oppLost && !connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }
-  }, /* @__PURE__ */ React.createElement("div", {
-    style: { pointerEvents: "auto", display: "flex", alignItems: "center", gap: 10, background: "rgba(40,10,10,0.94)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 12, padding: "9px 14px", boxShadow: "0 8px 28px rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", animation: "urgencyPulse 1.6s ease infinite", maxWidth: 460 }
-  },
-    /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(248,113,113,0.35)", borderTopColor: "#f87171", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
-    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fca5a5", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('oppLostTitle', { name: oppLost })),
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fecaca", opacity: 0.85, lineHeight: 1.25 } }, t('oppLostSub'))
-    )
-  )), showOnboarding && React.createElement(OnboardingModal, { t,
+  })(), showOnboarding && React.createElement(OnboardingModal, { t,
     step: onboardStep,
     setStep: setOnboardStep,
     onFinish: finishOnboarding
@@ -9401,7 +9449,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 4px)", left: 4, zIndex: 9999,
       background: "rgba(0,0,0,0.72)", color: "#7dd3fc", font: "600 10px ui-monospace, Menlo, monospace",
       padding: "3px 6px", borderRadius: 6, pointerEvents: "none", letterSpacing: "0.02em" }
-  }, perfText || "messe \u2026"), tutorialMode.current && coachMsg && /* @__PURE__ */ React.createElement("div", {
+  }, perfText || "messe \u2026"), verbindungsBanner(), tutorialMode.current && coachMsg && /* @__PURE__ */ React.createElement("div", {
     // v3.37.2: Pausierendes Coach-Popup OBEN. Der Vollbild-Container blockiert
     // alle Eingaben (Spiel pausiert: Timer/Bot/Kugeln stehen still); leichter
     // Dim-Hintergrund signalisiert die Pause. "OK" setzt fort.

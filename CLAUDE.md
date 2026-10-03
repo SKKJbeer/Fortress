@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.115.3
+- **Aktuelle Version**: v3.116.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -576,6 +576,21 @@ npm run test:e2e
   Beide ohne Zeitraffer, gemeinsame Helfer in `wqWerkzeug`. Der Knopf heisst
   „Suche abbrechen" — ein Klick auf „Abbrechen" trifft NICHTS, und `jsClick`
   meldet das nur ueber den Rueckgabewert. Wer klickt, prueft ihn.
+- **iOS-App-Wechsel** (`suiteIosHintergrund`, `NUR=ios`, seit v3.116.0):
+  iOS friert Apps beim Wechsel ein, die Verbindung reisst ab, onDisconnect
+  raeumt Ticket/Herzschlag weg. Nachgebildet: Seite im Debugger angehalten
+  (`Debugger.pause`; `Page.setWebLifecycleState` wirkt headless NICHT), der
+  Mock trennt nach 6 s Stille. **Abriss heisst nicht „weg"**: der Host
+  warnt sofort, beendet erst 30 s nach dem letzten echten Lebenszeichen.
+  `resubscribeGuestState` tauscht NUR den Listener (`nurListenerStop`) —
+  `mpChannel.stop()` stoppt auch Herzschlag und Waechter.
+- **Verbindungs-Banner gehoeren in den SPIEL-Zweig** (`verbindungsBanner()`).
+  Sie standen bis v3.116.0 im Menue-Return und waren nie sichtbar; die
+  Pruefung zaehlte den internen Merker mit. Pruefungen auf Anzeigen lesen
+  den SICHTBAREN Text, nicht den Zustand dahinter.
+- **TestFlight nur nach gruener Testkette:** `ios.yml` verlangt einen
+  erfolgreichen `deploy.yml`-Lauf fuer genau diesen Commit, bevor signiert
+  und hochgeladen wird (`ios-pruefen.mjs`, Abschnitt Freigabe).
 - **Online-Härte (`suiteOnlineHaerte`, seit v3.94.0)**: Beitritts-Rennen
   (v2.8.1), Abweisungen (unbekannter Code, verwaiste Lobby, volles Spiel),
   Warteschlangen-Selbstheilung (v3.14.10) und die Protokoll-Schranke (`pv`).

@@ -986,6 +986,11 @@ function startMockFbServer() {
     const cid  = url.searchParams.get('cid');
     if (cid) zuletzt[cid] = Date.now();
     if (op === 'alive') { res.end('{}'); return; }
+    if (op === 'ondisc_stand') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(Object.fromEntries(Object.entries(beimTrennen).map(([k, v]) => [k, [...v]]))));
+      return;
+    }
     if (op === 'ondisc' || op === 'ondisc_cancel') {
       if (cid) {
         const m = beimTrennen[cid] || (beimTrennen[cid] = new Set());
@@ -1068,16 +1073,22 @@ function makeFbMock(port) {
   // >= 900: TIMER_SPEEDUP wuerde daraus 50 ms machen.
   setInterval(() => { _f(B + '/fb?op=alive'); }, 700);
   function ref(db, path) { return { __p: path }; }
+  // Schreiboperationen IN REIHENFOLGE (v3.115.3), wie das SDK sie ueber seine
+  // eine Verbindung schickt. Vorher liefen sie als parallele HTTP-Anfragen und
+  // konnten sich ueberholen: „onDisconnect abbestellen, dann neu registrieren"
+  // kam beim Server umgekehrt an, und die neue Registrierung war weg.
+  let kette = Promise.resolve();
+  const nacheinander = (fn) => { const p = kette.then(fn, fn); kette = p.catch(() => {}); return p; };
   async function set(ref, data) {
-    await _f(B+'/fb?op=set&path='+encodeURIComponent(ref.__p),
-      {method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});
+    await nacheinander(() => _f(B+'/fb?op=set&path='+encodeURIComponent(ref.__p),
+      {method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}}));
   }
   async function update(ref, data) {
-    await _f(B+'/fb?op=patch&path='+encodeURIComponent(ref.__p),
-      {method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});
+    await nacheinander(() => _f(B+'/fb?op=patch&path='+encodeURIComponent(ref.__p),
+      {method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}}));
   }
   async function remove(ref) {
-    await _f(B+'/fb?op=delete&path='+encodeURIComponent(ref.__p),{method:'DELETE'});
+    await nacheinander(() => _f(B+'/fb?op=delete&path='+encodeURIComponent(ref.__p),{method:'DELETE'}));
   }
   async function get(ref) {
     const r = await _f(B+'/fb?op=get&path='+encodeURIComponent(ref.__p));
@@ -1091,7 +1102,20 @@ function makeFbMock(port) {
     // Herzschlag-Watchdog waere in JEDEM Test stillgelegt gewesen.
     if (ref.__p === '.info/connected') {
       setTimeout(() => cb({ exists:()=>true, val:()=>true }), 0);
-      return () => {};
+      // Zeitsprung = die Seite war angehalten (iOS friert eine App im
+      // Hintergrund ein; die Suite haelt die Seite dafuer im Debugger an).
+      // Das echte SDK meldet danach erst „getrennt", dann „verbunden" —
+      // genau das bildet der Mock hier nach (v3.115.3).
+      let tick = Date.now();
+      const id = setInterval(() => {
+        const jetzt = Date.now();
+        if (jetzt - tick > 4000) {
+          cb({ exists:()=>true, val:()=>false });
+          setTimeout(() => cb({ exists:()=>true, val:()=>true }), 60);
+        }
+        tick = jetzt;
+      }, 500);
+      return () => clearInterval(id);
     }
     let last = -1;
     const id = setInterval(async () => {
@@ -1109,7 +1133,8 @@ function makeFbMock(port) {
     return () => clearInterval(id);
   }
   function off(ref, type, unsub) { if (typeof unsub === 'function') unsub(); }
-  async function runTransaction(ref, fn) {
+  function runTransaction(ref, fn) { return nacheinander(() => _transaktion(ref, fn)); }
+  async function _transaktion(ref, fn) {
     try {
       const rg = await _f(B+'/fb?op=get&path='+encodeURIComponent(ref.__p));
       const cur = rg ? await rg.json() : null;
@@ -1129,8 +1154,8 @@ function makeFbMock(port) {
   }
   function onDisconnect(ref) {
     return {
-      remove: () => _f(B + '/fb?op=ondisc&path=' + encodeURIComponent(ref.__p)),
-      cancel: () => _f(B + '/fb?op=ondisc_cancel&path=' + encodeURIComponent(ref.__p)),
+      remove: () => nacheinander(() => _f(B + '/fb?op=ondisc&path=' + encodeURIComponent(ref.__p))),
+      cancel: () => nacheinander(() => _f(B + '/fb?op=ondisc_cancel&path=' + encodeURIComponent(ref.__p))),
     };
   }
   // Auth-Identitaet (v3.72.0): ohne uid laeuft der Cloud-Save-Pfad gar nicht an.
@@ -1698,7 +1723,7 @@ async function suiteMatchmaking(browser, fbPort) {
 // Identitaet anlegen, Zustand lesen, suchen, sauber heraus. Gemeinsam fuer
 // suiteWarteschlangeMehrere und suiteVerlassenNeu — `praefix` haelt die
 // Profil- und Geraete-Kennungen der beiden Suiten auseinander.
-function wqWerkzeug(browser, fbPort, errs, praefix, namen) {
+function wqWerkzeug(browser, fbPort, errs, praefix, namen, zusatz = '') {
   // Merkt sich den Spielcode in dem Moment, in dem das Brett erscheint —
   // klebend, damit ein spaeterer Ergebnisschirm die Beobachtung nicht loescht.
   const SPIEL_MERKER = `setInterval(() => {
@@ -1717,7 +1742,7 @@ function wqWerkzeug(browser, fbPort, errs, praefix, namen) {
   const pool = [];
   const neu = async (i) => {
     const name = namen + String.fromCharCode(65 + i);
-    const c = await makeOnlineCtx(browser, fbPort, identitaet(name, i) + SPIEL_MERKER, { langsam: true });
+    const c = await makeOnlineCtx(browser, fbPort, identitaet(name, i) + SPIEL_MERKER + zusatz, { langsam: true });
     c.page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(`${name}: ${e.message}`); });
     await loadMenu(c.page);
     c.name = name;
@@ -1914,31 +1939,9 @@ async function suiteWarteschlangeMehrere(browser, fbPort) {
   return { res, errs };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SUITE: Spiel verlassen und neu einreihen (v3.115.3)
-//
-// Die Matchmaking-Suite prueft EIN Rematch nach Aufgabe des Hosts, die
-// 3P-Suite einen Rejoin nach Gast-Ausstieg — und beide nur, DASS wieder ein
-// Brett erscheint. Ob es eine GUELTIGE neue Partie ist, stand nirgends. Genau
-// dort sassen die stillen Fehler: Geister-Listener alter Spiele (v3.14.11),
-// screenRef-Drift — der Name erschien beim fremden Gegner (v3.14.17),
-// veraltetes `statRecorded` (v3.30.3).
-//
-// Gueltig heisst hier, gemessen und nicht angenommen:
-//   - neuer Spielcode, nie ein schon benutzter
-//   - jede Rolle 1..np genau einmal, Spielerzahl stimmt
-//   - Spielknoten in der Datenbank mit numPlayers und Spielstand
-//   - alle Mitglieder in derselben Phase (der Stand des Hosts kommt an)
-//   - niemand sieht Namen von Spielern, die NICHT in seiner Partie sind
-// Am Ende: beide Schlangen leer, KEIN verwaister Spielknoten.
-// ═══════════════════════════════════════════════════════════════
-async function suiteVerlassenNeu(browser, fbPort) {
-  const res = [], errs = [];
-  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
-  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
-  console.log('\n' + '='.repeat(50) + '\nTEST: Spiel verlassen und neu einreihen\n' + '='.repeat(50));
-
-  const { neu, lese, suche, raus, queueLeer, pool } = wqWerkzeug(browser, fbPort, errs, 'vn', 'VN');
+// Gueltigkeit einer neuen Partie (v3.115.3) — gemeinsam fuer
+// suiteVerlassenNeu und suiteIosHintergrund. Siehe dort fuer die Kriterien.
+function gueltigkeitsPruefer(pool, lese, fbPort, ok, fail) {
   const alteCodes = new Set();
   const dbHol = (c, pfad) => c.page.evaluate(async ([port, p]) => {
     try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=' + encodeURIComponent(p))).json(); }
@@ -1996,6 +1999,36 @@ async function suiteVerlassenNeu(browser, fbPort) {
     for (const c of gruppe) if ((await lese(c)).rolle === 1) return c;
     return gruppe[0];
   };
+
+  return { pruefeGueltig, hostVon, dbHol, zustand, alteCodes };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: Spiel verlassen und neu einreihen (v3.115.3)
+//
+// Die Matchmaking-Suite prueft EIN Rematch nach Aufgabe des Hosts, die
+// 3P-Suite einen Rejoin nach Gast-Ausstieg — und beide nur, DASS wieder ein
+// Brett erscheint. Ob es eine GUELTIGE neue Partie ist, stand nirgends. Genau
+// dort sassen die stillen Fehler: Geister-Listener alter Spiele (v3.14.11),
+// screenRef-Drift — der Name erschien beim fremden Gegner (v3.14.17),
+// veraltetes `statRecorded` (v3.30.3).
+//
+// Gueltig heisst hier, gemessen und nicht angenommen:
+//   - neuer Spielcode, nie ein schon benutzter
+//   - jede Rolle 1..np genau einmal, Spielerzahl stimmt
+//   - Spielknoten in der Datenbank mit numPlayers und Spielstand
+//   - alle Mitglieder in derselben Phase (der Stand des Hosts kommt an)
+//   - niemand sieht Namen von Spielern, die NICHT in seiner Partie sind
+// Am Ende: beide Schlangen leer, KEIN verwaister Spielknoten.
+// ═══════════════════════════════════════════════════════════════
+async function suiteVerlassenNeu(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Spiel verlassen und neu einreihen\n' + '='.repeat(50));
+
+  const { neu, lese, suche, raus, queueLeer, pool } = wqWerkzeug(browser, fbPort, errs, 'vn', 'VN');
+  const { pruefeGueltig, hostVon, dbHol, zustand, alteCodes } = gueltigkeitsPruefer(pool, lese, fbPort, ok, fail);
 
   try {
     for (let i = 0; i < 6; i++) await neu(i);
@@ -2180,6 +2213,201 @@ async function suiteVerlassenNeu(browser, fbPort) {
              + JSON.stringify(Object.fromEntries(await Promise.all(reste.map(async k => [k, Object.keys((await dbHol(A, 'games/' + k)) || {})])))));
     errs.length === 0 ? ok('Verlassen/Neu: keine JS-Fehler ✓') : errs.slice(0, 3).forEach(e => fail(`VN JS: ${e.slice(0, 100)}`));
   } finally {
+    for (const c of pool) await c.ctx.close();
+  }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUITE: iOS — App-Wechsel waehrend Suche und Partie (v3.115.3)
+//
+// Auf dem iPhone friert iOS eine App ein, sobald man wechselt; die
+// Verbindung zur Datenbank reisst ab, und onDisconnect raeumt Ticket bzw.
+// Herzschlag weg. Im Browser passiert das nie — die uebrigen Suiten konnten
+// es nicht sehen. Gemessen vor dieser Suite: Ein Gast, der 8 s weg war,
+// VERLOR die Partie samt ELO, obwohl 30 s Kulanz vorgesehen sind.
+//
+// Nachbildung: Alle Clients im App-Modus (`__NATIVE__`), „App-Wechsel" =
+// JavaScript der Seite im Debugger angehalten (keine Timer, keine Anfragen),
+// der Mock trennt nach 6 s Stille und meldet beim Aufwachen getrennt →
+// verbunden, wie das SDK.
+// ═══════════════════════════════════════════════════════════════
+async function suiteIosHintergrund(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: iOS — App-Wechsel waehrend Suche und Partie\n' + '='.repeat(50));
+
+  const { neu, lese, suche, raus, queueLeer, pool } = wqWerkzeug(browser, fbPort, errs, 'ih', 'IH', ';window.__NATIVE__ = true;');
+  const { pruefeGueltig, hostVon, dbHol } = gueltigkeitsPruefer(pool, lese, fbPort, ok, fail);
+  const cdps = new Map();
+  const anhalten = async (c) => {
+    let s = cdps.get(c);
+    if (!s) { s = await c.ctx.newCDPSession(c.page); await s.send('Debugger.enable'); cdps.set(c, s); }
+    await s.send('Debugger.pause');
+  };
+  const fortsetzen = async (c) => { await cdps.get(c).send('Debugger.resume'); };
+  const schirm = (c) => c.page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
+  const vorbei = (t) => /gewinnst|verlierst|siegt|Spiel verlassen/i.test(t);
+  const hb = async (c, code, rolle) => { const k = await dbHol(c, 'games/' + code); return k && k['hb' + rolle] ? 'da' : 'weg'; };
+
+  try {
+    for (let i = 0; i < 4; i++) await neu(i);
+    const [A, B, C, D] = pool;
+    const nativ = await A.page.evaluate(() => window.__NATIVE__ === true);
+    nativ ? ok('iOS: Clients laufen im App-Modus (__NATIVE__) ✓') : fail('iOS: App-Modus nicht gesetzt');
+
+    // ── 1) Gast wechselt 10 s die App — dieselbe Partie laeuft weiter ──
+    await Promise.all([suche(A, 2), suche(B, 2)]);
+    let code = await pruefeGueltig('iOS 2P Partie', [A, B], 2);
+    if (code) {
+      const host = await hostVon([A, B]), gast = host === A ? B : A;
+      const gastRolle = (await lese(gast)).rolle;
+      await host.page.waitForTimeout(1500);
+      await anhalten(gast);
+      let warnung = false, endeNach = null, hbWeg = false, wegNach = null, warnNach = null;
+      const t0 = Date.now();
+      while (Date.now() - t0 < 12000) {
+        const t = await schirm(host);
+        if (/antwortet nicht/.test(t) && !warnung) { warnung = true; warnNach = Date.now() - t0; }
+        if (vorbei(t)) { endeNach = Date.now() - t0; break; }
+        if (!hbWeg && (await hb(host, code, gastRolle)) === 'weg') { hbWeg = true; wegNach = Date.now() - t0; }
+        await host.page.waitForTimeout(300);
+      }
+      console.log(`   (Abriss gesehen nach ${wegNach} ms, Warnung nach ${warnNach} ms)`);
+      await fortsetzen(gast);
+      hbWeg ? ok('iOS: Verbindung des Gastes riss ab (Herzschlag per onDisconnect weg) ✓')
+            : fail('iOS: Herzschlag blieb stehen — der Abriss wurde gar nicht nachgebildet, die Pruefung sagt nichts');
+      endeNach === null ? ok('iOS: Host beendet die Partie NICHT nach 10 s App-Wechsel des Gastes ✓')
+                        : fail(`iOS: Host beendete die Partie ${endeNach} ms nach dem App-Wechsel des Gastes`);
+      warnung ? ok('iOS: Host sieht waehrenddessen „antwortet nicht" ✓')
+              : fail(`iOS: Host bekam keinen Hinweis, dass der Gegner fehlt — Host-Sicht: ${JSON.stringify(await host.page.evaluate(() => window.__hbDbg ? window.__hbDbg() : null))}`);
+      // Zurueck: dieselbe Partie, gleiche Phase, keiner im Ergebnis
+      await gast.page.waitForTimeout(2500);
+      const sync = await wartePhasenGleich([host.page, gast.page], 8000);
+      const [tH, tG] = [await schirm(host), await schirm(gast)];
+      const z = await lese(gast);
+      sync.gleich && !vorbei(tH) && !vorbei(tG) && z.code === code
+        ? ok(`iOS: nach der Rueckkehr laeuft dieselbe Partie weiter (Phase ${sync.phase}) ✓`)
+        : fail(`iOS: nach Rueckkehr — gleich=${sync.gleich} (${(sync.phasen || []).join('/')}), Host vorbei=${vorbei(tH)}, Gast vorbei=${vorbei(tG)}, Code ${z.code} statt ${code}`);
+      // Schlaegt der Herzschlag des Gastes nach der Rueckkehr WEITER? Bis
+      // v3.115.3 stoppte die Neuverbindung (resubscribeGuestState) ueber
+      // mpChannel.stop() auch Herzschlag und Verbindungswaechter — der Gast
+      // spielte weiter, sendete aber nichts mehr, und der Host warf ihn 30 s
+      // spaeter raus. Gemessen am Wert in der Datenbank, ueber 7 s.
+      {
+        const k1 = await dbHol(host, 'games/' + code);
+        await host.page.waitForTimeout(7000);
+        const k2 = await dbHol(host, 'games/' + code);
+        const v1 = k1 && k1['hb' + gastRolle], v2 = k2 && k2['hb' + gastRolle];
+        v1 && v2 && v2 > v1
+          ? ok(`iOS: Herzschlag des Gastes laeuft nach der Rueckkehr weiter (+${v2 - v1} ms in 7 s) ✓`)
+          : fail(`iOS: Herzschlag des Gastes steht nach der Rueckkehr still (${v1} → ${v2}) — der Host wuerde ihn nach 30 s rauswerfen`);
+      }
+      // Hat der Gast sein onDisconnect neu scharfgestellt? Zweiter Wechsel:
+      // der Herzschlag muss WIEDER verschwinden (sonst fiele der naechste
+      // Abriss erst nach der 30-s-Frist auf).
+      await gast.page.waitForTimeout(3500);
+      await anhalten(gast);
+      let wiederWeg = false;
+      for (const t1 = Date.now(); Date.now() - t1 < 10000; ) {
+        if ((await hb(host, code, gastRolle)) === 'weg') { wiederWeg = true; break; }
+        await host.page.waitForTimeout(400);
+      }
+      await fortsetzen(gast);
+      wiederWeg ? ok('iOS: nach der Rueckkehr ist onDisconnect wieder scharf (zweiter Wechsel erkannt) ✓')
+                : fail(`iOS: zweiter App-Wechsel wurde nicht erkannt — onDisconnect nach Wiederverbindung nicht neu registriert (Gast-Sicht: ${JSON.stringify(await gast.page.evaluate(() => window.__hbDbg ? { verbunden: window.__hbDbg().fbOnline, verbindungen: window.__hbDbg().verbindungen } : null))})`);
+      await gast.page.waitForTimeout(2500);
+      !vorbei(await schirm(host)) ? ok('iOS: auch der zweite kurze Wechsel beendet die Partie nicht ✓')
+                                  : fail('iOS: zweiter kurzer Wechsel beendete die Partie');
+
+      // ── 2) Host wechselt 10 s die App ────────────────────────
+      await anhalten(host);
+      await gast.page.waitForTimeout(10000);
+      await fortsetzen(host);
+      await host.page.waitForTimeout(2500);
+      const sync2 = await wartePhasenGleich([host.page, gast.page], 8000);
+      sync2.gleich && !vorbei(await schirm(gast)) && !vorbei(await schirm(host))
+        ? ok(`iOS: Host 10 s weg — Partie laeuft fuer beide weiter (Phase ${sync2.phase}) ✓`)
+        : fail(`iOS: nach Host-Wechsel — gleich=${sync2.gleich} (${(sync2.phasen || []).join('/')})`);
+
+      // ── 3) Lange weg: nach 30 s endet die Partie — aber nicht vorher ──
+      await gast.page.waitForTimeout(3000);
+      await anhalten(gast);
+      const t3 = Date.now(); let ende = null;
+      while (Date.now() - t3 < 45000) {
+        if (vorbei(await schirm(host))) { ende = Date.now() - t3; break; }
+        await host.page.waitForTimeout(500);
+      }
+      await fortsetzen(gast);
+      ende !== null && ende >= 25000
+        ? ok(`iOS: Gast 30 s+ weg → Partie endet nach ${(ende / 1000).toFixed(1)} s (nicht vorher) ✓`)
+        : fail(`iOS: lange Abwesenheit — Ende nach ${ende === null ? 'nie (45 s)' : (ende / 1000).toFixed(1) + ' s'}, erwartet 25–45 s`);
+      await gast.page.waitForTimeout(3000);
+      vorbei(await schirm(gast)) ? ok('iOS: zurueckgekehrter Gast sieht das Ergebnis ✓')
+                                 : fail('iOS: zurueckgekehrter Gast sieht kein Ergebnis');
+      for (const c of [A, B]) await raus(c);
+      // Danach sofort wieder suchen: gueltige NEUE Partie
+      await Promise.all([suche(A, 2), suche(B, 2)]);
+      await pruefeGueltig('iOS nach langer Abwesenheit neu', [A, B], 2);
+      for (const c of [A, B]) await raus(c);
+    }
+
+    // ── 4) App-Wechsel waehrend der Suche ───────────────────────
+    // Ticket faellt per onDisconnect weg; beim Aufwachen traegt mmTick es neu
+    // ein (Selbstheilung v3.14.10), und ein Partner findet den Client.
+    await suche(C, 2);
+    await C.page.waitForTimeout(1500);
+    await anhalten(C);
+    let ticketWeg = false;
+    for (const t0 = Date.now(); Date.now() - t0 < 10000; ) {
+      const q = await dbHol(A, 'queue2');
+      const n = q && q !== 'ERR' ? Object.values(q).filter(t => t && t.pid === 'p_ih_2').length : 0;
+      if (n === 0) { ticketWeg = true; break; }
+      await A.page.waitForTimeout(400);
+    }
+    await fortsetzen(C);
+    ticketWeg ? ok('iOS: App-Wechsel in der Suche — Ticket per onDisconnect weg ✓')
+              : fail('iOS: Ticket blieb trotz Abriss stehen — die Pruefung bildet den Fall nicht nach');
+    let wieder = false;
+    for (const t0 = Date.now(); Date.now() - t0 < 10000; ) {
+      const q = await dbHol(A, 'queue2');
+      const n = q && q !== 'ERR' ? Object.values(q).filter(t => t && t.pid === 'p_ih_2' && t.status === 'waiting').length : 0;
+      if (n === 1 && (await lese(C)).sucht) { wieder = true; break; }
+      await A.page.waitForTimeout(400);
+    }
+    wieder ? ok('iOS: nach der Rueckkehr steht das Ticket wieder in der Schlange ✓')
+           : fail('iOS: nach der Rueckkehr kein wartendes Ticket — der Spieler waere unsichtbar');
+    await suche(D, 2);
+    await pruefeGueltig('iOS Suche nach App-Wechsel', [C, D], 2);
+    for (const c of [C, D]) await raus(c);
+
+    // ── 5) 3P im App-Modus: Gast wechselt kurz, Partie bleibt ──
+    await Promise.all([suche(A, 3), suche(B, 3), suche(C, 3)]);
+    const code3 = await pruefeGueltig('iOS 3P Partie', [A, B, C], 3);
+    if (code3) {
+      const host = await hostVon([A, B, C]);
+      const gast = [A, B, C].find(c => c !== host);
+      await host.page.waitForTimeout(1500);
+      await anhalten(gast);
+      await host.page.waitForTimeout(10000);
+      await fortsetzen(gast);
+      await gast.page.waitForTimeout(2500);
+      const sync3 = await wartePhasenGleich([A, B, C].map(c => c.page), 8000);
+      const elim = await host.page.evaluate(() => window.__eliminiert ? window.__eliminiert() : null);
+      sync3.gleich && !vorbei(await schirm(host))
+        ? ok(`iOS 3P: Gast 10 s weg — alle drei weiter in Phase ${sync3.phase} (ausgeschieden: ${JSON.stringify(elim)}) ✓`)
+        : fail(`iOS 3P: nach Gast-Wechsel gleich=${sync3.gleich} (${(sync3.phasen || []).join('/')})`);
+      for (const c of [A, B, C]) await raus(c);
+    }
+
+    await A.page.waitForTimeout(3500);
+    const q = await queueLeer(A);
+    q.q2 === 0 && q.q3 === 0 ? ok('iOS: beide Warteschlangen danach leer ✓')
+                             : fail(`iOS: Ticket-Leichen queue2=${q.q2} queue3=${q.q3}`);
+    errs.length === 0 ? ok('iOS: keine JS-Fehler ✓') : errs.slice(0, 3).forEach(e => fail(`iOS JS: ${e.slice(0, 100)}`));
+  } finally {
+    for (const s of cdps.values()) { try { await s.send('Debugger.resume'); } catch (e) {} }
     for (const c of pool) await c.ctx.close();
   }
   return { res, errs };
@@ -3522,7 +3750,11 @@ async function suiteHeartbeat(browser, fbPort) {
         const t = document.body.innerText;
         const d = (window.__hbDbg && window.__hbDbg()) || {};
         return {
-          banner: /antwortet nicht/i.test(t) || !!d.opp,
+          // NUR der sichtbare Text zaehlt (v3.115.3). Bis dahin stand hier
+          // `|| !!d.opp` — der interne Merker. Das Banner lag aber im MENUE-
+          // Zweig des Renderers und war im Spiel NIE zu sehen; die Pruefung
+          // war trotzdem gruen, weil der Merker gesetzt war.
+          banner: /antwortet nicht/i.test(t),
           over: d.screen === 'result',
           left: /verlassen/i.test(t),
           dbg: d
@@ -6732,6 +6964,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       matchmaking: () => suiteMatchmaking(browser, FB_PORT),
       warteschlange: () => suiteWarteschlangeMehrere(browser, FB_PORT),
       verlassen: () => suiteVerlassenNeu(browser, FB_PORT),
+      ios: () => suiteIosHintergrund(browser, FB_PORT),
       haerte: () => suiteOnlineHaerte(browser, FB_PORT),
       heartbeat: () => suiteHeartbeat(browser, FB_PORT),
       trichter: () => suiteTrichter(browser, FB_PORT),
@@ -6782,6 +7015,8 @@ async function suiteOnlineHaerte(browser, fbPort) {
     const wq = await suiteWarteschlangeMehrere(browser, FB_PORT);
     // Verlassen und neu einreihen (v3.115.3): ebenfalls sechs Clients, seriell.
     const vn = await suiteVerlassenNeu(browser, FB_PORT);
+    // iOS-App-Wechsel (v3.115.3): haelt Seiten im Debugger an — seriell.
+    const ih = await suiteIosHintergrund(browser, FB_PORT);
     // Herzschlag laeuft bewusst HIER (seriell) und nicht parallel: die Suite
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
@@ -6821,7 +7056,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // denen das SDK wirklich hochfaehrt, und wartet je 2,5 s auf den
     // Anmeldeversuch. Parallel dazu waere das eine Lastmessung.
     const fbs = await suiteFirebaseStart(browser);
-    return { mm, mm3, wq, vn, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
+    return { mm, mm3, wq, vn, ih, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -6852,14 +7087,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rWQ = rHeavy.wq, rVN = rHeavy.vn, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rWQ = rHeavy.wq, rVN = rHeavy.vn, rIH = rHeavy.ih, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

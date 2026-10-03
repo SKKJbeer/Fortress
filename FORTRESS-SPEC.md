@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.116.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8781,3 +8781,59 @@ Auf zwei Kernen bleiben Ausfälle in `suiteOnline2P`/`suiteNavHUD` (Phasen-
 Schild, Emote, Timer) — dieselben wie VOR diesen Änderungen, Zeitraffer-
 Suiten im parallelen Block. Nicht Teil dieser Version; die CI-Runner haben
 vier Kerne.
+
+## v3.116.0 — iPhone: App-Wechsel kostet keine Partie mehr
+
+Auftrag: die Online-Tests auch für die iOS-App sicherstellen. Die App
+benutzt denselben Code — aber iOS FRIERT eine App ein, sobald man wechselt,
+und die Verbindung zur Datenbank reißt ab. Im Browser passiert das nie, also
+hat es keine Suite je gesehen. Nachgestellt (Seite im Debugger angehalten,
+Mock trennt nach 6 s Stille) kamen drei Fehler heraus — alle echt, zwei davon
+nicht nur auf iOS:
+
+1. **Abriss = sofort verloren.** Verschwand der Herzschlag des Gastes (per
+   onDisconnect), beendete der Host die Partie binnen 2 s — gemessen: Gast
+   8 s weg → „Du verlierst. Ein Spieler hat das Spiel verlassen", samt ELO.
+   Vorgesehen waren 30 s Kulanz. **Jetzt (Entscheidung des Gründers):**
+   sofort „antwortet nicht" anzeigen, beenden erst 30 s nach dem letzten
+   echten Lebenszeichen. Kommt der Gast zurück, läuft dieselbe Partie
+   weiter. Preis: ein echter Absturz wird nach 30 s statt sofort beendet.
+2. **Die Verbindungs-Banner waren nie zu sehen** — seit v3.70.0. Beide
+   („Verbindung verloren" und „{Name} antwortet nicht") standen im
+   MENÜ-Zweig des Renderers, verlangten aber `screen === "game"`. Die
+   Herzschlag-Prüfung war trotzdem grün, weil sie `|| !!d.opp` (den
+   internen Merker) mitzählte. Jetzt im Spiel-Zweig (`verbindungsBanner()`,
+   Inhalt unverändert), und die Prüfung zählt nur noch sichtbaren Text —
+   gegengeprüft: mit altem Stand rot.
+3. **Nach einer Neuverbindung schwieg der Gast.** `resubscribeGuestState`
+   rief `mpChannel.stop()` — und das stoppte auch Herzschlag und
+   Verbindungswächter. Nach jedem Aussetzer > 6 s (App-Wechsel, Funkloch,
+   Knopf „Neu verbinden") spielte der Gast weiter, sendete aber nichts mehr
+   und flog 30 s später raus. Jetzt tauscht die Neuverbindung nur den
+   Zustands-Listener (`nurListenerStop`). Gemessen: Herzschlag nach der
+   Rückkehr +9000 ms in 7 s (vorher: Stillstand).
+
+Dazu: Der Gast stellt sein onDisconnect nach jeder Wiederverbindung neu
+scharf (`fbVerbindungen`), sonst fiele der zweite Wechsel erst über die
+30-s-Frist auf.
+
+**`suiteIosHintergrund`** (`NUR=ios`), alle Clients im App-Modus
+(`__NATIVE__`): Gast 10 s weg (Abriss erkannt, Warnung sichtbar, Partie
+läuft weiter, Herzschlag läuft weiter, zweiter Wechsel erkannt), Host 10 s
+weg, Gast 30 s+ weg (Ende erst nach ≥ 25 s, Ergebnis beim Rückkehrer, danach
+gültige neue Partie), App-Wechsel während der Suche (Ticket weg, beim
+Aufwachen wieder da, Partner findet ihn), 3P mit kurzem Wechsel.
+Gegenproben: alter „sofort raus"-Stand → 5 rot; kein Neu-Scharfstellen → rot;
+Banner im Menü → rot; Herzschlag-Stopp → rot (vor dem Fix gemessen).
+
+**Mock näher an Firebase:** Schreiboperationen laufen je Client in
+Reihenfolge (vorher parallele HTTP-Anfragen — „onDisconnect abbestellen,
+neu registrieren" kam umgekehrt an); `.info/connected` meldet nach einem
+Zeitsprung getrennt → verbunden.
+
+**Riegel vor TestFlight:** `ios.yml` fuhr selbst nur Typen/Unit/Hülle. Ein
+von Hand gestarteter Upload ging damit an der ganzen E2E-Suite vorbei.
+Jetzt verlangt der Schritt „Freigabe" einen grünen `deploy.yml`-Lauf für
+GENAU diesen Commit (wartet höchstens 20 Min., sonst Abbruch), vor
+Signieren/Archivieren/Hochladen. `scripts/ios-pruefen.mjs` hält das mit
+sechs Konstruktions-Prüfungen fest; Gegenprobe 4/4 rot.

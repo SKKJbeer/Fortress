@@ -13,6 +13,11 @@ on:
   push:
     tags: ['v*']
 
+# actions: read fuer die Freigabe-Pruefung (welcher deploy.yml-Lauf war gruen?).
+permissions:
+  contents: read
+  actions: read
+
 # macOS-Runner sind fuer OEFFENTLICHE Repositories kostenlos. Waere das
 # Repository privat, zaehlten die Minuten zehnfach.
 #
@@ -369,6 +374,48 @@ jobs:
       #
       # Der Schritt ist freiwillig. Liegt kein Zertifikat, laeuft alles wie
       # bisher — mit einem Hinweis statt eines Abbruchs.
+      # **Freigabe: nur hochladen, was die volle Testkette bestanden hat.**
+      #
+      # Dieser Ablauf selbst faehrt nur Typen, Unit-Tests und die Huellen-
+      # Pruefung — die E2E-Suite (Online, Warteschlange, Verlassen/Neu, iOS-
+      # App-Wechsel) laeuft in deploy.yml. Ein von Hand gestarteter Upload
+      # haette also an allen Online-Pruefungen vorbei nach TestFlight gehen
+      # koennen. Jetzt: Es muss fuer GENAU diesen Commit einen erfolgreichen
+      # deploy.yml-Lauf geben. Laeuft er noch, wird gewartet (hoechstens
+      # 20 Minuten); ist er rot oder fehlt, bricht der Upload ab.
+      - name: Freigabe — volle Testkette fuer diesen Commit gruen
+        if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          url = (f"https://api.github.com/repos/{os.environ['REPO']}/actions/workflows/deploy.yml/runs"
+                 f"?head_sha={os.environ['SHA']}&per_page=20")
+          frist = time.time() + 20 * 60
+          while True:
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json"})
+              laeufe = json.load(urllib.request.urlopen(req, timeout=30)).get("workflow_runs", [])
+              gruen = [r for r in laeufe if r.get("conclusion") == "success"]
+              offen = [r for r in laeufe if r.get("status") != "completed"]
+              if gruen:
+                  print(f"Freigabe: deploy.yml #{gruen[0]['run_number']} fuer {os.environ['SHA'][:7]} gruen — {gruen[0]['html_url']}")
+                  break
+              if not offen:
+                  rot = [f"#{r['run_number']} {r.get('conclusion')}" for r in laeufe]
+                  raise SystemExit(f"::error::Kein gruener Testlauf (deploy.yml) fuer {os.environ['SHA'][:7]} "
+                                   f"({', '.join(rot) or 'gar keiner'}) — kein Upload nach TestFlight. "
+                                   "Erst auf main bringen und die Testkette gruen werden lassen.")
+              if time.time() > frist:
+                  raise SystemExit("::error::Testlauf fuer diesen Commit nach 20 Minuten nicht fertig — kein Upload.")
+              print(f"Testlauf laeuft noch ({len(offen)}) — warte 30 s …", flush=True)
+              time.sleep(30)
+          PY
+
       - name: Zertifikat einlesen
         if: ${{ inputs.upload || startsWith(github.ref, 'refs/tags/') }}
         env:
