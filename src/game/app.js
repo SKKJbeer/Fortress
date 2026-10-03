@@ -2219,6 +2219,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   const lastSeenPhase = useRef(null);
   const playerInfo = useRef({ 1: { name: t('playerFallback', {n: 1}), wappen: "\u2654", color: "#2563eb" }, 2: { name: t('playerFallback', {n: 2}), wappen: "\u265A", color: "#dc2626" } });
   const lastStateAt = useRef(0);
+  const letzterZustand = useRef(null);       // zuletzt empfangener Stand (Gast), v3.116.0
   // ── Verbindungsstatus / Reconnect ──────────────────────────────────────────
   const [connLost, setConnLost] = useState(false);
   const connLostRef = useRef(false);
@@ -2377,6 +2378,15 @@ window.StackSiegeApp = function StackSiegeApp() {
       return;
     }
     if (stateStr == null) return;
+    // NUR ein GEAENDERTER Stand ist ein Lebenszeichen (v3.116.0) — dieselbe
+    // Regel wie beim Herzschlag des Hosts. Jede Neuverbindung liefert den
+    // letzten Stand erneut aus; zaehlte das, setzte jeder Versuch die
+    // 30-s-Frist zurueck. Stuerzt der Host ab, bleibt sein Spielknoten mit
+    // Absicht stehen (v3.14.10) — der Gast bekam alle paar Sekunden denselben
+    // alten Stand und hing fuer immer in einer toten Partie (gemessen: nach
+    // 45 s noch Timer 20, kein Hinweis).
+    if (stateStr === letzterZustand.current) return;
+    letzterZustand.current = stateStr;
     lastStateAt.current = Date.now();
     everGotState.current = true;
     setConn(false);
@@ -2785,6 +2795,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     disconnectEnding.current = false;
     resubTries.current = 0;
     nextResubAt.current = 0;
+    letzterZustand.current = null;
     stopHeartbeat();
     stopHostHeartbeatWatch();
     if (role !== 1) {
@@ -2793,9 +2804,26 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Verbindungs-Watchdog: nach 6s ohne State → "verbunden?"-Banner + einmaliger
       // Reconnect-Versuch. Banner verschwindet automatisch sobald wieder State fließt.
       // Nach 30s ohne State → H-C: Host gilt als verloren, sauber zurück ins Menü.
+      let letzterWaechterTakt = Date.now();
       const timeoutCheck = setInterval(() => {
         if (!online.current) {
           clearInterval(timeoutCheck);
+          return;
+        }
+        // Selbst geschlafen? (v3.116.0) Auf dem iPhone friert iOS die App beim
+        // Wechsel ein; beim Aufwachen ist der letzte Zustand > 30 s alt, und
+        // der Waechter erklaerte den HOST fuer verloren — bevor der wartende
+        // Endstand („Du verlierst") ueberhaupt ankommen konnte. Gemessen: der
+        // Rueckkehrer landete 3/3 im Hauptmenue statt im Ergebnis. Ein Zeit-
+        // sprung zwischen zwei Takten heisst: WIR waren weg, nicht der Host.
+        // Dann neu verbinden und die Frist von vorn beginnen.
+        const jetztTakt = Date.now();
+        const geschlafen = jetztTakt - letzterWaechterTakt > 6e3;
+        letzterWaechterTakt = jetztTakt;
+        if (geschlafen) {
+          lastStateAt.current = jetztTakt;
+          nextResubAt.current = 0;
+          resubscribeGuestState();
           return;
         }
         const stale = Date.now() - lastStateAt.current;
@@ -6904,6 +6932,30 @@ window.StackSiegeApp = function StackSiegeApp() {
   // die Bedingung war dort nie erfuellt, kein Spieler hat sie je gesehen.
   // Die Herzschlag-Pruefung war trotzdem gruen, weil sie den internen Merker
   // mitzaehlte. Jetzt im Spiel-Zweig gerendert, Inhalt unveraendert.
+  // Kurzhinweis (showWarn). Stand bis v3.116.0 nur im SPIEL-Zweig — Hinweise,
+  // die beim Ruecksprung ins Menue entstehen („Verbindung zum Host verloren",
+  // „Host hat das Spiel beendet"), sah deshalb niemand: endOnlineDisconnected
+  // wechselt erst ins Menue und setzt dann den Hinweis. Jetzt in beiden Zweigen.
+  const warnHinweis = () => warn && /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    top: 70,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "rgba(127,29,29,0.92)",
+    border: "1px solid rgba(248,113,113,0.5)",
+    borderRadius: 10,
+    padding: "10px 20px",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#fecaca",
+    zIndex: 999,
+    pointerEvents: "none",
+    boxShadow: "0 4px 24px rgba(239,68,68,0.4)",
+    whiteSpace: "nowrap",
+    maxWidth: "92vw",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
+  } }, warn);
   const verbindungsBanner = () => React.createElement(React.Fragment, null,
   connLost && online.current && screen === "game" && /* @__PURE__ */ React.createElement("div", {
     style: { position: "fixed", top: "calc(var(--sa-top, 0px) + 8px)", left: 8, right: 8, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }
@@ -8136,7 +8188,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         })()
       )
     );
-  })(), showOnboarding && React.createElement(OnboardingModal, { t,
+  })(), warnHinweis(), showOnboarding && React.createElement(OnboardingModal, { t,
     step: onboardStep,
     setStep: setOnboardStep,
     onFinish: finishOnboarding
@@ -9130,26 +9182,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     boxShadow: "0 2px 16px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? t('youSuffix') : "") : t('p3GreenFallback'), eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warn && /* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed",
-    top: 70,
-    left: "50%",
-    transform: "translateX(-50%)",
-    background: "rgba(127,29,29,0.92)",
-    border: "1px solid rgba(248,113,113,0.5)",
-    borderRadius: 10,
-    padding: "10px 20px",
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#fecaca",
-    zIndex: 999,
-    pointerEvents: "none",
-    boxShadow: "0 4px 24px rgba(239,68,68,0.4)",
-    whiteSpace: "nowrap",
-    maxWidth: "92vw",
-    overflow: "hidden",
-    textOverflow: "ellipsis"
-  } }, warn), phase === "cannon" && (() => {
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? t('youSuffix') : "") : t('p3GreenFallback'), eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warnHinweis(), phase === "cannon" && (() => {
     const mine = online.current ? [myRole.current] : botMode.current ? [1] : playersList();
     const h = React.createElement;
     const renderInner = (sp) => {

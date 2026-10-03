@@ -2343,9 +2343,14 @@ async function suiteIosHintergrund(browser, fbPort) {
       ende !== null && ende >= 25000
         ? ok(`iOS: Gast 30 s+ weg → Partie endet nach ${(ende / 1000).toFixed(1)} s (nicht vorher) ✓`)
         : fail(`iOS: lange Abwesenheit — Ende nach ${ende === null ? 'nie (45 s)' : (ende / 1000).toFixed(1) + ' s'}, erwartet 25–45 s`);
-      await gast.page.waitForTimeout(3000);
-      vorbei(await schirm(gast)) ? ok('iOS: zurueckgekehrter Gast sieht das Ergebnis ✓')
-                                 : fail('iOS: zurueckgekehrter Gast sieht kein Ergebnis');
+      let gastText = '';
+      for (const t4 = Date.now(); Date.now() - t4 < 10000; ) {
+        gastText = await schirm(gast);
+        if (vorbei(gastText)) break;
+        await gast.page.waitForTimeout(300);
+      }
+      vorbei(gastText) ? ok('iOS: zurueckgekehrter Gast sieht das Ergebnis ✓')
+                       : fail(`iOS: zurueckgekehrter Gast sieht kein Ergebnis — Schirm: ${gastText.slice(0, 140)}`);
       for (const c of [A, B]) await raus(c);
       // Danach sofort wieder suchen: gueltige NEUE Partie
       await Promise.all([suche(A, 2), suche(B, 2)]);
@@ -2399,6 +2404,51 @@ async function suiteIosHintergrund(browser, fbPort) {
         ? ok(`iOS 3P: Gast 10 s weg — alle drei weiter in Phase ${sync3.phase} (ausgeschieden: ${JSON.stringify(elim)}) ✓`)
         : fail(`iOS 3P: nach Gast-Wechsel gleich=${sync3.gleich} (${(sync3.phasen || []).join('/')})`);
       for (const c of [A, B, C]) await raus(c);
+    }
+
+    // ── 6) Host-App stuerzt ab, waehrend der Gast im Hintergrund ist ──
+    // Gegenstueck zu 3): Hier ist der HOST wirklich weg. Der Gast darf beim
+    // Aufwachen nicht sofort aufgeben (Schlaf-Erkennung im Waechter), muss die
+    // Partie aber binnen der 30-s-Frist sauber verlassen — mit Hinweis, nicht
+    // still. Bis v3.116.0 pruefte KEINE Suite, dass ein Gast einen verlorenen
+    // Host ueberhaupt bemerkt.
+    {
+      const H = await neu(4);
+      await Promise.all([suche(H, 2), suche(D, 2)]);
+      const codeH = await pruefeGueltig('iOS 2P vor Host-Absturz', [H, D], 2);
+      if (codeH) {
+        const host = await hostVon([H, D]);
+        const gast = host === H ? D : H;
+        await gast.page.waitForTimeout(1500);
+        await anhalten(gast);
+        await host.ctx.close();
+        pool.splice(pool.indexOf(host), 1);
+        await gast.page.waitForTimeout(12000);
+        await fortsetzen(gast);
+        const t6 = Date.now(); let draussen = null, hinweis = false, text = '';
+        while (Date.now() - t6 < 45000) {
+          text = await schirm(gast);
+          if (/Verbindung zum Host verloren/.test(text)) hinweis = true;
+          const z = await gast.page.evaluate(() => !document.querySelector('canvas'));
+          if (z && !/antwortet nicht/.test(text) && (/Hauptmen|ONLINE|LOKAL/.test(text))) { draussen = Date.now() - t6; break; }
+          await gast.page.waitForTimeout(300);
+        }
+        // Der Hinweis erscheint als Einblendung NACH dem Wechsel ins Menue —
+        // noch kurz weiter beobachten statt im selben Takt aufzuhoeren.
+        for (const t7 = Date.now(); !hinweis && Date.now() - t7 < 4000; ) {
+          if (/Verbindung zum Host verloren/.test(await schirm(gast))) hinweis = true;
+          else await gast.page.waitForTimeout(150);
+        }
+        draussen !== null
+          ? ok(`iOS: Host weg, Gast war im Hintergrund — nach dem Aufwachen sauber raus nach ${(draussen / 1000).toFixed(1)} s ✓`)
+          : fail(`iOS: Host weg — Gast haengt nach 45 s noch in der Partie: ${text.slice(0, 120)}`);
+        hinweis ? ok('iOS: Gast bekommt den Hinweis „Verbindung zum Host verloren" ✓')
+                : fail(`iOS: Gast verliess die Partie ohne Hinweis auf den verlorenen Host — Schirm danach: ${(await schirm(gast)).slice(0, 200)}`);
+        await raus(gast);
+        // Den verwaisten Knoten des abgestuerzten Hosts raeumt sonst erst
+        // gcOwnStaleGame beim naechsten Online-Einstieg weg (nach 30 Min) —
+        // fuer die Pruefung unten auf leere Schlangen ist er ohne Belang.
+      }
     }
 
     await A.page.waitForTimeout(3500);
@@ -7010,13 +7060,6 @@ async function suiteOnlineHaerte(browser, fbPort) {
   const onlineHeavy = (async () => {
     const mm = await suiteMatchmaking(browser, FB_PORT);
     const mm3 = await suiteOnline3P(browser, FB_PORT);
-    // Mehrere Wartende (v3.115.2): sechs Clients gleichzeitig, deshalb
-    // seriell und direkt hinter den beiden anderen Warteschlangen-Suiten.
-    const wq = await suiteWarteschlangeMehrere(browser, FB_PORT);
-    // Verlassen und neu einreihen (v3.115.3): ebenfalls sechs Clients, seriell.
-    const vn = await suiteVerlassenNeu(browser, FB_PORT);
-    // iOS-App-Wechsel (v3.115.3): haelt Seiten im Debugger an — seriell.
-    const ih = await suiteIosHintergrund(browser, FB_PORT);
     // Herzschlag laeuft bewusst HIER (seriell) und nicht parallel: die Suite
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
@@ -7056,7 +7099,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // denen das SDK wirklich hochfaehrt, und wartet je 2,5 s auf den
     // Anmeldeversuch. Parallel dazu waere das eine Lastmessung.
     const fbs = await suiteFirebaseStart(browser);
-    return { mm, mm3, wq, vn, ih, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
+    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -7087,7 +7130,15 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rWQ = rHeavy.wq, rVN = rHeavy.vn, rIH = rHeavy.ih, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
+  // Die drei Warteschlangen-Suiten laufen ALLEIN, nachdem alles andere fertig
+  // ist (v3.116.0). Sie halten bis zu sechs Clients in Echtzeit; neben den
+  // gut zwanzig parallelen Suiten trieben sie die Last so hoch, dass die
+  // Phasen-Pruefung der alten Code-Join-Suite flatterte (Host BAUEN, Gast
+  // KANONE ueber 3 s). Nach hinten gestellt kostet das rund eine Minute.
+  const rWQ = await suiteWarteschlangeMehrere(browser, FB_PORT);
+  const rVN = await suiteVerlassenNeu(browser, FB_PORT);
+  const rIH = await suiteIosHintergrund(browser, FB_PORT);
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
   await browser.close();
   mockFbSrv.close();
 

@@ -8813,6 +8813,33 @@ nicht nur auf iOS:
    Zustands-Listener (`nurListenerStop`). Gemessen: Herzschlag nach der
    Rückkehr +9000 ms in 7 s (vorher: Stillstand).
 
+Der erste CI-Lauf dieser Version hielt die Auslieferung auf (1 rot: „zurück-
+gekehrter Gast sieht kein Ergebnis"). Mit Wartebedingung statt Einzel-
+ablesung war es 3/3 reproduzierbar — und führte zu drei weiteren Fehlern:
+
+4. **Rückkehrer landete im Menü statt im Ergebnis.** Beim Aufwachen war der
+   letzte Stand > 30 s alt, der Verbindungswächter erklärte den HOST für
+   verloren, bevor der wartende Endstand ankam. Jetzt erkennt der Wächter
+   einen Zeitsprung zwischen zwei Takten (> 6 s = wir haben geschlafen),
+   verbindet neu und beginnt die Frist von vorn.
+5. **Gast hing für immer in einer toten Partie** (nicht iOS-spezifisch).
+   Jede Neuverbindung liefert den letzten Stand erneut aus, und JEDE
+   Auslieferung setzte die 30-s-Frist zurück. Stürzt der Host ab, bleibt
+   sein Spielknoten mit Absicht stehen (v3.14.10) — der Gast bekam alle paar
+   Sekunden denselben alten Stand. Gemessen: nach 45 s noch Timer 20, kein
+   Hinweis. Jetzt zählt nur ein GEÄNDERTER Stand (`letzterZustand`), wie
+   beim Herzschlag des Hosts. Danach: sauber raus nach 32 s.
+6. **Hinweise beim Rücksprung ins Menü waren unsichtbar.** `warn` wurde nur
+   im Spiel-Zweig gezeichnet; „Verbindung zum Host verloren" und „Host hat
+   das Spiel beendet" entstehen aber erst NACH dem Wechsel ins Menü. Jetzt
+   `warnHinweis()` in beiden Zweigen.
+
+Neuer Fall in `suiteIosHintergrund`: Host-App stürzt ab, während der Gast im
+Hintergrund ist → Gast verlässt die Partie nach dem Aufwachen binnen der
+Frist, MIT Hinweis. Vorher prüfte keine Suite, dass ein Gast einen
+verlorenen Host überhaupt bemerkt. Alle drei Fehler wurden vor dem Fix rot
+gemessen.
+
 Dazu: Der Gast stellt sein onDisconnect nach jeder Wiederverbindung neu
 scharf (`fbVerbindungen`), sonst fiele der zweite Wechsel erst über die
 30-s-Frist auf.
