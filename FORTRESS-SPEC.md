@@ -8743,3 +8743,41 @@ Beide laufen in `deploy.yml` vor jeder Auslieferung (serieller Block).
   höchstens drei Anläufe; „Gelegenheit gehabt und nicht gedichtet" wird
   sofort gemeldet. Gegenprobe: Bot dichtet nie (`botSealCastle` stillgelegt)
   → nach drei Anläufen rot.
+
+### Nachtrag v3.115.3 — der CI-Lauf hielt die Auslieferung auf (richtig so)
+
+Erster CI-Lauf zu v3.115.3: 485 grün, 7 rot, **Auslieferung blockiert**.
+Kette, gemessen und lokal nachgestellt (`taskset -c 0,1`, zwei Kerne):
+
+1. **Erster Quick-Match scheiterte unter Last** („A=false B=false"), auf
+   einem Kern sogar 0/2 allein. Zwei Ursachen:
+   - Der Zeitraffer der Suite raffte auch die **Netzfristen** der
+     Warteschlange: Takt 2 s → 50 ms, Claim-Heilung 6 s → 1,2 s, Gast-
+     Wartezeit 15 s → 3 s. Netzlaufzeit wird im Test aber nicht schneller.
+     Jetzt `netzFrist`/`netzTakt` in app.js: im Spiel identisch mit
+     setTimeout/setInterval, im Test die echte Uhr (`__echtTimeout`, von
+     `TIMER_SPEEDUP` abgelegt). Ergebnis auf einem Kern: 0/2 → 3/3.
+     `tests/net.test.js` hält die vier Stellen als Konstruktion fest
+     (Gegenprobe: Claim-Heilung bzw. Gast-Wartezeit zurück auf setTimeout → rot).
+   - `startMM` klickte nach festen 200 ms auf „Matchmaking" — unter Last war
+     der Schirm noch nicht da, der Klick ging ins Leere, gesucht wurde nie.
+     Jetzt `klickeWennDa`/`starteSuche`: warten, bis der Knopf da ist, und
+     melden, wenn nicht.
+2. **Folgefehler über Suitengrenzen:** Die gescheiterte Suite ließ ihre
+   Tickets stehen, weil der Datenbank-Mock `onDisconnect` **nicht nachbildete**.
+   Die nächste Suite bekam einen Geist als Gegner. Jetzt meldet jeder Client
+   eine Verbindungskennung, und wer 6 s schweigt, dessen onDisconnect-
+   Löschungen werden ausgeführt — wie in der echten Datenbank. Neuer Fall in
+   `suiteVerlassenNeu`: App während der Suche geschlossen → Ticket weg, die
+   Nächsten landen trotzdem in einer gültigen Partie.
+3. **Leere Knoten im Mock:** Ein Löschen unter einem schon gelöschten Knoten
+   legte die Eltern neu an und ließ sie LEER stehen (gesehen als „verwaister
+   Spielknoten" mit Inhalt `{}`). Jetzt wie Firebase: Löschen legt nichts an,
+   leer gewordene Elternknoten verschwinden.
+4. Feste 2,5-s-Wartezeit auf den Ergebnisschirm in `suiteMatchmaking` →
+   Wartebedingung mit Frist.
+
+Auf zwei Kernen bleiben Ausfälle in `suiteOnline2P`/`suiteNavHUD` (Phasen-
+Schild, Emote, Timer) — dieselben wie VOR diesen Änderungen, Zeitraffer-
+Suiten im parallelen Block. Nicht Teil dieser Version; die CI-Runner haben
+vier Kerne.

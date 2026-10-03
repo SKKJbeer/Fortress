@@ -299,6 +299,16 @@ async function getFirebase() {
     return null;
   }
 }
+// Netzfristen der Warteschlange (v3.115.3): Takt, Claim-Heilung, Warten auf
+// den Gast. Im Spiel identisch mit setTimeout/setInterval. Der Zeitraffer der
+// Testsuite (TIMER_SPEEDUP) legt aber die ECHTEN Uhren unter __echtTimeout/
+// __echtInterval ab, und diese Fristen nehmen dann die echten: Netzlaufzeit
+// wird im Test nicht schneller. Gerafft wurde aus 15 s Gast-Wartezeit 3 s und
+// aus der 6-s-Claim-Heilung 1,2 s — auf einem Kern scheiterte damit JEDER
+// erste Quick-Match (0/2), mit echten Fristen 2/2. Im CI mit zwei Kernen riss
+// es eine Auslieferung.
+const netzFrist = (fn, ms) => ((typeof window !== "undefined" && window.__echtTimeout) || setTimeout)(fn, ms);
+const netzTakt = (fn, ms) => ((typeof window !== "undefined" && window.__echtInterval) || setInterval)(fn, ms);
 const CODE_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function makeCode() {
   // Der Spielcode ist der EINZIGE Zugangsschutz einer Partie: `games/<code>`
@@ -2604,7 +2614,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           // zurücksetzen damit der erste nicht nach kurzem Timeout rausfliegt.
           clearTimeout(mmWatchdog.current);
           const hostCode = mpCodeRef.current;
-          mmWatchdog.current = setTimeout(() => {
+          mmWatchdog.current = netzFrist(() => {
             mmWatchdog.current = null;
             if (gameStarted.current) return;
             for (const k of Object.keys(mmPendingCandidates.current)) {
@@ -2992,7 +3002,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       mmHealTimer.current = null;
     }
     mmHealFor.current = claimTs;
-    mmHealTimer.current = setTimeout(async () => {
+    mmHealTimer.current = netzFrist(async () => {
       mmHealTimer.current = null;
       if (!mmActive.current) return;
       const qn = mmQueueName();
@@ -3100,7 +3110,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     fb.delete(`${mmQueueName()}/${SESSION_ID}`);
     mmPendingCandidates.current = { ...pendingPaths };
     if (mmWatchdog.current) clearTimeout(mmWatchdog.current);
-    mmWatchdog.current = setTimeout(() => {
+    mmWatchdog.current = netzFrist(() => {
       mmWatchdog.current = null;
       if (gameStarted.current) return;
       for (const k of Object.keys(mmPendingCandidates.current)) {
@@ -3438,7 +3448,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // (Doppelklick / Rejoin nach fehlgeschlagenem Reserve) dürfen nie zwei
     // mmTick-Intervalle hinterlassen (v3.14.13).
     if (mmTickTimer.current) clearInterval(mmTickTimer.current);
-    mmTickTimer.current = setInterval(mmTick, MM_TICK_MS);
+    mmTickTimer.current = netzTakt(mmTick, MM_TICK_MS);
     // Eigener 1-Sekunden-Ticker nur für die Anzeige (Wartezeit + Radius),
     // damit der Zähler flüssig hochläuft und nicht im 2s-Heartbeat-Takt springt.
     if (mmDisplayTimer.current) clearInterval(mmDisplayTimer.current);

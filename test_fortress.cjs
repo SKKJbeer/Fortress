@@ -52,6 +52,10 @@ function starteDistServer() {
 //                 setTimeout >= 2000ms → /5   (Banner 5× schneller)
 // Damit dauert ein kompletter Phasenzyklus ~10s statt ~100s.
 const TIMER_SPEEDUP = `
+  // Echte Uhren fuer Netzfristen (v3.115.3, netzFrist/netzTakt in app.js):
+  // Phasen werden gerafft, Netzlaufzeiten nicht.
+  window.__echtTimeout = window.setTimeout;
+  window.__echtInterval = window.setInterval;
   const _osi = window.setInterval;
   window.setInterval = (fn, ms, ...a) => _osi(fn, ms >= 900 ? 50 : ms === 600 ? 60 : ms, ...a);
   const _ost = window.setTimeout;
@@ -136,6 +140,33 @@ async function jsClick(page, parts) {
     }
     return null;
   }, parts);
+}
+// Klickt, SOBALD der Knopf da ist, und sagt, ob er getroffen wurde (v3.115.3).
+// jsClick klickt sofort und gibt bei Nichtfinden still null zurueck. Unter
+// Last (CI, zwei Kerne) war der Online-Schirm nach festen 200 ms noch nicht
+// gezeichnet, der Klick auf „Matchmaking" ging ins Leere, und der Client hat
+// NIE gesucht — gemeldet als „Quick Match: A=false B=false".
+async function klickeWennDa(page, parts, timeout = 8000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const t = await jsClick(page, parts);
+    if (t !== null) return t;
+    await page.waitForTimeout(100);
+  }
+  return null;
+}
+// Matchmaking starten und nachweisen, dass wirklich gesucht wird.
+// Liefert '' bei Erfolg, sonst was fehlte.
+async function starteSuche(page, np) {
+  const online = await klickeWennDa(page, ['ONLINE']);
+  if (online === null) return 'Knopf ONLINE nicht gefunden';
+  if (np) {
+    const anzahl = await klickeWennDa(page, [np === 3 ? '3 Spieler' : '2 Spieler']);
+    if (anzahl === null) return `Knopf „${np} Spieler" nicht gefunden`;
+  }
+  const mm = await klickeWennDa(page, ['Matchmaking']);
+  if (mm === null) return 'Knopf „Matchmaking" nicht gefunden';
+  return '';
 }
 async function findBtn(page, parts) {
   return page.evaluate((parts) => {
@@ -875,6 +906,25 @@ async function suiteQuitUX(browser) {
 function startMockFbServer() {
   const store = {};
   let ver = 0;
+  // onDisconnect wie bei Firebase (v3.115.3): Jeder Client schickt seine
+  // Kennung (cid) bei jeder Anfrage mit. Meldet er sich laenger als
+  // TRENNUNG_MS nicht, gilt die Verbindung als abgerissen, und seine
+  // registrierten onDisconnect-Loeschungen werden ausgefuehrt. Vorher tat der
+  // Mock hier NICHTS: Schloss ein Test seinen Browser mitten in der Suche,
+  // blieb das Ticket als Geist stehen und wurde der naechsten Suite als
+  // Gegner zugeteilt (CI-Lauf zu v3.115.3: eine gescheiterte Suite riss die
+  // naechste mit). Die echte Datenbank raeumt so etwas selbst ab.
+  const TRENNUNG_MS = 6000;
+  const zuletzt = {};      // cid -> Zeitpunkt der letzten Anfrage
+  const beimTrennen = {};  // cid -> Set(Pfade)
+  setInterval(() => {
+    const jetzt = Date.now();
+    for (const cid of Object.keys(beimTrennen)) {
+      if (jetzt - (zuletzt[cid] || 0) <= TRENNUNG_MS) continue;
+      for (const pfad of beimTrennen[cid]) setAt(pfad, null);
+      delete beimTrennen[cid]; delete zuletzt[cid];
+    }
+  }, 500).unref();
 
   function getAt(path) {
     const parts = path.split('/').filter(Boolean);
@@ -888,13 +938,33 @@ function startMockFbServer() {
 
   function setAt(path, val) {
     const parts = path.split('/').filter(Boolean);
+    if (val === null || val === undefined) {
+      // Loeschen wie in der echten Datenbank (v3.115.3): legt NICHTS an und
+      // nimmt leer gewordene Elternknoten mit. Vorher erzeugte ein Loeschen
+      // unter einem schon geloeschten Knoten die Eltern neu und liess sie LEER
+      // stehen — sichtbar wurde das erst, als onDisconnect echt feuerte
+      // (games/<code>/hb2 nach dem Spielende → leerer Knoten games/<code>).
+      const kette = [store];
+      let c = store;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!c[parts[i]] || typeof c[parts[i]] !== 'object') { ver++; return; }
+        c = c[parts[i]];
+        kette.push(c);
+      }
+      delete c[parts.at(-1)];
+      for (let i = parts.length - 2; i >= 0; i--) {
+        if (Object.keys(kette[i + 1]).length) break;
+        delete kette[i][parts[i]];
+      }
+      ver++;
+      return;
+    }
     let c = store;
     for (let i = 0; i < parts.length - 1; i++) {
       if (!c[parts[i]] || typeof c[parts[i]] !== 'object') c[parts[i]] = {};
       c = c[parts[i]];
     }
-    if (val === null || val === undefined) delete c[parts.at(-1)];
-    else c[parts.at(-1)] = val;
+    c[parts.at(-1)] = val;
     ver++;
   }
 
@@ -913,6 +983,18 @@ function startMockFbServer() {
     const url  = new URL(req.url, 'http://localhost');
     const op   = url.searchParams.get('op') || '';
     const path = url.searchParams.get('path') || '/';
+    const cid  = url.searchParams.get('cid');
+    if (cid) zuletzt[cid] = Date.now();
+    if (op === 'alive') { res.end('{}'); return; }
+    if (op === 'ondisc' || op === 'ondisc_cancel') {
+      if (cid) {
+        const m = beimTrennen[cid] || (beimTrennen[cid] = new Set());
+        if (op === 'ondisc') m.add(path); else m.delete(path);
+      }
+      res.setHeader('Content-Type', 'application/json');
+      res.end('{"ok":true}');
+      return;
+    }
 
     if (op === 'get') {
       res.setHeader('Content-Type', 'application/json');
@@ -977,9 +1059,14 @@ function startMockFbServer() {
 function makeFbMock(port) {
   return `(function() {
   const B = 'http://localhost:${port}';
+  // Verbindungskennung dieser Seite (v3.115.3) — siehe startMockFbServer.
+  const CID = 'c' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   async function _f(url, opts) {
-    try { return await fetch(url, opts); } catch(e) { return null; }
+    try { return await fetch(url + '&cid=' + CID, opts); } catch(e) { return null; }
   }
+  // Lebenszeichen auch ohne laufende Abos (z. B. im Menue). 700 ms, NICHT
+  // >= 900: TIMER_SPEEDUP wuerde daraus 50 ms machen.
+  setInterval(() => { _f(B + '/fb?op=alive'); }, 700);
   function ref(db, path) { return { __p: path }; }
   async function set(ref, data) {
     await _f(B+'/fb?op=set&path='+encodeURIComponent(ref.__p),
@@ -1040,7 +1127,12 @@ function makeFbMock(port) {
       return { committed:false, snapshot:{exists:()=>false,val:()=>null} };
     }
   }
-  function onDisconnect(ref) { return { remove:()=>{}, cancel:()=>{} }; }
+  function onDisconnect(ref) {
+    return {
+      remove: () => _f(B + '/fb?op=ondisc&path=' + encodeURIComponent(ref.__p)),
+      cancel: () => _f(B + '/fb?op=ondisc_cancel&path=' + encodeURIComponent(ref.__p)),
+    };
+  }
   // Auth-Identitaet (v3.72.0): ohne uid laeuft der Cloud-Save-Pfad gar nicht an.
   // __testUid wird pro Kontext ueber extraInit gesetzt; ohne Angabe bleibt uid
   // null und alles verhaelt sich wie vor v3.72.0 (kein Bruch in Altsuiten).
@@ -1386,9 +1478,8 @@ async function suiteMatchmaking(browser, fbPort) {
   pB.on('pageerror', e => { if (!/firebase/i.test(e.message)) errsB.push(e.message); });
 
   const startMM = async (p) => {
-    await jsClick(p, ['ONLINE']);
-    await p.waitForTimeout(200);
-    await jsClick(p, ['Matchmaking']);
+    const fehlt = await starteSuche(p, 0);
+    if (fehlt) fail(`Matchmaking-Start: ${fehlt}`);
     await p.waitForTimeout(150);
   };
   const inGame = (p, t) => p.waitForSelector('canvas', { timeout: t }).then(() => true).catch(() => false);
@@ -1407,8 +1498,12 @@ async function suiteMatchmaking(browser, fbPort) {
     tipSeen ? ok('Queue: Tipps-Karussell sichtbar ✓') : fail('Queue: Tipp fehlt im Suche-Screen');
     await startMM(pB);
     const [m1a, m1b] = await Promise.all([inGame(pA, 15000), inGame(pB, 15000)]);
-    m1a && m1b ? ok('Quick Match: beide Clients im Spiel ✓')
-               : fail(`Quick Match: A=${m1a} B=${m1b}`);
+    if (m1a && m1b) ok('Quick Match: beide Clients im Spiel ✓');
+    else {
+      const was = async (p) => p.evaluate(() => ({ schirm: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 80),
+        dbg: window.__mmDbg ? { g: window.__mmDbg.group, c: window.__mmDbg.claimer, n: window.__mmDbg.n } : null, ticks: window.__mmTicks || 0 }));
+      fail(`Quick Match: A=${m1a} B=${m1b} — A ${JSON.stringify(await was(pA))} · B ${JSON.stringify(await was(pB))}`);
+    }
     if (!m1a || !m1b) return { res, errs: [...errsA, ...errsB] };
 
     // Selbst-Match-Regression (v3.15.2): beide HUDs müssen BEIDE Namen zeigen —
@@ -1433,7 +1528,10 @@ async function suiteMatchmaking(browser, fbPort) {
     });
     await hostP.waitForTimeout(250);
     await jsClick(hostP, ['Ja', 'Beenden', 'verlassen']);
-    await guestP.waitForTimeout(2500);
+    // Auf den Ergebnisschirm WARTEN statt 2,5 s und einmal lesen (v3.115.3):
+    // auf einem Kern kam er spaeter, und alle Folgepruefungen fielen mit.
+    await guestP.waitForFunction(() => /Hauptmenü/.test(document.body.innerText), { timeout: 12000 }).catch(() => {});
+    await guestP.waitForTimeout(300);
     const bRes = await guestP.evaluate(() => {
       const t = document.body.innerText;
       return { menu: /Hauptmenü/.test(t), rematch: /Nächste Runde|Neue Karte/.test(t), hint: /neue Gegner|Matchmaking im Menü/.test(t) };
@@ -1477,8 +1575,12 @@ async function suiteMatchmaking(browser, fbPort) {
     await startMM(pA);
     await startMM(pB);
     const [m2a, m2b] = await Promise.all([inGame(pA, 15000), inGame(pB, 15000)]);
-    m2a && m2b ? ok('Quick Match Runde 2: beide wieder im Spiel ✓')
-               : fail(`Quick Match Runde 2: A=${m2a} B=${m2b}`);
+    if (m2a && m2b) ok('Quick Match Runde 2: beide wieder im Spiel ✓');
+    else {
+      const was = async (p) => p.evaluate(() => ({ schirm: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 80),
+        dbg: window.__mmDbg ? { g: window.__mmDbg.group, c: window.__mmDbg.claimer, n: window.__mmDbg.n } : null, ticks: window.__mmTicks || 0 }));
+      fail(`Quick Match Runde 2: A=${m2a} B=${m2b} — A ${JSON.stringify(await was(pA))} · B ${JSON.stringify(await was(pB))}`);
+    }
 
     // v3.19.1: Online-Spielstart muss die Schrott-Ökonomie auf 15 zurücksetzen —
     // auch beim 2. Spiel (vorher schleppte es den Schrott des 1. Spiels mit).
@@ -1509,7 +1611,10 @@ async function suiteMatchmaking(browser, fbPort) {
       });
       await hostP2.waitForTimeout(250);
       await jsClick(hostP2, ['Ja', 'Beenden', 'verlassen']);
-      await guestP2.waitForTimeout(2500);
+      // Auf den Ergebnisschirm WARTEN statt 2,5 s und einmal lesen (v3.115.3):
+      // auf einem Kern kam er spaeter, und alle Folgepruefungen fielen mit.
+      await guestP2.waitForFunction(() => /Hauptmenü/.test(document.body.innerText), { timeout: 12000 }).catch(() => {});
+      await guestP2.waitForTimeout(300);
       const elo2 = await guestP2.evaluate(() => { try { return JSON.parse(localStorage.getItem('fortress_profile')).elo; } catch (e) { return null; } });
       const prevElo = guestP2 === guestP && typeof elo1 === 'number' ? elo1 : 1050;
       (typeof elo2 === 'number' && elo2 > prevElo)
@@ -1625,17 +1730,18 @@ function wqWerkzeug(browser, fbPort, errs, praefix, namen) {
     np: window.__mpNp || 0,
     sucht: window.__mmSucht ? window.__mmSucht() : null,
     bot: window.__botMode ? window.__botMode() : null,
+    // Fuer Meldungen: WAS der Client gerade zeigt, wenn er weder sucht noch
+    // spielt (Wartelobby als Host? Fehlermeldung? Menue?).
+    schirm: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 70),
+    dbg: window.__mmDbg ? JSON.stringify({ g: window.__mmDbg.group, c: window.__mmDbg.claimer, n: window.__mmDbg.n }) : null,
   }));
   const zuruecksetzen = (c) => c.page.evaluate(() => {
     window.__imSpiel = null; window.__mpCode = null; window.__myRole = 0; window.__mpNp = 0;
   });
   const suche = async (c, np) => {
     await zuruecksetzen(c);
-    await jsClick(c.page, ['ONLINE']);
-    await c.page.waitForTimeout(200);
-    await jsClick(c.page, [np === 3 ? '3 Spieler' : '2 Spieler']);
-    await c.page.waitForTimeout(120);
-    await jsClick(c.page, ['Matchmaking']);
+    const fehlt = await starteSuche(c.page, np);
+    if (fehlt) errs.push(`${c.name}: Suche nicht gestartet — ${fehlt}`);
   };
   const raus = async (c) => {
     const z = await lese(c);
@@ -1699,7 +1805,7 @@ async function suiteWarteschlangeMehrere(browser, fbPort) {
     }
     const ms = Date.now() - t0;
     const imSpiel = z.filter(x => x.code).length;
-    const bild = clients.map((c, i) => `${c.name}:${z[i].code ? z[i].code.slice(0, 4) + '/R' + z[i].rolle + '/' + z[i].np + 'P' : (z[i].sucht ? 'sucht' : z[i].bot ? 'BOT' : 'weg')}`).join(' ');
+    const bild = clients.map((c, i) => `${c.name}:${z[i].code ? z[i].code.slice(0, 4) + '/R' + z[i].rolle + '/' + z[i].np + 'P' : (z[i].sucht ? 'sucht' : z[i].bot ? 'BOT' : 'weg[' + z[i].schirm + ' | ' + z[i].dbg + ']')}`).join(' ');
     if (imSpiel < erwartet) { fail(`${titel}: nur ${imSpiel}/${erwartet} im Spiel nach ${ms} ms — ${bild}`); return z; }
     const partien = {};
     z.forEach((x, i) => { if (x.code) (partien[x.code] = partien[x.code] || []).push({ ...x, name: clients[i].name }); });
@@ -1996,6 +2102,33 @@ async function suiteVerlassenNeu(browser, fbPort) {
     await pruefeGueltig('2P nach Abbruch-Schleife', [C, D], 2);
     for (const c of pool) await raus(c);
 
+    // ── 5b) App waehrend der Suche geschlossen ──────────────────
+    // Die Datenbank loescht das Ticket per onDisconnect — bis dahin steht ein
+    // Geist in der Schlange. Wer genau dann sucht, darf kurz an ihn geraten
+    // (der Host-Watchdog gibt nach 15 s auf), muss aber am Ende in einer
+    // GUELTIGEN Partie landen. Und das Ticket muss weg sein.
+    {
+      const G = await neu(6);
+      await suche(G, 2);
+      await G.page.waitForTimeout(800);
+      await G.ctx.close();
+      pool.splice(pool.indexOf(G), 1);
+      await suche(D, 2);
+      await D.page.waitForTimeout(1500);
+      await suche(E, 2);
+      await pruefeGueltig('2P nach App-Schliessen eines Wartenden', [D, E], 2, 45000);
+      let geist = 1;
+      for (const t0 = Date.now(); Date.now() - t0 < 12000; ) {
+        const q = await dbHol(D, 'queue2');
+        geist = q && q !== 'ERR' ? Object.values(q).filter(t => t && t.pid === 'p_vn_6').length : 0;
+        if (geist === 0) break;
+        await D.page.waitForTimeout(500);
+      }
+      geist === 0 ? ok('Ticket der geschlossenen App ist weg (onDisconnect) ✓')
+                  : fail('Ticket der geschlossenen App steht noch in der Schlange');
+      for (const c of pool) await raus(c);
+    }
+
     // ── 6) 3P: Gast geht, danach suchen alle sechs ──────────────
     await Promise.all([suche(A, 3), suche(B, 3), suche(C, 3)]);
     if (await pruefeGueltig('3P vor Gast-Abgang', [A, B, C], 3)) {
@@ -2043,7 +2176,8 @@ async function suiteVerlassenNeu(browser, fbPort) {
     }
     reste.length === 0
       ? ok(`Keine verwaisten Spielknoten (${alteCodes.size} Partien, ${wartete} ms nach dem letzten Abgang) ✓`)
-      : fail(`Verwaiste Spielknoten nach ${wartete} ms: ${reste.join(', ')} von ${alteCodes.size} Partien`);
+      : fail(`Verwaiste Spielknoten nach ${wartete} ms: ${reste.join(', ')} von ${alteCodes.size} Partien — Inhalt: `
+             + JSON.stringify(Object.fromEntries(await Promise.all(reste.map(async k => [k, Object.keys((await dbHol(A, 'games/' + k)) || {})])))));
     errs.length === 0 ? ok('Verlassen/Neu: keine JS-Fehler ✓') : errs.slice(0, 3).forEach(e => fail(`VN JS: ${e.slice(0, 100)}`));
   } finally {
     for (const c of pool) await c.ctx.close();
@@ -3441,11 +3575,8 @@ async function suiteOnline3P(browser, fbPort) {
     await p.waitForTimeout(300);
   };
   const startMM3 = async (p) => {
-    await jsClick(p, ['ONLINE']);
-    await p.waitForTimeout(200);
-    await jsClick(p, ['3 Spieler']);
-    await p.waitForTimeout(150);
-    await jsClick(p, ['Matchmaking']);
+    const fehlt = await starteSuche(p, 3);
+    if (fehlt) fail(`3P Matchmaking-Start: ${fehlt}`);
     await p.waitForTimeout(150);
   };
 

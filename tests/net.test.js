@@ -279,3 +279,24 @@ test('sanitizeAction: Wappen und Kosmetik muessen schlichte Woerter sein', () =>
   assert.equal(sanitizeAction({ type: 'join', wappen: 'phoenix' }).wappen, 'phoenix');
   assert.equal(sanitizeAction({ type: 'join', cannon: 'cannon_dragon' }).cannon, 'cannon_dragon');
 });
+
+// ── Netzfristen laufen in Echtzeit, auch im Test-Zeitraffer (v3.115.3) ────
+// Der Zeitraffer der E2E-Suite rafft setTimeout/setInterval. Fuer Phasen ist
+// das richtig, fuer Netzfristen nicht: Laufzeiten werden im Test nicht
+// schneller. Gerafft wurde aus 15 s Gast-Wartezeit 3 s — auf einem Kern
+// scheiterte JEDER erste Quick-Match, im CI riss es eine Auslieferung.
+// Geprueft wird die KONSTRUKTION, nicht ein Wort (CLAUDE.md, v3.111.7).
+import { readFileSync as _lies } from 'node:fs';
+test('Warteschlange: Takt, Claim-Heilung und Gast-Wartezeit nehmen die echte Uhr', () => {
+  const app = _lies(new URL('../src/game/app.js', import.meta.url), 'utf8');
+  assert.match(app, /const netzFrist = \(fn, ms\) => \(\(typeof window !== "undefined" && window\.__echtTimeout\) \|\| setTimeout\)\(fn, ms\);/);
+  assert.match(app, /const netzTakt = \(fn, ms\) => \(\(typeof window !== "undefined" && window\.__echtInterval\) \|\| setInterval\)\(fn, ms\);/);
+  assert.match(app, /mmTickTimer\.current = netzTakt\(mmTick, MM_TICK_MS\);/);
+  assert.match(app, /mmHealTimer\.current = netzFrist\(async \(\) => \{[\s\S]{0,600}?\}, MM_CLAIM_HEAL_MS\);/);
+  const waechter = app.match(/mmWatchdog\.current = netzFrist\(\(\) => \{[\s\S]{0,900}?\}, MM_GUEST_JOIN_TIMEOUT_MS\);/g) || [];
+  assert.equal(waechter.length, 2, 'beide Gast-Wartezeiten (Host nach Claim, Host nach erstem Gast) muessen netzFrist nehmen');
+  assert.doesNotMatch(app, /=\s*setTimeout\([\s\S]{0,900}?\},\s*MM_(CLAIM_HEAL_MS|GUEST_JOIN_TIMEOUT_MS)\)/);
+  const suite = _lies(new URL('../test_fortress.cjs', import.meta.url), 'utf8');
+  assert.match(suite, /window\.__echtTimeout = window\.setTimeout;\s*\n\s*window\.__echtInterval = window\.setInterval;\s*\n\s*const _osi = window\.setInterval;/,
+    'TIMER_SPEEDUP muss die echten Uhren VOR dem Raffen ablegen');
+});
