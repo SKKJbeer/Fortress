@@ -1590,6 +1590,213 @@ async function suiteMatchmaking(browser, fbPort) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SUITE: Warteschlange mit MEHREREN Wartenden (v3.115.2)
+//
+// Die Matchmaking-Suite oben prueft zwei Spieler, die 3P-Suite drei — also
+// immer genau eine Partie. Ob die Verteilung stimmt, wenn mehr Leute warten,
+// als in eine Partie passen, stand nirgends. Genau dort sassen aber die
+// schweren Fehler: Livelock ab ~15 Wartenden (v3.14.13), Selbst-Match durch
+// das Echo des eigenen Claims (v3.15.2), Geister-Tickets (v3.15.3).
+//
+// Geprueft wird jede entstandene Partie EINZELN, gemessen am Client selbst
+// (Spielcode, Rolle, Spielerzahl): genau np Mitglieder, jede Rolle 1..np genau
+// einmal, niemand in zwei Partien, kein 2P-Spieler in einer 3P-Partie. Wer
+// uebrig bleibt, muss WEITER SUCHEN — und der naechste Nachzuegler muss ihn
+// finden.
+//
+// OHNE Zeitraffer: Im Zeitraffer endet eine Online-Partie, in der niemand
+// baut, nach wenigen Sekunden — der Test wuerde dann Ergebnisschirme statt
+// Partien zaehlen. Ausserdem liefe mmTick im 50-ms-Takt statt alle 2 s.
+// ═══════════════════════════════════════════════════════════════
+async function suiteWarteschlangeMehrere(browser, fbPort) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Warteschlange mit mehreren Wartenden (2P + 3P)\n' + '='.repeat(50));
+
+  // Merkt sich den Spielcode in dem Moment, in dem das Brett erscheint —
+  // klebend, damit ein spaeterer Ergebnisschirm die Beobachtung nicht loescht.
+  const SPIEL_MERKER = `setInterval(() => {
+    if (window.__mpCode && document.querySelector('canvas')) window.__imSpiel = window.__mpCode;
+  }, 200);`;
+  const identitaet = (name, i) => `window.__mmDebug = true; try {
+    const p = JSON.parse(localStorage.getItem('fortress_profile'));
+    p.id = 'p_wq_${i}'; p.name = '${name}';
+    // ELO leicht gestreut (innerhalb des Startradius) — eine Sortierung mit
+    // lauter Gleichstaenden wuerde nur den Gleichstands-Zweig pruefen.
+    p.elo = ${1020 + (i * 7) % 40}; p.elo3 = ${1020 + (i * 11) % 40};
+    localStorage.setItem('fortress_profile', JSON.stringify(p));
+    localStorage.setItem('fortress_device_id', 'd_wq_${i}');
+  } catch(e){}`;
+
+  const pool = [];
+  const neu = async (i) => {
+    const name = 'WQ' + String.fromCharCode(65 + i);
+    const c = await makeOnlineCtx(browser, fbPort, identitaet(name, i) + SPIEL_MERKER, { langsam: true });
+    c.page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(`${name}: ${e.message}`); });
+    await loadMenu(c.page);
+    c.name = name;
+    pool.push(c);
+    return c;
+  };
+  const lese = (c) => c.page.evaluate(() => ({
+    code: window.__imSpiel || null,
+    rolle: window.__myRole || 0,
+    np: window.__mpNp || 0,
+    sucht: window.__mmSucht ? window.__mmSucht() : null,
+    bot: window.__botMode ? window.__botMode() : null,
+  }));
+  const zuruecksetzen = (c) => c.page.evaluate(() => {
+    window.__imSpiel = null; window.__mpCode = null; window.__myRole = 0; window.__mpNp = 0;
+  });
+  const suche = async (c, np) => {
+    await zuruecksetzen(c);
+    await jsClick(c.page, ['ONLINE']);
+    await c.page.waitForTimeout(200);
+    await jsClick(c.page, [np === 3 ? '3 Spieler' : '2 Spieler']);
+    await c.page.waitForTimeout(120);
+    await jsClick(c.page, ['Matchmaking']);
+  };
+  const raus = async (c) => {
+    const z = await lese(c);
+    if (z.sucht) { await jsClick(c.page, ['Abbrechen']); await c.page.waitForTimeout(200); }
+    if (await c.page.evaluate(() => !!document.querySelector('canvas'))) await mmQuitToMenu(c.page);
+    await jsClick(c.page, ['Hauptmenü']);
+    await jsClick(c.page, ['Zurück', 'Abbrechen']);
+    await c.page.waitForTimeout(200);
+  };
+
+  // Wartet, bis `erwartet` Clients im Spiel sind (oder die Frist ablaeuft),
+  // und prueft dann die Verteilung. Die Meldung nennt, was beobachtet wurde.
+  const pruefeVerteilung = async (titel, clients, np, erwartet, fristMs) => {
+    const t0 = Date.now();
+    let z = [];
+    while (Date.now() - t0 < fristMs) {
+      z = await Promise.all(clients.map(lese));
+      if (z.filter(x => x.code).length >= erwartet) break;
+      await clients[0].page.waitForTimeout(400);
+    }
+    const ms = Date.now() - t0;
+    const imSpiel = z.filter(x => x.code).length;
+    const bild = clients.map((c, i) => `${c.name}:${z[i].code ? z[i].code.slice(0, 4) + '/R' + z[i].rolle + '/' + z[i].np + 'P' : (z[i].sucht ? 'sucht' : z[i].bot ? 'BOT' : 'weg')}`).join(' ');
+    if (imSpiel < erwartet) { fail(`${titel}: nur ${imSpiel}/${erwartet} im Spiel nach ${ms} ms — ${bild}`); return z; }
+    const partien = {};
+    z.forEach((x, i) => { if (x.code) (partien[x.code] = partien[x.code] || []).push({ ...x, name: clients[i].name }); });
+    const fehler = [];
+    for (const [code, m] of Object.entries(partien)) {
+      if (m.length !== np) fehler.push(`${code}: ${m.length} statt ${np} Spieler`);
+      const rollen = m.map(x => x.rolle).sort().join(',');
+      const soll = Array.from({ length: np }, (_, k) => k + 1).join(',');
+      if (rollen !== soll) fehler.push(`${code}: Rollen ${rollen} statt ${soll}`);
+      if (m.some(x => x.np !== np)) fehler.push(`${code}: Spielerzahl ${m.map(x => x.np).join('/')}`);
+    }
+    if (Object.keys(partien).length !== erwartet / np) fehler.push(`${Object.keys(partien).length} Partien statt ${erwartet / np}`);
+    // Wer uebrig ist, muss weiter suchen — nicht im Bot-Spiel, nicht im Menue.
+    z.forEach((x, i) => { if (!x.code && !x.sucht) fehler.push(`${clients[i].name} sucht nicht mehr (bot=${x.bot})`); });
+    fehler.length === 0
+      ? ok(`${titel}: ${Object.keys(partien).length} Partie(n) à ${np}, ${clients.length - imSpiel} sucht weiter (${ms} ms) ✓`)
+      : fail(`${titel}: ${fehler.join('; ')} — ${bild}`);
+    return z;
+  };
+  const queueLeer = async (c) => {
+    const q = await c.page.evaluate(async (port) => {
+      const hol = async (p) => { try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=' + p)).json(); } catch (e) { return 'ERR'; } };
+      return { q2: await hol('queue2'), q3: await hol('queue3') };
+    }, fbPort);
+    const n = (v) => v && v !== 'ERR' ? Object.keys(v).length : 0;
+    return { q2: n(q.q2), q3: n(q.q3) };
+  };
+
+  try {
+    for (let i = 0; i < 6; i++) await neu(i);
+    const [A, B, C, D, E, F] = pool;
+
+    // ── 1) 2P: vier gleichzeitig → zwei Partien ─────────────────
+    await Promise.all([A, B, C, D].map(c => suche(c, 2)));
+    await pruefeVerteilung('2P, 4 gleichzeitig', [A, B, C, D], 2, 4, 25000);
+    for (const c of [A, B, C, D]) await raus(c);
+
+    // ── 2) 2P: fuenf gestaffelt → zwei Partien + einer sucht; Nachzuegler ──
+    for (const c of [A, B, C, D, E]) { await suche(c, 2); await c.page.waitForTimeout(350); }
+    await pruefeVerteilung('2P, 5 gestaffelt', [A, B, C, D, E], 2, 4, 25000);
+    // Stabil? Der Uebrige darf auch nach weiteren Ticks nicht in eine volle
+    // Partie gedrueckt werden (Selbst-Match, Geister-Ticket).
+    await A.page.waitForTimeout(4500);
+    await pruefeVerteilung('2P, 5 gestaffelt (nach 4,5 s)', [A, B, C, D, E], 2, 4, 1);
+    await suche(F, 2);
+    {
+      const t0 = Date.now(); let zE, zF;
+      while (Date.now() - t0 < 20000) {
+        [zE, zF] = await Promise.all([lese(E), lese(F)]);
+        if (zE.code && zF.code) break;
+        await F.page.waitForTimeout(400);
+      }
+      const z5 = await Promise.all([A, B, C, D, E, F].map(lese));
+      const codes = new Set(z5.filter(x => x.code).map(x => x.code));
+      (zE.code && zE.code === zF.code && new Set([zE.rolle, zF.rolle]).size === 2 && codes.size === 3)
+        ? ok(`2P Nachzuegler: der Wartende und der Neue bilden die 3. Partie (${Date.now() - t0} ms) ✓`)
+        : fail(`2P Nachzuegler: E=${zE.code}/R${zE.rolle} F=${zF.code}/R${zF.rolle}, Partien gesamt ${codes.size}`);
+    }
+    for (const c of pool) await raus(c);
+
+    // ── 3) 3P: sechs gleichzeitig → zwei Partien ────────────────
+    await Promise.all(pool.map(c => suche(c, 3)));
+    await pruefeVerteilung('3P, 6 gleichzeitig', pool, 3, 6, 30000);
+    for (const c of pool) await raus(c);
+
+    // ── 4) 3P: vier → eine Partie + einer sucht; zwei Nachzuegler ──
+    for (const c of [A, B, C, D]) { await suche(c, 3); await c.page.waitForTimeout(350); }
+    const z4 = await pruefeVerteilung('3P, 4 gestaffelt', [A, B, C, D], 3, 3, 30000);
+    const uebrig = [A, B, C, D].find((c, i) => z4[i] && !z4[i].code);
+    if (uebrig) {
+      await suche(E, 3); await E.page.waitForTimeout(350); await suche(F, 3);
+      const t0 = Date.now(); let z;
+      while (Date.now() - t0 < 25000) {
+        z = await Promise.all([uebrig, E, F].map(lese));
+        if (z.every(x => x.code)) break;
+        await F.page.waitForTimeout(400);
+      }
+      const gleich = z.every(x => x.code && x.code === z[0].code);
+      const rollen = z.map(x => x.rolle).sort().join(',');
+      gleich && rollen === '1,2,3'
+        ? ok(`3P Nachzuegler: ${uebrig.name} + zwei Neue bilden die 2. Partie (${Date.now() - t0} ms) ✓`)
+        : fail(`3P Nachzuegler: ${z.map((x, i) => [uebrig, E, F][i].name + '=' + x.code + '/R' + x.rolle).join(' ')}`);
+    }
+    for (const c of pool) await raus(c);
+
+    // ── 5) Beide Schlangen gleichzeitig: 2 Spieler in queue2, 3 in queue3 ──
+    // Darf sich nicht vermischen: ein 2P-Sucher in einer 3P-Partie waere ein
+    // Spiel mit falscher Karte und falscher Rollenzahl.
+    await Promise.all([suche(A, 2), suche(B, 3), suche(C, 2), suche(D, 3), suche(E, 3)]);
+    {
+      const t0 = Date.now(); let z;
+      while (Date.now() - t0 < 30000) {
+        z = await Promise.all([A, B, C, D, E].map(lese));
+        if (z.every(x => x.code)) break;
+        await A.page.waitForTimeout(400);
+      }
+      const zwei = [z[0], z[2]], drei = [z[1], z[3], z[4]];
+      const okZwei = zwei.every(x => x.code && x.code === zwei[0].code && x.np === 2);
+      const okDrei = drei.every(x => x.code && x.code === drei[0].code && x.np === 3);
+      okZwei && okDrei && zwei[0].code !== drei[0].code
+        ? ok(`Beide Schlangen parallel: eine 2P- und eine 3P-Partie, nichts vermischt (${Date.now() - t0} ms) ✓`)
+        : fail(`Beide Schlangen: ${[A, B, C, D, E].map((c, i) => c.name + '=' + (z[i].code || '-') + '/' + z[i].np + 'P').join(' ')}`);
+    }
+    for (const c of pool) await raus(c);
+
+    // ── Aufraeumen: keine Ticket-Leichen in beiden Schlangen ────
+    await A.page.waitForTimeout(1500);
+    const q = await queueLeer(A);
+    q.q2 === 0 && q.q3 === 0 ? ok('Beide Warteschlangen danach leer ✓')
+                             : fail(`Ticket-Leichen: queue2=${q.q2} queue3=${q.q3}`);
+    errs.length === 0 ? ok('Warteschlange: keine JS-Fehler ✓') : errs.slice(0, 3).forEach(e => fail(`WQ JS: ${e.slice(0, 100)}`));
+  } finally {
+    for (const c of pool) await c.ctx.close();
+  }
+  return { res, errs };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SUITE 5c: Online 3-Spieler — Code-Join (Host + 2 Gäste), Phasen-Sync,
 // Quick-Match-Tripel (queue3), Gast-Ausstieg + Rejoin (screenRef-Regression)
 // ═══════════════════════════════════════════════════════════════
@@ -6115,6 +6322,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       bestenliste: () => suiteBestenliste(browser),
       fbstart: () => suiteFirebaseStart(browser),
       matchmaking: () => suiteMatchmaking(browser, FB_PORT),
+      warteschlange: () => suiteWarteschlangeMehrere(browser, FB_PORT),
       haerte: () => suiteOnlineHaerte(browser, FB_PORT),
       heartbeat: () => suiteHeartbeat(browser, FB_PORT),
       trichter: () => suiteTrichter(browser, FB_PORT),
@@ -6160,6 +6368,9 @@ async function suiteOnlineHaerte(browser, fbPort) {
   const onlineHeavy = (async () => {
     const mm = await suiteMatchmaking(browser, FB_PORT);
     const mm3 = await suiteOnline3P(browser, FB_PORT);
+    // Mehrere Wartende (v3.115.2): sechs Clients gleichzeitig, deshalb
+    // seriell und direkt hinter den beiden anderen Warteschlangen-Suiten.
+    const wq = await suiteWarteschlangeMehrere(browser, FB_PORT);
     // Herzschlag laeuft bewusst HIER (seriell) und nicht parallel: die Suite
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
@@ -6199,7 +6410,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // denen das SDK wirklich hochfaehrt, und wartet je 2,5 s auf den
     // Anmeldeversuch. Parallel dazu waere das eine Lastmessung.
     const fbs = await suiteFirebaseStart(browser);
-    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
+    return { mm, mm3, wq, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
   const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
     suiteMenu(browser),
@@ -6230,14 +6441,14 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteSchmiede(browser),
   ]);
 
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
+  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rWQ = rHeavy.wq, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
   await browser.close();
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

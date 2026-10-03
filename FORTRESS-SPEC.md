@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.115.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8646,3 +8646,43 @@ Search Console für das Konto des Betreibers.
   GitHub-Abfrage `git/refs/tags/v` passt als **Präfix** auf jedes `v3.x`;
   gelöscht wurde nichts Falsches (DELETE trifft nur exakt), die Abfrage nutzt
   jetzt `git/ref/tags/…` (Einzahl, exakt). Alle Versions-Tags stehen.
+
+## v3.115.2 — Warteschlange mit mehreren Wartenden geprüft (2P und 3P)
+
+Bisher prüften die Online-Suiten immer genau EINE Partie: zwei Spieler in
+`queue2`, drei in `queue3`. Ob die Verteilung stimmt, wenn mehr Leute warten,
+als in eine Partie passen, stand nirgends — obwohl genau dort die schweren
+Fehler saßen (Livelock ab ~15 Wartenden v3.14.13, Selbst-Match v3.15.2,
+Geister-Tickets v3.15.3).
+
+**E2E — `suiteWarteschlangeMehrere`** (`NUR=warteschlange`), sechs Clients,
+ohne Zeitraffer. Jede entstandene Partie wird EINZELN geprüft, gemessen am
+Client (Spielcode, Rolle, Spielerzahl): genau np Mitglieder, jede Rolle
+1..np genau einmal, niemand in zwei Partien. Wer übrig bleibt, muss weiter
+suchen (nicht im Menü, nicht im Bot-Spiel).
+
+| Fall | Erwartet |
+|---|---|
+| 2P, 4 gleichzeitig | 2 Partien |
+| 2P, 5 gestaffelt | 2 Partien, 1 sucht — auch nach 4,5 s noch |
+| 2P, Nachzügler | der Wartende + der Neue = 3. Partie |
+| 3P, 6 gleichzeitig | 2 Partien |
+| 3P, 4 gestaffelt + 2 Nachzügler | 1 Partie, dann der Übrige + 2 Neue = 2. Partie |
+| beide Schlangen parallel (2 in queue2, 3 in queue3) | eine 2P- und eine 3P-Partie, nichts vermischt |
+| danach | beide Schlangen leer |
+
+Gegengeprüft mit drei eingebauten Fehlern, **3/3 rot**: Gast ignoriert die
+zugeteilte Rolle (5 rot), Übriger fällt nach 3 s ins Bot-Spiel (2 rot),
+3P-Suche landet in `queue2` (5 rot).
+
+**Unit — Ablauf über Runden nachgestellt** (`tests/net.test.js`): Jeder
+Client rechnet mit eigener Uhr (Versatz bis ±3 s), die zuständigen Claimer
+greifen in zufälliger Reihenfolge zu, ein Claim auf schon Vergebene scheitert
+ganz (wie `mmClaimAndMatch`). 2P und 3P, 2 bis 40 Wartende, gleichzeitig und
+gestaffelt über 30 s, ELO-Spanne bis 900: am Ende bleiben genau `n mod np`
+übrig, niemand in zwei Partien, kein Hänger (≤ 120 Runden). Zwei Gegenproben
+im Test selbst: verdrehte Zuständigkeit (der Livelock von v3.14.13) wird als
+Hänger erkannt, zu kleine Partien fallen auf.
+
+Neue Testhaken, nur mit `__mmDebug`: `__mpCode`, `__mpNp` (in
+`startPolling`, neben `__myRole`) und `__mmSucht()`.

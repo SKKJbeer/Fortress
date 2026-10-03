@@ -775,6 +775,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Testhilfen (v3.32.4): Bot-Backfill — Wartezeit vorspulen + Bot-Modus lesen
     window.__mmForceWait = gated((s) => { mmStartedAt.current = Date.now() - s * 1e3; return true; });
     window.__botMode = gated(() => botMode.current);
+    // Sucht dieser Client gerade? (v3.115.2, Warteschlangen-Suite: wer uebrig
+    // bleibt, muss WEITER suchen — nicht still im Menue oder im Bot-Spiel landen)
+    window.__mmSucht = gated(() => !!mmActive.current);
     // Testhilfe: eine fast gelandete Kugel von `shooter` auf eine Feindmauer
     window.__spawnBallAtEnemy = gated((shooter) => {
       const g = grid.current; if (!g) return null;
@@ -2720,7 +2723,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     }
   }
   function startPolling(code, role) {
-    if (typeof window !== "undefined" && window.__mmDebug) window.__myRole = role;
+    // __mpCode/__mpNp (v3.115.2): Die Warteschlangen-Suite prueft bei mehreren
+    // Wartenden, WER mit WEM in welcher Partie gelandet ist — dafuer braucht
+    // sie Spielcode und Spielerzahl je Client. Nur mit __mmDebug.
+    if (typeof window !== "undefined" && window.__mmDebug) {
+      window.__myRole = role;
+      window.__mpCode = code;
+      window.__mpNp = numPlayersRef.current;
+    }
     if (mpChannel.current) {
       mpChannel.current.stop();
       mpChannel.current = null;
@@ -7024,7 +7034,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.115.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.115.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
