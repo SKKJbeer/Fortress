@@ -17,8 +17,8 @@ Fassung 1.0: `PREPARE_FOR_SUBMISSION`.
 - [ ] **Händlerstatus (DSA)** — Empfehlung „Kein Händler", ebenda
 - [ ] **Bau auf dem iPhone ausprobieren** (Online-Partie, kurz App wechseln)
 
-### Von mir, wenn Bau 39 durch ist
-- [ ] Bau 39 an Fassung 1.0 hängen (`appstore.yml` → `store`; dran hängt noch Bau 29)
+### Danach (von mir, nach deinem Okay)
+- ✅ Bau 39 (v3.117.0) hängt an Fassung 1.0 — von Apple bestätigt (04.10.), Unterkategorien Strategie + Puzzle gesetzt
 - [ ] Einreichen mit **manueller** Veröffentlichung — erst nach deinem Okay
 
 ### Erledigt am 04.10. (v3.117.0)
