@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.116.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.117.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8864,3 +8864,46 @@ Jetzt verlangt der Schritt „Freigabe" einen grünen `deploy.yml`-Lauf für
 GENAU diesen Commit (wartet höchstens 20 Min., sonst Abbruch), vor
 Signieren/Archivieren/Hochladen. `scripts/ios-pruefen.mjs` hält das mit
 sechs Konstruktions-Prüfungen fest; Gegenprobe 4/4 rot.
+
+## v3.117.0 — Vorbereitung Marktstart: Datenschutz, Kapazität, Cloud-Sicherung
+
+1. **Datenschutzerklärung vollständig neu.** Die alte behauptete „Solange du
+   kein Online-Spiel startest, verlässt überhaupt nichts dein Gerät" — dabei
+   meldet sich jede App beim Start anonym an, schreibt den Bestenlisten-
+   Eintrag und sichert das ganze Profil (`players`). Cloud-Sicherung,
+   Ablauf-Zählung (`funnel`), App Attest, Google-Verknüpfung, Hosting,
+   Rechtsgrundlagen, Speicherdauer, Beschwerderecht und ein Verantwortlicher
+   mit Namen fehlten. Die Anschrift steht bewusst NUR im Impressum.
+   `tests/datenschutz.test.js`: jeder Datenbank-Zweig der Regeln muss in der
+   Erklärung stehen, Name/E-Mail wie im Impressum, „Fortschritt löschen"
+   löscht im Code wirklich Cloud UND Bestenliste. Gegenproben 3/3 rot.
+2. **reCAPTCHA im Browser entfernt.** Es schickte Gerätemerkmale an Google,
+   ohne Einwilligung (§ 25 TDDDG); durchgesetzt war App Check nie. App Attest
+   in der iPhone-App bleibt. `suiteFirebaseStart` verlangt: keine einzige
+   Anfrage an reCAPTCHA (Gegenprobe mit altem Code: rot, sah
+   `google.com/recaptcha/api.js`).
+3. **Datenbank-Leitung nur bei Bedarf.** Gemessen: Jede offene App verband
+   sich nach 0,2 s und hielt die Leitung — auch im Menü. Spark erlaubt 100
+   gleichzeitige Verbindungen. Jetzt startet die Datenbank getrennt
+   (`goOffline` in firebase-boot.js), jeder Zugriff über `fb` weckt sie, 30 s
+   nach dem letzten Zugriff ohne laufendes Abo schläft sie wieder (`leitung`,
+   `mitLeitung`, `aboHalten` in app.js). Die Frist startet schon beim
+   Aufwachen — ohne Netz kommt ein Schreibvorgang nie zurück, und die Leitung
+   bliebe sonst ewig wach (gemessen).
+   - Prüfung am ECHTEN Socket (geöffnet minus geschlossen), nicht am Merker:
+     Die erste Fassung las `wach` und blieb grün, als goOffline gar nicht
+     mehr aufgerufen wurde. `WS_SPERRE` zählt dafür jetzt `close()`.
+   - Wiederverbinden nach goOffline kann der Stub nicht zeigen (er verbindet
+     nie). Gegen die echte Datenbank, nur lesend: 3/3, je 0,3–0,6 s
+     (`scripts/leitung-probe.mjs`).
+4. **Cloud-Sicherung erstmals gegen die echte Datenbank** geprüft
+   (`scripts/cloudsave-probe.mjs`): anonym anmelden, sichern, zurücklesen,
+   alle Felder samt Kosmetik, fremder Spielstand abgewiesen
+   (`permission_denied`), danach Datensatz und anonymes Konto entfernt.
+5. **Testeintrag „TestBot" aus der echten Bestenliste entfernt**
+   (`firebase.yml` → `reste-weg`, Inhalt im Protokoll gesichert; extern
+   nachgelesen: `null`, 53 echte Einträge).
+6. **Impressum nicht mehr im Suchindex** (`noindex`, raus aus der Sitemap),
+   auf Wunsch des Betreibers — erreichbar bleibt es (§ 5 DDG).
+7. `store/app-datenschutz.md`: fertige Antworten für Apples
+   App-Datenschutz-Fragebogen und den DSA-Händlerstatus.

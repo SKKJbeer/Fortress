@@ -63,102 +63,116 @@ footer{padding:30px 0 60px;font-size:13px;color:var(--faint)}
 </head>
 <body>
 <div class="wrap">
-
 <header>
-  <span class="kick">Datenschutz</span>
-  <h1>Datenschutzerklärung</h1>
-  <p class="lede">Stack &amp; Siege ist ein kostenloses Open-Source-Hobbyprojekt ohne Werbung, ohne Konto und ohne Bezahlfunktion. Der allergrößte Teil deiner Daten verlässt dein Gerät nie.</p>
-  <div class="meta">
-    <span><b>Stand:</b> Juli 2026</span>
-    <span><b>App-Version:</b> 3.50.2</span>
-    <span><b>Kontakt:</b> <a href="https://github.com/SKKJbeer/Fortress/issues">GitHub Issues</a></span>
-  </div>
+<span class="kick">Datenschutz</span>
+<h1>Datenschutzerklärung</h1>
+<p class="lede">Stack &amp; Siege ist ein kostenloses Spiel ohne Werbung, ohne Kaufangebote und ohne Kundenkonto. Hier steht vollständig, welche Daten auf deinem Gerät bleiben, welche übertragen werden, wozu, wie lange — und wie du alles löschst.</p>
+<div class="meta">
+<span><b>Stand:</b> 4. Oktober 2026</span>
+<span><b>App-Version:</b> 3.117.0</span>
+<span><b>Kontakt:</b> <a href="mailto:geschult-atome.6r@icloud.com">geschult-atome.6r@icloud.com</a></span>
+</div>
 </header>
-
 <section>
-  <h2><span class="n">01</span> Verantwortlicher</h2>
-  <p>Stack &amp; Siege wird als privates Open-Source-Hobbyprojekt betrieben. Es gibt keinen kommerziellen Betreiber, keine Registrierung und kein Nutzerkonto. Kontaktaufnahme über <a href="https://github.com/SKKJbeer/Fortress/issues">GitHub Issues</a>.</p>
+<h2><span class="n">01</span> Verantwortlicher</h2>
+<p>Verantwortlich im Sinne der Datenschutz-Grundverordnung (DSGVO) ist <b>Steffen Karjoth</b>, Anschrift siehe <a href="impressum.html">Impressum</a>. Für alle Fragen zum Datenschutz, für Auskunft und Löschung erreichst du mich unter <a href="mailto:geschult-atome.6r@icloud.com">geschult-atome.6r@icloud.com</a>.</p>
+<p>Stack &amp; Siege ist ein privat betriebenes Hobbyprojekt. Der Quellcode ist öffentlich auf <a href="https://github.com/SKKJbeer/Fortress">GitHub</a> einsehbar — jede Aussage auf dieser Seite lässt sich dort nachprüfen.</p>
 </section>
-
 <section>
-  <h2><span class="n">02</span> Lokal auf deinem Gerät</h2>
-  <p>Diese Daten liegen ausschließlich im <code>localStorage</code> deines Browsers bzw. deiner App und werden <b>nicht</b> übertragen:</p>
-  <ul>
-    <li>Spielername und gewähltes Wappen</li>
-    <li>Spielstatistiken (Siege, Niederlagen, ELO-Wertung, Bestwert)</li>
-    <li>Level, Erfahrungspunkte, Gold und Handwerks-Materialien</li>
-    <li>Gekaufte und angelegte Kosmetik (Kanonen-Modelle, Rahmen, Effekte)</li>
-    <li>Achievements, Tagesaufgaben und die tägliche Belohnungs-Streak</li>
-    <li>Einstellungen: Sprache, Ton, Vibration</li>
-    <li>Eine zufällige Geräte-Kennung, damit das Matchmaking dich nicht mit dir selbst verbindet</li>
-  </ul>
-  <div class="box good">
-    <div class="l">Kurz gesagt</div>
-    <p>Solange du kein Online-Spiel startest, verlässt <b>überhaupt nichts</b> dein Gerät.</p>
-  </div>
+<h2><span class="n">02</span> Was auf deinem Gerät bleibt</h2>
+<p>Diese Daten liegen im lokalen Speicher deines Browsers bzw. der App (<code>localStorage</code>) und werden <b>nur auf dem Gerät</b> gehalten:</p>
+<ul>
+<li>Einstellungen: Sprache, Ton, Vibration</li>
+<li>Fortschritt bei Tagesaufgaben und der täglichen Belohnung</li>
+<li>eine zufällige Geräte-Kennung — damit das Matchmaking dich nie mit dir selbst verbindet</li>
+<li>dein Spielerprofil (Name, Wappen, Statistiken, Level, Gold, Kosmetik, Achievements) — zusätzlich gesichert, siehe Abschnitt 03</li>
+</ul>
+<p>Das Speichern auf dem Gerät ist für den Betrieb des Spiels unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Es gibt <b>keine Cookies</b>.</p>
 </section>
-
 <section>
-  <h2><span class="n">03</span> Online-Spielbetrieb</h2>
-  <p>Startest du ein Online-Spiel oder die Bestenliste, werden Daten in der <b>Google Firebase Realtime Database</b> gespeichert:</p>
-  <div class="tw"><table>
-    <thead><tr><th>Was</th><th>Inhalt</th><th>Wie lange</th></tr></thead>
-    <tbody>
-      <tr><td><b>Spielstatus</b></td><td>Spielfeld, Phase, Runde, Punkte, Kanonen</td><td>nur während der Partie, danach gelöscht</td></tr>
-      <tr><td><b>Matchmaking</b></td><td>Spielername, Wappen, ELO, Zeitstempel, Geräte-Kennung</td><td>nur während der Suche (~60 s)</td></tr>
-      <tr><td><b>Bestenliste</b></td><td>Spielername, Wappen, ELO, Siege, Level</td><td>bis du dein Profil zurücksetzt</td></tr>
-    </tbody>
-  </table></div>
-  <p>Es werden <b>keine echten Namen, E-Mail-Adressen, Telefonnummern oder Zahlungsdaten</b> gespeichert. Den Spielernamen wählst du selbst — ein Pseudonym ist empfohlen.</p>
+<h2><span class="n">03</span> Was beim Start übertragen wird</h2>
+<p>Beim Öffnen des Spiels — auch ohne Online-Partie — passiert dreierlei. Die Daten liegen in der <b>Google Firebase Realtime Database</b> (Serverstandort Belgien, <code>europe-west1</code>):</p>
+<div class="tw"><table>
+<thead><tr><th>Was</th><th>Inhalt</th><th>Wozu</th><th>Wie lange</th></tr></thead>
+<tbody>
+<tr><td><b>Anonyme Anmeldung</b></td><td>eine zufällige Kennung, ohne Name, ohne E-Mail, ohne Bezug zu einem Google- oder Apple-Konto</td><td>damit nur du deinen eigenen Eintrag ändern kannst</td><td>solange die App installiert ist</td></tr>
+<tr><td><b>Bestenliste</b> <code>leaderboard</code></td><td>Spielername, Wappen, Farbe, Siege/Niederlagen/Spiele (2 und 3 Spieler), ELO und Bestwert, Level, Erfahrungspunkte, Gold, Zeitpunkt der letzten Änderung</td><td>öffentliche Rangliste im Spiel</td><td>bis du „Fortschritt löschen" wählst</td></tr>
+<tr><td><b>Cloud-Sicherung</b> <code>players</code></td><td>dein vollständiges Spielerprofil (siehe Abschnitt 02) und der Zeitpunkt der Sicherung</td><td>damit dein Fortschritt eine Neuinstallation übersteht</td><td>bis du „Fortschritt löschen" wählst</td></tr>
+</tbody>
+</table></div>
+<p>Die Verbindung zur Datenbank wird nur für diese Zugriffe und während Online-Partien geöffnet und danach wieder getrennt.</p>
 </section>
-
 <section>
-  <h2><span class="n">04</span> Anonyme Match-Telemetrie</h2>
-  <p>Seit Version 3.47.0 speichert das Spiel am Ende einer Partie einen anonymen Datensatz, mit dem das Spielgleichgewicht ausgewertet wird — etwa wie viele Runden Partien dauern oder wie oft Kanonen gekauft werden.</p>
-  <p><b>Enthalten ist:</b> Zeitstempel, App-Version, Spielmodus (Bot/Lokal/Online), Rundenzahl, Weltthema, wer gewonnen hat, Spielerzahl sowie pro Spielerplatz die Zahlen zerstörte Mauern, zerstörte Kanonen, Schrott, Schüsse, Treffer, Käufe und gekaufte Ausbauten.</p>
-  <div class="box">
-    <div class="l">Nicht enthalten</div>
-    <p><b>Kein Spielername, keine Profil-Kennung, keine Geräte-Kennung, keine IP-Adresse im Datensatz selbst</b> — ein Telemetrie-Eintrag lässt sich keiner Person zuordnen. Die Datensätze bestehen ausschließlich aus Zahlen über den Spielverlauf. Die zusammengefasste Auswertung ist öffentlich einsehbar unter <a href="https://skkjbeer.github.io/Fortress/stats.html">stats.html</a>.</p>
-  </div>
+<h2><span class="n">04</span> Online-Spiel</h2>
+<div class="tw"><table>
+<thead><tr><th>Was</th><th>Inhalt</th><th>Wie lange</th></tr></thead>
+<tbody>
+<tr><td><b>Spielstand</b> <code>games</code></td><td>Spielfeld, Phase, Runde, Punkte, Kanonen, Spielername, Wappen, Farbe und ELO der Mitspieler, Lebenszeichen (Zeitstempel)</td><td>während der Partie; beim Verlassen gelöscht, nach einem Absturz beim nächsten Start</td></tr>
+<tr><td><b>Warteschlange</b> <code>queue2</code>, <code>queue3</code></td><td>Spielername, Wappen, Farbe, ELO, Profil- und Geräte-Kennung, Zeitstempel</td><td>nur während der Suche; bei Verbindungsabbruch automatisch gelöscht</td></tr>
+</tbody>
+</table></div>
+<p>Was du in einer Partie als Name und Wappen zeigst, sehen deine Mitspieler. Den Namen wählst du selbst — ein Spitzname ist empfohlen.</p>
 </section>
-
 <section>
-  <h2><span class="n">05</span> Firebase / Google</h2>
-  <p>Die Realtime Database wird von Google LLC betrieben. Im Online-Modus gelten zusätzlich <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Googles Datenschutzbestimmungen für Firebase</a>. Google kann im Rahmen des Datenbankbetriebs technische Metadaten wie IP-Adresse und Zeitstempel verarbeiten — das lässt sich beim Betrieb einer Online-Datenbank nicht vermeiden.</p>
-  <p>Für den Online-Betrieb wird eine <b>anonyme Firebase-Anmeldung</b> verwendet. Dabei entsteht eine zufällige Kennung ohne jeden Bezug zu deiner Person, deiner E-Mail-Adresse oder einem Google-Konto.</p>
+<h2><span class="n">05</span> Anonyme Auswertung</h2>
+<p>Damit Spielgleichgewicht und Matchmaking verbessert werden können, speichert das Spiel zwei Arten anonymer Datensätze:</p>
+<ul>
+<li><b>Partie-Statistik</b> <code>telemetry</code> — am Ende einer Partie: Zeitpunkt, App-Version, Spielmodus, Bot-Stufe, Rundenzahl, Welt, Sieger, Spielerzahl und je Spielerplatz Zahlen wie zerstörte Mauern, Treffer, Käufe.</li>
+<li><b>Ablauf-Zählung</b> <code>funnel</code> — einzelne Schritte wie „Suche gestartet", „Suche abgebrochen", „Gegner gefunden", „Bot-Partie gestartet", mit Wartezeit, Spielerzahl und Rolle. In der iPhone-App zusätzlich, ob der App-Nachweis (Abschnitt 06) geklappt hat.</li>
+</ul>
+<div class="box">
+<div class="l">Nicht enthalten</div>
+<p><b>Kein Spielername, keine Profil-, Geräte- oder Anmelde-Kennung</b> — ein solcher Datensatz lässt sich keiner Person zuordnen. Die zusammengefasste Auswertung ist öffentlich: <a href="https://skkjbeer.github.io/Fortress/stats.html">stats.html</a>.</p>
+</div>
 </section>
-
 <section>
-  <h2><span class="n">06</span> Keine Werbung, kein Tracking, kein Verkauf</h2>
-  <p>Stack &amp; Siege enthält <b>keine Werbung</b>, <b>keine Werbe- oder Analyse-SDKs</b>, keine Cookies zu Werbezwecken und keine Weitergabe von Daten an Dritte. Es gibt keine Käufe mit echtem Geld — das Gold im Spiel ist reine Spielwährung ohne Gegenwert.</p>
-  <p>Die einzigen externen Dienste sind Google Firebase (Online-Spiel, siehe oben) sowie die Auslieferung von Programmbibliotheken über die öffentlichen Netzwerke unpkg und gstatic beim Laden der Seite.</p>
+<h2><span class="n">06</span> iPhone-App: Nachweis der echten App</h2>
+<p>Die iPhone-App nutzt <b>Firebase App Check</b> mit Apples <b>App Attest</b>. Dabei bestätigt Apple, dass eine Anfrage aus der unveränderten App aus dem App Store stammt — ein Schutz gegen missbräuchliche Zugriffe auf die Datenbank. Erzeugt wird ein Schlüssel, der an das Gerät gebunden ist; Name, Kennungen oder Inhalte werden dabei nicht übertragen. Im Browser wird kein solcher Nachweis verwendet.</p>
+<p>Die App verwendet <b>keine Werbe-Kennung (IDFA)</b> und betreibt kein geräteübergreifendes Tracking.</p>
 </section>
-
 <section>
-  <h2><span class="n">07</span> Kinder</h2>
-  <p>Das Spiel richtet sich nicht speziell an Kinder unter 13 Jahren. Es werden wissentlich keine personenbezogenen Daten von Minderjährigen erhoben. Da kein Konto nötig ist und keine Zahlungsfunktion existiert, ist die Nutzung auch ohne jede Datenangabe möglich.</p>
+<h2><span class="n">07</span> Optional: Google-Konto verknüpfen (nur Browser)</h2>
+<p>Im Browser kannst du deinen Spielstand freiwillig mit einem Google-Konto verknüpfen, um ihn auf einem anderen Gerät zurückzuholen. Dabei meldest du dich bei Google an; Google übermittelt Firebase dafür deine Konto-Kennung und E-Mail-Adresse. Die E-Mail-Adresse wird <b>nicht</b> in der Spieldatenbank gespeichert. In der iPhone-App gibt es diese Verknüpfung nicht.</p>
 </section>
-
 <section>
-  <h2><span class="n">08</span> Deine Rechte</h2>
-  <p>Du kannst deine Daten jederzeit selbst und vollständig löschen:</p>
-  <ul>
-    <li><b>Lokale Daten:</b> Browsereinstellungen → Websitedaten löschen → <code>fortress</code>. In der App: App-Daten löschen.</li>
-    <li><b>Bestenliste:</b> Profil im Spiel zurücksetzen — das entfernt deinen Eintrag aus der Bestenliste.</li>
-    <li><b>Telemetrie:</b> enthält keinen Personenbezug und kann daher weder dir zugeordnet noch einzeln gelöscht werden.</li>
-    <li><b>Auskunft und Löschung darüber hinaus:</b> über <a href="https://github.com/SKKJbeer/Fortress/issues">GitHub Issues</a>.</li>
-  </ul>
+<h2><span class="n">08</span> Empfänger und Übermittlung</h2>
+<ul>
+<li><b>Google</b> (Google Ireland Ltd. / Google LLC) betreibt Firebase als Auftragsverarbeiter. Dabei verarbeitet Google technisch nötige Daten wie IP-Adresse und Zeitstempel. Eine Übermittlung in die USA ist nicht auszuschließen; sie stützt sich auf das EU-US Data Privacy Framework und Standardvertragsklauseln. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase-Datenschutz</a>.</li>
+<li><b>GitHub</b> (GitHub Inc.) stellt die Spielseite bereit, <b>Cloudflare</b> die Website. Beim Aufruf fallen dort Server-Protokolle mit IP-Adresse an.</li>
+<li><b>Apple</b> liefert die App über App Store bzw. TestFlight aus und verarbeitet dabei eigene Daten nach Apples Datenschutzrichtlinie.</li>
+</ul>
+<p>Es gibt <b>keine Werbung, keine Werbe- oder Analyse-Dienste, keinen Verkauf und keine Weitergabe</b> von Daten an Dritte darüber hinaus. Alle Programmbibliotheken sind im Spiel selbst enthalten und werden nicht von fremden Servern nachgeladen.</p>
 </section>
-
 <section>
-  <h2><span class="n">09</span> Änderungen</h2>
-  <p>Wesentliche Änderungen werden im <a href="https://github.com/SKKJbeer/Fortress/releases">Changelog auf GitHub</a> angekündigt. Der Quellcode dieser Seite und des gesamten Spiels ist öffentlich einsehbar.</p>
+<h2><span class="n">09</span> Rechtsgrundlagen</h2>
+<ul>
+<li><b>Art. 6 Abs. 1 lit. b DSGVO</b> — Bereitstellung des Spiels, das du nutzt: Anmeldung, Online-Partien, Warteschlange, Bestenliste, Cloud-Sicherung.</li>
+<li><b>Art. 6 Abs. 1 lit. f DSGVO</b> — berechtigtes Interesse an einem stabilen, fairen und vor Missbrauch geschützten Spiel: anonyme Auswertung (Abschnitt 05), App-Nachweis (Abschnitt 06), Server-Protokolle.</li>
+<li><b>Art. 6 Abs. 1 lit. a DSGVO</b> — deine Einwilligung bei der freiwilligen Google-Verknüpfung (Abschnitt 07).</li>
+</ul>
 </section>
-
+<section>
+<h2><span class="n">10</span> Deine Rechte — und wie du alles löschst</h2>
+<div class="box good">
+<div class="l">Selbst löschen, sofort</div>
+<p>Im Spiel unter <b>„Fortschritt löschen"</b>: entfernt deinen Spielstand auf dem Gerät, deine Cloud-Sicherung und deinen Eintrag in der Bestenliste. Danach die App löschen oder im Browser die Websitedaten löschen — dann ist auch die anonyme Kennung weg.</p>
+</div>
+<p>Du hast außerdem das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und <b>Widerspruch</b> gegen Verarbeitungen aus berechtigtem Interesse (Art. 21 DSGVO). Eine Einwilligung kannst du jederzeit widerrufen. Schreib dafür an <a href="mailto:geschult-atome.6r@icloud.com">geschult-atome.6r@icloud.com</a>.</p>
+<p>Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren, etwa beim <a href="https://www.baden-wuerttemberg.datenschutz.de" target="_blank" rel="noopener">Landesbeauftragten für den Datenschutz Baden-Württemberg</a>.</p>
+<p>Anonyme Datensätze (Abschnitt 05) lassen sich dir nicht zuordnen und deshalb auch nicht einzeln löschen.</p>
+</section>
+<section>
+<h2><span class="n">11</span> Kinder</h2>
+<p>Das Spiel richtet sich nicht speziell an Kinder. Ein Konto, echte Namen oder Zahlungsdaten werden nie verlangt.</p>
+</section>
+<section>
+<h2><span class="n">12</span> Änderungen</h2>
+<p>Ändert sich, welche Daten das Spiel verarbeitet, wird diese Seite angepasst und das Datum oben aktualisiert. Frühere Fassungen und alle Änderungen stehen öffentlich im <a href="https://github.com/SKKJbeer/Fortress/commits/main/public/privacy.html">Verlauf dieser Datei auf GitHub</a>.</p>
+</section>
 <footer>
-  <a href="/Fortress/">← Zurück zum Spiel</a> ·
-  <a href="https://github.com/SKKJbeer/Fortress">Quellcode</a> ·
-  <a href="https://skkjbeer.github.io/Fortress/stats.html">Telemetrie-Auswertung</a>
+<a href="/Fortress/">← Zurück zum Spiel</a> ·
+<a href="impressum.html">Impressum</a> ·
+<a href="https://github.com/SKKJbeer/Fortress">Quellcode</a>
 </footer>
 </div>
 </body>

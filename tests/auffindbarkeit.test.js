@@ -98,7 +98,13 @@ test("Interne Seiten stehen nicht im Index, Rechtstexte zeigen auf die Website",
   const intern = ["balancing", "diagnose", "kanonentaktik", "review", "stats", "talk", "uebersicht", "waffen"];
   for (const n of intern)
     assert.match(lies("public", `${n}.html`), /<meta name="robots" content="noindex">/, `${n}.html ohne noindex`);
-  for (const n of ["agb", "impressum", "privacy"]) {
+  // Impressum (v3.117.0): erreichbar, aber NICHT im Index — die Anschrift
+  // des Betreibers soll nicht in Suchtreffern stehen. Und nicht in der Sitemap.
+  const imp = lies("public", "impressum.html");
+  assert.match(imp, /<meta name="robots" content="noindex">/, "impressum.html muss noindex tragen");
+  assert.doesNotMatch(imp, /rel="canonical"/, "noindex und Kanonisch widersprechen sich");
+  assert.doesNotMatch(lies("docs", "website", "sitemap.xml"), /<loc>[^<]*impressum[^<]*<\/loc>/, "Impressum gehoert nicht in die Sitemap");
+  for (const n of ["agb", "privacy"]) {
     const s = lies("public", `${n}.html`);
     assert.doesNotMatch(s, /name="robots" content="noindex"/, `${n}.html darf gefunden werden`);
     assert.match(s, new RegExp(`<link rel="canonical" href="https://stack-and-siege\\.pages\\.dev/${n}">`),

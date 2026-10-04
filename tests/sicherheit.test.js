@@ -155,16 +155,14 @@ test("die Suite oeffnet die Richtlinie ueberhaupt fuer ihren Mock", () => {
     `nur ${aufrufe} Kontext-Fabrik(en) oeffnen die Richtlinie — makeCtx UND makeOnlineCtx brauchen es`);
 });
 
-// ── 7. App Check im Browser: der Site-Key hat die Form eines Site-Keys ──
+// ── 7. Kein reCAPTCHA im Browser (seit v3.117.0) ──
 //
-// Ein Tippfehler dort faellt sonst niemandem auf: Solange nicht durchgesetzt
-// ist, laeuft der Browser ohne Token genau wie vorher — erst die Durchsetzung
-// wuerde ihn aussperren. Und ein versehentlich eingesetztes SECRET (gleiche
-// Laenge, gleicher Anfang) waere hier oeffentlich. Pruefbar ist nur die Form;
-// dass es der richtige Schluessel ist, zeigt die Messung auf der Live-Seite.
-test("der reCAPTCHA-Site-Key steht in der Form eines Site-Keys im Code", () => {
+// Bis v3.116.0 stand hier die Pruefung auf die Form des Site-Keys. reCAPTCHA
+// ist entfernt: Es schickte Geraetemerkmale an Google, ohne Einwilligung
+// (§ 25 TDDDG), und durchgesetzt war App Check nie. Kommt es zurueck, braucht
+// es eine Einwilligung UND einen Eintrag in der Datenschutzerklaerung.
+test("kein reCAPTCHA im Browser-Start", () => {
   const q = lies("src", "firebase-boot.js");
-  const m = q.match(/const APPCHECK_SITE_KEY = "([^"]*)";/);
-  assert.ok(m, "APPCHECK_SITE_KEY nicht gefunden");
-  assert.match(m[1], /^6L[0-9A-Za-z_-]{38}$/, "keine Site-Key-Form: " + m[1]);
+  assert.doesNotMatch(q, /ReCaptcha(V3|Enterprise)Provider/, "reCAPTCHA-Anbieter wieder im Code");
+  assert.doesNotMatch(q, /6L[0-9A-Za-z_-]{38}/, "Site-Key wieder im Code");
 });

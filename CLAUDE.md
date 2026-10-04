@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.116.0
+- **Aktuelle Version**: v3.117.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -416,9 +416,32 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 - **IndexNow** meldet Aenderungen an Bing/Yandex/Seznam/Naver
   (`website.yml`); der Schluessel steht in der Datei `docs/website/<schluessel>.txt`
   UND im Ablauf — ein Test haelt beide gleich. Google braucht die Search Console.
+- **Impressum steht NICHT im Index** (seit v3.117.0, Wunsch des Betreibers:
+  die Anschrift soll nicht in Suchtreffern stehen). `noindex`, nicht in der
+  Sitemap, erreichbar bleibt es. Die Datenschutzerklaerung nennt Namen und
+  E-Mail, fuer die Anschrift verweist sie aufs Impressum.
 - **Versionsnummer in `deploy.yml`**: Im Titel steht `&amp;`. Das Muster
   `Stack & Siege v` fand seit v3.79.0 nichts — kein Tag, kein Release. Jetzt
   `&(amp;)?`, leere Version bricht ab.
+
+---
+
+## Datenschutz und Kapazitaet (seit v3.117.0)
+
+- **Datenschutzerklaerung = Code.** `tests/datenschutz.test.js` verlangt,
+  dass jeder Zweig aus `firebase-rules-PASTE.json` in `public/privacy.html`
+  als `<code>zweig</code>` steht. Neuer Datenbank-Zweig → Regeln → Erklaerung
+  → `store/app-datenschutz.md` (Apples Fragebogen) anpassen.
+- **Kein reCAPTCHA im Browser** (Daten an Google ohne Einwilligung). Wer
+  App Check im Browser will, braucht vorher eine Einwilligung.
+- **Datenbank-Leitung nur bei Bedarf** (Spark: 100 gleichzeitige
+  Verbindungen). firebase-boot startet mit `goOffline`; JEDER Zugriff laeuft
+  ueber `fb` (weckt), Abos halten die Leitung (`aboHalten`). Wer an `fb`
+  vorbei direkt `s.ref(s.db, …)` benutzt, umgeht das — dann `mitLeitung`.
+  Pruefung am echten Socket (`WS_SPERRE` zaehlt `close()`), nicht am Merker.
+- **Gegen die echte Datenbank** (nur lokal, nicht im CI): `node
+  scripts/leitung-probe.mjs` (nur lesen) und `node scripts/cloudsave-probe.mjs`
+  (schreibt players/<eigene uid>, raeumt Datensatz UND anonymes Konto weg).
 
 ---
 

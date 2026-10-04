@@ -4451,6 +4451,9 @@ async function suiteFirebaseStart(browser) {
     await page.addInitScript(WS_SPERRE);
     await page.addInitScript(PROFILE_INIT);
     await page.addInitScript(`window.__NATIVE__ = ${nativ ? 'true' : 'false'};`);
+    // Leerlauf-Frist der Datenbank-Leitung verkuerzt (v3.117.0), damit die
+    // Pruefung „schlaeft im Menue wieder ein" keine 30 s wartet.
+    await page.addInitScript('window.__mmDebug = true; window.__netzLeerlaufMs = 5000;');
 
     const versuche = [];
     page.on('request', r => versuche.push(r.url()));
@@ -4621,19 +4624,59 @@ async function suiteFirebaseStart(browser) {
   // Zustaenden macht die Aussage belastbar — und haelt zugleich fest, dass
   // die Google-Verknuepfung im Browser nicht mit kaputtgespart wurde.
   {
-    const { ctx, page } = await starte(false);
+    const { ctx, page, versuche: versucheB } = await starte(false);
     try {
       const lief = await page.evaluate(() => !!(window.__fb && window.__fb.db));
       lief ? ok('Browser-Start: firebase-boot lief ✓') : fail('Browser-Start: firebase-boot lief nicht');
 
-      // App Check (v3.113.0): Im Browser muss reCAPTCHA der Anbieter sein. In
-      // der App-Pruefung oben darf er es NICHT sein — dort kommt das Token aus
-      // der Huelle, und reCAPTCHA kann unter capacitor://localhost nie ein
-      // gueltiges liefern.
+      // ── Kapazitaet (v3.117.0): Leitung nur bei Bedarf ──────────────
+      // Gemessen vorher: JEDE offene App hielt eine der 100 Verbindungen des
+      // Spark-Plans, auch im Menue. Jetzt: Beim Start darf die Leitung kurz
+      // aufgehen (Bestenlisten-Abgleich), muss sich im Menue aber wieder
+      // schlafen legen — und beim Gang nach „Online" wieder aufwachen.
+      {
+        // Gemessen am WebSocket selbst: geoeffnete minus geschlossene. Der
+        // interne Merker `wach` allein taugt nicht — die erste Fassung dieser
+        // Pruefung las ihn und blieb gruen, als goOffline gar nicht mehr
+        // aufgerufen wurde (Gegenprobe).
+        const lies = () => page.evaluate(() => window.__leitung ? window.__leitung() : null);
+        const offen = () => page.evaluate(() => (window.__wsVersuche || []).length - (window.__wsGeschlossen || 0));
+        let l = null, o = null;
+        for (const t0 = Date.now(); Date.now() - t0 < 12000; ) {
+          l = await lies(); o = await offen();
+          if (o === 0 && l && !l.frist) break;
+          await page.waitForTimeout(250);
+        }
+        o === 0
+          ? ok(`Kapazitaet: im Menue keine offene Datenbank-Leitung (${await page.evaluate(() => (window.__wsVersuche || []).length)} geoeffnet, alle wieder zu) ✓`)
+          : fail(`Kapazitaet: ${o} Datenbank-Leitung(en) bleiben im Menue offen — jede haelt eine der 100 Verbindungen (${JSON.stringify(l)})`);
+        const zug = await page.evaluate(() => !!(window.__fb && typeof window.__fb.goOffline === 'function'));
+        zug ? ok('Kapazitaet: Datenbank startet getrennt (goOffline vorhanden) ✓')
+            : fail('Kapazitaet: firebase-boot reicht goOnline/goOffline nicht durch');
+        await jsClick(page, ['ONLINE']);
+        // Aufwachen wird hier am AUFRUF gemessen, nicht am Socket: Der Stub
+        // verbindet nie, und mit gesperrter Anmeldung baut das SDK nach einem
+        // goOffline hier keinen neuen auf. Gegen die ECHTE Datenbank gemessen
+        // (scripts/leitung-probe.mjs, nur lesend): 3/3 Wiederverbindungen nach
+        // goOffline, je 0,3–0,6 s.
+        let wach = false;
+        for (const t0 = Date.now(); Date.now() - t0 < 6000 && !wach; ) {
+          const x = await lies();
+          if (x && (x.wach || x.frist)) wach = true; else await page.waitForTimeout(100);
+        }
+        wach ? ok('Kapazitaet: „Online" weckt die Leitung wieder ✓')
+             : fail('Kapazitaet: Leitung wacht beim Online-Schirm nicht auf — Online waere tot');
+      }
+
+      // Kein reCAPTCHA im Browser (v3.117.0): Es schickte Geraetemerkmale an
+      // Google, ohne Einwilligung (§ 25 TDDDG) — und durchgesetzt war App
+      // Check nie. Gemessen wird, was der Browser VERSUCHT: keine einzige
+      // Anfrage an reCAPTCHA darf hinausgehen, und App Check bleibt aus.
       const ac = await page.evaluate(() => window.__appCheck || null);
-      ac && ac.art === 'recaptcha'
-        ? ok('Browser-Start: App Check mit reCAPTCHA eingerichtet ✓')
-        : fail(`Browser-Start: App Check nicht mit reCAPTCHA (${JSON.stringify(ac)})`);
+      const reca = versucheB.filter(u => /recaptcha|google\.com\/recaptcha/i.test(u));
+      ac && ac.art === 'aus' && reca.length === 0
+        ? ok('Browser-Start: kein reCAPTCHA, keine Anfrage an Google (App Check aus) ✓')
+        : fail(`Browser-Start: reCAPTCHA noch aktiv (${JSON.stringify(ac)}, ${reca.length} Anfrage(n): ${reca[0] || '-'})`);
 
       const z = await authZustand(page);
       if (!z) fail('Browser-Start: kein Auth-Objekt');

@@ -86,9 +86,58 @@ function authUid() {
 function writeId(localId) {
   return authUid() || localId;
 }
+// ── Verbindung nur bei Bedarf (v3.117.0) ─────────────────────────────────
+// Gemessen: JEDE geoeffnete App verband sich nach 0,2 s mit der Datenbank und
+// hielt die Leitung, auch wer nur im Menue sass. Der Spark-Plan erlaubt 100
+// gleichzeitige Verbindungen — 100 Leute im Menue haetten gereicht, und der
+// 101. haette nicht mehr online spielen koennen. Jetzt startet die Datenbank
+// getrennt (firebase-boot.js), jeder Zugriff ueber `fb` weckt sie, und
+// NETZ_LEERLAUF_MS nach dem letzten Zugriff ohne laufendes Abo legt sie sich
+// wieder schlafen. Abos (Spiel, Warteschlange) halten sie wach.
+// Der Datenbank-Mock der Testsuite kennt goOnline/goOffline nicht — dann tut
+// das hier nichts.
+const leitung = { abos: 0, wach: false, timer: null };
+const netzLeerlaufMs = () => (typeof window !== "undefined" && window.__netzLeerlaufMs) || 30e3;
+function leitungAn() {
+  const s = sdk();
+  if (!s || typeof s.goOnline !== "function") return;
+  if (leitung.timer) { clearTimeout(leitung.timer); leitung.timer = null; }
+  if (!leitung.wach) { leitung.wach = true; try { s.goOnline(); } catch (e) {} }
+}
+function leitungSpaeterAus() {
+  const s = sdk();
+  if (!s || typeof s.goOffline !== "function" || leitung.abos > 0) return;
+  if (leitung.timer) clearTimeout(leitung.timer);
+  leitung.timer = setTimeout(() => {
+    leitung.timer = null;
+    if (leitung.abos > 0) return;
+    leitung.wach = false;
+    try { s.goOffline(); } catch (e) {}
+  }, netzLeerlaufMs());
+}
+// Einmal-Zugriff: wecken, ausfuehren, danach Leerlauf-Frist starten.
+async function mitLeitung(fn) {
+  leitungAn();
+  // Frist schon JETZT starten, nicht erst nach Abschluss: Ohne Netz kommt ein
+  // Schreibvorgang nie zurueck, und die Leitung bliebe fuer immer „wach"
+  // (gemessen). Was beim Einschlafen noch aussteht, behaelt das SDK und
+  // schickt es beim naechsten Aufwachen.
+  leitungSpaeterAus();
+  try { return await fn(); } finally { leitungSpaeterAus(); }
+}
+// Abo: haelt die Leitung, bis es beendet wird (genau einmal abmelden).
+function aboHalten() {
+  leitung.abos++;
+  leitungAn();
+  let weg = false;
+  return () => { if (weg) return; weg = true; leitung.abos--; leitungSpaeterAus(); };
+}
 const fb = {
   // Einmalig Wert schreiben (PUT-Äquivalent)
   async set(path, data) {
+    return mitLeitung(() => fb._set(path, data));
+  },
+  async _set(path, data) {
     const s = sdk();
     if (!s) {
       _fbError = "SDK nicht geladen";
@@ -109,6 +158,9 @@ const fb = {
   },
   // Teilweise aktualisieren (PATCH-Äquivalent)
   async patch(path, data) {
+    return mitLeitung(() => fb._patch(path, data));
+  },
+  async _patch(path, data) {
     const s = sdk();
     if (!s) {
       _fbError = "SDK nicht geladen";
@@ -129,6 +181,9 @@ const fb = {
   },
   // Einmalig lesen
   async get(path) {
+    return mitLeitung(() => fb._get(path));
+  },
+  async _get(path) {
     const s = sdk();
     if (!s) {
       _fbError = "SDK nicht geladen";
@@ -144,6 +199,9 @@ const fb = {
   },
   // Löschen
   async delete(path) {
+    return mitLeitung(() => fb._delete(path));
+  },
+  async _delete(path) {
     const s = sdk();
     if (!s) return;
     try {
@@ -165,6 +223,7 @@ const fb = {
     // zurück — off(ref,'value',unsub) matcht dagegen keinen registrierten Listener
     // und meldete NIE ab. Geister-Listener alter Spiele feuerten dann in neue
     // Sessions hinein ("2. Spiel kommt nicht zustande"). Immer unsub() nutzen.
+    const loslassen = aboHalten();
     const unsub = s.onValue(nodeRef, (snap) => {
       const data = snap.exists() ? snap.val() : null;
       if (data) onData(data);
@@ -176,12 +235,16 @@ const fb = {
         unsub();
       } catch (e) {
       }
+      loslassen();
     } };
   },
   // Atomare Slot-Reservierung per Transaktion. Schreibt joinData NUR wenn der
   // Slot noch leer ist. Gibt true zurück bei Erfolg, false wenn schon belegt.
   // Verhindert, dass zwei gleichzeitig beitretende Gäste denselben Slot bekommen.
   async reserve(path, joinData) {
+    return mitLeitung(() => fb._reserve(path, joinData));
+  },
+  async _reserve(path, joinData) {
     const s = sdk();
     if (!s || !s.runTransaction) {
       _fbError = "Transaktion nicht verf\xFCgbar";
@@ -201,6 +264,9 @@ const fb = {
   // Generische Transaktion. mutateFn(current) gibt den neuen Wert zurück,
   // oder undefined um abzubrechen. Gibt { committed, value } zurück.
   async transact(path, mutateFn) {
+    return mitLeitung(() => fb._transact(path, mutateFn));
+  },
+  async _transact(path, mutateFn) {
     const s = sdk();
     if (!s || !s.runTransaction) {
       _fbError = "Transaktion nicht verf\xFCgbar";
@@ -224,11 +290,12 @@ const fb = {
     }
     const nodeRef = s.ref(s.db, path);
     // Siehe subscribe(): onValue() liefert die Unsubscribe-Funktion (v3.14.11).
+    const loslassen = aboHalten();
     const unsub = s.onValue(nodeRef, (snap) => {
       const exists = snap.exists();
       onData(exists ? snap.val() : null, exists);
     }, (err) => { _fbError = err.message; });
-    return { stop: () => { try { unsub(); } catch (e) {} } };
+    return { stop: () => { try { unsub(); } catch (e) {} loslassen(); } };
   },
   // Echter Verbindungsstatus des SDK (v3.70.0). Nötig für den Herzschlag:
   // Ist die EIGENE Leitung weg, sehen fremde Herzschläge zwangsläufig tot aus —
@@ -251,6 +318,7 @@ const fb = {
     if (!s || !s.onDisconnect) return () => {
     };
     try {
+      leitungAn();
       const dc = s.onDisconnect(s.ref(s.db, path));
       dc.remove();
       return () => {
@@ -290,8 +358,10 @@ async function getFirebase() {
       await new Promise((r) => setTimeout(r, 100));
   }
   try {
-    await s.set(s.ref(s.db, "games/ping"), { createdAt: Date.now() });
-    s.remove(s.ref(s.db, "games/ping"));
+    await mitLeitung(async () => {
+      await s.set(s.ref(s.db, "games/ping"), { createdAt: Date.now() });
+      s.remove(s.ref(s.db, "games/ping"));
+    });
     _fbError = "";
     return fb;
   } catch (e) {
@@ -788,6 +858,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Sucht dieser Client gerade? (v3.115.2, Warteschlangen-Suite: wer uebrig
     // bleibt, muss WEITER suchen — nicht still im Menue oder im Bot-Spiel landen)
     window.__mmSucht = gated(() => !!mmActive.current);
+    // Leitung zur Datenbank (v3.117.0): wach? wie viele Abos halten sie?
+    window.__leitung = gated(() => ({ wach: leitung.wach, abos: leitung.abos, frist: !!leitung.timer }));
     // Testhilfe: eine fast gelandete Kugel von `shooter` auf eine Feindmauer
     window.__spawnBallAtEnemy = gated((shooter) => {
       const g = grid.current; if (!g) return null;
@@ -1081,22 +1153,6 @@ window.StackSiegeApp = function StackSiegeApp() {
       }).catch((e) => meldeAnHuelle("ausnahme=" + (e && e.message)));
     }, 2500);
     return () => { weg = true; clearTimeout(t); };
-  }, []);
-  // App Check im Browser (v3.113.4): einmal je Seitenaufruf anonym zaehlen,
-  // ob der Browser ein Token bekam — Gegenstueck zum Schritt `appcheck` der
-  // App. Eigener Schrittname statt eines neuen Feldes: Ein neues Feld haette
-  // zuerst in die Datenbankregeln gemusst (v3.112.4), der Name ist frei.
-  useEffect(() => {
-    if (istNativ()) return;
-    let weg = false, n = 0;
-    const t = setInterval(() => {
-      const ac = typeof window !== "undefined" && window.__appCheck;
-      if (weg || !ac || ac.art !== "recaptcha") { if (++n > 60) clearInterval(t); return; }
-      if (typeof ac.ok !== "boolean") { if (++n > 60) clearInterval(t); return; }
-      clearInterval(t);
-      trichter("appcheck_web", ac.ok ? { ok: true } : { ok: false, fehler: ac.fehler || "?" });
-    }, 500);
-    return () => { weg = true; clearInterval(t); };
   }, []);
   // Beim Oeffnen des Online-Schirms EINMAL messen (v3.111.2).
   useEffect(() => {
@@ -7177,7 +7233,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.116.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.117.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

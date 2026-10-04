@@ -1,8 +1,51 @@
 # Stack & Siege — Marktstart-Checkliste
 
-> Stand: **v3.109.0, 18.09.2026.** **iOS zuerst** — der Developer-Account steht,
-> und TestFlight hat keine 12-Tester-über-14-Tage-Regel wie Google Play.
-> Architektur-Entscheidungen: `ARCHITEKTUR.md`. Store-Texte: `store/listing.md`.
+> Stand: **v3.117.0, 04.10.2026.** **iOS zuerst.** Architektur: `ARCHITEKTUR.md`.
+> Store-Texte: `store/listing.md`. Fragebogen-Antworten: `store/app-datenschutz.md`.
+
+---
+
+## Stand 04.10.2026 — was bis zum Store fehlt
+
+**Von Apple gemessen** (`appstore.yml` → `marktreif`, 03.10.):
+App-Eintrag, Kategorie, Altersfreigabe, Prüfkontakt, Prüfhinweise,
+Bildschirmfotos (4× iPhone 6,7", 4× iPad 12,9") und Preisplan stehen.
+Fassung 1.0: `PREPARE_FOR_SUBMISSION`.
+
+### ⏸ Nur du (≈ 30 Min)
+- [ ] **App-Datenschutz-Fragebogen** — Antworten fertig in `store/app-datenschutz.md`
+- [ ] **Händlerstatus (DSA)** — Empfehlung „Kein Händler", ebenda
+- [ ] **Bau auf dem iPhone ausprobieren** (Online-Partie, kurz App wechseln)
+
+### Von mir, wenn Bau 39 durch ist
+- [ ] Bau 39 an Fassung 1.0 hängen (`appstore.yml` → `store`; dran hängt noch Bau 29)
+- [ ] Einreichen mit **manueller** Veröffentlichung — erst nach deinem Okay
+
+### Erledigt am 04.10. (v3.117.0)
+- ✅ **Datenschutzerklärung** vollständig: Verantwortlicher, alle Datenflüsse
+  (Start-Anmeldung, Bestenliste, Cloud-Sicherung, Online, anonyme Auswertung,
+  App Attest, Google-Verknüpfung), Rechtsgrundlagen, Speicherdauer, Rechte.
+  `tests/datenschutz.test.js` hält sie gegen Code und Datenbankregeln.
+- ✅ **reCAPTCHA im Browser entfernt** (Daten an Google ohne Einwilligung).
+- ✅ **Kapazität:** Jede offene App hielt eine der 100 Verbindungen des
+  Spark-Plans, auch im Menü. Jetzt nur bei Bedarf; gegen die echte Datenbank
+  gemessen: Wiederverbinden 3/3 in 0,3–0,6 s (`scripts/leitung-probe.mjs`).
+- ✅ **Cloud-Sicherung gegen die echte Datenbank** geprüft: sichern,
+  zurücklesen, alle Felder, fremder Spielstand abgewiesen, danach restlos
+  aufgeräumt (`scripts/cloudsave-probe.mjs`).
+- ✅ **Testeintrag „TestBot" aus der Bestenliste entfernt** (`reste-weg`).
+- ✅ **Impressum aus dem Suchindex** (`noindex`, nicht in der Sitemap) —
+  erreichbar bleibt es.
+- ✅ v3.116.0: iPhone-App-Wechsel kostet keine Partie mehr, TestFlight nur
+  nach grüner Testkette.
+
+### Bewusst später
+- **App Check durchsetzen** — erst wenn echte Geräte nachweislich Tokens
+  schicken (Trichter-Schritt `appcheck`). Bis dahin der einzige offene Hebel
+  gegen Flut-Angriffe.
+- **Doppelte Bestenlisten-Einträge** (alte `p_…`-Schlüssel neben neuen) —
+  Empfehlung: beim nächsten Cloud-Speichern zusammenführen. Deine Entscheidung.
+- Android (12 Tester × 14 Tage), Trailer.
 
 ---
 

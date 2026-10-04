@@ -5,13 +5,13 @@
 // Aus demselben Grund liegt es NICHT in app.js — dort wuerde es an dessen
 // Ladezeit haengen.
 import { initializeApp } from "firebase/app";
-    import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect }
+    import { getDatabase, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, goOnline, goOffline }
       from "firebase/database";
     import { getAuth, initializeAuth, indexedDBLocalPersistence, browserLocalPersistence,
              signInAnonymously, onAuthStateChanged, GoogleAuthProvider,
              linkWithRedirect, signInWithRedirect, signInWithCredential, getRedirectResult, signOut }
       from "firebase/auth";
-    import { initializeAppCheck, CustomProvider, ReCaptchaV3Provider, getToken as appCheckToken } from "firebase/app-check";
+    import { initializeAppCheck, CustomProvider } from "firebase/app-check";
     import { kontoVerknuepfbar, istNativ, hatAppCheckKanal, nativesAppCheckToken } from "./platform.ts";
     // Ist bereits ein Firebase-Ersatz installiert, wird NICHT ueberschrieben.
     // Seit das SDK mitgebuendelt ist (Architektur E3), kann die Initialisierung
@@ -65,16 +65,15 @@ import { initializeApp } from "firebase/app";
       //   - App: Das Token kommt aus der Huelle (App Attest bei Apple;
       //     ios/App/App/AppCheckBruecke.swift). JavaScript kommt an App Attest
       //     nicht heran, deshalb der `CustomProvider` ueber die Bruecke.
-      //   - Browser: reCAPTCHA v3, sobald der Site-Key eingetragen ist.
+      //   - Browser: KEIN App Check (seit v3.117.0). reCAPTCHA v3 schickte
+      //     Geraetemerkmale an Google — in Deutschland ohne Einwilligung nicht
+      //     zulaessig (§ 25 TDDDG), und durchgesetzt war App Check nie.
+      //     Wird es spaeter fuer den Browser gebraucht: mit Einwilligung.
       //
       // DURCHGESETZT wird hier nichts — das entscheidet die Firebase-Konsole
       // bzw. `appcheck.yml`. Solange nicht durchgesetzt ist, laeuft ein Client
       // ohne Token genau wie bisher. Genau deshalb darf dieser Block scheitern,
       // ohne das Spiel mitzunehmen.
-      // reCAPTCHA-v3-Site-Key fuer skkjbeer.github.io. OEFFENTLICH wie der
-      // API-Schluessel — das Gegenstueck (Secret) liegt nur in den Secrets
-      // und bei Firebase (appcheck.yml, Modus einrichten).
-      const APPCHECK_SITE_KEY = "6LffVMwtAAAAANSbtQ5sZe2ERcBXIt2agDUfWsWr";
       window.__appCheck = { art: "aus" };
       try {
         if (hatAppCheckKanal()) {
@@ -103,30 +102,18 @@ import { initializeApp } from "firebase/app";
             isTokenAutoRefreshEnabled: true
           });
           window.__appCheck = { art: "nativ" };
-        } else if (APPCHECK_SITE_KEY && !istNativ()) {
-          const instanz = initializeAppCheck(app, {
-            provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
-            isTokenAutoRefreshEnabled: true
-          });
-          window.__appCheck = { art: "recaptcha" };
-          // Bekommt DIESER Browser ein Token? (v3.113.4) Firebase bewertet
-          // strenger als Googles siteverify: Ein automatisierter Browser bekam
-          // dort 0,9 und bei Firebase trotzdem 403, erst mit Schwelle 0 ein
-          // Token. Wie es echten Spielern ergeht, weiss nur die Messung — und
-          // von ihr haengt ab, ob die Durchsetzung je eingeschaltet werden
-          // darf. Das Ergebnis zaehlt app.js anonym im Trichter.
-          appCheckToken(instanz, false)
-            .then(() => { window.__appCheck.ok = true; })
-            .catch((e) => {
-              window.__appCheck.ok = false;
-              window.__appCheck.fehler = String((e && (e.code || e.message)) || e).slice(0, 80);
-            });
         }
       } catch (e) {
         window.__appCheck = { art: "fehler", fehler: e && (e.code || e.message) };
       }
       const db = getDatabase(app);
+      // Getrennt starten (v3.117.0): Die Leitung zur Datenbank oeffnet erst der
+      // erste Zugriff ueber `fb` in app.js (leitungAn) und schliesst sich nach
+      // Leerlauf wieder. Vorher hielt JEDE offene App eine der 100 Verbindungen
+      // des Spark-Plans — auch im Menue.
+      goOffline(db);
       window.__fb = { db, ref, set, update, remove, get, onValue, off, runTransaction, onDisconnect, uid: null,
+                      goOnline: () => goOnline(db), goOffline: () => goOffline(db),
                       // Cloud-Save (v3.72.0): Konto-Verknuepfung
                       GoogleAuthProvider, linkWithRedirect, signInWithRedirect, signInWithCredential,
                       getRedirectResult, signOut, anon: true, mail: null };

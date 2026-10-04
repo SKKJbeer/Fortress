@@ -51,7 +51,10 @@ const WS_SPERRE = `
       window.__wsVersuche.push(String(url));
       this.url = String(url);
       this.readyState = 0;            // CONNECTING, bleibt es auch
-      this.close = function () {};
+      // Schliessen ZAEHLEN (v3.117.0): Die Kapazitaets-Pruefung misst daran,
+      // ob die App ihre Leitung im Menue wirklich abbaut — nicht an einem
+      // internen Merker, der auch ohne echtes Trennen umspringen wuerde.
+      this.close = function () { window.__wsGeschlossen = (window.__wsGeschlossen || 0) + 1; this.readyState = 3; };
       this.send = function () {};
       this.addEventListener = function () {};
       this.removeEventListener = function () {};
