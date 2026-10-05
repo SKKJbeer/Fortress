@@ -47,6 +47,13 @@ def lage(apple):
     stand, app = erste(apple, "v1/apps", **{"filter[bundleId]": BUNDLE})
     if not app:
         sag(f"Kein App-Eintrag fuer {BUNDLE} (HTTP {stand})"); return None
+    # Die EINZEL-Ressource lesen, nicht die Listenantwort: Gemessen am
+    # 05.10.2026 lieferte die Liste `contentRightsDeclaration` nicht, obwohl das
+    # PATCH mit 200 angenommen war — der Lauf meldete „FEHLT" trotz Erfolg.
+    s1, einzeln = erste(apple, f"v1/apps/{app['id']}",
+                        **{"fields[apps]": "name,contentRightsDeclaration"})
+    if einzeln:
+        app = einzeln
     stand, fass = erste(apple, f"v1/apps/{app['id']}/appStoreVersions",
                         **{"filter[versionString]": FASSUNG})
     if not fass:
