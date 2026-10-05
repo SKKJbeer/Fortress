@@ -8929,3 +8929,19 @@ doppelt. Nichts gelöscht: Der App-seitige Zusammenführer kann die alten
 Schlüssel unter den neuen Regeln ohnehin nicht löschen
 (`auth.uid === $playerId`), und das Löschen fremder Einträge per Dienstkonto
 braucht eine ausdrückliche Entscheidung des Betreibers.
+
+### Nachtrag v3.117.0 — erster Einreichungsversuch, was er zeigte
+
+Apple lehnte mit 409 ab; die „associated errors" (jetzt vom Skript
+ausgegeben) nannten fünf fehlende Pflichtangaben. `asc-marktreif.py` hatte
+keine gemeldet — es zählte einen **leeren** Preisplan als „vorhanden". Jetzt
+zählt es die manuellen Preise und prüft copyright, supportUrl und
+contentRightsDeclaration. `asc-pflichtangaben.py` (Modi `pflichtangaben-stand`,
+`pflichtangaben`) trägt copyright, Support-URL und den Preis (kostenlos) ein.
+Der Datenschutz-Fragebogen ist über Apples Schnittstelle nicht erreichbar
+(gemessen: `appDataUsages`, `appDataUsagesPublishState`,
+`appDataUsageCategories`, `-Purposes`, `-DataProtections` alle HTTP 404).
+Zusätzlich: Das Einreichungs-Skript verwendet eine unabgeschickte Einreichung
+eines früheren Versuchs weiter (sonst hätte der leere Rest jeden weiteren
+Versuch gesperrt) und gibt Apples verbundene Fehler aus; offline gegen eine
+Apple-Attrappe in vier Fällen geprüft.

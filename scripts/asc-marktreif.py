@@ -155,11 +155,34 @@ def main() -> int:
                 hake(f"Weitere Groessen ({kuerzel}): " + ", ".join(f"{t}={n}" for t, n in weitere.items()))
 
     # ── Preis und Verfuegbarkeit ──────────────────────────────────────────
+    # Ein Preisplan OHNE Preis ist kein Preis. Genau das sah die Pruefung bis
+    # v3.117.0 als „vorhanden" — und Apple lehnte die Einreichung mit
+    # APP_PRICING_REQUIRED ab (05.10.2026). Gezaehlt werden die manuellen Preise.
     stand, plan = erste(apple, f"v1/apps/{app_id}/appPriceSchedule")
     if stand == 200 and plan:
-        hake("Preisplan vorhanden")
+        s2, preise = apple.holen(f"v1/appPriceSchedules/{plan['id']}/manualPrices", limit=10)
+        if s2 == 200 and (preise.json().get("data") or []):
+            hake("Preis gesetzt")
+        else:
+            fehlt("Preisplan ohne Preis — Apple lehnt die Einreichung ab (APP_PRICING_REQUIRED)")
     else:
         fehlt(f"Kein Preisplan — ohne ihn ist die App nirgends erhaeltlich (HTTP {stand})")
+
+    # Die drei Attribute, die Apple beim Einreichen als Pflicht nennt (05.10.2026).
+    if feld(fass, "copyright"):
+        hake(f"copyright: {feld(fass, 'copyright')}")
+    else:
+        fehlt("copyright fehlt (Fassung)")
+    stand, lok_p = erste(apple, f"v1/appStoreVersions/{fass_id}/appStoreVersionLocalizations",
+                         **{"filter[locale]": "de-DE"})
+    if lok_p and feld(lok_p, "supportUrl"):
+        hake("Support-URL gesetzt")
+    else:
+        fehlt("supportUrl fehlt (Fassung, de-DE)")
+    if feld(app, "contentRightsDeclaration"):
+        hake(f"Erklaerung zu fremden Inhalten: {feld(app, 'contentRightsDeclaration')}")
+    else:
+        fehlt("contentRightsDeclaration fehlt (App) — eine Rechtserklaerung, nur der Betreiber")
 
     stand, antwort = apple.holen(f"v2/apps/{app_id}/appAvailability",
                                  **{"include": "territoryAvailabilities"})

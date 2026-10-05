@@ -17,6 +17,22 @@ Fassung 1.0: `PREPARE_FOR_SUBMISSION`.
 - [ ] **Händlerstatus (DSA)** — Empfehlung „Kein Händler", ebenda
 - [ ] **Bau auf dem iPhone ausprobieren** (Online-Partie, kurz App wechseln)
 
+### Erster Einreichungsversuch (05.10.) — Apple nannte fünf fehlende Angaben
+Das Einreichen scheiterte mit 409; Apples „associated errors" nannten:
+- ✅ `copyright` — gesetzt: „2026 Steffen Karjoth" (wie im Impressum)
+- ✅ `supportUrl` — gesetzt: `https://github.com/SKKJbeer/Fortress/issues`
+- ✅ **Preis** — der Preisplan war leer; jetzt kostenlos (`marktreif` hatte
+  „Preisplan vorhanden" gemeldet — behoben, zählt jetzt die Preise)
+- ⏸ `contentRightsDeclaration` — Rechtserklärung zu fremden Inhalten. Audio
+  ist dokumentiert (CC0, `CREDITS.md`); **Herkunft der zwölf Wappen-Bilder
+  steht nirgends** — bitte bestätigen, dann `--inhalte` setzen.
+- ⏸ **App-Datenschutz veröffentlichen** — nur in App Store Connect; Apples
+  Schnittstelle kennt die Ressource nicht (gemessen: alle fünf Pfade 404).
+  Antworten: `store/app-datenschutz.md`.
+- ⚠ **Händlerstatus (DSA)** steht NICHT in Apples Fehlerliste, ist aber
+  Voraussetzung dafür, dass die App in der EU erscheint. Ohne Erklärung bleibt
+  sie dort unsichtbar.
+
 ### Danach — ein Schritt, vorbereitet (v3.117.1)
 - [ ] **Einreichen:** `appstore.yml` → `einreichen-probe` (Trockenlauf), dann
   `einreichen` mit Eingabe `EINREICHEN`. Veröffentlichung bleibt **von Hand**.
