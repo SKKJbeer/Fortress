@@ -24,6 +24,12 @@ on:
           - store      # Kategorie, Altersfreigabe, Bau, Bildschirmfotos eintragen
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
+          - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
+          - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
+      bestaetigung:
+        description: 'Nur fuer einreichen: das Wort EINREICHEN (Veroeffentlichung bleibt von Hand)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -72,6 +78,7 @@ jobs:
           ASC_KONTAKT_NAME: ${{ secrets.ASC_KONTAKT_NAME }}
           ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
           ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
+          BESTAETIGUNG: ${{ inputs.bestaetigung }}
         run: |
           case "${{ inputs.modus }}" in
             anlegen)    python3 scripts/asc.py --anlegen ;;
@@ -85,6 +92,15 @@ jobs:
             # SCHREIBT (`oeffentlich`). Reines Lesen gehoert als eigener Modus
             # hierher, sonst schreibt irgendwann jemand nur, um nachzusehen.
             beta-stand) python3 scripts/testflight-stand.py ;;
+            einreichen-probe) python3 scripts/asc-einreichen.py ;;
+            # Wirklich einreichen: nur mit der Eingabe EINREICHEN. Die Eingabe
+            # laeuft ueber die Umgebung (BESTAETIGUNG), nie in die Shell-Zeile.
+            einreichen)
+              if [ "$BESTAETIGUNG" != "EINREICHEN" ]; then
+                echo "::error::Zum Einreichen die Eingabe 'bestaetigung' auf EINREICHEN setzen."
+                exit 1
+              fi
+              python3 scripts/asc-einreichen.py --einreichen ;;
             store-probe) python3 scripts/asc-store.py --alles --trocken ;;
             store)      python3 scripts/asc-store.py --alles ;;
             *)          python3 scripts/asc.py --stand ;;

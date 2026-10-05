@@ -7,7 +7,10 @@
 
 ## 1. App-Datenschutz (App Store Connect → App → App-Datenschutz → Bearbeiten)
 
-**Datenschutzrichtlinie (URL):** `https://stack-and-siege.pages.dev/privacy`
+**Datenschutzrichtlinie (URL):** `https://skkjbeer.github.io/Fortress/privacy.html`
+(so steht sie bei Apple im Eintrag; dieselbe Seite wie
+`https://stack-and-siege.pages.dev/privacy`). Wenn Apple nach der URL fragt,
+diese eintragen — sie ist von `asc.py --fuellen` bereits gesetzt.
 
 **„Erfasst du oder deine Drittanbieter Daten aus dieser App?"** → **Ja**
 
@@ -50,7 +53,16 @@ auf der Produktseite angezeigt.
 Wird das Spiel später monetarisiert (In-App-Käufe, Werbung), muss der Status
 auf **Händler** wechseln.
 
-## 3. Danach
+## 3. Danach — Einreichen in EINEM Schritt
+
+Sobald 1. und 2. erledigt sind:
+GitHub → Actions → **App Store (Stand / Eintragen)** → Run workflow →
+Modus **`einreichen-probe`** (Trockenlauf: prüft Fassung, neuesten Bau, laufende
+Einreichungen) → dann Modus **`einreichen`** mit der Eingabe
+`bestaetigung` = `EINREICHEN`. Das setzt die Veröffentlichung auf **von Hand**
+und reicht ein. Fehlt noch eine der beiden Pflichtangaben, lehnt Apple ab und
+der Lauf zeigt die Meldung; nach dem Nachtragen einfach erneut starten.
+(Oder: Claude sagen „einreichen".)
 
 - `appstore.yml` → **marktreif** (nur lesen): die beiden Punkte verschwinden
   aus „NUR VON HAND" erst, wenn Apple sie bestätigt — die Schnittstelle meldet

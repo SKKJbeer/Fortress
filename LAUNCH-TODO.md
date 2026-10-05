@@ -17,9 +17,12 @@ Fassung 1.0: `PREPARE_FOR_SUBMISSION`.
 - [ ] **Händlerstatus (DSA)** — Empfehlung „Kein Händler", ebenda
 - [ ] **Bau auf dem iPhone ausprobieren** (Online-Partie, kurz App wechseln)
 
-### Danach (von mir, nach deinem Okay)
-- ✅ Bau 39 (v3.117.0) hängt an Fassung 1.0 — von Apple bestätigt (04.10.), Unterkategorien Strategie + Puzzle gesetzt
-- [ ] Einreichen mit **manueller** Veröffentlichung — erst nach deinem Okay
+### Danach — ein Schritt, vorbereitet (v3.117.1)
+- [ ] **Einreichen:** `appstore.yml` → `einreichen-probe` (Trockenlauf), dann
+  `einreichen` mit Eingabe `EINREICHEN`. Veröffentlichung bleibt **von Hand**.
+  Vier Riegel (`tests/einreichen.test.js`, 7/7 Gegenproben rot): Trockenlauf
+  ist die Vorgabe, Bestätigung vor dem ersten Zugriff, MANUAL vor dem
+  Abschicken, nur der neueste Bau.
 
 ### Erledigt am 04.10. (v3.117.0)
 - ✅ **Datenschutzerklärung** vollständig: Verantwortlicher, alle Datenflüsse

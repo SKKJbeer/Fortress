@@ -8907,3 +8907,25 @@ sechs Konstruktions-Prüfungen fest; Gegenprobe 4/4 rot.
    auf Wunsch des Betreibers — erreichbar bleibt es (§ 5 DDG).
 7. `store/app-datenschutz.md`: fertige Antworten für Apples
    App-Datenschutz-Fragebogen und den DSA-Händlerstatus.
+
+### Nachtrag v3.117.0 — Einreichen vorbereitet (nur Werkzeug, kein Spielcode)
+
+`scripts/asc-einreichen.py` + `appstore.yml` (Modi `einreichen-probe`,
+`einreichen`): reicht die Fassung bei Apple ein, wenn die zwei Pflichtangaben
+von Hand erledigt sind (App-Datenschutz-Fragebogen, DSA-Händlerstatus — Apples
+Schnittstelle kennt beide nicht; fehlen sie, lehnt Apple mit 409 ab und der
+Lauf gibt die Meldung wortgetreu aus). Riegel: Trockenlauf als Vorgabe;
+`BESTAETIGUNG=EINREICHEN` vor dem ersten Zugriff auf Apple und im Ablauf;
+`releaseType` MANUAL vor dem Abschicken (die App erscheint erst, wenn der
+Betreiber „Freigeben" drückt); nur der neueste gültige Bau (Zahl, nicht Text);
+keine zweite Einreichung neben einer laufenden. `tests/einreichen.test.js`
+prüft die Konstruktion; 7 künstliche Eingriffe, 7/7 rot. `asc-store.py`
+reicht weiterhin nie ein.
+
+Bestenliste geprüft (öffentlich lesbar, nur gelesen): 54 Einträge, davon 44
+mit altem `p_`-Schlüssel (eingefroren), 11 davon mit Spielen. Die Anzeige
+filtert `games > 0` — die 33 leeren sind unsichtbar; nur 2 Namen erscheinen
+doppelt. Nichts gelöscht: Der App-seitige Zusammenführer kann die alten
+Schlüssel unter den neuen Regeln ohnehin nicht löschen
+(`auth.uid === $playerId`), und das Löschen fremder Einträge per Dienstkonto
+braucht eine ausdrückliche Entscheidung des Betreibers.
