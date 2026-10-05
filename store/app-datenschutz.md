@@ -50,9 +50,11 @@ bestätigen (so steht es in `LAUNCH-TODO.md` 1b, aus der Zählora-Erfahrung).
 
 - Ist das Konto als **Händler** eingestuft, zeigt Apple Anschrift, E-Mail und
   Telefonnummer auf der EU-Produktseite — für diese App genauso wie für die erste.
-- Nur wenn das Konto **„Kein Händler"** ist (oder noch nichts erklärt wurde),
-  entfällt die Anzeige. Meine frühere Empfehlung „Kein Händler" gilt deshalb
-  nur, wenn sie zum bestehenden Konto passt — sie lässt sich nicht je App anders wählen.
+- **Entscheidung des Betreibers (05.10.2026): In-App-Käufe sind geplant — also
+  Händler.** Das ist die richtige Einstufung; „Kein Händler" wäre bei
+  Monetarisierungsabsicht falsch. Die Kontaktdaten stehen damit auf der
+  EU-Produktseite (und können von Suchmaschinen gefunden werden — wie schon bei
+  der ersten App). Meine frühere Empfehlung „Kein Händler" ist damit hinfällig.
 - Steht der Status noch auf „In Prüfung", scheitert die Einreichung mit der
   nichtssagenden Meldung „not in valid state". Bei Zählora dauerte es Tage.
 

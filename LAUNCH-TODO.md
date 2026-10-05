@@ -59,6 +59,24 @@ App-Datenschutz-Fragebogen müssen veröffentlicht sein.**
 - ✅ v3.116.0: iPhone-App-Wechsel kostet keine Partie mehr, TestFlight nur
   nach grüner Testkette.
 
+### Geplant: In-App-Käufe (Entscheidung 05.10.2026 → Händlerstatus ist richtig)
+Das ist ein eigenes Projekt, kein Anhängsel von 1.0. Vorab, was es auslöst:
+- **Apple:** Vereinbarung für kostenpflichtige Apps (Bankdaten, Steuerformulare),
+  Produkte in App Store Connect, **„Käufe wiederherstellen"** in der App,
+  Altersfreigabe neu beantworten (Käufe/Zufallsbelohnungen), Prüfhinweise.
+- **Server:** `CLAUDE.md` sagt es schon — echtes Geld braucht **Firebase Blaze
+  und Cloud Functions** (Beleg-Prüfung, Gutschrift serverseitig). Heute ist der
+  Spielstand clientseitig (localStorage/Cloud-Sicherung): Wer das Profil ändert,
+  ändert sein Gold. Für gekauftes Gold reicht das nicht.
+- **Recht:** `privacy.html` (heute „ohne Bezahlfunktion"), AGB (heute „Gold ist
+  reine Spielwährung ohne Gegenwert"), App-Datenschutz-Fragebogen (Kategorie
+  „Käufe"), Widerrufshinweise. `tests/datenschutz.test.js` verlangt die
+  Erklärung ohnehin synchron zum Code.
+- **Produkt:** Die Linie „Kein Pay2Win, alles kosmetisch" (`CLAUDE.md`)
+  passt zu Käufen von Kosmetik; Zufalls-Kisten wären eine eigene Rechts- und
+  Altersfreigabe-Frage.
+- Version 1.0 geht **ohne** Käufe raus; Käufe kommen mit einer späteren Fassung.
+
 ### Bewusst später
 - **App Check durchsetzen** — erst wenn echte Geräte nachweislich Tokens
   schicken (Trichter-Schritt `appcheck`). Bis dahin der einzige offene Hebel
