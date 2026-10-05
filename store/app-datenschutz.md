@@ -40,15 +40,21 @@ Begründungen, falls Apple nachfragt:
 
 ## 2. Händlerstatus nach dem EU-Digitale-Dienste-Gesetz (DSA)
 
-App Store Connect → **Business** → Händlerstatus (gilt fürs Konto, dann je App bestätigen).
+**Zuerst nachsehen, was für das KONTO schon gilt** (App Store Connect →
+Business → Compliance). Die Erklärung hängt am Konto; beim Schwesterprojekt
+(Zählora) wurde sie bereits abgegeben. Dann ist die Konto-Ebene erledigt und
+**dieselbe Einstufung gilt auch hier** — man wählt sie nicht je App neu.
 
-**Empfehlung: „Kein Händler" (Non-Trader).** Begründung: kostenloses
-Hobbyprojekt, keine Käufe mit echtem Geld, keine Werbung, keine
-Gewinnerzielungsabsicht.
+Je App bleibt ein Schritt: **App Information → Digital Services Act**
+bestätigen (so steht es in `LAUNCH-TODO.md` 1b, aus der Zählora-Erfahrung).
 
-Folge: Apple zeigt im EU-App-Store **keine Anschrift und Telefonnummer** an.
-Wählst du „Händler", werden Name, Anschrift, Telefon und E-Mail öffentlich
-auf der Produktseite angezeigt.
+- Ist das Konto als **Händler** eingestuft, zeigt Apple Anschrift, E-Mail und
+  Telefonnummer auf der EU-Produktseite — für diese App genauso wie für die erste.
+- Nur wenn das Konto **„Kein Händler"** ist (oder noch nichts erklärt wurde),
+  entfällt die Anzeige. Meine frühere Empfehlung „Kein Händler" gilt deshalb
+  nur, wenn sie zum bestehenden Konto passt — sie lässt sich nicht je App anders wählen.
+- Steht der Status noch auf „In Prüfung", scheitert die Einreichung mit der
+  nichtssagenden Meldung „not in valid state". Bei Zählora dauerte es Tage.
 
 Wird das Spiel später monetarisiert (In-App-Käufe, Werbung), muss der Status
 auf **Händler** wechseln.
