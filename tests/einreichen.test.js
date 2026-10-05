@@ -51,6 +51,11 @@ test("Skript: Voraussetzungen — richtige Fassung, neuester Bau, keine laufende
   assert.match(SKRIPT, /zustand != "PREPARE_FOR_SUBMISSION"/);
   assert.match(SKRIPT, /nummer\(dran\) != nummer\(neu\)/);
   assert.match(SKRIPT, /not in \("COMPLETE", "CANCELING"\)/);
+  // Nur eine NOCH NICHT ABGESCHICKTE Einreichung (READY_FOR_REVIEW) wird
+  // weiterverwendet; was unterwegs ist, sperrt. Sonst blockierte der leere Rest
+  // eines gescheiterten Versuchs (gemessen am 05.10.) jeden weiteren.
+  assert.match(SKRIPT, /unterwegs = \[e for e in offen if feld\(e, "state"\) != "READY_FOR_REVIEW"\]/);
+  assert.match(SKRIPT, /if unterwegs:\s*\n\s*fehler\.append\("Es laeuft bereits eine Einreichung/);
   // Nach ZAHL, nicht nach Text (Apples sort=-version sortiert „99" vor „100").
   assert.match(SKRIPT, /int\(feld\(bau, "version"\)\)/);
 });
@@ -70,4 +75,13 @@ test("Ablauf: 'einreichen' verlangt die Eingabe, 'einreichen-probe' schreibt nic
 test("asc-store.py reicht weiterhin nie ein", () => {
   const store = ohneErklaerung(lies("scripts", "asc-store.py"));
   assert.doesNotMatch(store, /reviewSubmission|"submitted"|releaseType/);
+});
+
+test("Skript: Apples verbundene Fehler werden ausgegeben", () => {
+  // Ohne sie steht im Protokoll nur „kann nicht geprueft werden" — der erste
+  // Versuch am 05.10. liess offen, WAS fehlte.
+  assert.match(SKRIPT, /meta"\) or \{\}\)\.get\("associatedErrors"\)/);
+  const e = SKRIPT.slice(SKRIPT.indexOf("def einreichen"), SKRIPT.indexOf("def main()"));
+  assert.equal((e.match(/for z in verbundene_fehler\(a\):/g) || []).length, 2,
+    "beide Fehlerstellen (Hinzufuegen und Abschicken) muessen die Details ausgeben");
 });
