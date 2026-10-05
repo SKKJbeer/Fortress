@@ -24,6 +24,8 @@ on:
           - store      # Kategorie, Altersfreigabe, Bau, Bildschirmfotos eintragen
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
+          - pflichtangaben-stand # nur lesen: copyright, Support-URL, Preis, Datenschutz-Schnittstelle
+          - pflichtangaben # copyright, Support-URL und Preis (kostenlos) eintragen
           - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
           - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
       bestaetigung:
@@ -92,6 +94,8 @@ jobs:
             # SCHREIBT (`oeffentlich`). Reines Lesen gehoert als eigener Modus
             # hierher, sonst schreibt irgendwann jemand nur, um nachzusehen.
             beta-stand) python3 scripts/testflight-stand.py ;;
+            pflichtangaben-stand) python3 scripts/asc-pflichtangaben.py ;;
+            pflichtangaben) python3 scripts/asc-pflichtangaben.py --eintragen ;;
             einreichen-probe) python3 scripts/asc-einreichen.py ;;
             # Wirklich einreichen: nur mit der Eingabe EINREICHEN. Die Eingabe
             # laeuft ueber die Umgebung (BESTAETIGUNG), nie in die Shell-Zeile.
