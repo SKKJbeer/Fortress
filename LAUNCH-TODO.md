@@ -17,21 +17,22 @@ Fassung 1.0: `PREPARE_FOR_SUBMISSION`.
 - [ ] **Händlerstatus (DSA)** — Empfehlung „Kein Händler", ebenda
 - [ ] **Bau auf dem iPhone ausprobieren** (Online-Partie, kurz App wechseln)
 
-### Erster Einreichungsversuch (05.10.) — Apple nannte fünf fehlende Angaben
-Das Einreichen scheiterte mit 409; Apples „associated errors" nannten:
-- ✅ `copyright` — gesetzt: „2026 Steffen Karjoth" (wie im Impressum)
-- ✅ `supportUrl` — gesetzt: `https://github.com/SKKJbeer/Fortress/issues`
-- ✅ **Preis** — der Preisplan war leer; jetzt kostenlos (`marktreif` hatte
-  „Preisplan vorhanden" gemeldet — behoben, zählt jetzt die Preise)
-- ⏸ `contentRightsDeclaration` — Rechtserklärung zu fremden Inhalten. Audio
-  ist dokumentiert (CC0, `CREDITS.md`); **Herkunft der zwölf Wappen-Bilder
-  steht nirgends** — bitte bestätigen, dann `--inhalte` setzen.
+### Einreichung (05.10.) — Apple nennt am Ende genau EINE fehlende Angabe
+Der dritte Versuch lief bis zum Abschicken; Apples „associated errors" nennen
+nur noch: `STATE_ERROR.APP_DATA_USAGES_REQUIRED` — **die Antworten im
+App-Datenschutz-Fragebogen müssen veröffentlicht sein.**
+- ✅ `copyright` „2026 Steffen Karjoth", ✅ `supportUrl` (GitHub-Issues),
+  ✅ **Preis** kostenlos (der Preisplan war leer, `marktreif` meldete trotzdem
+  „vorhanden" — behoben), ✅ `contentRightsDeclaration`
+  `USES_THIRD_PARTY_CONTENT` (CC0-Audio von Dritten; Rechte an den
+  Wappen-Bildern am 05.10. vom Betreiber bestätigt)
 - ⏸ **App-Datenschutz veröffentlichen** — nur in App Store Connect; Apples
-  Schnittstelle kennt die Ressource nicht (gemessen: alle fünf Pfade 404).
-  Antworten: `store/app-datenschutz.md`.
-- ⚠ **Händlerstatus (DSA)** steht NICHT in Apples Fehlerliste, ist aber
-  Voraussetzung dafür, dass die App in der EU erscheint. Ohne Erklärung bleibt
-  sie dort unsichtbar.
+  Schnittstelle kennt die Ressource nicht (gemessen: fünf Pfade, alle 404).
+  Fertige Antworten: `store/app-datenschutz.md`.
+- ⚠ **Händlerstatus (DSA)** steht nicht in Apples Fehlerliste, ist aber
+  Voraussetzung dafür, dass die App in der EU erscheint.
+- Danach: `appstore.yml` → `einreichen` mit `EINREICHEN` (die leere Einreichung
+  ist angelegt und wird weiterverwendet; Veröffentlichung steht auf MANUAL).
 
 ### Danach — ein Schritt, vorbereitet (v3.117.1)
 - [ ] **Einreichen:** `appstore.yml` → `einreichen-probe` (Trockenlauf), dann
