@@ -73,19 +73,29 @@ Kosmetik sind Anerkennung für Gespieltes, kein Verkaufsartikel.
 
 ### Schlüsselwörter (max. 100, kommagetrennt, keine Leerzeichen)
 ```
-burg,festung,strategie,mauer,kanone,duell,2spieler,rundenbasiert,offline,tetris,belagerung,taktik
+burg,burgen,belagerung,kanone,strategie,taktik,mittelalter,multiplayer,2,spieler,offline,bot,steine
 ```
-99 Zeichen. Der Spielname gehört **nicht** hinein — Apple durchsucht ihn ohnehin.
+99 Zeichen. Überarbeitet am 07.10.2026 (`tests/store.test.js` hält die Regeln fest):
+- **„tetris" raus** — fremde Marke. Apple lehnt Marken in Schlagworten ab
+  (Richtlinie 2.3.7); das hätte die Prüfung kosten können.
+- **„rundenbasiert" raus** — falsch: gespielt wird gleichzeitig in Phasen mit
+  Uhr. Wer danach sucht, erwartet etwas anderes und springt ab.
+- **Keine Wörter aus Name und Untertitel** („festung", „mauer", „duell"):
+  Apple durchsucht beide ohnehin, im Schlagwortfeld wären sie verschenkt.
+- **„2,spieler" getrennt**: Apple kombiniert Schlagworte untereinander — so
+  greift „2 spieler" UND „spieler" einzeln.
+Der Spielname gehört **nicht** hinein — Apple durchsucht ihn ohnehin.
 
 ### Altersfreigabe
 4+ — Gewaltdarstellung ist abstrakt (Blöcke zerfallen), keine Figuren, kein
 Blut, keine Schrift von Dritten im Spiel.
 
 ### Datenschutz-Angaben (App Privacy)
-- **Erfasste Daten:** Spielername (Pseudonym), Spielstand, Spielverlauf
-- **Verknüpft mit der Identität:** nein — die Firebase-Kennung ist anonym
-- **Für Tracking verwendet:** nein
-- **Werbenetzwerke:** keine
+Die verbindlichen Antworten stehen in **`store/app-datenschutz.md`** (vier
+Datentypen, „verknüpft: ja", „Tracking: nein") — sie folgen aus
+`public/privacy.html`, und die wird gegen den Code geprüft. Die frühere
+Kurzfassung hier („verknüpft: nein") war falsch: Spielstand und Bestenlisten-
+Eintrag hängen an der anonymen Kennung.
 
 ---
 

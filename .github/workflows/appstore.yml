@@ -27,6 +27,8 @@ on:
           - pflichtangaben-stand # nur lesen: copyright, Support-URL, Preis, Datenschutz-Schnittstelle
           - pflichtangaben # copyright, Support-URL und Preis (kostenlos) eintragen
           - pflichtangaben-inhalte # zusaetzlich die Rechtserklaerung zu fremden Inhalten (nur nach Bestaetigung des Betreibers)
+          - sprachen-stand # nur lesen: welche Sprachfassungen gibt es, was weicht von listing-en.md ab?
+          - sprachen   # englische Fassungen (en-US, en-GB) anlegen/angleichen
           - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
           - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
       bestaetigung:
@@ -98,6 +100,8 @@ jobs:
             pflichtangaben-stand) python3 scripts/asc-pflichtangaben.py ;;
             pflichtangaben) python3 scripts/asc-pflichtangaben.py --eintragen ;;
             pflichtangaben-inhalte) python3 scripts/asc-pflichtangaben.py --eintragen --inhalte ;;
+            sprachen-stand) python3 scripts/asc-sprachen.py ;;
+            sprachen) python3 scripts/asc-sprachen.py --eintragen ;;
             einreichen-probe) python3 scripts/asc-einreichen.py ;;
             # Wirklich einreichen: nur mit der Eingabe EINREICHEN. Die Eingabe
             # laeuft ueber die Umgebung (BESTAETIGUNG), nie in die Shell-Zeile.
