@@ -13,6 +13,7 @@ on:
           - stand       # nur lesen: erreichbar? welche Bestaetigungs-Angabe?
           - einrichten  # bestaetigen, anmelden, Sitemap einreichen
           - besitzer    # Google-Konto als Eigentuemer eintragen (braucht 'besitzer')
+          - bericht     # nur lesen: Indexierung, Suchanfragen, Sitemap
       besitzer:
         description: 'Nur fuer besitzer: Mailadresse des Google-Kontos (wird im Protokoll maskiert)'
         type: string
@@ -40,5 +41,6 @@ jobs:
             # Die Adresse NICHT hier einsetzen und nicht in env: — das Skript
             # liest sie aus der Ereignisdatei und maskiert sie zuerst.
             besitzer) python3 scripts/suche.py --besitzer ;;
+            bericht) python3 scripts/suche.py --bericht ;;
             *) python3 scripts/suche.py --stand ;;
           esac

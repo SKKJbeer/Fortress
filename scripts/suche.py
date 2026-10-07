@@ -135,7 +135,53 @@ def besitzer() -> int:
     return 0 if s == 200 else 1
 
 
+def bericht() -> int:
+    """NUR LESEN: Was weiss Google ueber die Website? (v3.117.x)
+
+    - Indexierung je Seite (URL-Pruefung: im Index? wann gecrawlt? welche
+      massgebliche Adresse hat Google gewaehlt?)
+    - Suchanfragen und Seiten der letzten 28 Tage (Impressionen, Klicks, Position)
+    - Stand der Sitemap
+    """
+    import datetime
+    t = tok()
+    kodiert = urllib.parse.quote(SEITE, safe="")
+    print("Indexierung (URL-Pruefung)")
+    for pfad in ["", "privacy", "agb", "impressum"]:
+        url = SEITE + pfad
+        s, d = anfrage(t, "POST", "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+                       {"inspectionUrl": url, "siteUrl": SEITE, "languageCode": "de"})
+        if s != 200:
+            print(f"  {url}: HTTP {s} {fehler(d)}")
+            continue
+        r = (d.get("inspectionResult") or {}).get("indexStatusResult") or {}
+        print(f"  {url}: {r.get('verdict', '?')} · {r.get('coverageState', '?')} · "
+              f"gecrawlt {r.get('lastCrawlTime', 'nie')} · Google-kanonisch {r.get('googleCanonical', '-')} · "
+              f"robots {r.get('robotsTxtState', '?')} · Indexierung {r.get('indexingState', '?')}")
+    heute = datetime.date.today()
+    von = (heute - datetime.timedelta(days=28)).isoformat()
+    for dim in ["query", "page", "country", "device"]:
+        s, d = anfrage(t, "POST", f"https://www.googleapis.com/webmasters/v3/sites/{kodiert}/searchAnalytics/query",
+                       {"startDate": von, "endDate": heute.isoformat(), "dimensions": [dim], "rowLimit": 25})
+        zeilen = d.get("rows", []) if s == 200 else []
+        print(f"\nSuchleistung nach {dim} ({von} bis heute): "
+              + (f"{len(zeilen)} Zeile(n)" if s == 200 else f"HTTP {s} {fehler(d)}"))
+        for z in zeilen:
+            print(f"  {z['keys'][0][:70]:70} Impr {z.get('impressions', 0):>5} · Klicks {z.get('clicks', 0):>3} · "
+                  f"Pos {z.get('position', 0):.1f}")
+    s, d = anfrage(t, "GET", f"https://www.googleapis.com/webmasters/v3/sites/{kodiert}/sitemaps")
+    print("\nSitemaps")
+    for sm in d.get("sitemap", []):
+        inhalte = ", ".join(f"{c.get('type')}: {c.get('submitted')} eingereicht / {c.get('indexed', '?')} indexiert"
+                            for c in sm.get("contents", []))
+        print(f"  {sm.get('path')}: zuletzt gelesen {sm.get('lastDownloaded', 'nie')}, Fehler {sm.get('errors', 0)}, "
+              f"Warnungen {sm.get('warnings', 0)} — {inhalte}")
+    return 0
+
+
 if __name__ == "__main__":
+    if "--bericht" in sys.argv:
+        sys.exit(bericht())
     if "--besitzer" in sys.argv:
         sys.exit(besitzer())
     if "--einrichten" in sys.argv:
