@@ -147,7 +147,7 @@ def bericht() -> int:
     t = tok()
     kodiert = urllib.parse.quote(SEITE, safe="")
     print("Indexierung (URL-Pruefung)")
-    for pfad in ["", "privacy", "agb", "impressum"]:
+    for pfad in ["", "en/", "privacy", "agb", "impressum"]:
         url = SEITE + pfad
         s, d = anfrage(t, "POST", "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
                        {"inspectionUrl": url, "siteUrl": SEITE, "languageCode": "de"})
