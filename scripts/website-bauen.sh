@@ -78,7 +78,10 @@ if [ "${TESTFLIGHT_OFFEN:-nein}" = "ja" ]; then
 else
   WEG="TESTFLIGHT"
 fi
-WEG="$WEG" python3 - "$ZIEL/index.html" <<'PYENDE'
+# Beide Sprachfassungen (v3.117.x): dieselben Bloecke, dieselbe Entscheidung —
+# sonst zeigte die englische Seite einen Knopf, den die deutsche verschweigt.
+for SEITE in "$ZIEL/index.html" "$ZIEL/en/index.html"; do
+WEG="$WEG" python3 - "$SEITE" <<'PYENDE'
 import os, re, sys, pathlib
 pfad = pathlib.Path(sys.argv[1])
 weg = os.environ["WEG"]
@@ -87,10 +90,11 @@ muster = rf"[ \t]*<!-- {weg}:ANFANG.*?{weg}:ENDE -->\n?"
 neu, n = re.subn(muster, "", text, flags=re.S)
 pfad.write_text(neu, encoding="utf-8")
 uebrig = "TestFlight-Knopf" if weg == "WARTEN" else "Hinweis auf die kommende Beta"
-print(f"  {weg}-Block entfernt ({n}×) — es bleibt: {uebrig}.")
+print(f"  {pfad.parent.name}/{pfad.name}: {weg}-Block entfernt ({n}×) — es bleibt: {uebrig}.")
 if n == 0:
-    print(f"::warning::Kein {weg}-Block gefunden — steht der Marker noch in index.html?")
+    print(f"::warning::Kein {weg}-Block in {pfad} — steht der Marker noch?")
 PYENDE
+done
 
 echo "Website zusammengestellt in $ZIEL:"
 find "$ZIEL" -type f | sort | sed 's|^|  |'

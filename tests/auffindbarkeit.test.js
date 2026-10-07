@@ -146,3 +146,44 @@ test("Search Console: Bestaetigungsangabe steht im Kopf der Website", () => {
   const wert = meta(KOPF, "name", "google-site-verification");
   assert.ok(wert && /^[A-Za-z0-9_-]{40,}$/.test(wert), `Bestaetigungsangabe fehlt oder ist verstuemmelt: ${wert}`);
 });
+
+// ── Zwei Sprachen (v3.117.x) ──────────────────────────────────────────────
+// Bis 07.10.2026 nur deutsch — die Search Console zeigte in 28 Tagen null
+// Impressionen. Englisch oeffnet die Suche ausserhalb des deutschen Sprachraums.
+const EN = lies("docs", "website", "en", "index.html");
+const EN_KOPF = EN.slice(0, EN.indexOf("</head>"));
+
+test("Sprachfassungen: hreflang gegenseitig, x-default, eigene kanonische Adresse", () => {
+  for (const [name, kopf, eigen] of [["de", KOPF, "https://stack-and-siege.pages.dev/"], ["en", EN_KOPF, "https://stack-and-siege.pages.dev/en/"]]) {
+    assert.match(kopf, /<link rel="alternate" hreflang="de" href="https:\/\/stack-and-siege\.pages\.dev\/">/, `${name}: verweist nicht auf de`);
+    assert.match(kopf, /<link rel="alternate" hreflang="en" href="https:\/\/stack-and-siege\.pages\.dev\/en\/">/, `${name}: verweist nicht auf en`);
+    assert.match(kopf, /<link rel="alternate" hreflang="x-default" href="https:\/\/stack-and-siege\.pages\.dev\/">/, `${name}: x-default fehlt`);
+    assert.ok(kopf.includes(`<link rel="canonical" href="${eigen}">`), `${name}: kanonisch nicht auf sich selbst — dann zaehlt Google die Seite nicht`);
+  }
+  assert.match(EN, /<html lang="en">/);
+});
+
+test("Englische Seite: Titel und Beschreibung passen in die Trefferanzeige", () => {
+  const titel = entity((EN_KOPF.match(/<title>([^<]+)<\/title>/) || [])[1] || "");
+  assert.ok(titel.length >= 30 && titel.length <= 60, `Titel ${titel.length}: ${titel}`);
+  const b = meta(EN_KOPF, "name", "description");
+  assert.ok(b && b.length >= 120 && b.length <= 160, `Beschreibung ${b && b.length}`);
+  const roh = (EN.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/) || [])[1];
+  const d = JSON.parse(roh);
+  assert.ok((d["@graph"] || []).some((k) => k["@type"] === "VideoGame"));
+});
+
+test("Beide Sprachen: Sitemap, Bau-Bloecke, kein falsches Genre, Android erwaehnt", () => {
+  assert.match(lies("docs", "website", "sitemap.xml"), /<loc>https:\/\/stack-and-siege\.pages\.dev\/en\/<\/loc>/);
+  // Der Bau entfernt TESTFLIGHT- bzw. WARTEN-Bloecke in BEIDEN Seiten.
+  assert.match(lies("scripts", "website-bauen.sh"), /for SEITE in "\$ZIEL\/index\.html" "\$ZIEL\/en\/index\.html"; do/);
+  for (const [name, html] of [["de", WEB], ["en", EN]]) {
+    for (const marke of ["TESTFLIGHT:ANFANG", "TESTFLIGHT:ENDE", "WARTEN:ANFANG", "WARTEN:ENDE"])
+      assert.ok(html.includes(`<!-- ${marke}`) || html.includes(`${marke} -->`), `${name}: Marke ${marke} fehlt`);
+    // „rundenbasiert" ist falsch: gespielt wird gleichzeitig mit Uhr.
+    assert.doesNotMatch(html, /rundenbasiert|turn-based/i, `${name}: falsches Genre`);
+    // Wer Android hat, soll wissen, dass der Browser reicht.
+    assert.match(html, /Android/, `${name}: Android-Hinweis fehlt`);
+  }
+  assert.match(WEB, /<b>Deutsch, Englisch<\/b>/, "Sprachangabe stimmt nicht mit dem Spiel ueberein");
+});

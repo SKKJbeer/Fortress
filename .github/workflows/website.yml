@@ -219,7 +219,7 @@ jobs:
             "host": "stack-and-siege.pages.dev",
             "key": schluessel,
             "keyLocation": f"{basis}/{schluessel}.txt",
-            "urlList": [f"{basis}/", f"{basis}/impressum", f"{basis}/privacy", f"{basis}/agb"],
+            "urlList": [f"{basis}/", f"{basis}/en/", f"{basis}/privacy", f"{basis}/agb"],  # Impressum: noindex, nicht melden
           }
           anfrage = urllib.request.Request("https://api.indexnow.org/indexnow",
             data=json.dumps(daten).encode(), method="POST",

@@ -17,7 +17,7 @@
  *   Vorgabe: build/website
  */
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
+import { join, extname, dirname } from "node:path";
 
 const ordner = process.argv[2] || "build/website";
 const fehler = [];
@@ -31,7 +31,12 @@ if (!existsSync(ordner)) {
   process.exit(1);
 }
 
-const seiten = readdirSync(ordner).filter(f => f.endsWith(".html")).sort();
+// Auch Seiten in Unterordnern (v3.117.x: die englische Fassung liegt in en/).
+const seiten = [
+  ...readdirSync(ordner).filter(f => f.endsWith(".html")),
+  ...readdirSync(ordner, { withFileTypes: true }).filter(d => d.isDirectory())
+    .flatMap(d => readdirSync(join(ordner, d.name)).filter(f => f.endsWith(".html")).map(f => `${d.name}/${f}`)),
+].sort();
 sag(seiten.includes("index.html"), "index.html vorhanden");
 for (const pflicht of ["impressum.html", "privacy.html", "agb.html"]) {
   sag(seiten.includes(pflicht), `${pflicht} vorhanden`);
@@ -43,7 +48,9 @@ for (const datei of seiten) {
   const html = readFileSync(join(ordner, datei), "utf8");
   const ohneKommentar = html.replace(/<!--[\s\S]*?-->/g, "");
 
-  sag(/<html lang="de">/.test(html), `${datei}: Sprache ausgezeichnet`);
+  // Sprache je Ordner: en/ ist englisch, alles andere deutsch.
+  const sprache = datei.startsWith("en/") ? "en" : "de";
+  sag(new RegExp(`<html lang="${sprache}">`).test(html), `${datei}: Sprache ausgezeichnet (${sprache})`);
 
   const titel = html.match(/<title>([^<]+)<\/title>/);
   sag(!!titel && titel[1].length >= 10 && titel[1].length <= 70,
@@ -109,7 +116,8 @@ for (const datei of seiten) {
     .map(u => u.split("#")[0].split("?")[0])
     .filter(Boolean);
   for (const ziel of [...new Set(ziele)]) {
-    const pfad = ziel.startsWith("/") ? join(ordner, ziel.slice(1)) : join(ordner, ziel);
+    // Relativ zum Ordner DER SEITE — en/index.html verweist mit ../ zurueck.
+    const pfad = ziel.startsWith("/") ? join(ordner, ziel.slice(1)) : join(ordner, dirname(datei), ziel);
     sag(existsSync(pfad), `${datei}: Verweis "${ziel}" fuehrt irgendwohin`);
   }
 }
@@ -144,11 +152,13 @@ console.log("\nBilder");
   sag(gesamt <= 1400 * 1024, `Bilder zusammen ${Math.round(gesamt / 1024)} kB (hoechstens 1400)`);
 
   // Jedes Bild braucht einen Alternativtext, und zwar einen, der etwas sagt.
-  const start = readFileSync(join(ordner, "index.html"), "utf8");
-  const bildTags = [...start.matchAll(/<img\b[^>]*>/gi)].map(m => m[0]);
+  // Alternativtexte auf JEDER Seite mit Bildern, nicht nur der Startseite.
+  const bildTags = seiten.flatMap(d => [...readFileSync(join(ordner, d), "utf8").matchAll(/<img\b[^>]*>/gi)]
+    .map(m => m[0].replace(/<img/, `<img data-seite="${d}"`)));
   for (const tag of bildTags) {
     const alt = tag.match(/alt\s*=\s*["']([^"']*)["']/);
-    const quelle = (tag.match(/src\s*=\s*["']([^"']+)["']/) || [, "?"])[1];
+    const quelle = (tag.match(/data-seite="([^"]+)"/) || [, "?"])[1] + ": "
+      + (tag.match(/src\s*=\s*["']([^"']+)["']/) || [, "?"])[1];
     sag(!!alt && alt[1].trim().length >= 25, `${quelle}: Alternativtext beschreibt das Bild`);
     sag(/width\s*=/.test(tag) && /height\s*=/.test(tag),
         `${quelle}: Masse angegeben (sonst springt die Seite beim Laden)`);

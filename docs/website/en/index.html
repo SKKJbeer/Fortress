@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stack &amp; Siege – free castle siege game for iPhone &amp; browser</title>
+<meta name="description" content="Free castle game for 1–3 players: build walls from falling blocks and blast your rival's fortress – online, against the bot or three players on one device.">
+<meta name="theme-color" content="#06070c">
+<link rel="canonical" href="https://stack-and-siege.pages.dev/en/">
+<!-- Sprachfassungen (v3.117.x): beide Seiten nennen sich gegenseitig, sonst
+     wertet Google die Angabe nicht. x-default ist die deutsche Startseite. -->
+<link rel="alternate" hreflang="de" href="https://stack-and-siege.pages.dev/">
+<link rel="alternate" hreflang="en" href="https://stack-and-siege.pages.dev/en/">
+<link rel="alternate" hreflang="x-default" href="https://stack-and-siege.pages.dev/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stack &amp; Siege">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:title" content="Stack &amp; Siege – free castle siege game for iPhone &amp; browser">
+<meta property="og:description" content="One gap in the wall and the castle falls. Seven worlds, two kinds of cannon, three players on one device.">
+<meta property="og:url" content="https://stack-and-siege.pages.dev/en/">
+<meta property="og:image" content="https://stack-and-siege.pages.dev/bilder/social-card.jpg">
+<meta property="og:image:width" content="1024">
+<meta property="og:image:height" content="500">
+<meta property="og:image:alt" content="Stack &amp; Siege: two castles with a river in between">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image:alt" content="Stack &amp; Siege: two castles with a river in between">
+<link rel="stylesheet" href="../stil.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://stack-and-siege.pages.dev/en/#website",
+      "name": "Stack & Siege",
+      "url": "https://stack-and-siege.pages.dev/en/",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "VideoGame",
+      "@id": "https://stack-and-siege.pages.dev/#spiel",
+      "name": "Stack & Siege",
+      "alternateName": "Stack & Siege – Castle Duel",
+      "applicationCategory": "GameApplication",
+      "genre": ["Strategy", "Real-time strategy", "Siege", "Castle game", "Multiplayer"],
+      "gamePlatform": ["iOS", "Web browser"],
+      "operatingSystem": "iOS 15 or later; any current browser",
+      "inLanguage": ["en", "de"],
+      "numberOfPlayers": { "@type": "QuantitativeValue", "minValue": 1, "maxValue": 3 },
+      "description": "Two castles, a river in between. Build walls from falling blocks, blast the enemy fortress. Whoever has a gap in their wall when the build phase ends loses. Online, against the bot or with up to three players on one device.",
+      "url": "https://stack-and-siege.pages.dev/en/",
+      "sameAs": ["https://skkjbeer.github.io/Fortress/"],
+      "image": "https://stack-and-siege.pages.dev/bilder/social-card.jpg",
+      "screenshot": [
+        "https://stack-and-siege.pages.dev/bilder/game.jpg",
+        "https://stack-and-siege.pages.dev/bilder/shoot.jpg",
+        "https://stack-and-siege.pages.dev/bilder/pad-game.jpg"
+      ],
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "isPartOf": { "@id": "https://stack-and-siege.pages.dev/en/#website" },
+      "offers": {
+        "@type": "Offer", "price": "0", "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock",
+        "description": "Completely free. No ads, no purchases, no subscription."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<a class="sprung" href="#inhalt">Skip to content</a>
+
+<main id="inhalt">
+
+  <div class="buehne">
+    <div class="hintergrund">
+      <img src="../bilder/welt-astralebene.jpg" width="485" height="749" decoding="async"
+           alt="The board in Astralebene (the Astral Plane): two walled castles above and below a glowing violet river.">
+    </div>
+    <div class="sterne"></div>
+    <div class="bahn buehne-gitter">
+      <div>
+      <h1 class="marke"><span class="b">Stack</span><br>&amp; <span class="r">Siege</span></h1>
+      <p class="zeile">One gap, and the castle falls.</p>
+      <p class="dazu">
+        A castle duel for iPhone and iPad. You build your wall from falling
+        blocks, your opponent blasts it open again.
+      </p>
+
+      <!-- TESTFLIGHT:ANFANG -->
+      <a class="knopf" href="https://testflight.apple.com/join/hE2AdHwr">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        Join the beta
+      </a>
+      <span class="neben">Free via Apple's TestFlight. <strong>Open the link on your iPhone or iPad</strong> — you join inside the TestFlight app. On Android or a computer: <a href="https://skkjbeer.github.io/Fortress/">play right now in the browser</a>.</span>
+      <!-- TESTFLIGHT:ENDE -->
+
+      <!-- WARTEN:ANFANG -->
+      <a class="knopf" href="https://skkjbeer.github.io/Fortress/">Play now in the browser</a>
+      <span class="neben">Works on iPhone, Android and any computer. The iOS beta is in review at Apple; the TestFlight button appears here once it opens.</span>
+      <!-- WARTEN:ENDE -->
+      </div>
+
+      <div class="paar-geraete">
+        <div class="geraet pad gpad">
+          <div class="rahmen"><div class="glas">
+            <img src="../bilder/pad-shoot.jpg" width="1168" height="1557" decoding="async"
+                 alt="The same match on an iPad: the board fills the height, the header with both players spans the full width.">
+          </div></div>
+          <span class="linse"></span><span class="taste r1"></span>
+        </div>
+        <div class="geraet gphone">
+          <div class="rahmen"><div class="glas">
+            <img src="../bilder/shoot.jpg" width="780" height="1688" decoding="async"
+                 alt="A match in the shooting phase on an iPhone: two walled castles with cannons, a river in between.">
+            <span class="insel"></span>
+          </div></div>
+          <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="welt">
+    <div class="bahn paar">
+      <div>
+        <p class="label">The rhythm</p>
+        <h2>Build. Shoot. Arm up.</h2>
+        <p>
+          Set up once, then keep the beat: 25 seconds to build, 20 to shoot,
+          15 to arm up. You play at the same time — nobody waits for a turn.
+        </p>
+        <p>
+          Blocks drop to you, you rotate and place them. Close last round's
+          hole first, then expand. In that order, not the other way round.
+        </p>
+      </div>
+      <div class="geraet">
+        <div class="rahmen"><div class="glas"><img src="../bilder/game.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="The build phase: two castles above and below a river, the next block previewed at the bottom."><span class="insel"></span></div></div>
+        <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="welt welt-tief">
+    <div class="bahn">
+      <p class="label">Seven worlds</p>
+      <h2>From Frostreich to Vulkanschlund.</h2>
+      <p>
+        Every match takes place in a different landscape — its own river, its
+        own colours, its own ground. <strong>Nobody picks it:</strong> the world
+        depends on a number both devices share. You are always in the same one.
+      </p>
+    </div>
+    <div class="welten">
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-kristalltal.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Kristalltal (Crystal Valley): blue rock and a turquoise river between the two castles."></div><b>Kristalltal</b></div>
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-frostreich.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Frostreich (Frost Realm): snowy ground with pine trees and an ice-blue river."></div><b>Frostreich</b></div>
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-glutwueste.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Glutwüste (Ember Desert): red-brown sand with cacti and dunes, a turquoise river across it."></div><b>Glutwüste</b></div>
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-vulkanschlund.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Vulkanschlund (Volcano Maw): black rock with a glowing lava stream instead of a river."></div><b>Vulkanschlund</b></div>
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-nebelmoor.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Nebelmoor (Mist Moor): dark green ground with trees and a toxic green stream."></div><b>Nebelmoor</b></div>
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-herbstwald.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Herbstwald (Autumn Forest): brown forest floor with orange trees and a blue river."></div><b>Herbstwald</b></div>
+      <div class="kachel"><div class="schirm"><img src="../bilder/welt-astralebene.jpg" width="485" height="749" loading="lazy" decoding="async" alt="Astralebene (Astral Plane): a violet starfield with floating crystals and a magenta river."></div><b>Astralebene</b></div>
+    </div>
+  </section>
+
+  <section class="welt">
+    <div class="bahn paar">
+      <div>
+        <p class="label">The one rule</p>
+        <h2>Closed means <em>closed</em>.</h2>
+        <p>
+          When the build phase ends, the game lets water run into your field
+          from outside. If it reaches your castle, you are out.
+        </p>
+        <p>
+          Diagonals count. Two blocks that only touch at a corner stop nothing —
+          and your cannons are not a wall.
+        </p>
+      </div>
+      <div class="mauer" role="img" aria-label="Diagram of a wall ring around a castle with one block missing at the top right.">
+        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i>
+        <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+        <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+        <i class="w"></i><i></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i><i class="w"></i>
+        <i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i>
+        <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i>
+      </div>
+    </div>
+  </section>
+
+  <section class="welt welt-tief">
+    <div class="bahn paar paar-gedreht">
+      <div>
+        <p class="label">Firepower</p>
+        <h2>Two cannons, two intentions.</h2>
+        <p>
+          You earn spoils during the match — for every ball that hits, every
+          round you survive, every enemy cannon you destroy. You can only spend
+          them in the armory phase.
+        </p>
+        <div class="kanonen">
+          <div class="kanone">
+            <h3>Wall Breaker</h3>
+            <p>
+              Tears holes into the wall. Each additional one costs eighty
+              spoils more than the one before.
+            </p>
+            <span class="preis">200, then +80 per purchase</span>
+          </div>
+          <div class="kanone violett">
+            <h3>Slayer</h3>
+            <p>
+              Hits nothing but cannons. <strong>Out of reach in round 1:</strong>
+              with flawless play you get to 530.
+            </p>
+            <span class="preis">550</span>
+          </div>
+        </div>
+      </div>
+      <div class="geraet">
+        <div class="rahmen"><div class="glas"><img src="../bilder/shop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="The armory phase: cards for cannon, Slayer, fast reload, armor and repair, each priced in spoils."><span class="insel"></span></div></div>
+        <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="welt">
+    <div class="bahn">
+      <p class="label">On one device</p>
+      <h2>Put the phone between you.</h2>
+      <p>
+        Everyone plays at the same time, each with their own block. The game
+        knows from where your finger touches whose block it is.
+      </p>
+      <div class="zwei">
+        <figure>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="../bilder/zwei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Two players on one device: blue castle at the top, red at the bottom, two block fields side by side."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
+          <figcaption><b>Two players</b><span>You build at the top, your opponent at the bottom. Two block fields, no turn order.</span></figcaption>
+        </figure>
+        <figure>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="../bilder/drei.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="Three players on one device: castles in blue, green and red around a three-armed river."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
+          <figcaption><b>Three players</b><span>The river splits into three arms, everyone gets a sector. Everyone against everyone.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="welt">
+    <div class="bahn paar paar-gedreht paar-breit">
+      <div class="geraet pad">
+        <div class="rahmen"><div class="glas">
+          <img src="../bilder/pad-game.jpg" width="1168" height="1557" loading="lazy" decoding="async"
+               alt="The build phase on an iPad: the board fills the height, the next block previewed across the full width.">
+        </div></div>
+        <span class="linse"></span><span class="taste r1"></span>
+      </div>
+      <div>
+        <p class="label">On the iPad</p>
+        <h2>The same game, just bigger.</h2>
+        <p>
+          <strong>Portrait — and that is a decision, not an omission.</strong>
+          Two people on one device sit at the short edges. In landscape the
+          board would be a narrow strip in the middle, with space left and
+          right that nobody needs.
+        </p>
+        <p>
+          Header and block bar reach the edges, the board stands between them
+          as large as the height allows. None of it is a stretched phone image.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="welt welt-tief">
+    <div class="bahn">
+      <p class="label">What else is inside</p>
+      <h2>Four windows that are not on any board.</h2>
+      <div class="vier">
+        <figure>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="../bilder/schmiede.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="The forge: a stock of iron, silver, dragon scale and stardust, recipe cards below."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
+          <figcaption><b>Forge</b><span>Rare materials drop from online matches. They become pieces you cannot get in the shop.</span></figcaption>
+        </figure>
+        <figure>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="../bilder/goldshop.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="The gold shop: cards for ball trails, profile frames, cannon finishes and victory effects."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
+          <figcaption><b>Gold shop</b><span>Trails, frames, cannons, victory effects. Every frame is made differently.</span></figcaption>
+        </figure>
+        <figure>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="../bilder/erfolge.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="The achievements: a list of earned and open achievements with progress bars."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
+          <figcaption><b>Achievements</b><span>For things you don't do by accident. Whoever chases them plays differently.</span></figcaption>
+        </figure>
+        <figure>
+          <div class="geraet"><div class="rahmen"><div class="glas"><img src="../bilder/aufgaben.jpg" width="780" height="1688" loading="lazy" decoding="async"
+               alt="The daily tasks: three assignments with progress and a gold reward to collect."><span class="insel"></span></div></div><span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span></div>
+          <figcaption><b>Daily tasks</b><span>Three new ones every day, calculated from the date — the same for every player.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="welt">
+    <div class="bahn">
+      <p class="label">Small rules, big effect</p>
+      <h2>The things you only notice after a few matches.</h2>
+      <ul class="liste">
+        <li><b>Charging up</b><span>Skip a whole shooting phase and you build up a charge — the next salvo fires more balls accordingly. Holding fire is a real alternative to constant shooting.</span></li>
+        <li><b>A dying cannon takes walls with it</b><span>When a cannon falls, it blows up the walls in a three-by-three area around it. Put your cannons tight against the wall and you lose both at once.</span></li>
+        <li><b>No downward spiral</b><span>Without a working cannon you get double pay and the next cannon at base price. Otherwise one lost round would end the match.</span></li>
+        <li><b>Rubble is raw material</b><span>Shot-down walls stay as rubble. Repair turns it back into walls — and gets more expensive with every purchase.</span></li>
+        <li><b>Three bot levels</b><span>The easy bot scatters its aim and fires less often. The hard one hits almost exactly and shops like someone who knows what they are doing.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="welt welt-tief">
+    <div class="bahn paar">
+      <div>
+        <p class="label">Honestly</p>
+        <h2>What it costs and what it knows about you.</h2>
+        <ul class="liste">
+          <li><b>It costs nothing</b><span>No ads, no purchases, no subscription, no energy that has to refill first.</span></li>
+          <li><b>No pay-to-win</b><span>Gold and cosmetics are a reward for playing. No item raises damage, range or reload time.</span></li>
+          <li><b>Online needs little</b><span>The name you choose, your progress and your rating. No real name, no email, no advertising ID.</span></li>
+        </ul>
+      </div>
+      <div class="geraet">
+        <div class="rahmen"><div class="glas"><img src="../bilder/menu.jpg" width="780" height="1688" loading="lazy" decoding="async"
+             alt="The main menu: player profile with level and rating, below it the buttons for local and online play."><span class="insel"></span></div></div>
+        <span class="taste l1"></span><span class="taste l2"></span><span class="taste r1"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTFLIGHT:ANFANG -->
+  <section class="welt welt-tief">
+    <div class="bahn">
+      <p class="label">Join in</p>
+      <h2>Into the beta in three steps.</h2>
+      <ul class="liste">
+        <li><b>1 · Get TestFlight</b><span>Apple's free testing app, from the App Store. All you need is an Apple ID. You don't create an account with me.</span></li>
+        <li><b>2 · Open the link</b><span><span class="adresse">testflight.apple.com/join/hE2AdHwr</span> — on the device you want to play on. You join inside the TestFlight app, not in the browser; read on a computer, the link only brings you back to the same page.</span></li>
+        <li><b>3 · Accept, install, play</b><span>New builds arrive on their own after that. Each one runs for 90 days, then the next one comes. You can leave any time via "Stop Testing" in TestFlight.</span></li>
+      </ul>
+      <a class="knopf" href="https://testflight.apple.com/join/hE2AdHwr">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        Join the beta
+      </a>
+    </div>
+  </section>
+  <!-- TESTFLIGHT:ENDE -->
+
+  <section class="welt mitte">
+    <div class="bahn">
+      <p class="zeile">Two castles. One river. One rule.</p>
+
+      <!-- TESTFLIGHT:ANFANG -->
+      <a class="knopf" href="https://testflight.apple.com/join/hE2AdHwr">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        Join the beta
+      </a>
+      <!-- TESTFLIGHT:ENDE -->
+
+      <!-- WARTEN:ANFANG -->
+      <a class="knopf" href="https://skkjbeer.github.io/Fortress/">Play now in the browser</a>
+      <!-- WARTEN:ENDE -->
+
+      <div class="angaben">
+        <div><b>Free</b><span>Price</span></div>
+        <div><b>1 – 3</b><span>Players</span></div>
+        <div><b>4+</b><span>Age rating</span></div>
+        <div><b>English, German</b><span>Languages</span></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <div class="bahn">
+    <span>Stack &amp; Siege</span>
+    <nav aria-label="Legal">
+      <a href="https://skkjbeer.github.io/Fortress/">Open the game</a>
+      <a href="../">Deutsch</a>
+      <a href="../impressum.html">Legal notice (German)</a>
+      <a href="../privacy.html">Privacy (German)</a>
+      <a href="../agb.html">Terms (German)</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
