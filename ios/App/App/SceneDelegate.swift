@@ -1,5 +1,6 @@
 import UIKit
 import WebKit
+import StoreKit
 import Capacitor
 
 /// Die Ansicht des Spiels — sie unterscheidet sich von Capacitors Vorgabe in
@@ -111,6 +112,12 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
         // Inhaltswelt `.page` — dort laeuft das Spiel.
         steuerer.removeScriptMessageHandler(forName: "appcheck", contentWorld: .page)
         steuerer.addScriptMessageHandler(appCheckKanal, contentWorld: .page, name: "appcheck")
+        // Vierter Kanal (v3.118.0): Bitte um eine Bewertung im App Store.
+        // WANN gefragt wird, entscheidet die Weboberflaeche
+        // (src/engine/bewertung.ts: nur nach einem Sieg, nach einigen
+        // Partien); OB die Abfrage erscheint, entscheidet Apple.
+        steuerer.removeScriptMessageHandler(forName: "bewertung")
+        steuerer.add(self, name: "bewertung")
         NSLog("STACK-SIEGE-HUELLE Kanal am WebView angemeldet")
     }
 
@@ -122,6 +129,15 @@ final class SpielViewController: CAPBridgeViewController, WKScriptMessageHandler
         // Huellen-Marker — console.log kommt dort NIE an).
         if message.name == "pruefung", let text = message.body as? String {
             NSLog("STACK-SIEGE-NETZ %@", text)
+            return
+        }
+        if message.name == "bewertung" {
+            guard let szene = view.window?.windowScene else { return }
+            if #available(iOS 16.0, *) {
+                AppStore.requestReview(in: szene)
+            } else {
+                SKStoreReviewController.requestReview(in: szene)
+            }
             return
         }
         guard message.name == "textfeld", let an = message.body as? Bool else { return }

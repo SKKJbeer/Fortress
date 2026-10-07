@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.117.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.118.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8945,3 +8945,27 @@ Zusätzlich: Das Einreichungs-Skript verwendet eine unabgeschickte Einreichung
 eines früheren Versuchs weiter (sonst hätte der leere Rest jeden weiteren
 Versuch gesperrt) und gibt Apples verbundene Fehler aus; offline gegen eine
 Apple-Attrappe in vier Fällen geprüft.
+
+## v3.118.0 — Reichweite: Website englisch, Store englisch, Bewertungs-Bitte
+
+**Ausgangslage (Search Console, gemessen 07.10.2026):** Nur die Startseite im
+Index, 0 Impressionen in 28 Tagen, Sitemap nie gelesen. Store-Eintrag nur
+deutsch, Schlagworte mit Markennamen (Richtlinie 2.3.7) und falschem Genre.
+
+- **Website:** englische Fassung `/en/` mit hreflang (de/en/x-default, gegenseitig),
+  eigener Kanonisch-Adresse, Sitemap-Eintrag, IndexNow-Liste ohne Impressum.
+  Genre korrigiert (Echtzeit, nicht rundenbasiert), Hinweis für Android-Nutzer
+  (Browser-Version). `check-website.mjs` prüft Unterordner-Seiten mit.
+- **App Store:** deutsche Schlagworte bereinigt und eingetragen; englische Texte
+  (`store/listing-en.md`) und `scripts/asc-sprachen.py` für en-US/en-GB.
+  `tests/store.test.js` hält Längen, Marken und Doppelungen fest.
+- **iOS-Hülle:** `CFBundleLocalizations` = de, en — sonst nennt der Store nur
+  Deutsch als Sprache, obwohl das Spiel nach Gerätesprache Englisch spricht.
+- **Bewertungs-Bitte** (`src/engine/bewertung.ts`): nur in der App, nur nach
+  einem SIEG, frühestens nach 5 gewerteten Partien (Bot + Online), danach
+  höchstens alle 120 Tage, insgesamt höchstens dreimal. Apple entscheidet
+  zusätzlich selbst. Kette: `bitteUmBewertung()` (platform.ts) → Kanal
+  `bewertung` (SceneDelegate) → `AppStore.requestReview` (iOS 16+) bzw.
+  `SKStoreReviewController` (iOS 15). Speicher: `fortress_rate`.
+  Geprüft: Unit-Tests (Regel, kaputter Speicher, Einhängepunkt) und zwei
+  statische Prüfungen in `ios-pruefen.mjs` — Gegenproben rot.

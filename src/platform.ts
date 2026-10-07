@@ -135,6 +135,21 @@ export function meldeAnHuelle(text: string): void {
 }
 
 /**
+ * Um eine Bewertung im App Store bitten (v3.118.0).
+ *
+ * Nur in der App: Die Huelle ruft Apples eigene Abfrage auf (Kanal
+ * `bewertung`, SceneDelegate.swift). Apple entscheidet selbst, ob sie
+ * erscheint, und zeigt sie hoechstens dreimal im Jahr — WANN wir fragen,
+ * regelt src/engine/bewertung.ts. Im Browser gibt es keinen Store: `false`.
+ */
+export function bitteUmBewertung(): boolean {
+  if (typeof window === "undefined") return false;
+  const kanal = (window as any).webkit?.messageHandlers?.bewertung;
+  if (!kanal) return false;
+  try { kanal.postMessage("bitte"); return true; } catch (e) { return false; }
+}
+
+/**
  * App-Check-Token aus der Huelle holen (v3.113.0).
  *
  * App Attest ist eine native Schnittstelle; die Huelle holt das Token und gibt

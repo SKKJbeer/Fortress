@@ -50,6 +50,13 @@ const falsch = (schluessel) => {
   return i >= 0 && /<false\s*\/>/.test(plist.slice(i, i + 120));
 };
 
+const sprachen = array("CFBundleLocalizations");
+pruefe(sprachen && /<string>de<\/string>/.test(sprachen) && /<string>en<\/string>/.test(sprachen),
+  "Sprachen: de und en angemeldet",
+  "Die App spricht Deutsch und Englisch (src/i18n.js, Wahl nach Geraetesprache). Ohne " +
+  "CFBundleLocalizations nennt der App Store nur die Entwicklungssprache — englische " +
+  "Suchende sehen dann 'Deutsch' und springen ab.");
+
 const ipad = array("UISupportedInterfaceOrientations~ipad");
 pruefe(ipad && !/Landscape/.test(ipad), "iPad: kein Querformat",
   "Quer fuellt das Brett nur 29-35 % des Schirms statt 68-73 % (v3.87.0 gemessen). " +
@@ -219,6 +226,28 @@ pruefe(ablauf.includes(NETZ_MARKER)
   "Nur auf den Marker zu pruefen wuerde genuegen, um gruen zu sein — auch " +
   "wenn dort `uid=- lesen=keine` steht, also genau der kaputte Zustand aus " +
   "Bau 29/30.");
+
+// ── Bewertungs-Bitte (v3.118.0) ───────────────────────────────────────────
+// Drei Glieder: platform.ts schickt, die Huelle meldet den Kanal an, und sie
+// ruft Apples Abfrage auf. Fehlt eines, passiert NICHTS — kein Absturz, keine
+// Meldung, nur keine Bewertungen. Gesucht wird die KONSTRUKTION (ohne
+// Kommentarzeilen), nicht das Wort.
+abschnitt("Bewertungs-Bitte (Weboberflaeche → Huelle → App Store)");
+const plattform = lies("src/platform.ts");
+pruefe(/export function bitteUmBewertung\s*\(/.test(plattform)
+       && /messageHandlers\?\.bewertung\b/.test(plattform),
+  "platform.ts schickt ueber den Kanal `bewertung`",
+  "Ohne Sender fragt die App nie nach einer Bewertung.");
+const szeneCode = szene.split("\n").filter((z) => !z.trim().startsWith("//")).join("\n");
+pruefe(/\.add\(self,\s*name:\s*"bewertung"\)/.test(szeneCode)
+       && /message\.name\s*==\s*"bewertung"/.test(szeneCode)
+       && /AppStore\.requestReview\(in:/.test(szeneCode)
+       && /SKStoreReviewController\.requestReview\(in:/.test(szeneCode)
+       && /^import StoreKit$/m.test(szeneCode),
+  "Die Huelle meldet `bewertung` an und ruft Apples Abfrage auf (iOS 16+ und 15)",
+  "Ohne Anmeldung verpufft die Nachricht der Weboberflaeche still; ohne " +
+  "StoreKit-Aufruf auch. Das Einsatzziel ist iOS 15 — dort gibt es nur " +
+  "SKStoreReviewController.");
 
 // ── App Check (v3.113.0) ──────────────────────────────────────────────────
 //

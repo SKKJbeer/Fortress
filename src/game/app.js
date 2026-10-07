@@ -27,7 +27,8 @@ import { BOT_LEVELS, BOT_NAMES, BOT_WAPPEN } from '../engine/bot.ts';
 import { SCHLUESSEL } from '../engine/speicher.ts';
 import { DAILY_REWARDS, DAILY_TASK_POOL, todayStr, msTillMidnight, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, rollDailyTasks, taskDef } from '../engine/daily.ts';
 import { mergeProfiles, cloudPayload, parseCloud } from '../engine/cloudsave.ts';
-import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung, meldeAnHuelle, nativesAppCheckToken } from '../platform.ts';
+import { istNativ, kontoVerknuepfbar, vibriere, lupeNurInTextfeldern, textbedienung, meldeAnHuelle, nativesAppCheckToken, bitteUmBewertung } from '../platform.ts';
+import { bewertungsStandAus, sollUmBewertungBitten, nachPartie, nachBitte } from '../engine/bewertung.ts';
 import { COSMETICS, TRAIL_COLOR, WIN_ICON, FRAME_STYLE, cosOf, MAT_ORDER, MAT_META, matOf, craftbar, TASK_MAT, CANNON_SKIN, IMPACT_FX, MASTER_TRAIL, TRAIL_FORM, RECIPES, forgeRarity } from '../engine/catalog.ts';
 import { LANGS } from '../i18n.js';
 import { PROTO_VERSION, sanitizeState, sanitizeAction, EMOTES } from '../net/protocol.js';
@@ -1289,7 +1290,22 @@ window.StackSiegeApp = function StackSiegeApp() {
       const inc = def.stat === "played" ? 1 : def.stat === "won" ? (won ? 1 : 0) : (ms[def.stat] || 0);
       if (inc > 0) { tk.prog = Math.min(def.target, (tk.prog || 0) + inc); changed = true; }
     }
+    bewertungNachPartie(won);
     if (changed) { saveTasksState(st); setTasksState(st); }
+  }
+  // Bewertungs-Bitte (v3.118.0): nach einem Sieg, nie nach einer Niederlage.
+  // Gezaehlt wird dieselbe Menge wie bei den Tagesaufgaben (Bot + Online).
+  // Kurz verzoegert, damit erst der Sieg zu sehen ist, dann Apples Abfrage.
+  function bewertungNachPartie(won) {
+    let stand;
+    try { stand = bewertungsStandAus(JSON.parse(localStorage.getItem(SCHLUESSEL.bewertung) || 'null')); }
+    catch (e) { stand = bewertungsStandAus(null); }
+    stand = nachPartie(stand);
+    const jetzt = Date.now();
+    const bitten = istNativ() && sollUmBewertungBitten(stand, { gewonnen: won, jetzt });
+    if (bitten) stand = nachBitte(stand, jetzt);
+    try { localStorage.setItem(SCHLUESSEL.bewertung, JSON.stringify(stand)); } catch (e) {}
+    if (bitten) setTimeout(() => { bitteUmBewertung(); }, 2500);
   }
   function collectDailyTask(taskId) {
     if (!profile) return;
@@ -7233,7 +7249,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.117.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.118.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

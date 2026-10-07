@@ -21,6 +21,7 @@ export const SCHLUESSEL = {
   tutorial:     'fortress_tutorial_done',
   achGesehen:   'fortress_ach_seen',
   leistung:     'fortress_perf',
+  bewertung:    'fortress_rate',
 } as const;
 
 export type SchluesselName = keyof typeof SCHLUESSEL;
