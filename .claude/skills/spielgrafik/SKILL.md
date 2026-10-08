@@ -31,9 +31,16 @@ Nie FLUX.1-dev, SDXL-Turbo oder SD-Turbo nehmen — nicht-kommerzielle Lizenz.
    `bash .claude/skills/spielgrafik/scripts/einrichten.sh`
    Ziel: `$SPIELGRAFIK_HOME` (Vorgabe `~/.cache/spielgrafik`). Im
    Cloud-Container den Scratchpad nehmen — nichts davon gehoert ins Repo.
+   **Rauchtest vor jedem langen Lauf:** `bash scripts/erzeugen.sh /tmp/t.png 1 test 64x64`
+   muss ein Bild liefern. Stirbt `sd-cli` still (Exit 132 = SIGILL), war es
+   fuer einen anderen Prozessor gebaut — `einrichten.sh` erneut laufen lassen,
+   es baut dann portabel neu (ist bei Stack & Siege nach einem
+   Container-Wechsel genau so passiert: drei Laeufe „fertig", null Bilder).
 2. **Beschreibung schreiben** (Englisch, siehe Regeln unten).
 3. **Varianten erzeugen — immer 512 px, mehrere Seeds:**
-   `bash scripts/erzeugen.sh <ausgabe.png> <seed> "<prompt>"`
+   `bash scripts/erzeugen.sh <ausgabe.png> <seed> "<prompt>" [512 | BxH]`
+   Hochformat (Ladebild, Store-Bild): `576x1024`, Kanten durch 64 teilbar,
+   dauert ~2,3x so lang.
    Dauer auf 4 CPU-Kernen: **~10 Min je Bild**. 1024 direkt kostet ~40 Min
    und bringt nichts — hochrechnen ist schneller und schaerfer. Drei Seeds
    nacheinander im Hintergrund laufen lassen, nicht parallel (alle Kerne
