@@ -46,3 +46,17 @@ test('Skill spielgrafik: Kopf, Lizenzregel und alle genannten Skripte', () => {
   for (const f of new Set([...s.matchAll(/scripts\/([\w.-]+\.(?:sh|py))/g)].map((x) => x[1])))
     assert.ok(fs.existsSync(path.join(W, d, 'scripts', f)), `SKILL.md nennt scripts/${f}, die Datei fehlt`);
 });
+
+test('Ladebild: Web-JPEG, iOS-Startbild ohne Alpha, Herkunft, Einbindung', () => {
+  const ios = kopf('ios/App/App/Assets.xcassets/Splash.imageset/splash.png');
+  assert.deepEqual([ios.w, ios.h, ios.typ], [1152, 2048, 2], 'iOS-Startbild: 1152x2048 RGB');
+  const c = JSON.parse(lies('ios/App/App/Assets.xcassets/Splash.imageset/Contents.json'));
+  assert.deepEqual(c.images.map((i) => i.filename), ['splash.png'], 'Imageset nennt genau die vorhandene Datei');
+  const j = lies('public/ladebild.jpg'); assert.equal(j.readUInt16BE(0), 0xffd8, 'ladebild.jpg ist JPEG');
+  assert.ok(j.length < 600 * 1024, `Web-Ladebild zu gross (${j.length} B) — es muss vor dem Spielcode da sein`);
+  const html = lies('index.html').toString();
+  assert.match(html, /#splash\{[^}]*url\(ladebild\.jpg\)/, 'index.html zeigt das Ladebild im #splash');
+  assert.match(lies('vite.config.js').toString(), /globPatterns: \['[^']*\bjpg\b/, 'jpg muss offline vorgeladen werden');
+  const e = lies('assets/ladebild/ENTSTEHUNG.md').toString();
+  assert.match(e, /\| Seed \| \*\*\d+\*\* \|/); assert.match(e, /```\nvertical mobile game loading screen[^`]+highly detailed\n```/);
+});

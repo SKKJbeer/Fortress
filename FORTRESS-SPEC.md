@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.119.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.120.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8993,3 +8993,24 @@ erreichte Mobile-Game-Niveau.
   anderer Projekte.
 - Geprueft in `tests/symbole.test.js` (Manifest-Groessen, iOS ohne Alpha,
   maskable ohne Transparenz, Herkunft, Skill-Skripte vorhanden) — Gegenproben rot.
+
+## v3.120.0 — Neues Ladebild: Burgschlacht mit den Avataren
+
+Der Startschirm zeigte noch den alten Mauerring auf schwarzem Grund.
+
+- **Ladebild** (`assets/ladebild/`, Skill spielgrafik, FLUX.1-schnell Seed
+  303, Prompt in `ENTSTEHUNG.md`): blaue gegen rote Burg mit Kanonenfeuer,
+  davor der Pestdoktor mit Laterne, Frankenstein, Hexerin, Feuerschaedel,
+  darueber der Phoenix — alles freischaltbare Avatare.
+- **iOS:** `Splash.imageset` mit EINEM Hochformatbild (1152x2048, ohne
+  Alpha) statt drei quadratischer Kopien; Startschirm-Hintergrund dunkel statt
+  Systemweiss (kein weisser Blitz vor dem Bild).
+- **Web:** Das Ladebild fuellt `#splash`; Titel OBEN im Himmel, Ladebalken
+  ganz unten — die Figuren bleiben frei. Gemessen per Bildschirmfoto auf
+  iPhone (430 px), iPhone SE (375 px) und iPad (820 px); der erste Entwurf
+  legte den Titel genau ueber Gesicht und Laterne. `jpg` in die
+  Vorlade-Liste des Service Workers (offline sonst nur der Farbverlauf).
+- **Skill:** Hochformat in `erzeugen.sh`/`hochskalieren.sh`,
+  `ladebild.py`, portabler Bau (SIGILL nach Container-Wechsel), Lehre
+  „hoechstens 4–5 Figuren je Bild" (7 Laeufe, 3 Prompt-Fassungen).
+- Geprueft in `tests/symbole.test.js` — Gegenproben rot.
