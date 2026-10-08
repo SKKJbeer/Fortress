@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.118.0
+- **Aktuelle Version**: v3.119.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -425,6 +425,16 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   `&(amp;)?`, leere Version bricht ab.
 
 ---
+
+## Grafik (seit v3.119.0)
+
+- **Neue Grafik entsteht mit dem Skill `spielgrafik`** (`.claude/skills/spielgrafik/SKILL.md`):
+  FLUX.1-schnell lokal, Varianten mit 512 px, Real-ESRGAN auf 1024. Kein
+  handgezeichnetes SVG, kein three.js-Aufbau fuer Werbe- und Symbolgrafik —
+  beides wurde versucht und wirkte amateurhaft.
+- **App-Symbol:** Quelle ist `assets/symbol/vorlage-1024.png`, Herkunft in
+  `ENTSTEHUNG.md`. Alle Groessen kommen aus `scripts/symbole.py` des Skills.
+  `tools/make-icons.cjs` erzeugt nur noch die Feature-Graphic.
 
 ## Datenschutz und Kapazitaet (seit v3.117.0)
 

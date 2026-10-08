@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.118.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.119.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -8969,3 +8969,27 @@ deutsch, Schlagworte mit Markennamen (Richtlinie 2.3.7) und falschem Genre.
   `SKStoreReviewController` (iOS 15). Speicher: `fortress_rate`.
   Geprüft: Unit-Tests (Regel, kaputter Speicher, Einhängepunkt) und zwei
   statische Prüfungen in `ios-pruefen.mjs` — Gegenproben rot.
+
+## v3.119.0 — Neues App-Symbol: gemalt, mit dem Pestdoktor
+
+**Anlass:** Das alte Symbol (Mauerring aus Steinen) wirkte wie Pixelgrafik.
+Drei Runden Entwuerfe: Vektor (zu einfach), three.js mit Licht, Bloom und
+Comic-Konturen (wirkte wie ein billiges 3D-Set) — erst ein Bildmodell
+erreichte Mobile-Game-Niveau.
+
+- **Vorlage:** `assets/symbol/vorlage-1024.png`, erzeugt mit FLUX.1-schnell
+  (Apache 2.0) lokal auf der CPU, Seed 303, hochgerechnet mit Real-ESRGAN
+  (BSD-3). Prompt und Parameter wortgleich in `assets/symbol/ENTSTEHUNG.md`.
+- **Motiv:** der freischaltbare Avatar **Pestdoktor (ab Level 25)** vor der
+  blauen Burg, deren Zinnen ein Feuerball trifft.
+- **Ausgespielt** mit einem Skript in alle Groessen: iOS (1024, ohne
+  Alphakanal), PWA (gerundet), maskable (vollflaechig), Play-Symbol, Favicon
+  der Website (SVG mit eingebettetem PNG).
+- `tools/make-icons.cjs` erzeugt keine Symbole mehr (Liste leer) — sonst
+  haette ein Lauf das neue Symbol mit der alten Zeichnung ueberschrieben.
+- **Skill `spielgrafik`** (`.claude/skills/spielgrafik/`): der ganze Ablauf
+  als wiederverwendbare Anleitung mit Skripten (einrichten, erzeugen,
+  hochskalieren, symbole, vorschau). Gilt kuenftig fuer alle Grafik dieses und
+  anderer Projekte.
+- Geprueft in `tests/symbole.test.js` (Manifest-Groessen, iOS ohne Alpha,
+  maskable ohne Transparenz, Herkunft, Skill-Skripte vorhanden) — Gegenproben rot.
