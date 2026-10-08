@@ -59,6 +59,12 @@ Nie FLUX.1-dev, SDXL-Turbo oder SD-Turbo nehmen — nicht-kommerzielle Lizenz.
    NACH dem Hochladen per Mail), PWA (gerundet), maskable (vollflaechig),
    Play (512) und ein Favicon-SVG mit eingebettetem PNG.
 
+8. **Ladebild/Startschirm** (Hochformat `576x1024` erzeugen, auf `2304x4096`
+   hochrechnen mit `hochskalieren.sh in.png out.png 1152x2048`): `python3
+   scripts/ladebild.py vorlage.png --web public/ladebild.jpg --ios
+   ios/.../Splash.imageset/splash.png`. Web als JPEG (leicht), iOS als PNG
+   ohne Alpha.
+
 ## Prompt-Regeln
 - Stil-Anker: `mobile strategy game app icon artwork, stylized 3D cartoon
   render, hand-painted textures, vibrant saturated colors, bold dark outlines,
@@ -71,6 +77,14 @@ Nie FLUX.1-dev, SDXL-Turbo oder SD-Turbo nehmen — nicht-kommerzielle Lizenz.
   Verwechslungsgefahr). Den Stil beschreiben, nicht das Vorbild nennen.
 - Figur zuerst und konkret (Kleidung, Farben, was sie haelt), dann
   Hintergrund, dann Licht. Projektfarben ausdruecklich nennen.
+- **Hoechstens 4–5 Figuren je Bild.** Bei 8+ Figuren verschmilzt FLUX sie
+  (Pferdekopf auf Monster, Maske als Turm, Laterne ohne Traeger) — gemessen
+  bei Stack & Siege, 5 Laeufe. Hauptfigur ausdruecklich „center foreground,
+  large" nennen, sonst faellt ausgerechnet sie weg.
+- Bildaufbau in Haelften beschreiben („Upper half: …", „Lower half: …") —
+  das hat die Burgschlacht erst zuverlaessig ins Bild gebracht.
+- Gegen religioese Symbole hilft nur Ansehen und Verwerfen (Kreuze auf
+  Turmspitzen kamen zweimal vor).
 - FLUX.1-schnell: `--cfg-scale 1.0 --steps 4 --sampling-method euler`.
   Mehr Schritte verbessern schnell nichts.
 
