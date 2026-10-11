@@ -44,11 +44,11 @@ export function castle3Positions() {
 // waterEdge (Uferkante), waterAnim (Schimmer-Animation), mtn (Bergverlauf),
 // mtnEdge, mtnCap (Gipfel), particles (3 Ambient-Farben).
 export const WORLD_THEMES = [
-  { name: "Kristalltal", music: "w_crystal", bank: "#1b3a52", propType: "crystal", props: ["#7dd3fc", "#2a6f97", "#e0f2fe"],
+  { name: "Kristalltal", boden: "welten/kristalltal.jpg", music: "w_crystal", bank: "#e3c27e", propType: "crystal", props: ["#7dd3fc", "#2a6f97", "#e0f2fe"],
     bg: ["#0e2336", "#0a1827", "#060e1a"], glow: "rgba(56,189,248,0.10)",
     tex1: "rgba(45,130,120,0.10)", tex2: "rgba(10,42,58,0.32)", dots: "rgba(125,180,210,0.05)",
-    water: ["#155e8a", "#0a3a5e"], waterGlow: "rgba(34,211,238,0.7)", waterEdge: "rgba(103,232,249,0.5)", waterAnim: "160,210,255",
-    mtn: ["#3a4a63", "#151e2f"], mtnEdge: "rgba(125,211,252,0.5)", mtnCap: "rgba(224,242,254,0.92)",
+    water: ["#62cbff", "#2a8fe0"], waterGlow: "rgba(120,220,255,0.55)", waterEdge: "rgba(235,250,255,0.85)", waterAnim: "235,250,255",
+    mtn: ["#8fa4bf", "#4d607c"], mtnEdge: "rgba(235,245,255,0.7)", mtnCap: "rgba(255,255,255,0.95)",
     particles: ["rgba(125,211,252,0.5)", "rgba(167,139,250,0.45)", "rgba(226,232,240,0.4)"] },
   { name: "Frostreich", music: "w_ice", bank: "#2c4a6e", propType: "tree", props: ["#b8c9dd", "#5c7899", "#ffffff"],
     bg: ["#182a44", "#111e34", "#0a1322"], glow: "rgba(191,219,254,0.13)",

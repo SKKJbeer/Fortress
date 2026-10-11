@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.121.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.122.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9057,3 +9057,25 @@ harmonisch und gleich".
   nahe an der Grenze, beobachten. Ein eingefrorener Gast wird weiter von der
   Folgepruefung „Gast-Timer zaehlt" erkannt, nicht von dieser.
 - **Offen (naechster Schritt):** Spielfeld-Welten und Avatare im neuen Stil.
+
+## v3.122.0 — Gemalte Weltboeden (erste Welt: Kristalltal)
+
+- **Spielfeld im Comic-Stil:** Welten koennen einen gemalten Boden tragen
+  (`WORLD_THEMES[].boden`, `public/welten/*.jpg`, Skill spielgrafik). Er
+  ersetzt die dunklen Verlaeufe; Fluss, Berge und Burgen zeichnet der Code wie
+  bisher darueber. Rein optisch — Welt weiter aus `seed % 7`, online synchron.
+  Laedt das Bild nicht, bleibt die alte Darstellung.
+- **Kristalltal** als erste Welt: helle Wiese, Wasser hell mit Sandufer,
+  helle Berge. Prozedurale Deko und Staub entfallen auf gemalten Boeden
+  (wirkten wie Rauschen), Randabschattung schwaecher.
+- Spielflaeche unter dem Brett im Designsystem-Blau statt Schwarz,
+  Schrift Nunito.
+- **Pruef-Schalter** `window.__weltSeed` (nur mit `__mmDebug`): fester
+  Gelaende-Seed, um jede Welt gezielt anzusehen.
+- `tests/welten.test.js`: Boden vorhanden, JPEG 616x952, < 400 KB, Herkunft
+  belegt, Weltliste unveraendert (Gegenprobe rot).
+- **Phasen-Sync-Grenze 1,5 s → 2 s:** Zwei volle Laeufe massen 1332 und
+  1378 ms Gast-Verzug — zu nah an 1,5 s. Allein gefahren liegt er bei der
+  ersten Stichprobe (≈ 0 ms); der Verzug kommt von den vielen parallelen
+  Browsern der Suite, nicht aus dem Spiel.
+- Die uebrigen sechs Welten rechnen; sie folgen in v3.123.0.

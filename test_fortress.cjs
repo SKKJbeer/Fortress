@@ -268,7 +268,7 @@ async function beobachteHaende(page, waitMs = 5000) {
 // ueber drei Sekunden hinweg in JEDER Stichprobe verschieden, haengt der
 // Gast wirklich fest — genau der Fehler aus v3.0.7, den dieser Check
 // bewachen soll. Die Aussagekraft bleibt also erhalten.
-async function wartePhasenGleich(pages, waitMs = 3000, lagMs = 1500) {
+async function wartePhasenGleich(pages, waitMs = 3000, lagMs = 2000) {
   // **Folgt jede andere Seite der ersten — mit hoechstens `lagMs` Verzug?**
   // (v3.121.0). Vorher wurde GLEICHZEITIGE Gleichheit verlangt. Im Zeitraffer
   // dauert eine Phase ~1 s; liegt der Gast unter voller Suitenlast eine knappe

@@ -1950,6 +1950,22 @@ window.StackSiegeApp = function StackSiegeApp() {
   const scoresRef = useRef({ 1: 0, 2: 0 });
   const bgCanvas = useRef(null);
   const bgDirty = useRef(true);
+  // Gemalte Weltboeden (v3.122.0, Skill spielgrafik): je Welt optional ein Bild
+  // (WORLD_THEMES[].boden). Rein optisch — die Welt kommt weiter aus dem Seed,
+  // online also synchron. Solange das Bild laedt (oder fehlt), zeichnet der
+  // alte Farbverlauf; nach dem Laden wird der Hintergrund EINMAL neu gebacken.
+  const bodenBilder = useRef({});
+  function bodenBild(WT) {
+    if (!WT || !WT.boden || typeof Image === "undefined") return null;
+    let img = bodenBilder.current[WT.boden];
+    if (!img) {
+      img = new Image();
+      img.onload = () => { bgDirty.current = true; };
+      img.src = WT.boden;
+      bodenBilder.current[WT.boden] = img;
+    }
+    return img.complete && img.naturalWidth > 0 ? img : null;
+  }
   const floodCache = useRef({
     gridVersion: -1,
     outside: {},
@@ -3760,7 +3776,10 @@ window.StackSiegeApp = function StackSiegeApp() {
       const seed = Math.floor(Math.random() * 4294967295);
       terObj = __spreadProps(__spreadValues({}, generateTerrain3FromSeed(seed)), { seed });
     } else {
-      terObj = generateTerrain();
+      // Pruef-Schalter (v3.122.0, nur mit __mmDebug): fester Gelaende-Seed, um
+      // jede Welt (seed % 7) gezielt ansehen zu koennen. Im Spiel wirkungslos.
+      const festSeed = typeof window !== "undefined" && window.__mmDebug && typeof window.__weltSeed === "number" ? window.__weltSeed >>> 0 : null;
+      terObj = festSeed !== null ? __spreadProps(__spreadValues({}, generateTerrainFromSeed(festSeed)), { seed: festSeed }) : generateTerrain();
     }
     terrain.current = terObj;
     terrainSeed.current = terObj.seed;
@@ -5883,6 +5902,10 @@ window.StackSiegeApp = function StackSiegeApp() {
         bc.closePath();
         bc.fill();
       }
+      // Gemalter Boden ueberdeckt die prozeduralen Bodenschichten darunter;
+      // Fluss, Berge und Deko werden wie bisher DARUEBER gezeichnet.
+      const bodenImg = bodenBild(WT);
+      if (bodenImg) bc.drawImage(bodenImg, 0, 0, W, H);
       // — Organischer Fluss (Metaball-Look: weiche runde Ufer statt Kacheln) —
       const waterCells = [];
       for (let r = 0; r < ROWS; r++)
@@ -6083,7 +6106,10 @@ window.StackSiegeApp = function StackSiegeApp() {
         }
       };
       let placed = 0;
-      for (let tries = 0; tries < 160 && placed < 34; tries++) {
+      // Auf einem gemalten Boden KEINE prozedurale Deko (v3.122.0): die
+      // kleinen Kegel/Kristalle wirkten dort wie Rauschen. Spielrelevant sind
+      // sie nicht — Berge und Fluss bleiben.
+      for (let tries = 0; tries < (bodenImg ? 0 : 160) && placed < 34; tries++) {
         const pr = 2 + Math.floor(drng() * (ROWS - 4));
         const pc = 2 + Math.floor(drng() * (COLS - 4));
         // nur auf freiem Boden, mit Abstand zu Wasser/Bergen
@@ -6096,7 +6122,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         placed++;
       }
       // Ambient-Partikel (kühler Staub)
-      for (let i = 0; i < 26; i++) {
+      for (let i = 0; i < (bodenImg ? 0 : 26); i++) {
         const fc3 = i * 313 % COLS, fr3 = i * 191 % ROWS;
         if (ter[fr3][fc3] >= 3) continue;
         const fx3 = fc3 * CELL + i * 71 % CELL, fy3 = fr3 * CELL + i * 37 % CELL;
@@ -6108,7 +6134,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       // cinematic vignette
       const vig = bc.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.9);
       vig.addColorStop(0, "rgba(0,0,0,0)");
-      vig.addColorStop(1, "rgba(0,0,0,0.62)");
+      vig.addColorStop(1, bodenImg ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.62)");
       bc.fillStyle = vig;
       bc.fillRect(0, 0, W, H);
       // Welt-Namenszug, dezent unten links. Bei p1Flipped mit EIGENEM
@@ -7186,7 +7212,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.121.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.122.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8740,7 +8766,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     } }, zahl, salve);
   }
   return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
-    background: "#04080d",
+    // Spielflaeche (v3.122.0): tiefes Designsystem-Blau statt Schwarz,
+    // passend zu Panels und Unterleiste.
+    background: "linear-gradient(180deg, #1d4a9e 0%, #0d1f45 55%, #091634 100%)",
     // **100% statt 100dvh** — dieselbe Falle wie im Menue (v3.84.0): Der
     // Koerper ist bereits um die Sicherheitsbereiche verkuerzt. Volle 100dvh
     // machten die Huelle um oberen PLUS unteren Bereich zu hoch (auf dem
@@ -8750,7 +8778,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    fontFamily: "'Segoe UI',system-ui,sans-serif",
+    fontFamily: SCHRIFT_TEXT,
     color: "#e2e8f0",
     overflow: "hidden",
     touchAction: "none",
