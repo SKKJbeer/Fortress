@@ -268,21 +268,38 @@ async function beobachteHaende(page, waitMs = 5000) {
 // ueber drei Sekunden hinweg in JEDER Stichprobe verschieden, haengt der
 // Gast wirklich fest — genau der Fehler aus v3.0.7, den dieser Check
 // bewachen soll. Die Aussagekraft bleibt also erhalten.
-async function wartePhasenGleich(pages, waitMs = 3000) {
+async function wartePhasenGleich(pages, waitMs = 3000, lagMs = 1500) {
+  // **Folgt jede andere Seite der ersten — mit hoechstens `lagMs` Verzug?**
+  // (v3.121.0). Vorher wurde GLEICHZEITIGE Gleichheit verlangt. Im Zeitraffer
+  // dauert eine Phase ~1 s; liegt der Gast unter voller Suitenlast eine knappe
+  // Phase zurueck, gibt es keinen Augenblick, in dem beide dasselbe zeigen —
+  // obwohl die Synchronisation arbeitet. Gemessen: einzeln 5/5 gruen, im vollen
+  // Lauf sporadisch rot, auch VOR dem Design-Umbau (v3.120.0). Geprueft wird
+  // jetzt, was gemeint ist: Der Gast erreicht die Phase des Hosts innerhalb
+  // von lagMs. Grenze (gilt fuer die alte Fassung genauso): Ein eingefrorener
+  // Gast kaeme durch, sobald der Host zufaellig dieselbe Phase zeigt. Dass der
+  // Gast LEBT, belegt die Folgepruefung „Gast-Timer zaehlt" — nicht diese.
   const lies = p => p.evaluate(() => {
     const t = document.body.innerText;
     return ['FEUER', 'BAUEN', 'START', 'KANONE'].find(k => t.includes(k)) || null;
   });
   const start = Date.now();
-  let letzte = [], versuche = 0;
+  const verlauf = [];          // [zeit, phase der ersten Seite]
+  let letzte = [], versuche = 0, verzug = null;
   while (Date.now() - start < waitMs) {
     letzte = await Promise.all(pages.map(lies));
     versuche++;
-    if (letzte[0] && letzte.every(x => x === letzte[0]))
-      return { gleich: true, phase: letzte[0], versuche, ms: Date.now() - start };
+    const jetzt = Date.now();
+    if (letzte[0]) verlauf.push([jetzt, letzte[0]]);
+    const imFenster = verlauf.filter(([z]) => jetzt - z <= lagMs);
+    if (letzte[0] && letzte.slice(1).every(x => x && imFenster.some(([, ph]) => ph === x))) {
+      const passend = letzte.slice(1).map(x => { const tr = imFenster.find(([, ph]) => ph === x); return jetzt - tr[0]; });
+      verzug = Math.max(0, ...passend);
+      return { gleich: true, phase: letzte[0], versuche, ms: jetzt - start, verzug };
+    }
     await pages[0].waitForTimeout(100);
   }
-  return { gleich: false, phasen: letzte, versuche, ms: Date.now() - start };
+  return { gleich: false, phasen: letzte, versuche, ms: Date.now() - start, verzug };
 }
 
 // Auf den Spielcode WARTEN, nicht nach fester Frist danach sehen (v3.111.5).
@@ -326,10 +343,10 @@ async function warteAufCode(page, frist = 15000) {
 // sagt, wie lange gesucht wurde, statt nur "fehlt".
 async function wartePanel(page, waitMs = 8000) {
   const start = Date.now();
-  const zaehle = () => Array.from(document.querySelectorAll('div')).filter(d =>
-    d.style.cursor === 'pointer' &&
-    d.style.touchAction === 'manipulation' &&
-    d.style.borderRadius === '10px' &&
+  // Ueber die feste Markierung data-teil (v3.121.0), nicht ueber einen
+  // Stilwert: der Eckenradius aenderte sich mit dem Comic-Stil, und die Suche
+  // fand nichts mehr, obwohl das Feld da war.
+  const zaehle = () => Array.from(document.querySelectorAll('div[data-teil]')).filter(d =>
     d.querySelector('div[style*="grid-template-columns"]')).length;
   while (Date.now() - start < waitMs) {
     const n = await page.evaluate(zaehle);
@@ -790,9 +807,7 @@ async function suiteMechanics(browser) {
     const panelTap = await page.evaluate(() => {
       const divs = Array.from(document.querySelectorAll('div'));
       const btn = divs.find(d =>
-        d.style.cursor === 'pointer' &&
-        d.style.touchAction === 'manipulation' &&
-        d.style.borderRadius === '10px' &&
+        d.hasAttribute('data-teil') &&
         d.querySelector('div[style*="grid-template-columns"]')
       );
       if (!btn) return false;
@@ -1364,7 +1379,7 @@ async function suiteOnline2P(browser, fbPort) {
     if (hostPh && guestPh) {
       const sync = await wartePhasenGleich([pH, pG]);
       sync.gleich
-        ? ok(`Phase-Sync: beide in "${sync.phase}" (${sync.versuche}. Stichprobe) ✓`)
+        ? ok(`Phase-Sync: Gast folgt dem Host in "${sync.phase}" (${sync.versuche}. Stichprobe, Verzug ${sync.verzug} ms) ✓`)
         : fail(`Phase-Desync ueber ${sync.ms} ms / ${sync.versuche} Stichproben: `
              + `Host="${sync.phasen[0]}" Gast="${sync.phasen[1]}"`);
     }
@@ -4970,7 +4985,10 @@ async function suiteAchievements(browser) {
       ? ok(`Achievement-Button sichtbar im Menü (${trophyBtn.w}×${trophyBtn.h}px) ✓`)
       : fail('Achievement-Button (title="Achievements") nicht gefunden oder nicht sichtbar');
 
-    // Liegt der Button unter dem Profil-Icon (gleiche X-Spalte)?
+    // Liegt der Button in derselben Knopfreihe wie das Profil-Icon? Seit
+    // v3.121.0 stehen die Symbolknoepfe als REIHE unter den Profildaten (vorher
+    // als Spalte rechts, die die Karte unnoetig hoch machte). Geprueft wird
+    // dieselbe Absicht: beide sichtbar und sauber ausgerichtet.
     const btnLayout = await page.evaluate(() => {
       const ach = Array.from(document.querySelectorAll('button'))
         .find(b => b.getAttribute('title') === 'Achievements');
@@ -4978,11 +4996,11 @@ async function suiteAchievements(browser) {
         .find(b => (b.title || '').toLowerCase().includes('profil') || b.getAttribute('title') === 'Profil bearbeiten');
       if (!ach || !prof) return null;
       const rA = ach.getBoundingClientRect(), rP = prof.getBoundingClientRect();
-      return { achX: rA.x, profX: rP.x, sameColumn: Math.abs(rA.x - rP.x) < 20 };
+      return { achY: rA.y, profY: rP.y, sameRow: Math.abs(rA.y - rP.y) < 6 && rA.x > rP.x };
     });
-    btnLayout && btnLayout.sameColumn
-      ? ok('Achievement-Button in gleicher Spalte wie Profil-Button ✓')
-      : fail('Achievement-Button nicht unter Profil-Button (Layoutfehler)');
+    btnLayout && btnLayout.sameRow
+      ? ok('Achievement-Button in derselben Reihe neben dem Profil-Button ✓')
+      : fail(`Achievement-Button nicht in der Knopfreihe (Layoutfehler: ${JSON.stringify(btnLayout)})`);
 
     // Ungelesen-Badge: Profil hat retroaktiv 3 freigeschaltete, noch nicht gesehen → Zahl sichtbar
     const badgeBefore = await page.evaluate(() => {

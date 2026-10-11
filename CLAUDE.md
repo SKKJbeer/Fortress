@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.120.0
+- **Aktuelle Version**: v3.121.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -427,6 +427,13 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 ---
 
 ## Grafik (seit v3.119.0)
+
+- **Designsystem `src/ui/stil.js` (seit v3.121.0).** Neue Oberflaechen nehmen
+  `knopf`/`panel`/`titel`/… von dort, KEINE neuen Inline-Farben. Schriften
+  Lilita One + Nunito lokal in `public/fonts`. Keine lokale Variable darf einen
+  Baustein ueberdecken (`tests/stil.test.js` — echter Fehler im Umbau).
+- **Logo ist gesetzt, nicht gemalt** (`tools/logo.cjs`); aufs Ladebild nur in
+  der sicheren Zone (`ladebild.py --logo`).
 
 - **Neue Grafik entsteht mit dem Skill `spielgrafik`** (`.claude/skills/spielgrafik/SKILL.md`):
   FLUX.1-schnell lokal, Varianten mit 512 px, Real-ESRGAN auf 1024. Kein

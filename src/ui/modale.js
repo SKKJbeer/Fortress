@@ -23,6 +23,7 @@ import { xpToNextLevel } from "../engine/progression.ts";
 import { DAILY_REWARDS, getDailyCollectable, getDailyStreakIndex, dailyWeekMult, dailyReward, msTillMidnight } from "../engine/daily.ts";
 import { AVATAR_UNLOCKS } from "./wappen.js";
 import { __spreadValues, __spreadProps } from "../spread.js";
+import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, panel, karte, titel } from './stil.js';
 
 export // Sieges-Effekt (v3.23.0, SPEC 14.4): Kosmetik auf dem Result-Screen.
 // Deterministisch (keine Math.random) wie ConfettiBurst; fixed overlay,
@@ -143,7 +144,7 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
   ];
   return React.createElement("div", { style: {
     position: "fixed", inset: 0, zIndex: 3000,
-    background: "rgba(2,6,15,0.85)", backdropFilter: "blur(18px)",
+    background: "linear-gradient(180deg, #2c69c9 0%, #1d4a9e 30%, #0d1f45 100%)", fontFamily: SCHRIFT_TEXT, color: FARBE.text,
     display: "flex", flexDirection: "column", alignItems: "center",
     // **Oben MUSS der Sicherheitsabstand mit.** `position: fixed` sitzt am
     // Sichtfenster, nicht im Koerper — die Polsterung des Koerpers gilt hier
@@ -157,28 +158,25 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
     } },
       React.createElement("div", { style: {
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "16px 18px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+        padding: "16px 18px 12px", borderBottom: "3px solid #1b0f06", boxShadow: "0 3px 0 rgba(255,210,58,0.6)",
         flexShrink: 0
       } },
         React.createElement("div", null,
-          React.createElement("div", { style: { fontSize: 18, fontWeight: 900, color: "#f1f5f9", display: "flex", alignItems: "center", gap: 7 } },
-            React.createElement(Icon, { name: "trophy", size: 17, color: "#fbbf24" }), "Achievements"),
-          React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } },
+          React.createElement("div", { style: { ...titel(26), display: "flex", alignItems: "center", gap: 8 } },
+            React.createElement(Icon, { name: "trophy", size: 24, color: FARBE.gold }), "Achievements"),
+          React.createElement("div", { style: { fontSize: 12, color: FARBE.textGedaempft, marginTop: 4, fontWeight: 700 } },
             t('achUnlocked', { n: unlockedCount, total: ACHIEVEMENTS.length })
           )
         ),
-        React.createElement("button", { onClick: onClose, "aria-label": "Schlie\xDFen", style: {
-          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
-          color: "#94a3b8", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 13
-        } }, React.createElement(Icon, { name: "x", size: 14 }))
+        React.createElement("button", { onClick: onClose, "aria-label": "Schlie\xDFen", style: symbolKnopf("rot", { width: 40, height: 40 }) }, React.createElement(Icon, { name: "x", size: 18 }))
       ),
       React.createElement("div", { style: { overflowY: "auto", flex: 1, padding: "12px 14px 20px" } },
         cats.map(cat => {
           const catAchs = ACHIEVEMENTS.filter(d => d.cat === cat.key);
           return React.createElement("div", { key: cat.key, style: { marginBottom: 18 } },
             React.createElement("div", { style: {
-              fontSize: 11, fontWeight: 800, color: cat.color, letterSpacing: "0.1em",
-              marginBottom: 8, paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.06)"
+              fontSize: 17, fontFamily: SCHRIFT_TITEL, color: cat.color, letterSpacing: "0.04em", textShadow: KONTURTEXT,
+              marginBottom: 8, paddingBottom: 4
             } }, React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
               React.createElement(Icon, { name: cat.icon, size: 12 }), cat.label)),
             catAchs.map(def => {
@@ -189,10 +187,9 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
               const isHidden = def.hidden && !unlocked;
               return React.createElement("div", { key: def.id, style: {
                 display: "flex", alignItems: "flex-start", gap: 12,
-                background: unlocked ? "rgba(124,58,237,0.12)" : "rgba(255,255,255,0.03)",
-                border: unlocked ? "1px solid rgba(124,58,237,0.3)" : "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 12, padding: "10px 12px", marginBottom: 8,
-                opacity: unlocked ? 1 : 0.7
+                ...karte({ borderRadius: 14, padding: "10px 12px", marginBottom: 8 }),
+                border: unlocked ? "2px solid " + FARBE.gold : "2px solid rgba(10,20,50,0.55)",
+                opacity: unlocked ? 1 : 0.82
               } },
                 React.createElement("div", { style: {
                   lineHeight: 1, flexShrink: 0, width: 36, display: "flex", justifyContent: "center", paddingTop: 2,
@@ -203,7 +200,7 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
                     fontWeight: 800, fontSize: 13, color: unlocked ? "#e2e8f0" : "#94a3b8",
                     marginBottom: 2
                   } }, isHidden ? "???" : achTitle(def)),
-                  React.createElement("div", { style: { fontSize: 11, color: "#475569", marginBottom: 6 } },
+                  React.createElement("div", { style: { fontSize: 11, color: "#a9bfe3", marginBottom: 6 } },
                     isHidden ? t('achSecret') : achDesc(def)
                   ),
                   !unlocked && React.createElement("div", { style: { marginBottom: 6 } },
@@ -292,7 +289,7 @@ export function ItemRevealModal({ rec, onClose , t }) {
     ...sparks,
     h("div", { style: __spreadValues({ fontSize: 13, fontWeight: 900, letterSpacing: "0.2em", padding: "5px 20px", borderRadius: 999, border: "1.5px solid " + rar.c, marginBottom: 12, textShadow: "0 0 14px rgba(" + rar.glow + ",0.8)", background: "rgba(" + rar.glow + ",0.08)" }, badgeStyle) }, rar.label),
     h("div", { style: { fontSize: "clamp(23px,7vw,32px)", fontWeight: 900, color: "#fff", textAlign: "center", textShadow: "0 0 24px rgba(" + rar.glow + ",0.7)", marginBottom: 6, animation: "revealBurstIn 0.5s 0.34s both" } }, t("cos_" + rec.id)),
-    h("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 30, animation: "revealBurstIn 0.5s 0.4s both" } }, catLabel + " · " + t("forgeRevealEquipped")),
+    h("div", { style: { fontSize: 12, color: "#dbe7fb", marginBottom: 30, animation: "revealBurstIn 0.5s 0.4s both" } }, catLabel + " · " + t("forgeRevealEquipped")),
     h("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", animation: "glowpulse 1.6s ease-in-out infinite" } }, t("forgeRevealTap"))
   );
 }
@@ -331,9 +328,9 @@ function XpResultAnim({ xpChange , t }) {
       borderRadius: 14, padding: "11px 18px", textAlign: "center",
       boxShadow: "0 2px 18px rgba(167,139,250,0.12)"
     } },
-      React.createElement("div", { style: { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
+      React.createElement("div", { style: { fontSize: 9, color: "#c9dbf7", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
       React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: "0 0 16px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
-      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 6 } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#c9dbf7", marginBottom: 6 } },
         React.createElement("span", null, "Level " + xpChange.newLevel),
         React.createElement("span", null, xpChange.newXp + " / " + needed)
       ),
@@ -347,7 +344,7 @@ function XpResultAnim({ xpChange , t }) {
         } })
       )
     ),
-    nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: "#64748b", textAlign: "center", fontStyle: "italic" } },
+    nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: "#c9dbf7", textAlign: "center", fontStyle: "italic" } },
       t('nextRewardAt', { n: nextUnlockEntry[1] })
     )
   );
@@ -366,15 +363,15 @@ function OnboardingModal({ step, setStep, onFinish , t }) {
   const cur = steps[i];
   const isLast = i >= steps.length - 1;
   return React.createElement("div", {
-    style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.95)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
+    style: { position: "fixed", inset: 0, background: "rgba(8,16,40,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
   },
     React.createElement("div", { style: {
-      background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(124,58,237,0.3)",
-      borderRadius: 18, padding: 24, maxWidth: 380, width: "100%", textAlign: "center",
-      animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both", boxShadow: "0 20px 60px rgba(0,0,0,0.6)"
+      ...panel({ padding: 24 }),
+       maxWidth: 380, width: "100%", textAlign: "center",
+      animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both" 
     } },
       React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", minHeight: 18, marginBottom: 2 } },
-        !isLast && React.createElement("button", { onClick: onFinish, style: { background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 12, fontWeight: 600 } }, t('onbSkip'))
+        !isLast && React.createElement("button", { onClick: onFinish, style: { background: "none", border: "none", color: "#c9dbf7", cursor: "pointer", fontSize: 12, fontWeight: 600 } }, t('onbSkip'))
       ),
       React.createElement("div", { key: "onbico" + i, style: { marginBottom: 12, display: "flex", justifyContent: "center", animation: "badgePop 0.4s ease both" } },
         React.createElement("div", { style: { width: 76, height: 76, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.05)", border: "1px solid " + cur.col + "55", boxShadow: "0 0 24px " + cur.col + "33" } },
@@ -382,14 +379,14 @@ function OnboardingModal({ step, setStep, onFinish , t }) {
         )
       ),
       React.createElement("h2", { style: { margin: "0 0 8px", fontSize: 21, color: "#f1f5f9", fontWeight: 800 } }, cur.title),
-      React.createElement("p", { style: { color: "#94a3b8", fontSize: 14, lineHeight: 1.55, marginBottom: 18, minHeight: 88 } }, cur.text),
+      React.createElement("p", { style: { color: "#dbe7fb", fontSize: 14, lineHeight: 1.55, marginBottom: 18, minHeight: 88 } }, cur.text),
       React.createElement("div", { style: { display: "flex", gap: 7, justifyContent: "center", marginBottom: 18 } },
         steps.map((_, k) => React.createElement("div", { key: k, onClick: () => setStep(k), style: { width: k === i ? 22 : 8, height: 8, borderRadius: 4, background: k === i ? cur.col : "rgba(255,255,255,0.18)", cursor: "pointer", transition: "all 0.25s ease" } }))
       ),
       React.createElement("div", { style: { display: "flex", gap: 8 } },
         i > 0 && React.createElement("button", { onClick: () => setStep(i - 1), style: { flex: "0 0 auto", background: "rgba(255,255,255,0.06)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", padding: "14px 18px", fontSize: 15, fontWeight: 700, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 } },
           React.createElement(Icon, { name: "chevronDown", size: 15, style: { transform: "rotate(90deg)" } }), t('onbBack')),
-        React.createElement("button", { onClick: () => isLast ? onFinish() : setStep(i + 1), style: { flex: 1, background: isLast ? "linear-gradient(135deg,#16a34a,#4ade80)" : "linear-gradient(135deg,#2563eb,#7c3aed)", color: "white", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: isLast ? "0 4px 20px rgba(74,222,128,0.35)" : "0 4px 20px rgba(124,58,237,0.35)" } },
+        React.createElement("button", { onClick: () => isLast ? onFinish() : setStep(i + 1), style: knopf(isLast ? "gruen" : "gold", { flex: 1, padding: "14px", fontSize: 19, gap: 6 }) },
           isLast ? t('onbStart') : t('onbNext'),
           !isLast && React.createElement(Icon, { name: "chevronDown", size: 16, style: { transform: "rotate(-90deg)" } }))
       )
@@ -428,22 +425,22 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
       borderRadius: 8, padding: "6px 2px",
       animation: isCurrent ? "streakGlow 2s ease infinite" : "none"
     } },
-      React.createElement("div", { style: { fontSize: 8, color: "#64748b", marginBottom: 2 } }, "T" + (i + 1)),
+      React.createElement("div", { style: { fontSize: 8, color: "#c9dbf7", marginBottom: 2 } }, "T" + (i + 1)),
       React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: isCurrent ? "#fbbf24" : isPast ? "#4ade80" : "#475569" } },
         isPast ? "✓" : r.special === "chest" ? "★" : "+" + Math.round(r.gold * mult) + "G"
       )
     );
   });
   return React.createElement("div", {
-    style: { position: "fixed", inset: 0, background: "rgba(5,8,15,0.94)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
+    style: { position: "fixed", inset: 0, background: "rgba(8,16,40,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
   },
     React.createElement("div", { style: {
-      background: "linear-gradient(160deg,#0f1f2e,#15082a)", border: "1px solid rgba(251,191,36,0.3)",
-      borderRadius: 16, padding: 24, maxWidth: 360, width: "100%", textAlign: "center",
+      ...panel({ padding: 24 }),
+       maxWidth: 360, width: "100%", textAlign: "center",
       animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both"
     } },
       React.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } },
-        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: "#475569", cursor: "pointer" } },
+        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: "#a9bfe3", cursor: "pointer" } },
           React.createElement(Icon, { name: "x", size: 18 })
         )
       ),
@@ -451,7 +448,7 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
         React.createElement(Icon, { name: "zap", size: 28, color: "#fbbf24" })
       ),
       React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
-      React.createElement("p", { style: { color: "#64748b", fontSize: 12, marginBottom: mult > 1 ? 6 : 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+      React.createElement("p", { style: { color: "#c9dbf7", fontSize: 12, marginBottom: mult > 1 ? 6 : 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
       mult > 1 && React.createElement("div", { style: { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 14, background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.45)", color: "#fdba74", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", animation: "streakGlow 2s ease infinite" } }, React.createElement(Icon, { name: "flame", size: 12 }), t('dailyLoyalty', { m: mult, w: week })),
       React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
       collected
@@ -462,10 +459,10 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
               reward.xp > 0 && React.createElement("div", { style: { fontSize: 14, color: "#a78bfa", marginTop: 4 } }, "+" + reward.xp + " XP"),
               reward.special === "chest" && React.createElement("div", { style: { fontSize: 12, color: "#22d3ee", marginTop: 4 } }, t('dailyChest'))
             )
-          : React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
+          : React.createElement("div", { style: { fontSize: 13, color: "#c9dbf7", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
       canCollect && !collected && React.createElement("button", {
         onClick: handleCollect,
-        style: { width: "100%", background: "linear-gradient(135deg,#ca8a04,#fbbf24)", color: "#0a0a0a", border: "none", padding: "15px", fontSize: 16, fontWeight: 900, borderRadius: 12, cursor: "pointer", boxShadow: "0 4px 20px rgba(251,191,36,0.4)" }
+        style: knopf("gold", { width: "100%", padding: "15px", fontSize: 20 })
       }, t('dailyCollect'))
     )
   );

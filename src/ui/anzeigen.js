@@ -15,6 +15,7 @@ import React from "react";
 import { getLevelTier, xpToNextLevel } from "../engine/progression.ts";
 import { MAT_ORDER, MAT_META } from "../engine/catalog.ts";
 import { WAPPEN_SRC } from "./wappen.js";
+import { SCHRIFT_TITEL, KONTURTEXT } from "./stil.js";
 
 
 export function LevelBadge({ level, size }) {
@@ -23,15 +24,17 @@ export function LevelBadge({ level, size }) {
   return React.createElement("div", {
     style: {
       display: "inline-flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(135deg," + tier.border + "cc," + tier.border + "55)",
-      border: "1.5px solid " + tier.border,
-      borderRadius: isLg ? 8 : 6,
-      padding: isLg ? "3px 8px" : "2px 5px",
-      fontSize: isLg ? 12 : 9,
-      fontWeight: 900,
-      color: tier.color,
-      letterSpacing: "0.04em",
-      boxShadow: "0 0 8px " + tier.glow,
+      // Comic-Abzeichen (v3.121.0): Rangfarbe als Fuellung, dunkle Kontur
+      background: "linear-gradient(180deg, rgba(255,255,255,0.55), " + tier.border + " 45%, " + tier.border + ")",
+      border: "2.5px solid #1b0f06",
+      borderRadius: isLg ? 10 : 8,
+      padding: isLg ? "3px 9px" : "1px 7px",
+      fontSize: isLg ? 15 : 13,
+      fontFamily: SCHRIFT_TITEL,
+      color: "#fff",
+      textShadow: KONTURTEXT,
+      letterSpacing: "0.03em",
+      boxShadow: "0 2px 0 #1b0f06, inset 0 2px 0 rgba(255,255,255,0.45)",
       flexShrink: 0,
       animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both"
     }
@@ -79,10 +82,10 @@ function XpBarUI({ level, xp }) {
   const pct = Math.min(100, xp / needed * 100);
   return React.createElement("div", { style: { marginTop: 5 } },
     React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 3 } },
-      React.createElement("span", { style: { fontSize: 9, color: "#475569" } }, xp + " / " + needed + " XP")
+      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", textShadow: "0 1px 0 #1b0f06" } }, xp + " / " + needed + " XP")
     ),
-    React.createElement("div", { style: { height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden", position: "relative" } },
-      React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(90deg,#7c3aed,#22d3ee)", borderRadius: 3, boxShadow: "0 0 6px rgba(124,58,237,0.7)", transition: "width 0.4s ease" } })
+    React.createElement("div", { style: { height: 12, background: "#0d1f45", border: "2px solid #1b0f06", borderRadius: 8, overflow: "hidden", position: "relative", boxSizing: "border-box" } },
+      React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(180deg,#d8f7ff 0%,#4fc3ff 45%,#1f7fd8 100%)", borderRadius: 6, boxShadow: "inset 0 2px 0 rgba(255,255,255,0.5)", transition: "width 0.4s ease" } })
     )
   );
 }

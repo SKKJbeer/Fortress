@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.120.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.121.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9014,3 +9014,46 @@ Der Startschirm zeigte noch den alten Mauerring auf schwarzem Grund.
   `ladebild.py`, portabler Bau (SIGILL nach Container-Wechsel), Lehre
   „hoechstens 4–5 Figuren je Bild" (7 Laeufe, 3 Prompt-Fassungen).
 - Geprueft in `tests/symbole.test.js` — Gegenproben rot.
+
+## v3.121.0 — Comic-Design: Logo, Ladebild, Designsystem, Menue-Bild
+
+Wunsch des Betreibers: das ganze Spiel im Stil des neuen Ladebilds, „alles
+harmonisch und gleich".
+
+- **Ladebild** jetzt Seed 11 (der Betreiber fand es besser als 303), mit
+  **gesetztem Logo** im Bild — vorher stand der Titel nur in der Webebene und
+  war in der App nie zu sehen. Logo: `tools/logo.cjs` (Lilita One, Gold,
+  dicke Kontur, 3D-Kante), aufgelegt in der sicheren Zone (iPhone schneidet
+  die Seiten, iPad oben/unten). Text nie vom Bildmodell malen lassen.
+- **Designsystem** `src/ui/stil.js`: Farben aus Ladebild und Logo, Bausteine
+  `knopf`, `symbolKnopf`, `schalter`, `panel`, `karte`, `titel`, `pille`,
+  `spielerKasten`, `schleier`, `bildHintergrund`. Vorher trug jede der ~430
+  Stellen ihr eigenes Inline-Objekt im dunklen Glas-Look.
+- **Schriften lokal** (`public/fonts`, OFL): Lilita One (Titel, Knoepfe),
+  Nunito (Text). Offline vorgeladen, keine Daten an Dritte.
+- **Umgestellt:** Menue (Logo, Profil als Panel, Symbolknopf-REIHE statt
+  Spalte, Umschalter, drei grosse Spielknoepfe), alle Dialoge (Spielmodus,
+  Bot-Stufen, Online, Beenden, Profil-Editor, Gold-Shop, Schmiede,
+  Bestenliste, Erfolge, Einfuehrung, Tagesbonus, Tutorial-Ende),
+  Spielanzeige (Spielerkaesten, Timer, Phase, Banner, Warnhinweis,
+  Unterleiste), Ergebnisbildschirm, Level-Abzeichen, XP-Balken.
+  Wiederkehrende Muster per `tools/stil-umbau.py` (Knopf, Nebenknopf, Panel,
+  Schleier; nur literale Werte, Bedingungen von Hand).
+- **Menue-Hintergrund** gemalt (`assets/menue/`, FLUX Seed 5), auch auf dem
+  Ergebnisbildschirm.
+- **Echter Fehler beim Umbau, gefunden von der E2E-Suite:** Die
+  Tutorial-Einfuehrung hatte ein lokales `const panel = (…)`, das den neuen
+  Baustein ueberdeckte — die Einfuehrung erschien nicht. Umbenannt
+  (`regelKarte`), ebenso zwei harmlose lokale `knopf`/`schalter`.
+  `tests/stil.test.js` verbietet solche Ueberdeckungen jetzt (Gegenprobe rot).
+- **Tests angepasst, Absicht beibehalten:** Teile-Feld per `data-teil` statt
+  Eckenradius gefunden; Symbolknoepfe in einer Reihe statt Spalte; Bot-Stufen
+  bleiben EINHEITLICH (keine Vorauswahl, v3.29.0) — die erste Fassung mit
+  drei Farben hat der Test zu Recht abgelehnt.
+- **Phasen-Sync-Pruefung (E2E) misst jetzt den Verzug** statt gleichzeitiger
+  Gleichheit: Der Gast muss die Host-Phase binnen 1,5 s erreichen. Anlass:
+  im vollen Lauf sporadisch rot, auch schon in v3.120.0 VOR dem Umbau; einzeln
+  5/5 gruen. Erster Lauf mit der neuen Meldung: Verzug 1332 ms unter Volllast —
+  nahe an der Grenze, beobachten. Ein eingefrorener Gast wird weiter von der
+  Folgepruefung „Gast-Timer zaehlt" erkannt, nicht von dieser.
+- **Offen (naechster Schritt):** Spielfeld-Welten und Avatare im neuen Stil.

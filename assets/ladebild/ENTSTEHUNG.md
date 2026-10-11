@@ -1,4 +1,4 @@
-# Ladebild / Startschirm — Entstehung (v3.120.0)
+# Ladebild / Startschirm — Entstehung (v3.120.0, Bild + Logo seit v3.121.0)
 
 Erzeugt mit dem Skill `.claude/skills/spielgrafik` (FLUX.1-schnell, lokal).
 Gewaehlt nach 7 Varianten in 3 Prompt-Fassungen (Qualitaetspruefung je Bild):
@@ -7,12 +7,12 @@ Gewaehlt nach 7 Varianten in 3 Prompt-Fassungen (Qualitaetspruefung je Bild):
 |---|---|---|
 | 1: 8 Figuren + Burgen | 7, 42, 99 | Figuren gut, aber keine Kanonenschlacht; Kreuz auf Turm |
 | 2: Haelften-Aufbau, 6 Figuren | 11, 77 | Schlacht da, aber Pestdoktor fehlt bzw. Figuren verschmolzen |
-| 3: Pestdoktor gross in der Mitte, 4 Figuren | 11, **303** | 303 gewaehlt |
+| 3: Pestdoktor gross in der Mitte, 4 Figuren | **11**, 303 | v3.120.0 nahm 303; der Betreiber fand **11** besser → seit v3.121.0 |
 
 | Feld | Wert |
 |---|---|
 | Modell | FLUX.1-schnell, GGUF Q4_0 (second-state), Apache 2.0 |
-| Seed | **303** |
+| Seed | **11** |
 | Groesse | 576 x 1024, Real-ESRGAN x4plus anime 6B (BSD-3) → 1152 x 2048 |
 | Parameter | `--cfg-scale 1.0 --sampling-method euler --steps 4` |
 
@@ -25,6 +25,13 @@ vertical mobile game loading screen splash art, cartoon style with chunky propor
 Figuren = freischaltbare Avatare: Pestdoktor (Lv 25), Frankenstein (Lv 15),
 Hexerin (Lv 5), Feuerschaedel (Lv 20), Phoenix (Lv 50).
 
+## Logo (seit v3.121.0)
+
+Gesetzt, nicht gemalt: `tools/logo.cjs` (Lilita One, OFL, `public/fonts/`),
+Gold mit dicker dunkler Kontur und 3D-Kante → `assets/logo/logo.png`.
+Aufgelegt mit `ladebild.py --logo` in der sicheren Zone (Breite 74 %,
+Oberkante 13 %): iPhones schneiden die Seiten, das iPad oben/unten ab.
+
 ## Dateien
 
 - `rohbild-576x1024.png` — Ausgabe des Modells, unveraendert
@@ -34,7 +41,8 @@ Hexerin (Lv 5), Feuerschaedel (Lv 20), Phoenix (Lv 50).
   `ios/App/App/Assets.xcassets/Splash.imageset/splash.png` (1152x2048, ohne Alpha)
 
 ```
+node tools/logo.cjs public/fonts/lilita-one.woff2 assets/logo/logo.png 1600
 python3 .claude/skills/spielgrafik/scripts/ladebild.py assets/ladebild/vorlage-1152x2048.png \
-  --web public/ladebild.jpg \
+  --logo assets/logo/logo.png --web public/ladebild.jpg \
   --ios ios/App/App/Assets.xcassets/Splash.imageset/splash.png --ios-breite 1152
 ```

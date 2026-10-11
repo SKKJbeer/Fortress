@@ -39,6 +39,7 @@ import { LevelBadge, ConfettiBurst, WappenAvatar, XpBarUI, MatPip, MatRow } from
 import { WinFx, AchievementPopup, AchievementsModal, ItemRevealModal, XpResultAnim, OnboardingModal, DailyRewardModal } from '../ui/modale.js';
 import { drawWall, drawRubble, ROOF_OF, FLAG_OF, ACCENT_OF, ACCENT_RGB, GHOST_RGB, GHOST_HEX, BALL_MID, BALL_DARK, BALL_GLOW, ballSprite, drawCastle, roundRectPath, SPR, mkSpriteCanvas, wallSprite, crackSprite, rubbleSprite, CANNON_NEON, cannonDomeSprite, BARREL_PAD, cannonBarrelSprite, drawCannonFull } from '../render/sprites.js';
 import { __spreadValues, __spreadProps } from '../spread.js';
+import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, schleier, panel, karte, titel, pille, bildHintergrund, schalter, spielerKasten } from '../ui/stil.js';
 import { SFX, MUSIC } from '../audio.js';
 import { GameEventBus, GAME_EVENTS, ACHIEVEMENTS, ACH_EN, processAchievementEvents } from '../engine/achievements.js';
 import { SHADOW_DX, SHADOW_DY, SHAPES, rotateCW, randomShape } from '../engine/shapes.js';
@@ -6929,7 +6930,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     matchStats.current = { 1: msZero(), 2: msZero(), 3: msZero() };
     beginSetup();
   }
-  const timerColor = timer <= 5 ? "#ef4444" : timer <= 10 ? "#f59e0b" : "#4ade80";
+  const timerColor = timer <= 5 ? "#ff6b55" : timer <= 10 ? "#ffd23a" : "#fffaf0";
   // Pro Spieler: ist in den letzten 8 Bau-Sekunden die Burg noch offen?
   //
   // **Nur fuer Burgen, die der Mensch am Geraet selbst zumauern kann.** Die
@@ -7013,16 +7014,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     top: 70,
     left: "50%",
     transform: "translateX(-50%)",
-    background: "rgba(127,29,29,0.92)",
-    border: "1px solid rgba(248,113,113,0.5)",
-    borderRadius: 10,
-    padding: "10px 20px",
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#fecaca",
+    ...spielerKasten("rot", { borderRadius: 14, padding: "8px 18px", fontSize: 17, boxShadow: "0 4px 0 #1b0f06, 0 8px 20px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.4)" }),
     zIndex: 999,
     pointerEvents: "none",
-    boxShadow: "0 4px 24px rgba(239,68,68,0.4)",
     whiteSpace: "nowrap",
     maxWidth: "92vw",
     overflow: "hidden",
@@ -7064,7 +7058,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     )
   )));
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
-    background: "radial-gradient(ellipse 120% 80% at 50% -10%, #102036 0%, #081225 38%, #040a16 70%, #02060f 100%)",
+    // Gemalter Hintergrund (v3.121.0, Skill spielgrafik, assets/menue/).
+    ...bildHintergrund("menu-hintergrund.jpg"),
     // **100% statt 100dvh.** Der Koerper ist bereits um die Sicherheitsbereiche
     // verkuerzt; volle 100dvh machen das Menue hoeher als seinen Platz, und die
     // Fusszeile verschwand unter dem Rand.
@@ -7080,31 +7075,20 @@ window.StackSiegeApp = function StackSiegeApp() {
     // unerreichbar.
     alignItems: "flex-start",
     justifyContent: "center",
-    fontFamily: "'Segoe UI',system-ui,sans-serif",
-    color: "#eef2f9",
+    fontFamily: SCHRIFT_TEXT,
+    color: FARBE.text,
     padding: 16,
     boxSizing: "border-box"
-  } }, /* @__PURE__ */ React.createElement("div", { className: "gross-spalte", style: { textAlign: "center", maxWidth: 440, width: "100%", margin: "auto 0" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 6, color: "#60a5fa" } }, /* @__PURE__ */ React.createElement(Icon, { name: "shield", size: 26, color: "#22d3ee" }), /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 30, color: "#a78bfa" }), /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 26, color: "#fbbf24" })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, letterSpacing: "0.3em", color: "#22d3ee", marginBottom: 8, fontWeight: 600 } }, t('tagline')), /* @__PURE__ */ React.createElement("h1", { style: {
-    // v3.80.0: Der Name hat 13 Zeichen statt 8. Mit den alten 14vw lief er
-    // auf einem schmalen Telefon rechts aus dem Bild. Gemessen, nicht geraten
-    // — siehe Changelog.
-    fontSize: "clamp(30px,8.2vw,50px)",
-    fontWeight: 900,
-    margin: "0 0 4px",
-    background: "linear-gradient(120deg,#22d3ee 0%,#60a5fa 45%,#a78bfa 100%)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    letterSpacing: "-1px",
-    lineHeight: 1.05,
-    filter: "drop-shadow(0 4px 28px rgba(56,189,248,0.35))"
-  } }, "Stack & Siege"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 13, color: "#64748b", marginBottom: 6, letterSpacing: "0.04em" } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("div", { className: "gross-spalte", style: { textAlign: "center", maxWidth: 440, width: "100%", margin: "auto 0" } }, /* @__PURE__ */ React.createElement("h1", { style: { margin: "4px 0 2px", lineHeight: 0 } },
+    // Logo statt Verlaufsschrift (v3.121.0): dasselbe gesetzte Logo wie im
+    // Ladebild (tools/logo.cjs). Der Text bleibt fuer Vorleser im alt.
+    React.createElement("img", { src: "logo.png", alt: "Stack & Siege", draggable: false, style: { width: "min(76%, 320px)", height: "auto", filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.45))" } })),
+  /* @__PURE__ */ React.createElement("p", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 16, color: FARBE.text, textShadow: KONTURTEXT, margin: "2px 0 12px", letterSpacing: "0.04em" } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
     alignItems: "center",
     gap: 12,
-    background: "rgba(255,255,255,0.05)",
-    border: `1px solid ${profile.color}55`,
-    borderRadius: 14,
-    padding: "12px 14px",
+    ...panel({ padding: "14px 14px 12px", borderRadius: 20 }),
+    flexWrap: "wrap",
     marginBottom: 16,
     textAlign: "left"
   } }, /* @__PURE__ */ React.createElement("div", { style: (() => {
@@ -7129,76 +7113,44 @@ window.StackSiegeApp = function StackSiegeApp() {
         : `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
     };
   })() }, React.createElement("div", { style: { borderRadius: "50%", overflow: "hidden", background: "#0b101c", display: "flex", lineHeight: 0 } },
-      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"),
+      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 22, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#dbe7fb", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#dbe7fb", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"),
     // Schmiede-Bestand (v3.68.0): steht jetzt direkt neben dem Gold, damit man
     // sieht, dass sich Material ansammelt — Klick fuehrt in die Schmiede.
     /* @__PURE__ */ React.createElement("div", { onClick: () => setShowForge(true), title: t("matToForge"), style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4, cursor: "pointer" } },
       React.createElement(Icon, { name: "hammer", size: 12, color: forgeReadyN > 0 ? "#fb923c" : "#64748b" }),
       React.createElement(MatRow, { t, vals: matOf(profile), size: 11, gap: 4 })
-    ), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
-    /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: {
-      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-      color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
-    } }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 16 })),
-    /* @__PURE__ */ React.createElement("button", { onClick: openAchievements, title: "Achievements", style: {
-      background: achNew > 0 ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.08)",
-      border: achNew > 0 ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.15)",
-      color: achNew > 0 ? "#fbbf24" : "#cbd5e1",
-      borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative"
-    } },
-      React.createElement(Icon, { name: "trophy", size: 16 }),
-      achNew > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fbbf24", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, achNew) : null
+    ), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexBasis: "100%", justifyContent: "space-between", marginTop: 12 } },
+    /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: symbolKnopf("blau") }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 20 })),
+    /* @__PURE__ */ React.createElement("button", { onClick: openAchievements, title: "Achievements", style: symbolKnopf("gold") },
+      React.createElement(Icon, { name: "trophy", size: 20 }),
+      achNew > 0 ? React.createElement("span", { style: { position: "absolute", top: -8, right: -8, background: "linear-gradient(180deg,#ff8a7a,#ef4b34 55%,#a8261a)", color: "#fff", border: "2px solid #1b0f06", borderRadius: "50%", minWidth: 20, height: 20, fontSize: 11, fontFamily: SCHRIFT_TITEL, textShadow: KONTURTEXT, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, achNew) : null
     ),
     // Daily Tasks (v3.22.0): 📋-Button mit Badge (Anzahl abholbereiter Aufgaben)
-    /* @__PURE__ */ React.createElement("button", { onClick: () => { setTasksState(loadTasksState()); setShowTasksModal(true); }, title: t('tasksTitle'), style: {
-      background: tasksClaimable > 0 ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.08)",
-      border: tasksClaimable > 0 ? "1px solid rgba(52,211,153,0.4)" : "1px solid rgba(255,255,255,0.15)",
-      color: tasksClaimable > 0 ? "#34d399" : "#cbd5e1",
-      borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative",
-      animation: tasksClaimable > 0 ? "streakGlow 2s ease infinite" : "none"
-    } },
-      React.createElement(Icon, { name: "clipboard", size: 16 }),
-      tasksClaimable > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#34d399", color: "#000", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, tasksClaimable) : null
+    /* @__PURE__ */ React.createElement("button", { onClick: () => { setTasksState(loadTasksState()); setShowTasksModal(true); }, title: t('tasksTitle'), style: symbolKnopf("gruen", { animation: tasksClaimable > 0 ? "streakGlow 2s ease infinite" : "none" }) },
+      React.createElement(Icon, { name: "clipboard", size: 20 }),
+      tasksClaimable > 0 ? React.createElement("span", { style: { position: "absolute", top: -8, right: -8, background: "linear-gradient(180deg,#ff8a7a,#ef4b34 55%,#a8261a)", color: "#fff", border: "2px solid #1b0f06", borderRadius: "50%", minWidth: 20, height: 20, fontSize: 11, fontFamily: SCHRIFT_TITEL, textShadow: KONTURTEXT, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, tasksClaimable) : null
     ),
     // Gold-Shop (v3.23.0): Kosmetik gegen erspieltes Gold
-    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowGoldShop(true), title: t('goldShopTitle'), style: {
-      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-      color: "#cbd5e1", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer"
-    } }, React.createElement(Icon, { name: "shoppingCart", size: 16 })),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowGoldShop(true), title: t('goldShopTitle'), style: symbolKnopf("lila") }, React.createElement(Icon, { name: "shoppingCart", size: 20 })),
     // Schmiede-Button mit Abzeichen (v3.68.0): zeigt, wie viele Rezepte JETZT
     // bezahlbar sind — sonst bleibt gesammeltes Material unbemerkt liegen.
-    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForge(true), title: t('forgeTitle') + (forgeReadyN > 0 ? " \xB7 " + forgeReadyN + " " + t("forgeReady") : ""), style: {
-      background: forgeReadyN > 0 ? "rgba(251,146,60,0.2)" : "rgba(251,146,60,0.1)",
-      border: "1px solid " + (forgeReadyN > 0 ? "rgba(251,146,60,0.75)" : "rgba(251,146,60,0.35)"),
-      color: "#fdba74", borderRadius: 8, padding: "7px 11px", fontSize: 13, cursor: "pointer", position: "relative",
-      animation: forgeReadyN > 0 ? "streakGlow 2s ease infinite" : "none"
-    } },
-      React.createElement(Icon, { name: "hammer", size: 16 }),
-      forgeReadyN > 0 ? React.createElement("span", { style: { position: "absolute", top: -4, right: -4, background: "#fb923c", color: "#2b1204", borderRadius: "50%", width: 14, height: 14, fontSize: 8, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, forgeReadyN) : null
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setShowForge(true), title: t('forgeTitle') + (forgeReadyN > 0 ? " \xB7 " + forgeReadyN + " " + t("forgeReady") : ""), style: symbolKnopf("rot", { animation: forgeReadyN > 0 ? "streakGlow 2s ease infinite" : "none" }) },
+      React.createElement(Icon, { name: "hammer", size: 20 }),
+      forgeReadyN > 0 ? React.createElement("span", { style: { position: "absolute", top: -8, right: -8, background: "linear-gradient(180deg,#ff8a7a,#ef4b34 55%,#a8261a)", color: "#fff", border: "2px solid #1b0f06", borderRadius: "50%", minWidth: 20, height: 20, fontSize: 11, fontFamily: SCHRIFT_TITEL, textShadow: KONTURTEXT, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, forgeReadyN) : null
     )
-  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: { background: lang === 'de' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'de' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'de' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: { background: lang === 'en' ? "rgba(74,222,128,0.18)" : "rgba(255,255,255,0.06)", border: lang === 'en' ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(255,255,255,0.12)", color: lang === 'en' ? "#4ade80" : "#64748b", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: { background: soundOn ? "rgba(96,165,250,0.18)" : "rgba(255,255,255,0.06)", border: soundOn ? "1px solid rgba(96,165,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: soundOn ? "#93c5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: { background: musicOn ? "rgba(52,211,153,0.16)" : "rgba(255,255,255,0.06)", border: musicOn ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(255,255,255,0.12)", color: musicOn ? "#6ee7b7" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { vibriere(20); } }, title: "Vibration", style: { background: hapticsOn ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: hapticsOn ? "1px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.12)", color: hapticsOn ? "#c4b5fd" : "#64748b", borderRadius: 8, padding: "5px 12px", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), musicOn && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, justifyContent: "center", marginBottom: 12, padding: "0 26px" } },
+  )), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('de'), style: schalter(lang === 'de', 'gruen') }, "DE"), /* @__PURE__ */ React.createElement("button", { onClick: () => setLang('en'), style: schalter(lang === 'en', 'gruen') }, "EN"), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !soundOn; setSoundOn(next); if (next) { SFX.enabled = true; SFX.resume(); setTimeout(() => SFX.buy(), 150); } }, title: "Sound", style: schalter(soundOn, 'blau') }, React.createElement(Icon, { name: soundOn ? "volume2" : "volumeX", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => setMusicOn((v2) => !v2), title: "Musik", style: schalter(musicOn, 'gruen') }, React.createElement(Icon, { name: "music", size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: () => { const next = !hapticsOn; setHapticsOn(next); if (next) { vibriere(20); } }, title: "Vibration", style: schalter(hapticsOn, 'lila') }, React.createElement(Icon, { name: hapticsOn ? "vibrate" : "vibrateOff", size: 16 }))), musicOn && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, justifyContent: "center", marginBottom: 12, padding: "0 26px" } },
     /* @__PURE__ */ React.createElement(Icon, { name: "music", size: 13, color: "#6ee7b7" }),
     /* @__PURE__ */ React.createElement("input", { type: "range", min: 0, max: 100, value: Math.round(musicVol * 100), "aria-label": "Musik-Lautst\u00e4rke",
       onChange: (e) => setMusicVol(parseInt(e.target.value, 10) / 100),
-      style: { flex: 1, maxWidth: 220, accentColor: "#34d399", height: 18, cursor: "pointer" } }),
-    /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "#64748b", width: 30, textAlign: "left" } }, Math.round(musicVol * 100) + "%")
+      style: { flex: 1, maxWidth: 220, accentColor: FARBE.gold, height: 18, cursor: "pointer" } }),
+    /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, width: 38, textAlign: "left" } }, Math.round(musicVol * 100) + "%")
   ), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-    color: "white",
-    border: "1px solid rgba(124,58,237,0.5)",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: 14,
-    cursor: "pointer",
-    letterSpacing: "0.04em",
-    boxShadow: "0 6px 30px rgba(59,130,246,0.35)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 19 }), t('playLocal')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    ...knopf("gold", { padding: "16px", fontSize: 23 })
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 24 }), t('playLocal')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     numPlayersRef.current = 2;
     setNumPlayers(2);
     setMpError("");
@@ -7209,32 +7161,17 @@ window.StackSiegeApp = function StackSiegeApp() {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(34,211,238,0.16))",
-    color: "#e2e8f0",
-    border: "1px solid rgba(16,185,129,0.45)",
-    padding: "15px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
-    cursor: "pointer",
-    boxShadow: "0 4px 22px rgba(16,185,129,0.18)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 18 }), t('playOnline')), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
+    ...knopf("gruen", { padding: "14px", fontSize: 21 }),
+    marginTop: 12
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 22 }), t('playOnline')), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {
     width: "100%",
     marginTop: 10,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 9,
-    background: "rgba(251,191,36,0.1)",
-    color: "#fde68a",
-    border: "1px solid rgba(251,191,36,0.32)",
-    padding: "13px",
-    fontSize: 14,
-    fontWeight: 700,
-    borderRadius: 14,
-    cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 17 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { onClick: () => {
+    ...knopf("blau", { padding: "12px", fontSize: 18 }),
+    marginTop: 12
+  } }, /* @__PURE__ */ React.createElement(Icon, { name: "trophy", size: 20 }), t('lbTitle')), /* @__PURE__ */ React.createElement("p", { onClick: () => {
     // Fuenfmal auf die Versionszeile: Bildraten-Anzeige an/aus. Versteckt,
     // weil sie niemanden stoeren soll, der sie nicht sucht — und ohne
     // Einstellungsmenue, weil sie kein Spiel-Merkmal ist, sondern ein
@@ -7249,12 +7186,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 18, fontSize: 12, color: "#64748b", letterSpacing: "0.08em", fontWeight: 600, cursor: "default" } }, "Stack & Siege \xB7 Version 3.120.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.121.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
     // Plattform-Weiche (ARCHITEKTUR.md E7).
-    !istNativ() && /* @__PURE__ */ React.createElement("div", { key: "recht" }, /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#475569", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink')))), showTutorialIntro && (() => {
+    !istNativ() && /* @__PURE__ */ React.createElement("div", { key: "recht" }, /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink')))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7272,7 +7209,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         gap ? h("path", { d: "M21.5 9 L25.5 3 L29.5 9", stroke: "#ef4444", strokeWidth: 2.4, fill: "none" }) : null
       );
     };
-    const panel = (borderC, bgC, icon, iconC, title, text, svg) => h("div", { style: {
+    const regelKarte = (borderC, bgC, icon, iconC, title, text, svg) => h("div", { style: {
       flex: 1, minWidth: 0, borderRadius: 14, padding: "12px 10px", textAlign: "center",
       background: bgC, border: "1px solid " + borderC
     } },
@@ -7283,25 +7220,21 @@ window.StackSiegeApp = function StackSiegeApp() {
       ),
       h("div", { style: { fontSize: 11.5, color: "#cbd5e1", lineHeight: 1.45 } }, text)
     );
-    return h("div", { key: "tutintro", style: {
-      position: "fixed", inset: 0, zIndex: 1300, background: "rgba(2,6,15,0.93)",
-      backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 16px) calc(var(--sa-right,0px) + 16px) calc(var(--sa-bottom,0px) + 16px) calc(var(--sa-left,0px) + 16px)"
-    } },
+    return h("div", { key: "tutintro", style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 16px) calc(var(--sa-right,0px) + 16px) calc(var(--sa-bottom,0px) + 16px) calc(var(--sa-left,0px) + 16px)" } },
       h("div", { style: {
         maxWidth: 440, width: "100%", maxHeight: "92vh", overflowY: "auto",
-        background: "linear-gradient(160deg,#15082a,#0f1f2e)", border: "1px solid rgba(124,58,237,0.4)",
-        borderRadius: 20, padding: "20px 16px 16px", boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+        ...panel({ padding: "20px 16px 16px" }),
+        
         animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both", textAlign: "center"
       } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 } },
           h(Icon, { name: "target", size: 20, color: "#a78bfa" }),
           h("div", { style: { fontSize: 19, fontWeight: 900, color: "#f1f5f9" } }, t("tutIntroTitle"))
         ),
-        h("div", { style: { fontSize: 12.5, color: "#94a3b8", marginBottom: 14, lineHeight: 1.45 } }, t("tutIntroSub")),
+        h("div", { style: { fontSize: 12.5, color: "#dbe7fb", marginBottom: 14, lineHeight: 1.45 } }, t("tutIntroSub")),
         h("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
-          panel("rgba(74,222,128,0.35)", "rgba(74,222,128,0.06)", "trophy", "#4ade80", t("tutIntroWinTitle"), t("tutIntroWinText"), ringSvg(false)),
-          panel("rgba(239,68,68,0.35)", "rgba(239,68,68,0.06)", "skull", "#f87171", t("tutIntroLoseTitle"), t("tutIntroLoseText"), ringSvg(true))
+          regelKarte("rgba(74,222,128,0.35)", "rgba(74,222,128,0.06)", "trophy", "#4ade80", t("tutIntroWinTitle"), t("tutIntroWinText"), ringSvg(false)),
+          regelKarte("rgba(239,68,68,0.35)", "rgba(239,68,68,0.06)", "skull", "#f87171", t("tutIntroLoseTitle"), t("tutIntroLoseText"), ringSvg(true))
         ),
         h("div", { style: {
           display: "flex", alignItems: "flex-start", gap: 8, textAlign: "left", borderRadius: 12,
@@ -7329,21 +7262,13 @@ window.StackSiegeApp = function StackSiegeApp() {
           h(Icon, { name: "zap", size: 15, color: "#f87171", style: { marginTop: 1 } }),
           h("div", { style: { fontSize: 11.5, color: "#e2e8f0", lineHeight: 1.45 } }, t("tutIntroLeakHint"))
         ),
-        h("button", { onClick: beginTutorialRun, style: {
-          width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff",
-          border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12,
-          cursor: "pointer", marginBottom: 8, boxShadow: "0 4px 20px rgba(124,58,237,0.35)"
-        } }, t("tutIntroGo")),
-        h("button", { onClick: () => setShowTutorialIntro(false), style: {
-          width: "100%", background: "rgba(255,255,255,0.06)", color: "#94a3b8",
-          border: "1px solid rgba(255,255,255,0.12)", padding: "11px", fontSize: 13,
-          fontWeight: 700, borderRadius: 12, cursor: "pointer"
-        } }, t("tutIntroLater"))
+        h("button", { onClick: beginTutorialRun, style: { ...knopf("gold", { fontSize: 19 }), width: "100%", padding: "14px", borderRadius: 12, cursor: "pointer", marginBottom: 8 } }, t("tutIntroGo")),
+        h("button", { onClick: () => setShowTutorialIntro(false), style: { ...knopf("grau", { fontSize: 16 }), width: "100%", padding: "11px", borderRadius: 12, cursor: "pointer" } }, t("tutIntroLater"))
       )
     );
   })(), (showProfileEditor || !profile) && /* @__PURE__ */ React.createElement("div", { style: {    position: "fixed",    inset: 0,
-    background: "rgba(2,6,15,0.93)",
-    backdropFilter: "blur(16px)",
+    background: "rgba(8,16,40,0.72)",
+    backdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "center",
@@ -7357,19 +7282,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     padding: "24px 16px",
     overflowY: "auto"
   } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg,#09152a,#110826)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 20,
-    padding: "14px 14px 14px",
+    ...panel({ padding: "14px 14px 14px" }),
     maxWidth: 400,
     width: "100%",
     textAlign: "center"
   } },
   /* ══ HEADER: AVATAR + NAME + LEVEL + XP ══ */
   /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg,rgba(255,255,255,0.065),rgba(255,255,255,0.02))",
-    border: "1px solid " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "33",
-    borderRadius: 18,
+    ...karte({ borderRadius: 18 }),
     padding: "12px 14px 12px",
     marginBottom: 10
   } },
@@ -7400,7 +7320,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     }),
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 } },
       /* @__PURE__ */ React.createElement(LevelBadge, { level: typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1, size: "lg" }),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: "0.06em" } },
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#c9dbf7", fontWeight: 700, letterSpacing: "0.06em" } },
         getLevelTier(typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1).label
       )
     ),
@@ -7413,7 +7333,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         boxShadow: "0 0 10px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "88"
       } })
     ),
-    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569", fontWeight: 600 } },
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#a9bfe3", fontWeight: 600 } },
       (() => { const l = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1; const x = typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0; return x + " / " + xpToNextLevel(l) + " XP"; })()
     )
   ),
@@ -7426,7 +7346,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     marginBottom: 12
   } },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, React.createElement(Icon, { name: "sparkles", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarGallery')),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em" } }, React.createElement(Icon, { name: "sparkles", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarGallery')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, background: "rgba(124,58,237,0.2)", color: "#a78bfa", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } },
         WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + "/" + WAPPEN.length
       )
@@ -7450,7 +7370,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     ),
     /* @__PURE__ */ React.createElement("div", { style: { height: 1, background: "rgba(255,255,255,0.07)", margin: "0 0 8px" } }),
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#475569", letterSpacing: "0.08em" } }, React.createElement(Icon, { name: "lock", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarLocked')),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#a9bfe3", letterSpacing: "0.08em" } }, React.createElement(Icon, { name: "lock", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarLocked')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "#334155", fontWeight: 600 } },
         "(" + WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + ")"
       )
@@ -7473,7 +7393,7 @@ window.StackSiegeApp = function StackSiegeApp() {
             background: "rgba(2,6,15,0.45)", gap: 2
           } },
             /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 14 }),
-            /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 800, letterSpacing: "0.05em" } }, "L" + reqLevel)
+            /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#dbe7fb", fontWeight: 800, letterSpacing: "0.05em" } }, "L" + reqLevel)
           )
         );
       })
@@ -7496,7 +7416,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           /* @__PURE__ */ React.createElement(WappenAvatar, { id: nextW, size: 40 })
         ),
         /* @__PURE__ */ React.createElement("div", { style: { flex: 1, textAlign: "left" } },
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 } }, t('nextUnlock')),
+          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#c9dbf7", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 } }, t('nextUnlock')),
           /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#e2e8f0", fontWeight: 800, marginBottom: 5 } }, nextW),
           /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" } },
             /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg," + gc + ",#22d3ee)", borderRadius: 2 } })
@@ -7504,7 +7424,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         ),
         /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } },
           /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, color: gc, fontWeight: 900 } }, "L" + reqLvl),
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#475569" } }, t('requiredLabel'))
+          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#a9bfe3" } }, t('requiredLabel'))
         )
       );
     })()
@@ -7537,13 +7457,13 @@ window.StackSiegeApp = function StackSiegeApp() {
       borderRadius: 16, padding: "10px 12px", marginBottom: 12
     } },
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-        h("span", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" } }, h(Icon, { name: "backpack", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invTitle')),
+        h("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em" } }, h(Icon, { name: "backpack", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invTitle')),
         h("span", { style: { fontSize: 10, background: "rgba(251,191,36,0.15)", color: "#fcd34d", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } }, ownedTotal + "")
       ),
       CATS.map(([cat, label]) => {
         const items = COSMETICS[cat].filter((it) => cosmeticOwned(cos, it));
         return h("div", { key: cat, style: { marginBottom: 8 } },
-          h("div", { style: { fontSize: 9, fontWeight: 800, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5, textAlign: "left" } }, label),
+          h("div", { style: { fontSize: 9, fontWeight: 800, color: "#c9dbf7", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5, textAlign: "left" } }, label),
           h("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
             items.map((it) => {
               const equipped = cos.equipped[cat] === it.id;
@@ -7603,10 +7523,10 @@ window.StackSiegeApp = function StackSiegeApp() {
         h(Icon, { name: gesichert ? "shieldCheck" : "cloud", size: 14, color: farbe }),
         h("span", { style: { fontSize: 12, fontWeight: 800, color: helle } },
           t(gesichert ? "cloudOnTitle" : "cloudOffTitle")),
-        cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: "#64748b", marginLeft: "auto" } }, t("cloudSyncing")) : null,
+        cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: "#c9dbf7", marginLeft: "auto" } }, t("cloudSyncing")) : null,
         cloudState === "saved" ? h("span", { style: { fontSize: 9.5, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
       ),
-      h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
+      h("div", { style: { fontSize: 10.5, color: "#dbe7fb", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
         gesichert   ? t("cloudOnSub", { mail: F.mail || "" })
       : garNichts   ? t("cloudNoAuthSub")
       : kontoVerknuepfbar() ? t("cloudOffSub") : t("cloudOffSubApp")),
@@ -7631,15 +7551,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       } }, t("wipeButton"))
     );
   })(),
-  confirmWipe && /* @__PURE__ */ React.createElement("div", { onClick: () => setConfirmWipe(false), style: {
-    position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.8)",
-    display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 22px) calc(var(--sa-right,0px) + 22px) calc(var(--sa-bottom,0px) + 22px) calc(var(--sa-left,0px) + 22px)",
-    backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)"
-  } }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: {
-    maxWidth: 330, width: "100%", background: "linear-gradient(180deg, rgba(48,14,14,0.99), rgba(14,11,20,0.99))",
-    border: "1px solid rgba(248,113,113,0.4)", borderRadius: 18, padding: "18px 16px",
-    textAlign: "center", boxShadow: "0 20px 55px rgba(0,0,0,0.75)"
-  } },
+  confirmWipe && /* @__PURE__ */ React.createElement("div", { onClick: () => setConfirmWipe(false), style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1400, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 22px) calc(var(--sa-right,0px) + 22px) calc(var(--sa-bottom,0px) + 22px) calc(var(--sa-left,0px) + 22px)" } }, /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 330, width: "100%", borderRadius: 18, padding: "18px 16px", textAlign: "center" } },
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 900, color: "#fca5a5", marginBottom: 6 } }, t("wipeTitle")),
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#fecaca", lineHeight: 1.45, marginBottom: 14 } }, t("wipeSub")),
     /* @__PURE__ */ React.createElement("button", { onClick: wipeProgress, style: {
@@ -7647,49 +7559,30 @@ window.StackSiegeApp = function StackSiegeApp() {
       background: "linear-gradient(180deg,#f87171,#b91c1c)", color: "#fff",
       fontSize: 14, fontWeight: 900, marginBottom: 8
     } }, t("wipeConfirm")),
-    /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmWipe(false), style: {
-      width: "100%", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
-      borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.05)",
-      color: "#cbd5e1", fontSize: 13, fontWeight: 700
-    } }, t("cancel"))
+    /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmWipe(false), style: { ...knopf("grau", { fontSize: 16 }), width: "100%", cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("cancel"))
   )),
-  /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: {
-    width: "100%",
-    background: "linear-gradient(135deg,#7c3aed,#0284c7)",
-    color: "white", border: "none",
-    padding: "16px",
-    fontSize: 16, fontWeight: 900,
-    borderRadius: 12,
-    cursor: "pointer",
-    letterSpacing: "0.06em",
-    boxShadow: "0 4px 24px rgba(124,58,237,0.45),0 1px 0 rgba(255,255,255,0.15) inset",
-    marginBottom: profile ? 10 : 0,
-    textTransform: "uppercase"
-  } }, React.createElement(Icon, { name: profile ? "save" : "swords", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), profile ? t('profileSave') : t('profileCreate')),
+  /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: { ...knopf("lila", { fontSize: 19 }), width: "100%", padding: "16px", borderRadius: 12, cursor: "pointer", marginBottom: profile ? 10 : 0, textTransform: "uppercase" } }, React.createElement(Icon, { name: profile ? "save" : "swords", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), profile ? t('profileSave') : t('profileCreate')),
   profile && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowProfileEditor(false), style: {
-    background: "transparent", color: "#475569",
+    background: "transparent", color: "#a9bfe3",
     border: "none", fontSize: 13, cursor: "pointer",
     padding: "4px 12px", letterSpacing: "0.02em"
   } }, t('cancel')))), showLeaderboard && /* @__PURE__ */ React.createElement("div", { style: {
     position: "fixed",
     inset: 0,
-    background: "rgba(5,8,15,0.94)",
+    background: "rgba(8,16,40,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1100,
     padding: 20
   } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg,#0f1f2e,#15082a)",
-    border: "1px solid rgba(202,138,4,0.3)",
-    borderRadius: 16,
-    padding: 22,
+    ...panel({ padding: 22 }),
     maxWidth: 420,
     width: "100%",
     maxHeight: "85vh",
     display: "flex",
     flexDirection: "column"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("h2", { style: { margin: 0, fontSize: 20 } }, t('lbTitle')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowLeaderboard(false), style: {
+  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: 0 } }, t('lbTitle')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowLeaderboard(false), style: {
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.15)",
     color: "#cbd5e1",
@@ -7697,17 +7590,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     padding: "6px 12px",
     fontSize: 14,
     cursor: "pointer"
-  } }, "\u2715")), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 12, margin: "0 0 10px" } }, t('lbSubtitle')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => switchLbMode(m), style: {
-    flex: 1,
-    padding: "8px",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 700,
-    background: lbMode === m ? "rgba(202,138,4,0.25)" : "rgba(255,255,255,0.05)",
-    color: lbMode === m ? "#fde68a" : "#94a3b8",
-    border: lbMode === m ? "1px solid rgba(202,138,4,0.5)" : "1px solid rgba(255,255,255,0.1)"
-  } }, m === 2 ? t('local2p') : React.createElement("span", null, React.createElement(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), lbFehler && /* @__PURE__ */ React.createElement("div", { "data-lb-fehler": "1", style: { color: "#f59e0b", textAlign: "center", padding: "24px 12px", fontSize: 14, lineHeight: 1.5 } }, lbFehler), leaderboard && leaderboard.length === 0 && !lbFehler && /* @__PURE__ */ React.createElement("div", { style: { color: "#64748b", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
+  } }, "\u2715")), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 12, margin: "0 0 10px" } }, t('lbSubtitle')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => switchLbMode(m), style: {
+    ...schalter(lbMode === m, "gold", { flex: 1, padding: "8px", fontSize: 16 })
+  } }, m === 2 ? t('local2p') : React.createElement("span", null, React.createElement(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#c9dbf7", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), lbFehler && /* @__PURE__ */ React.createElement("div", { "data-lb-fehler": "1", style: { color: "#f59e0b", textAlign: "center", padding: "24px 12px", fontSize: 14, lineHeight: 1.5 } }, lbFehler), leaderboard && leaderboard.length === 0 && !lbFehler && /* @__PURE__ */ React.createElement("div", { style: { color: "#c9dbf7", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
     const isMe = profile && e.id === profile.id;
     const medalCol = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : null;
     const medal = medalCol ? React.createElement(Icon, { name: "medal", size: 16, color: medalCol }) : `${i + 1}.`;
@@ -7720,7 +7605,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       borderRadius: 10,
       padding: "9px 11px",
       marginBottom: 6
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: "#94a3b8", width: 28, textAlign: "center", flexShrink: 0 } }, medal), /* @__PURE__ */ React.createElement("div", { style: {
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: "#dbe7fb", width: 28, textAlign: "center", flexShrink: 0 } }, medal), /* @__PURE__ */ React.createElement("div", { style: {
       width: 34,
       height: 34,
       borderRadius: 9,
@@ -7730,7 +7615,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       alignItems: "center",
       justifyContent: "center",
       fontSize: 18
-    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && t('youSuffix')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, e.wins, " " + t('winsLabel') + " \xB7 ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#475569" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {    marginTop: 12,
+    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && t('youSuffix')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#c9dbf7" } }, e.wins, " " + t('winsLabel') + " \xB7 ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#a9bfe3" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {    marginTop: 12,
     background: "rgba(255,255,255,0.06)",
     color: "#cbd5e1",
     border: "1px solid rgba(255,255,255,0.12)",
@@ -7752,16 +7637,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   // ── Material-Toast (v3.68.0) ──────────────────────────────
   // Liegt ueber allen Modals, damit die Einblendung auch beim Abholen einer
   // Aufgabe oder der Tag-7-Kiste sichtbar ist.
-  matToast && React.createElement("div", { style: {
-    position: "fixed", left: "50%", transform: "translateX(-50%)",
-    bottom: "calc(var(--sa-bottom, 0px) + 26px)", zIndex: 1400,
-    display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
-    borderRadius: 999, pointerEvents: "none",
-    background: "linear-gradient(180deg, rgba(48,30,12,0.97), rgba(14,11,20,0.97))",
-    border: "1px solid rgba(251,146,60,0.5)",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.6), 0 0 22px rgba(251,146,60,0.25)",
-    animation: "dailyBounceIn 0.32s cubic-bezier(.36,1.5,.56,1) both"
-  } },
+  matToast && React.createElement("div", { style: { ...panel(), position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(var(--sa-bottom, 0px) + 26px)", zIndex: 1400, display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 999, pointerEvents: "none", animation: "dailyBounceIn 0.32s cubic-bezier(.36,1.5,.56,1) both" } },
     React.createElement(Icon, { name: "hammer", size: 15, color: "#fdba74" }),
     React.createElement("span", { style: { fontSize: 11.5, fontWeight: 800, color: "#fdba74" } }, t("matEarned")),
     React.createElement(MatRow, { t, vals: matToast, nurPositive: true, plus: true, size: 12, gap: 8 })
@@ -7770,23 +7646,13 @@ window.StackSiegeApp = function StackSiegeApp() {
   showTasksModal && (() => {
     const h = React.createElement;
     const allDone = tasksState.tasks.every((tk) => tk.collected);
-    return h("div", { onClick: () => setShowTasksModal(false), style: {
-      position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
-      backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)"
-    } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: {
-        maxWidth: 400, width: "100%",
-        background: "linear-gradient(180deg, rgba(30,41,66,0.98) 0%, rgba(11,16,30,0.99) 100%)",
-        border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "18px 16px 16px",
-        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
-        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
-      } },
+    return h("div", { onClick: () => setShowTasksModal(false), style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1450, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 400, width: "100%", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
           h(Icon, { name: "clipboard", size: 17, color: "#34d399" }),
           h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("tasksTitle"))
         ),
-        h("div", { style: { fontSize: 11.5, color: "#64748b", marginBottom: 14 } }, t("tasksSub")),
+        h("div", { style: { fontSize: 11.5, color: "#c9dbf7", marginBottom: 14 } }, t("tasksSub")),
         h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 6 } },
           tasksState.tasks.map((tk) => {
             const def = taskDef(tk.id);
@@ -7811,7 +7677,7 @@ window.StackSiegeApp = function StackSiegeApp() {
                   h("div", { style: { flex: 1, height: 5, borderRadius: 999, background: "rgba(0,0,0,0.4)", overflow: "hidden" } },
                     h("div", { style: { width: Math.round(frac * 100) + "%", height: "100%", borderRadius: 999, background: tk.collected ? "#4ade80" : ready ? "linear-gradient(90deg,#34d399,#10b981)" : "linear-gradient(90deg,#60a5fa,#818cf8)", transition: "width 0.4s ease" } })
                   ),
-                  h("span", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", flexShrink: 0 } }, prog + "/" + def.target)
+                  h("span", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", flexShrink: 0 } }, prog + "/" + def.target)
                 )
               ),
               tk.collected
@@ -7832,11 +7698,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           })
         ),
         allDone && h("div", { style: { fontSize: 11.5, color: "#4ade80", fontWeight: 700, textAlign: "center", margin: "6px 0 2px" } }, t("tasksAllDone")),
-        h("button", { onClick: () => setShowTasksModal(false), style: {
-          width: "100%", marginTop: 10, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
-          borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.06)",
-          color: "#cbd5e1", fontSize: 13, fontWeight: 700
-        } }, t("close"))
+        h("button", { onClick: () => setShowTasksModal(false), style: { ...knopf("grau", { fontSize: 16 }), width: "100%", marginTop: 10, cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("close"))
       )
     );
   })(),
@@ -7886,7 +7748,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       } }, h(Icon, { name: wi.name, size: 16, color: wi.c }));
     };
     const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 13 } },
-      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 7, textAlign: "left" } }, label),
+      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 7, textAlign: "left" } }, label),
       h("div", { style: { display: "flex", gap: 6 } },
         COSMETICS[cat].map((it) => {
           const owned = cosmeticOwned(cos, it);
@@ -7908,24 +7770,14 @@ window.StackSiegeApp = function StackSiegeApp() {
             equipped
               ? h("span", { style: { fontSize: 8, fontWeight: 900, color: "#34d399" } }, t("cosEquipped"))
               : owned
-                ? h("span", { style: { fontSize: 8, fontWeight: 800, color: "#94a3b8" } }, t("cosOwned"))
+                ? h("span", { style: { fontSize: 8, fontWeight: 800, color: "#dbe7fb" } }, t("cosOwned"))
                 : h("span", { style: { fontSize: 9, fontWeight: 900, color: afford ? "#fcd34d" : "#64748b" } }, it.price + " G")
           );
         })
       )
     );
-    return h("div", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: {
-      position: "fixed", inset: 0, zIndex: 1450, background: "rgba(2,6,15,0.9)",
-      backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)"
-    } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: {
-        maxWidth: 420, width: "100%", maxHeight: "88vh", overflowY: "auto",
-        background: "linear-gradient(180deg, rgba(30,41,66,0.98) 0%, rgba(11,16,30,0.99) 100%)",
-        border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "18px 16px 16px",
-        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
-        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
-      } },
+    return h("div", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1450, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 420, width: "100%", maxHeight: "88vh", overflowY: "auto", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
             h(Icon, { name: "shoppingCart", size: 17, color: "#fbbf24" }),
@@ -7938,47 +7790,33 @@ window.StackSiegeApp = function StackSiegeApp() {
             boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7)"
           } }, h("span", { style: { fontSize: 13, fontWeight: 900, color: "#3b2606" } }, gold + " G"))
         ),
-        h("div", { style: { fontSize: 11.5, color: "#64748b", marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
+        h("div", { style: { fontSize: 11.5, color: "#c9dbf7", marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
         section("cannon", t("cosSectionCannon")),
         section("trail", t("cosSectionTrail")),
         section("frame", t("cosSectionFrame")),
         section("win", t("cosSectionWin")),
-        h("button", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: {
-          width: "100%", marginTop: 4, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
-          borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.06)",
-          color: "#cbd5e1", fontSize: 13, fontWeight: 700
-        } }, t("close"))
+        h("button", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: { ...knopf("grau", { fontSize: 16 }), width: "100%", marginTop: 4, cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("close"))
       ),
       // ── Kauf-Bestätigung (v3.26.2): Overlay über dem Shop ──
       confirmBuy && (() => {
         const it = confirmBuy.item, cat = confirmBuy.cat;
         const canPay = gold >= it.price;
-        return h("div", { onClick: (e) => { e.stopPropagation(); setConfirmBuy(null); }, style: {
-          position: "fixed", inset: 0, zIndex: 1470, background: "rgba(2,6,15,0.75)",
-          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 24px) calc(var(--sa-right,0px) + 24px) calc(var(--sa-bottom,0px) + 24px) calc(var(--sa-left,0px) + 24px)"
-        } },
-          h("div", { onClick: (e) => e.stopPropagation(), style: {
-            maxWidth: 320, width: "100%", textAlign: "center",
-            background: "linear-gradient(180deg, rgba(38,50,78,0.99) 0%, rgba(13,18,33,0.99) 100%)",
-            border: "1px solid rgba(251,191,36,0.35)", borderRadius: 18, padding: "20px 18px 16px",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.12)",
-            animation: "dailyBounceIn 0.32s cubic-bezier(.36,1.5,.56,1) both"
-          } },
+        return h("div", { onClick: (e) => { e.stopPropagation(); setConfirmBuy(null); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1470, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 24px) calc(var(--sa-right,0px) + 24px) calc(var(--sa-bottom,0px) + 24px) calc(var(--sa-left,0px) + 24px)" } },
+          h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 320, width: "100%", textAlign: "center", borderRadius: 18, padding: "20px 18px 16px", animation: "dailyBounceIn 0.32s cubic-bezier(.36,1.5,.56,1) both" } },
             h("div", { style: { display: "flex", justifyContent: "center", marginBottom: 10 } }, preview(cat, it)),
             h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", marginBottom: 3 } }, t("cos_" + it.id)),
-            h("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 12 } }, t("confirmBuyQuestion")),
+            h("div", { style: { fontSize: 12, color: "#dbe7fb", marginBottom: 12 } }, t("confirmBuyQuestion")),
             h("div", { style: {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 15,
               padding: "8px 10px", borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)"
             } },
               h("div", null,
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#c9dbf7", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
                 h("div", { style: { fontSize: 15, fontWeight: 900, color: "#fcd34d" } }, it.price + " G")
               ),
               h("div", { style: { width: 1, height: 26, background: "rgba(255,255,255,0.1)" } }),
               h("div", null,
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#c9dbf7", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
                 h("div", { style: { fontSize: 15, fontWeight: 900, color: canPay ? "#e2e8f0" : "#ef4444" } }, (gold - it.price) + " G")
               )
             ),
@@ -7989,11 +7827,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               boxShadow: canPay ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 14px rgba(245,158,11,0.4)" : "none",
               marginBottom: 8
             } }, "✓ " + t("confirmBuyYes")),
-            h("button", { onClick: () => setConfirmBuy(null), style: {
-              width: "100%", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
-              borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.05)",
-              color: "#cbd5e1", fontSize: 13, fontWeight: 700
-            } }, t("cancel"))
+            h("button", { onClick: () => setConfirmBuy(null), style: { ...knopf("grau", { fontSize: 16 }), width: "100%", cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("cancel"))
           )
         );
       })()
@@ -8168,22 +8002,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       );
     };
     const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 12 } },
-      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, textAlign: "left" } }, label),
+      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, textAlign: "left" } }, label),
       cat !== "trail" ? stdCard(cat) : null,
       RECIPES.filter((r) => r.cat === cat).map(recipeCard)
     );
-    return h("div", { key: "forgeModal", onClick: () => { setShowForge(false); setConfirmCraft(null); }, style: {
-      position: "fixed", inset: 0, zIndex: 1150, background: "rgba(2,6,15,0.92)",
-      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 14px) calc(var(--sa-right,0px) + 14px) calc(var(--sa-bottom,0px) + 14px) calc(var(--sa-left,0px) + 14px)"
-    } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: {
-        maxWidth: 440, width: "100%", maxHeight: "90vh", overflowY: "auto",
-        background: "linear-gradient(180deg, rgba(40,26,12,0.98) 0%, rgba(12,10,18,0.99) 100%)",
-        border: "1px solid rgba(251,146,60,0.25)", borderRadius: 20, padding: "16px 14px 13px",
-        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)",
-        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left"
-      } },
+    return h("div", { key: "forgeModal", onClick: () => { setShowForge(false); setConfirmCraft(null); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1150, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 14px) calc(var(--sa-right,0px) + 14px) calc(var(--sa-bottom,0px) + 14px) calc(var(--sa-left,0px) + 14px)" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 440, width: "100%", maxHeight: "90vh", overflowY: "auto", borderRadius: 20, padding: "16px 14px 13px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
             h(Icon, { name: "hammer", size: 18, color: "#fdba74" }),
@@ -8195,7 +8019,7 @@ window.StackSiegeApp = function StackSiegeApp() {
             border: "1px solid rgba(255,255,255,0.5)", boxShadow: "0 2px 9px rgba(245,158,11,0.45)"
           } }, h(Icon, { name: "coins", size: 13, color: "#3b2606" }), h("span", { style: { fontSize: 13, fontWeight: 900, color: "#3b2606" } }, gold))
         ),
-        h("div", { style: { fontSize: 11, color: "#94a3b8", marginBottom: 11, lineHeight: 1.4 } }, t("forgeSub")),
+        h("div", { style: { fontSize: 11, color: "#dbe7fb", marginBottom: 11, lineHeight: 1.4 } }, t("forgeSub")),
         h("div", { style: { marginBottom: 12, padding: "8px 10px", borderRadius: 12, background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)" } },
           h("div", { style: { fontSize: 9.5, fontWeight: 800, color: "#fdba74", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("forgeMats")),
           h("div", { style: { display: "flex", gap: 5, flexWrap: "wrap" } },
@@ -8208,7 +8032,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               mats[k] || 0
             ))
           ),
-          h("div", { style: { fontSize: 9, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
+          h("div", { style: { fontSize: 9, color: "#c9dbf7", marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
           // Klartext, wie viele Rezepte gerade drin sind (v3.68.0)
           h("div", { style: {
             fontSize: 10, fontWeight: 800, marginTop: 5,
@@ -8218,25 +8042,12 @@ window.StackSiegeApp = function StackSiegeApp() {
         section("cannon", t("forgeCatCannon")),
         section("impact", t("forgeCatImpact")),
         section("trail", t("forgeCatTrail")),
-        h("button", { onClick: () => setShowForge(false), style: {
-          width: "100%", cursor: "pointer", borderRadius: 12, padding: "11px", marginTop: 2,
-          background: "rgba(255,255,255,0.08)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.14)",
-          fontSize: 13.5, fontWeight: 800
-        } }, t("shopInfoClose")),
+        h("button", { onClick: () => setShowForge(false), style: { ...knopf("grau", {}), width: "100%", cursor: "pointer", borderRadius: 12, padding: "11px", marginTop: 2 } }, t("shopInfoClose")),
         // Schmiede-Bestätigung (analog Kauf-Bestätigung v3.26.2)
         confirmCraft && (() => {
           const rec = confirmCraft;
-          return h("div", { onClick: () => setConfirmCraft(null), style: {
-            position: "fixed", inset: 0, zIndex: 1250, background: "rgba(2,6,15,0.75)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 22px) calc(var(--sa-right,0px) + 22px) calc(var(--sa-bottom,0px) + 22px) calc(var(--sa-left,0px) + 22px)",
-            backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)"
-          } },
-            h("div", { onClick: (e) => e.stopPropagation(), style: {
-              maxWidth: 330, width: "100%", background: "linear-gradient(180deg, rgba(48,30,12,0.99), rgba(14,11,20,0.99))",
-              border: "1px solid rgba(251,146,60,0.35)", borderRadius: 18, padding: "18px 16px",
-              boxShadow: "0 20px 55px rgba(0,0,0,0.75)", textAlign: "center",
-              animation: "dailyBounceIn 0.3s cubic-bezier(.36,1.5,.56,1) both"
-            } },
+          return h("div", { onClick: () => setConfirmCraft(null), style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1250, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 22px) calc(var(--sa-right,0px) + 22px) calc(var(--sa-bottom,0px) + 22px) calc(var(--sa-left,0px) + 22px)" } },
+            h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 330, width: "100%", borderRadius: 18, padding: "18px 16px", textAlign: "center", animation: "dailyBounceIn 0.3s cubic-bezier(.36,1.5,.56,1) both" } },
               h("div", { style: { display: "flex", justifyContent: "center", marginBottom: 8 } }, preview(rec)),
               h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", marginBottom: 3 } }, t("cos_" + rec.id)),
               h("div", { style: { fontSize: 12, fontWeight: 800, color: "#fdba74", marginBottom: 10 } }, t("confirmCraftTitle")),
@@ -8250,11 +8061,7 @@ window.StackSiegeApp = function StackSiegeApp() {
                 fontSize: 14, fontWeight: 900, letterSpacing: "0.03em", marginBottom: 8,
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 14px rgba(234,88,12,0.4)"
               } }, "✓ " + t("confirmCraftYes")),
-              h("button", { onClick: () => setConfirmCraft(null), style: {
-                width: "100%", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
-                borderRadius: 12, padding: "10px", background: "rgba(255,255,255,0.05)",
-                color: "#cbd5e1", fontSize: 13, fontWeight: 700
-              } }, t("cancel"))
+              h("button", { onClick: () => setConfirmCraft(null), style: { ...knopf("grau", { fontSize: 16 }), width: "100%", cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("cancel"))
             )
           );
         })()
@@ -8275,66 +8082,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     key: "reveal_" + craftReveal.id,
     rec: craftReveal,
     onClose: () => setCraftReveal(null)
-  }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(2,6,15,0.78)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1e3,
-    padding: 20
-  } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(165deg, rgba(16,32,54,0.85), rgba(8,18,37,0.9))",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 20,
-    padding: 28,
-    maxWidth: 380,
-    width: "100%",
-    textAlign: "center",
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-    boxShadow: "0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
-  } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => startGuidedTutorial(), style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg,#7c3aed,#db2777)",
-    color: "white",
-    border: "1px solid rgba(219,39,119,0.5)",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 10,
-    letterSpacing: "0.03em",
-    boxShadow: "0 6px 26px rgba(124,58,237,0.3)"
-  } }, React.createElement(Icon, { name: "gradCap", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg,#0891b2,#16a34a)",
-    color: "white",
-    border: "1px solid rgba(34,197,94,0.5)",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: botSelect ? "14px 14px 0 0" : 14,
-    cursor: "pointer",
-    marginBottom: botSelect ? 0 : 10,
-    letterSpacing: "0.03em",
-    boxShadow: "0 6px 26px rgba(8,145,178,0.3)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 18 }), t('vsBot')), botSelect && /* @__PURE__ */ React.createElement("div", { style: {
-    display: "flex", gap: 6, marginBottom: 10, padding: "8px",
-    background: "rgba(8,145,178,0.12)", border: "1px solid rgba(34,197,94,0.3)",
-    borderRadius: "0 0 14px 14px", borderTop: "none"
+  }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1e3, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 28, maxWidth: 380, width: "100%", textAlign: "center" } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => startGuidedTutorial(), style: { ...knopf("lila", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, React.createElement(Icon, { name: "gradCap", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: { ...knopf("gruen", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 18 }), t('vsBot')), botSelect && /* @__PURE__ */ React.createElement("div", { style: {
+    display: "flex", gap: 8, marginBottom: 12, marginTop: 10
   } }, [
     { k: "easy", icon: "moon", label: t('botLvlEasy') },
     { k: "mid", icon: "swords", label: t('botLvlMid') },
@@ -8352,69 +8101,21 @@ window.StackSiegeApp = function StackSiegeApp() {
     setNumPlayers(2);
     setMpScreen(null);
     fullReset();
-  }, style: {
-    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-    background: "rgba(255,255,255,0.06)",
-    color: "white", border: "1px solid rgba(255,255,255,0.12)",
-    padding: "10px 4px", fontSize: 13, fontWeight: 800, borderRadius: 10, cursor: "pointer"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: lv.icon, size: 17 }), lv.label))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  }, style: knopf("blau", { flex: 1, flexDirection: "column", gap: 3, padding: "10px 4px", fontSize: 16, borderRadius: 14 }) }, /* @__PURE__ */ React.createElement(Icon, { name: lv.icon, size: 20 }), lv.label))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     botMode.current = false;
     numPlayersRef.current = 2;
     setNumPlayers(2);
     setMpScreen(null);
     fullReset();
-  }, style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-    color: "white",
-    border: "1px solid rgba(124,58,237,0.5)",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 10,
-    letterSpacing: "0.03em",
-    boxShadow: "0 6px 26px rgba(59,130,246,0.3)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 18 }), t('local2p')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  }, style: { ...knopf("gold", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 18 }), t('local2p')), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     online.current = false;
     botMode.current = false;
     numPlayersRef.current = 3;
     setNumPlayers(3);
     setMpScreen(null);
     fullReset();
-  }, style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg,#7c3aed,#0891b2)",
-    color: "white",
-    border: "1px solid rgba(124,58,237,0.5)",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 16,
-    letterSpacing: "0.03em",
-    boxShadow: "0 6px 26px rgba(124,58,237,0.3)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 18 }), t('local3p')), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen(null), style: {
-    width: "100%",
-    background: "transparent",
-    color: "#64748b",
-    border: "1px solid rgba(255,255,255,0.1)",
-    padding: "12px",
-    fontSize: 14,
-    borderRadius: 12,
-    cursor: "pointer"
-  } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { fontSize: 11, lineHeight: 1.6, marginBottom: 14, padding: "8px 10px", borderRadius: 8, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(51,65,85,0.6)", color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? "#64748b" : "#f59e0b", letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.online === false ? " \u00B7 navigator.onLine=false" : "", netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
+  }, style: { ...knopf("lila", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 18 }), t('local3p')), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen(null), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "12px", borderRadius: 12, cursor: "pointer" } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { ...karte({ padding: "7px 10px", borderRadius: 10 }), fontSize: 11, lineHeight: 1.6, marginBottom: 14, color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? "#c9dbf7" : FARBE.gold, letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.online === false ? " \u00B7 navigator.onLine=false" : "", netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
     background: "rgba(245,158,11,0.12)",
     border: "1px solid rgba(245,158,11,0.3)",
     borderRadius: 8,
@@ -8423,74 +8124,12 @@ window.StackSiegeApp = function StackSiegeApp() {
     color: "#fbbf24",
     marginBottom: 16,
     lineHeight: 1.5
-  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
+  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#c9dbf7", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
     numPlayersRef.current = m;
     setNumPlayers(m);
-  }, style: {
-    flex: 1,
-    padding: "11px",
-    borderRadius: 10,
-    cursor: "pointer",
-    fontSize: 14,
-    fontWeight: 700,
-    background: numPlayers === m ? "rgba(34,211,238,0.18)" : "rgba(255,255,255,0.05)",
-    color: numPlayers === m ? "#67e8f9" : "#94a3b8",
-    border: numPlayers === m ? "1px solid rgba(34,211,238,0.55)" : "1px solid rgba(255,255,255,0.1)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: m === 2 ? "swords" : "crown", size: 15 }), m === 2 ? t('local2p') : t('online3p')))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    background: "linear-gradient(135deg,#f59e0b,#ec4899)",
-    color: "white",
-    border: "1px solid rgba(236,72,153,0.5)",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 800,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 8,
-    letterSpacing: "0.03em",
-    boxShadow: "0 6px 26px rgba(245,158,11,0.3)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 19 }), t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: "#475569", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#475569" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    background: "linear-gradient(135deg,#2563eb,#0891b2)",
-    color: "white",
-    border: "1px solid rgba(8,145,178,0.5)",
-    padding: "15px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 10,
-    boxShadow: "0 4px 20px rgba(37,99,235,0.25)"
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 17 }), `${t('createGame', {n: numPlayers})}`), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    background: "rgba(255,255,255,0.06)",
-    color: "#e2e8f0",
-    border: "1px solid rgba(255,255,255,0.14)",
-    padding: "14px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 16
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 16 }), t('joinGameBtn')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  }, style: schalter(numPlayers === m, "blau", { flex: 1, padding: "11px", fontSize: 17 }) }, /* @__PURE__ */ React.createElement(Icon, { name: m === 2 ? "swords" : "crown", size: 15 }), m === 2 ? t('local2p') : t('online3p')))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: { ...knopf("gold", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 19 }), t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: "#a9bfe3", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#a9bfe3" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: { ...knopf("gold", { fontSize: 18 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "15px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 17 }), `${t('createGame', {n: numPlayers})}`), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: { ...knopf("grau", { fontSize: 18 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 16 }), t('joinGameBtn')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
-    color: "#64748b",
+    color: "#c9dbf7",
     border: "none",
     fontSize: 13,
     cursor: "pointer",
@@ -8504,7 +8143,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     justifyContent: "center",
     animation: "radarSpin 3s linear infinite",
     filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))"
-  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("button", {
+  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("button", {
     // Der Bot war bis v3.79.0 nur ein HINWEIS mit Countdown: "in 47 s spielst
     // du gegen den Bot". Bei zehn aktiven Spielern ist die Schlange fast immer
     // leer, und niemand sieht einem Suchbildschirm 60 Sekunden zu — die Suche
@@ -8531,19 +8170,9 @@ window.StackSiegeApp = function StackSiegeApp() {
         flexShrink: 0, fontSize: 9, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.12em",
         background: "rgba(34,211,238,0.14)", borderRadius: 6, padding: "3px 7px", marginTop: 1
       } }, React.createElement(Icon, { name: "lightbulb", size: 12, style: { verticalAlign: "-2px", marginRight: 4 } }), t('queueTipLabel')),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#94a3b8", lineHeight: 1.45 } }, t('queueTip_' + tipIdx))
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#dbe7fb", lineHeight: 1.45 } }, t('queueTip_' + tipIdx))
     );
-  })(), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: cancelMatchmaking, style: {
-    width: "100%",
-    background: "rgba(255,255,255,0.08)",
-    color: "#e2e8f0",
-    border: "1px solid rgba(255,255,255,0.15)",
-    padding: "14px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 10,
-    cursor: "pointer"
-  } }, t('cancelSearch'))), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 14px", fontSize: 20 } }, t('enterCode')), /* @__PURE__ */ React.createElement(
+  })(), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: cancelMatchmaking, style: { ...knopf("grau", { fontSize: 18 }), width: "100%", padding: "14px", borderRadius: 10, cursor: "pointer" } }, t('cancelSearch'))), mpScreen === "joining" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 14px" } }, t('enterCode')), /* @__PURE__ */ React.createElement(
     "input",
     {
       value: mpInput,
@@ -8565,39 +8194,17 @@ window.StackSiegeApp = function StackSiegeApp() {
         fontFamily: "monospace"
       }
     }
-  ), /* @__PURE__ */ React.createElement("button", { onClick: pasteCode, style: {
-    width: "100%",
-    background: "rgba(255,255,255,0.08)",
-    color: "#cbd5e1",
-    border: "1px solid rgba(255,255,255,0.15)",
-    padding: "11px",
-    fontSize: 14,
-    fontWeight: 600,
-    borderRadius: 10,
-    cursor: "pointer",
-    marginBottom: 12
-  } }, React.createElement(Icon, { name: "clipboard", size: 14, style: { verticalAlign: "-2px", marginRight: 6 } }), t('pasteCode')), pasteError && /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontSize: 11, marginBottom: 10 } }, pasteError), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: {
-    width: "100%",
-    background: "linear-gradient(135deg,#059669,#0284c7)",
-    color: "white",
-    border: "none",
-    padding: "15px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 10,
-    cursor: "pointer",
-    marginBottom: 12
-  } }, t('join')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+  ), /* @__PURE__ */ React.createElement("button", { onClick: pasteCode, style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "11px", borderRadius: 10, cursor: "pointer", marginBottom: 12 } }, React.createElement(Icon, { name: "clipboard", size: 14, style: { verticalAlign: "-2px", marginRight: 6 } }), t('pasteCode')), pasteError && /* @__PURE__ */ React.createElement("div", { style: { color: "#fbbf24", fontSize: 11, marginBottom: 10 } }, pasteError), /* @__PURE__ */ React.createElement("button", { onClick: guestJoinGame, style: { ...knopf("gruen", { fontSize: 18 }), width: "100%", padding: "15px", borderRadius: 10, cursor: "pointer", marginBottom: 12 } }, t('join')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     setMpScreen("online");
     setMpError("");
   }, style: {
     background: "transparent",
-    color: "#64748b",
+    color: "#c9dbf7",
     border: "none",
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center", animation: "glowpulse 1.6s ease-in-out infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "hourglass", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center", animation: "glowpulse 1.6s ease-in-out infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "hourglass", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -8627,9 +8234,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     fontWeight: 700,
     transition: "all 0.2s",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-  } }, codeCopied ? t('copied') : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Icon, { name: "share", size: 16 }), t('inviteFriend'))), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? t('waitFor', {count: (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0), total: 2}) : t('gameStartsAuto'))), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 18 } }, t('guestJoined', {n: myRole.current === 2 ? "2 ♚" : "3 ♜"}), /* @__PURE__ */ React.createElement("br", null), t('waitFirstState'), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, t('startsAuto'))), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  } }, codeCopied ? t('copied') : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Icon, { name: "share", size: 16 }), t('inviteFriend'))), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? t('waitFor', {count: (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0), total: 2}) : t('gameStartsAuto'))), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 18 } }, t('guestJoined', {n: myRole.current === 2 ? "2 ♚" : "3 ♜"}), /* @__PURE__ */ React.createElement("br", null), t('waitFirstState'), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, t('startsAuto'))), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
-    color: "#64748b",
+    color: "#c9dbf7",
     border: "none",
     fontSize: 13,
     cursor: "pointer",
@@ -8651,17 +8258,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     const myName = myPI ? myPI.name : (profile ? profile.name : null);
     const myWap = (myPI ? myPI.wappen : null) || (profile ? profile.wappen : null) || "skelett";
     // Einheitlicher Karten-Stil (ELO / Gold / XP)
-    const card = (r, g, b) => ({
-      background: "rgba(" + r + "," + g + "," + b + ",0.09)",
-      border: "1px solid rgba(" + r + "," + g + "," + b + ",0.28)",
-      borderRadius: 14,
-      padding: "11px 18px",
-      boxShadow: "0 2px 18px rgba(" + r + "," + g + "," + b + ",0.12)",
-      textAlign: "center"
+    // Comic-Karte (v3.121.0): Panel-Stil, Akzentfarbe als farbiger Innenrand
+    const card = (r, g, b) => panel({
+      padding: "11px 18px", textAlign: "center", borderRadius: 18,
+      boxShadow: "inset 0 0 0 3px rgb(" + r + "," + g + "," + b + "), 0 5px 0 #1b0f06, 0 10px 22px rgba(0,0,0,0.45)"
     });
-    const LABEL = { fontSize: 9, color: "#64748b", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 };
+    const LABEL = { fontSize: 11, color: "#dbe7fb", letterSpacing: "0.08em", fontFamily: SCHRIFT_TITEL, textTransform: "uppercase", marginBottom: 5, textShadow: "0 1px 0 #1b0f06" };
     return React.createElement("div", { className: "gross-schirm", style: {
-      background: "radial-gradient(ellipse at 50% 5%,#180f30 0%,#06080f 65%)",
+      ...bildHintergrund("menu-hintergrund.jpg"),
       // Siehe Spiel-Huelle: 100% des bereits verkuerzten Koerpers, nicht 100dvh.
       // "safe center" zentriert nur, SOLANGE der Inhalt passt; wird er hoeher
       // (3 Spieler, Level-Aufstieg, langer Name), rutscht er auf flex-start
@@ -8673,8 +8277,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "safe center",
-      fontFamily: "'Segoe UI',system-ui,sans-serif",
-      color: "#e2e8f0",
+      fontFamily: SCHRIFT_TEXT,
+      color: FARBE.text,
       padding: "14px 18px",
       textAlign: "center",
       overflowY: "auto"
@@ -8709,17 +8313,17 @@ window.StackSiegeApp = function StackSiegeApp() {
         filter: "blur(8px)", pointerEvents: "none"
       }}),
       React.createElement("div", { style: {
-        color: drawn ? "#fbbf24" : wonState ? "#fbbf24" : "#ef4444",
-        filter: "drop-shadow(0 0 24px currentColor)",
+        color: drawn ? "#ffd23a" : wonState ? "#ffd23a" : "#ef4b34",
+        filter: "drop-shadow(0 3px 0 #1b0f06) drop-shadow(0 0 18px rgba(255,210,58,0.5))",
         animation: "trophyPop 0.65s cubic-bezier(.2,1.5,.4,1) both"
       }}, React.createElement(Icon, { name: drawn ? "swords" : wonState ? "trophy" : "x", size: wonState && !drawn ? 82 : 70 }))
     ),
     // ── SIEG / NIEDERLAGE TEXT ────────────────────────────────
     React.createElement("div", { style: {
-      fontSize: wonState && !drawn ? "clamp(28px,7.5vw,36px)" : "clamp(24px,6.5vw,30px)", fontWeight: 900, marginBottom: 3,
-      letterSpacing: "-0.01em",
-      color: drawn ? "#fbbf24" : wonState ? "#fbbf24" : "#ef4444",
-      textShadow: wonState || drawn ? "0 0 36px rgba(251,191,36,0.45)" : "0 0 22px rgba(239,68,68,0.4)",
+      fontSize: wonState && !drawn ? "clamp(38px,10vw,50px)" : "clamp(32px,8.5vw,42px)", fontFamily: SCHRIFT_TITEL, marginBottom: 3,
+      letterSpacing: "0.01em",
+      color: drawn || wonState ? FARBE.goldHell : "#ff8a7a",
+      textShadow: (drawn || wonState ? "0 3px 0 #f08a12, " : "0 3px 0 #a8261a, ") + KONTURTEXT + ", 0 8px 16px rgba(0,0,0,0.5)",
       animation: "titleSlam 0.6s 0.08s cubic-bezier(.2,1.3,.4,1) both"
     }}, (() => {
       const wname = (p) => {
@@ -8733,7 +8337,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       return t("resultWinner", { name: wname(info.winner) });
     })()),
     // ── GRUND / UNTERTITEL ────────────────────────────────────
-    React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 12 }},
+    React.createElement("div", { style: { fontSize: 12, color: "#c9dbf7", marginBottom: 12 }},
       info.reason === "left" || info.reason === "host_left" ? t("resultLeft")
       : info.numPlayers === 3 || numPlayers === 3 ? t("resultLastStanding")
       : info.reason === "breach" ? t("resultBurgDurch")
@@ -8776,7 +8380,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           } },
             React.createElement(Icon, { name: tl.icon, size: 14 }),
             React.createElement("span", { style: { fontSize: 16, fontWeight: 900, color: "#e2e8f0", lineHeight: 1.1 } }, tl.val),
-            React.createElement("span", { style: { fontSize: 8.5, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
+            React.createElement("span", { style: { fontSize: 8.5, fontWeight: 700, color: "#c9dbf7", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
           ))
         )
       );
@@ -8791,7 +8395,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         eloChangeRef.current.delta >= 0 ? card(74, 222, 128) : card(239, 68, 68) },
         React.createElement("div", { style: LABEL }, t("eloChange")),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }},
-          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#64748b" }}, eloChangeRef.current.oldElo),
+          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#c9dbf7" }}, eloChangeRef.current.oldElo),
           React.createElement("span", { style: { color: "#334155", fontSize: 14 }}, "→"),
           React.createElement("span", { style: {
             fontSize: 28, fontWeight: 900,
@@ -8810,7 +8414,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       goldChangeRef.current && goldChangeRef.current.delta > 0 && React.createElement("div", { style: card(251, 191, 36) },
         React.createElement("div", { style: LABEL }, t("goldLabel")),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }},
-          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#64748b" }}, goldChangeRef.current.oldGold),
+          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#c9dbf7" }}, goldChangeRef.current.oldGold),
           React.createElement("span", { style: { color: "#334155", fontSize: 14 }}, "→"),
           React.createElement("span", { style: {
             fontSize: 28, fontWeight: 900, color: "#fbbf24",
@@ -8835,7 +8439,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           } },
             React.createElement(MatPip, { k, size: 13 }),
             React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: MAT_META[k].c, textShadow: "0 0 10px " + MAT_META[k].c + "88" } }, "+" + matChangeRef.current[k]),
-            React.createElement("span", { style: { fontSize: 9.5, fontWeight: 700, color: "#94a3b8" } }, t("mat_" + k))
+            React.createElement("span", { style: { fontSize: 9.5, fontWeight: 700, color: "#dbe7fb" } }, t("mat_" + k))
           ))
         ),
         React.createElement("div", { style: { fontSize: 9.5, color: "#fdba74", marginTop: 6, fontWeight: 700 } }, t("matToForge"))
@@ -8846,14 +8450,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // der beiden Knoepfe: sie fuehrt zu einer Partie, das Teilen nur zu einem
     // Link. Bei einem Zweipersonenspiel ohne Spielerbasis ist das der
     // Unterschied zwischen Wachstum und Rauschen.
-    React.createElement("button", { onClick: challengeFriend, style: {
-      width: "100%", maxWidth: 320,
-      background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff",
-      border: "1px solid rgba(124,58,237,0.5)",
-      padding: "12px", fontSize: 14, fontWeight: 800,
-      borderRadius: 12, cursor: "pointer", marginBottom: 8,
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-    }},
+    React.createElement("button", { onClick: challengeFriend, style: { ...knopf("gold", { fontSize: 17 }), width: "100%", maxWidth: 320, padding: "12px", borderRadius: 12, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }},
       React.createElement(Icon, { name: "swords", size: 15 }),
       t('challengeFriend')
     ),
@@ -8879,19 +8476,13 @@ window.StackSiegeApp = function StackSiegeApp() {
           scoresRef.current = { 1: 0, 2: 0 };
           setScores({ 1: 0, 2: 0 });
           leaveOnline();
-        }, style: {
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
-          width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-          color: "white", border: "none", padding: "15px",
-          fontSize: 16, fontWeight: 800, borderRadius: 14, cursor: "pointer",
-          boxShadow: "0 4px 24px rgba(59,130,246,0.4)"
-        }}, React.createElement(Icon, { name: "home", size: 16 }), t("mainMenu"))
+        }, style: { ...knopf("gold", { fontSize: 19 }), display: "flex", alignItems: "center", justifyContent: "center", gap: 9, width: "100%", padding: "15px", borderRadius: 14, cursor: "pointer" }}, React.createElement(Icon, { name: "home", size: 16 }), t("mainMenu"))
       )
     ) : online.current && !isHost ? (
       // Gast: Warte-Status + Hauptmenü
       React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320, alignItems: "center" }},
         React.createElement("div", { style: {
-          color: "#475569", fontSize: 12, fontStyle: "italic",
+          color: "#a9bfe3", fontSize: 12, fontStyle: "italic",
           background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
           borderRadius: 12, padding: "13px 20px", width: "100%", boxSizing: "border-box"
         }}, t("waitHost")),
@@ -8899,22 +8490,11 @@ window.StackSiegeApp = function StackSiegeApp() {
           scoresRef.current = { 1: 0, 2: 0 };
           setScores({ 1: 0, 2: 0 });
           leaveOnline();
-        }, style: {
-          width: "100%", background: "rgba(255,255,255,0.06)", color: "#94a3b8",
-          border: "1px solid rgba(255,255,255,0.1)", padding: "12px", fontSize: 13,
-          borderRadius: 12, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6
-        }}, React.createElement(Icon, { name: "home", size: 14 }), t("mainMenu"))
+        }, style: { ...knopf("grau", { fontSize: 16 }), width: "100%", padding: "12px", borderRadius: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}, React.createElement(Icon, { name: "home", size: 14 }), t("mainMenu"))
       )
     ) : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320 }},
       // PRIMÄR: Nächste Runde
-      React.createElement("button", { onClick: onlineNextRound2, style: {
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
-        background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-        color: "white", border: "none", padding: "15px",
-        fontSize: 16, fontWeight: 800, borderRadius: 14, cursor: "pointer",
-        boxShadow: "0 4px 24px rgba(59,130,246,0.4)"
-      }}, React.createElement(Icon, { name: "rotateCw", size: 18 }), t("nextRound")),
+      React.createElement("button", { onClick: onlineNextRound2, style: { ...knopf("gold", { fontSize: 19 }), display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "15px", borderRadius: 14, cursor: "pointer" }}, React.createElement(Icon, { name: "rotateCw", size: 18 }), t("nextRound")),
       // SEKUNDÄR: Hauptmenü ("Neue Karte" entfernt v3.19.5 — war funktional
       // identisch zu „Nächste Runde": beide erzeugen via initGrid eine neue
       // Zufallskarte. Für einen kompletten Neustart → Hauptmenü.)
@@ -8925,7 +8505,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         else { screenRef.current = "menu"; setScreen("menu"); }
       }, style: {
         display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-        background: "transparent", color: "#475569",
+        background: "transparent", color: "#a9bfe3",
         border: "1px solid rgba(255,255,255,0.06)", padding: "10px",
         fontSize: 13, borderRadius: 12, cursor: "pointer"
       }}, React.createElement(Icon, { name: "home", size: 14 }), t("mainMenu"))
@@ -8995,11 +8575,13 @@ window.StackSiegeApp = function StackSiegeApp() {
     const flip = pl === 1 && (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
     return React.createElement("div", {
       key: "pp" + pl,
+      // Feste Markierung fuer Tests (v3.121.0): vorher erkannten sie das Feld
+      // am Eckenradius 10px — der Comic-Stil hat 16px, und die Suche lief ins Leere.
+      "data-teil": pl,
       onPointerDown: (e) => { e.preventDefault(); e.stopPropagation(); rotatePiece(pl); },
       style: {
         flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 6, padding: "8px 6px", background: "rgba(" + col.a + ",0.10)",
-        border: "1px solid rgba(" + col.a + ",0.28)", borderRadius: 10,
+        gap: 6, ...panel({ padding: "8px 6px", borderRadius: 16, boxShadow: "inset 0 0 0 3px " + col.d + ", 0 4px 0 #1b0f06" }),
         cursor: "pointer", touchAction: "manipulation", userSelect: "none", minHeight: 36
       }
     }, (() => {
@@ -9016,9 +8598,10 @@ window.StackSiegeApp = function StackSiegeApp() {
             const r = Math.floor(i / (maxC + 1)), c = i % (maxC + 1);
             const on = cells.some(([cr, cc]) => cr === (flip ? maxR - r : r) && cc === c);
             return React.createElement("div", { key: i, style: {
-              width: dot, height: dot, borderRadius: 3,
-              background: on ? col.d : "rgba(255,255,255,0.04)",
-              boxShadow: on ? "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 6px rgba(" + col.a + ",0.5)" : "none"
+              width: dot, height: dot, borderRadius: Math.max(3, dot * 0.22), boxSizing: "border-box",
+              background: on ? "linear-gradient(180deg, rgba(255,255,255,0.55), " + col.d + " 45%, rgba(0,0,0,0.25)), " + col.d : "rgba(255,255,255,0.05)",
+              border: on ? "2px solid #1b0f06" : "none",
+              boxShadow: on ? "inset 0 1px 0 rgba(255,255,255,0.5)" : "none"
             } });
           })
         )
@@ -9026,9 +8609,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     })(),
       // Der Streifen war schon immer tippbar zum Drehen — nur stand das nirgends.
       pieceBox >= 40 ? React.createElement("div", { style: {
-        display: "flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 800,
-        letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(" + col.a + ",0.95)"
-      } }, React.createElement(Icon, { name: "rotateCw", size: 10 }), t("panelRotate")) : null
+        display: "flex", alignItems: "center", gap: 5, fontSize: 14, fontFamily: SCHRIFT_TITEL,
+        letterSpacing: "0.05em", textTransform: "uppercase", color: FARBE.text, textShadow: KONTURTEXT
+      } }, React.createElement(Icon, { name: "rotateCw", size: 14 }), t("panelRotate")) : null
     );
   }
   // Schussphase: zeigt, wie viele eigene Kanonen DIESE Runde feuern dürfen.
@@ -9063,7 +8646,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Fingerziel: 44 pt (Apples Mindestmass), bei knapper Leiste kompakter.
     const hoch = Math.max(30, Math.min(44, barH - 30));
     const mitZeile = barH >= 80;
-    const knopf = (art, icon, label) => {
+    const salvenKnopf = (art, icon, label) => {
       const aktiv = modus === art, n = zaehl(art);
       return React.createElement("button", {
         key: art,
@@ -9114,8 +8697,8 @@ window.StackSiegeApp = function StackSiegeApp() {
         color: gesperrt ? "#fbbf24" : "#64748b", textAlign: "center"
       } }, gesperrt ? t("salvoLock") + " " + (restMs / 1000).toFixed(1) + "s" : t("salvoHint")) : null,
       React.createElement("div", { style: { display: "flex", gap: 6 } },
-        knopf("std", "bricks", t("salvoWalls")),
-        knopf("slayer", "crosshair", t("salvoSlayer"))),
+        salvenKnopf("std", "bricks", t("salvoWalls")),
+        salvenKnopf("slayer", "crosshair", t("salvoSlayer"))),
       // Umruest-Balken: macht die Wartezeit sichtbar, statt sie nur zu spueren
       React.createElement("div", { style: {
         height: 3, borderRadius: 2, background: gesperrt ? "rgba(255,255,255,0.10)" : "transparent", overflow: "hidden"
@@ -9133,28 +8716,28 @@ window.StackSiegeApp = function StackSiegeApp() {
     const alle = (cannons.current[pl] || []).filter((c) => c.hp > 0).length;
     const bereit = (frozenReady.current[pl] || []).length;
     const stumm = Math.max(0, alle - bereit);
-    const schalter = salvenSchalter(pl);
+    const salve = salvenSchalter(pl);
     const zahl = React.createElement("div", { key: "zahl", style: {
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       gap: 3, flexShrink: 0
     } },
       React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 3 } },
-        React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: col.d, textShadow: "0 0 10px rgba(" + col.a + ",0.6)", lineHeight: 1 } }, bereit),
-        React.createElement("span", { style: { fontSize: 13, fontWeight: 800, color: "rgba(148,163,184,0.8)" } }, "/ " + alle)
+        React.createElement("span", { style: { fontSize: 28, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, textShadow: KONTURTEXT, lineHeight: 1 } }, bereit),
+        React.createElement("span", { style: { fontSize: 16, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT } }, "/ " + alle)
       ),
       React.createElement("div", { style: {
-        fontSize: 9, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase",
-        color: "rgba(" + col.a + ",0.9)"
+        fontSize: 13, fontFamily: SCHRIFT_TITEL, letterSpacing: "0.05em", textTransform: "uppercase",
+        color: FARBE.text, textShadow: KONTURTEXT
       } }, t("panelReady")),
-      stumm > 0 ? React.createElement("div", { style: { fontSize: 8.5, fontWeight: 700, color: "#fca5a5" } }, stumm + " " + t("panelMute")) : null
+      stumm > 0 ? React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#ffb19e", textShadow: "0 1px 0 #1b0f06" } }, stumm + " " + t("panelMute")) : null
     );
     return React.createElement("div", { key: "rp" + pl, style: {
-      flex: 1, display: "flex", flexDirection: schalter ? "row" : "column",
+      flex: 1, display: "flex", flexDirection: salve ? "row" : "column",
       alignItems: "center", justifyContent: "center",
-      gap: schalter ? 12 : 3, padding: schalter ? "6px 10px" : "8px 6px",
-      background: "rgba(" + col.a + ",0.08)",
-      border: "1px solid rgba(" + col.a + ",0.22)", borderRadius: 10, minHeight: 36
-    } }, zahl, schalter);
+      gap: salve ? 12 : 3,
+      ...panel({ padding: salve ? "6px 10px" : "8px 6px", borderRadius: 16, boxShadow: "inset 0 0 0 3px " + col.d + ", 0 4px 0 #1b0f06" }),
+      minHeight: 36
+    } }, zahl, salve);
   }
   return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
     background: "#04080d",
@@ -9194,7 +8777,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     let n = 0;
     for (let r = 0; r < g.length; r++) for (let c = 0; c < g[r].length; c++) if (g[r][c] !== 0) n++;
     return n;
-  })()), /* @__PURE__ */ React.createElement("div", { style: { color: "#fde68a" } }, "screen=", screenRef.current, " phase=", phase_r.current), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: "#475569", marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { ref: scoreBarRef, style: {
+  })()), /* @__PURE__ */ React.createElement("div", { style: { color: "#fde68a" } }, "screen=", screenRef.current, " phase=", phase_r.current), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: "#a9bfe3", marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { ref: scoreBarRef, style: {
     width: hudBreite,
     zoom: hudZ === 1 ? void 0 : hudZ,
     display: "flex",
@@ -9206,55 +8789,36 @@ window.StackSiegeApp = function StackSiegeApp() {
   } }, /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
-    background: "linear-gradient(160deg, rgba(59,130,246,0.20), rgba(30,58,138,0.30))",
-    border: "1px solid rgba(59,130,246,0.45)",
-    borderRadius: 14,
+    ...spielerKasten("blau"),
     padding: "4px 6px",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    backdropFilter: "blur(12px)",
-    boxShadow: "0 2px 16px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: {    background: phase === "build" ? "rgba(74,222,128,0.18)" : phase === "shoot" ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.20)",    border: `1px solid ${phase === "build" ? "rgba(74,222,128,0.55)" : phase === "shoot" ? "rgba(239,68,68,0.55)" : "rgba(245,158,11,0.60)"}`,
-    boxShadow: phase === "build" ? "0 0 8px rgba(74,222,128,0.30)" : phase === "shoot" ? "0 0 8px rgba(239,68,68,0.30)" : "0 0 8px rgba(245,158,11,0.30)",
-    borderRadius: 6,
-    padding: "1px 6px",
-    fontSize: 9,
-    fontWeight: 700,
-    color: phase === "build" ? "#4ade80" : phase === "shoot" ? "#f87171" : "#fbbf24",
-    display: "inline-block"
-  } }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: "#64748b", borderRadius: 6, padding: "1px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
-    fontSize: 30,
-    fontWeight: 900,
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: "#c9dbf7", borderRadius: 6, padding: "1px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
+    fontSize: 34,
+    fontFamily: SCHRIFT_TITEL,
     color: timerColor,
-    textShadow: timer <= 5 ? `0 0 18px ${timerColor}` : "0 0 5px rgba(200,180,100,0.25)",
+    textShadow: KONTURTEXT + (timer <= 5 ? `, 0 0 18px ${timerColor}` : ""),
     fontVariantNumeric: "tabular-nums",
     lineHeight: 1
-  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#64748b" } }, t('roundLabel'), round))), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#c9dbf7" } }, t('roundLabel'), round))), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
-    background: "linear-gradient(160deg, rgba(239,68,68,0.20), rgba(127,29,29,0.30))",
-    border: "1px solid rgba(239,68,68,0.45)",
-    borderRadius: 14,
+    ...spielerKasten("rot"),
     padding: "4px 6px",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    backdropFilter: "blur(12px)",
-    boxShadow: "0 2px 16px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[2]), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 } }, (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[2] || 0))), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: hudBreite, zoom: hudZ === 1 ? void 0 : hudZ, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(160deg, rgba(16,185,129,0.20), rgba(6,78,59,0.30))",
-    border: "1px solid rgba(16,185,129,0.45)",
-    borderRadius: 14,    padding: "2px 10px",    display: "flex",
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[2]), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 } }, (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[2] || 0))), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: hudBreite, zoom: hudZ === 1 ? void 0 : hudZ, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+    ...spielerKasten("gruen"),
+    padding: "2px 10px",    display: "flex",
     alignItems: "center",
     gap: 8,
-    backdropFilter: "blur(12px)",
-    boxShadow: "0 2px 16px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
     maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? t('youSuffix') : "") : t('p3GreenFallback'), eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 17, fontWeight: 900, color: "#fde68a", flexShrink: 0, textShadow: "0 0 8px rgba(251,191,36,0.7)" } }, scores[3] || 0))), warnHinweis(), phase === "cannon" && (() => {
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? t('youSuffix') : "") : t('p3GreenFallback'), eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[3] || 0))), warnHinweis(), phase === "cannon" && (() => {
     const mine = online.current ? [myRole.current] : botMode.current ? [1] : playersList();
     const h = React.createElement;
     const renderInner = (sp) => {
@@ -9266,23 +8830,11 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Reparatur-Highlight (v3.32.0): Shop kurz weg, Blick aufs Feld frei
       if ((shopHideUntil.current[sp] || 0) > performance.now()) return null;
       if ((cannonBudget.current[sp] || 0) > 0) {
-        return { kind: "placehint", el: h("div", { key: "placehint" + sp, style: {
-            padding: "6px 15px", borderRadius: 999, fontSize: 12, fontWeight: 800, color: "#fde68a",
-            background: "linear-gradient(180deg, rgba(30,41,66,0.94), rgba(11,16,30,0.94))",
-            border: "1px solid rgba(251,191,36,0.45)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
-            backdropFilter: "blur(8px)", animation: "shopCoinPulse 1.1s ease-in-out infinite"
-          } }, t("armoryPlaceHint")) };
+        return { kind: "placehint", el: h("div", { key: "placehint" + sp, style: { ...panel(), padding: "6px 15px", borderRadius: 999, fontSize: 12, animation: "shopCoinPulse 1.1s ease-in-out infinite" } }, t("armoryPlaceHint")) };
       }
       // Spieler hat „Fertig" bestätigt → kompaktes Warte-Panel statt Shop (v3.18.1)
       if (armoryReady.current[sp]) {
-        return { kind: "wait", el: h("div", { key: "armoryWait" + sp, style: {
-            padding: "9px 18px", borderRadius: 14, fontSize: 13, fontWeight: 800, color: "#6ee7b7",
-            background: "linear-gradient(180deg, rgba(30,41,66,0.94), rgba(11,16,30,0.96))",
-            border: "1px solid rgba(52,211,153,0.4)",
-            boxShadow: "0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
-            backdropFilter: "blur(10px)", animation: "shopRise 0.32s cubic-bezier(.22,1,.36,1) both"
-          } }, t("armoryWaiting")) };
+        return { kind: "wait", el: h("div", { key: "armoryWait" + sp, style: { ...panel(), padding: "9px 18px", borderRadius: 14, fontSize: 13, animation: "shopRise 0.32s cubic-bezier(.22,1,.36,1) both" } }, t("armoryWaiting")) };
       }
       const up = upgrades.current[sp] || {};
       const have = scrap.current[sp] || 0;
@@ -9309,28 +8861,15 @@ window.StackSiegeApp = function StackSiegeApp() {
       const pGlow = sp === 1 ? "rgba(59,130,246,0.5)" : sp === 2 ? "rgba(239,68,68,0.5)" : "rgba(16,185,129,0.5)";
       const pFlag = FLAG_OF[sp] || "";
       const pName = (online.current || botMode.current) && playerInfo.current[sp] && playerInfo.current[sp].name ? playerInfo.current[sp].name : ("P" + sp);
-      return { kind: "shop", el: h("div", { key: "shop" + sp, style: {
-          width: "100%", maxWidth: 452, pointerEvents: "auto",
-          background: "linear-gradient(180deg, rgba(30,41,66,0.96) 0%, rgba(11,16,30,0.975) 100%)",
-          border: "1px solid rgba(255,255,255,0.10)", borderRadius: 20, padding: "9px 10px 11px",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 18px 46px rgba(0,0,0,0.62), 0 0 0 1px rgba(0,0,0,0.45)",
-          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          animation: "shopRise 0.42s cubic-bezier(.22,1,.36,1) both"
-        } },
+      return { kind: "shop", el: h("div", { key: "shop" + sp, style: { ...panel(), width: "100%", maxWidth: 452, pointerEvents: "auto", borderRadius: 20, padding: "9px 10px 11px", animation: "shopRise 0.42s cubic-bezier(.22,1,.36,1) both" } },
           h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, padding: "0 3px" } },
             h("div", { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: "1 1 auto" } },
               h("span", { style: { fontSize: 15, lineHeight: 1, color: pColor, flexShrink: 0, textShadow: "0 0 8px " + pGlow } }, pFlag),
               h("span", { style: { fontSize: 12.5, fontWeight: 800, letterSpacing: "0.03em", color: pColor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 2px rgba(0,0,0,0.55)" } }, pName),
-              h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", color: "#64748b", textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
+              h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", color: "#c9dbf7", textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
             ),
             h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
-              h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: {
-                width: 22, height: 22, borderRadius: 999, border: "1px solid rgba(148,163,184,0.5)", cursor: "pointer",
-                background: "linear-gradient(180deg, rgba(51,65,85,0.9), rgba(15,23,42,0.9))",
-                color: "#cbd5e1", fontSize: 12, fontWeight: 900, fontStyle: "italic", lineHeight: 1,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 6px rgba(0,0,0,0.4)"
-              } }, "i"),
+              h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: { ...panel(), width: 22, height: 22, borderRadius: 999, cursor: "pointer", fontSize: 12, fontStyle: "italic", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" } }, "i"),
               h("div", { key: "coin" + have, style: {
                 display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
                 background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
@@ -9455,18 +8994,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       { k: "armor", label: t("shopArmor"), desc: t("shopInfoArmorDesc") },
       { k: "repair", label: t("shopRepair"), desc: t("shopInfoRepairDesc") }
     ];
-    return h("div", { key: "shopinfo", onClick: () => setShowShopInfo(false), style: {
-      position: "fixed", inset: 0, zIndex: 1460, background: "rgba(2,6,15,0.9)",
-      backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)"
-    } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: {
-        maxWidth: 420, width: "100%", maxHeight: "86vh", overflowY: "auto",
-        background: "linear-gradient(180deg, rgba(30,41,66,0.98) 0%, rgba(11,16,30,0.99) 100%)",
-        border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: "18px 16px 16px",
-        boxShadow: "0 24px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1)",
-        animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both"
-      } },
+    return h("div", { key: "shopinfo", onClick: () => setShowShopInfo(false), style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1460, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 420, width: "100%", maxHeight: "86vh", overflowY: "auto", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginBottom: 12 } },
           h(Icon, { name: "hammer", size: 17, color: "#fbbf24" }),
           h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", letterSpacing: "0.02em" } }, t("shopInfoTitle"))
@@ -9479,7 +9008,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               React.createElement(Icon, { name: "gem", size: 11, color: "#fcd34d" }), String(e.v))
           )),
           // Wiederaufbau-Paket (v3.30.0): Comeback-Regel transparent machen
-          h("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.35, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(245,158,11,0.18)" } }, t("shopInfoEarnRebuild"))
+          h("div", { style: { fontSize: 10.5, color: "#dbe7fb", lineHeight: 1.35, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(245,158,11,0.18)" } }, t("shopInfoEarnRebuild"))
         ),
         h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 } },
           rows.map((it) => {
@@ -9493,7 +9022,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               }, dangerouslySetInnerHTML: { __html: SHOP_ICONS[it.k] } }),
               h("div", { style: { flex: 1, minWidth: 0 } },
                 h("div", { style: { fontSize: 13, fontWeight: 800, color: "#f1f5f9", marginBottom: 1 } }, it.label),
-                h("div", { style: { fontSize: 11.5, color: "#94a3b8", lineHeight: 1.35 } }, it.desc)
+                h("div", { style: { fontSize: 11.5, color: "#dbe7fb", lineHeight: 1.35 } }, it.desc)
               )
             );
           })
@@ -9512,13 +9041,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     position: "fixed", left: 8, bottom: `calc(var(--sa-bottom,0px) + ${barH + 12}px)`,
     zIndex: 1150, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6
   } },
-    emoteBarOpen && /* @__PURE__ */ React.createElement("div", { style: {
-      display: "flex", gap: 4, padding: "6px 7px", borderRadius: 999,
-      background: "linear-gradient(180deg, rgba(30,41,66,0.95), rgba(11,16,30,0.96))",
-      border: "1px solid rgba(255,255,255,0.14)",
-      boxShadow: "0 8px 26px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
-      backdropFilter: "blur(10px)", animation: "badgePop 0.22s ease both"
-    } }, EMOTES.map((em, i) => /* @__PURE__ */ React.createElement("button", { key: i, onClick: () => sendEmote(i), style: {
+    emoteBarOpen && /* @__PURE__ */ React.createElement("div", { style: { ...panel(), display: "flex", gap: 4, padding: "6px 7px", borderRadius: 999, animation: "badgePop 0.22s ease both" } }, EMOTES.map((em, i) => /* @__PURE__ */ React.createElement("button", { key: i, onClick: () => sendEmote(i), style: {
       width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)",
       background: "rgba(255,255,255,0.06)", fontSize: 17, cursor: "pointer",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 0
@@ -9539,13 +9062,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       position: "fixed", left: 0, right: 0, top: `calc(var(--sa-top,0px) + ${hudH + 42}px)`,
       zIndex: 1240, display: "flex", justifyContent: "center", pointerEvents: "none"
     } },
-      /* @__PURE__ */ React.createElement("div", { style: {
-        display: "flex", alignItems: "center", gap: 8, padding: "7px 16px 7px 12px", borderRadius: 999,
-        background: "linear-gradient(180deg, rgba(30,41,66,0.95), rgba(11,16,30,0.96))",
-        border: "1.5px solid " + col,
-        boxShadow: "0 8px 30px rgba(0,0,0,0.55), 0 0 18px " + col + "55",
-        backdropFilter: "blur(10px)", animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both"
-      } },
+      /* @__PURE__ */ React.createElement("div", { style: { ...panel(), display: "flex", alignItems: "center", gap: 8, padding: "7px 16px 7px 12px", borderRadius: 999, animation: "badgePop 0.3s cubic-bezier(.36,1.6,.56,1) both" } },
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 26, lineHeight: 1 } }, EMOTES[emoteShow.e] || "👍"),
         pi.name && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: "#e2e8f0", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, pi.name)
       )
@@ -9578,25 +9095,25 @@ window.StackSiegeApp = function StackSiegeApp() {
       /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), style: { background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.32)", color: "#fff", borderRadius: 9, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, t('tutorialExit'))
     )
   )), showTutorialDone && /* @__PURE__ */ React.createElement("div", {
-    style: { position: "fixed", inset: 0, zIndex: 1400, background: "rgba(2,6,15,0.9)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
+    style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1400, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
   }, /* @__PURE__ */ React.createElement("div", {
-    style: { maxWidth: 380, width: "100%", textAlign: "center", background: "linear-gradient(160deg,#15082a,#0f1f2e)", border: "1px solid rgba(124,58,237,0.4)", borderRadius: 18, padding: 26, boxShadow: "0 20px 60px rgba(0,0,0,0.6)", animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both" }
+    style: { maxWidth: 380, width: "100%", textAlign: "center", ...panel(), borderRadius: 18, padding: 26, boxShadow: "0 20px 60px rgba(0,0,0,0.6)", animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both" }
   },
-    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#f1f5f9", marginBottom: 8 } }, t('tutorialDoneTitle')),
-    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#94a3b8", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
-    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { width: "100%", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", border: "none", padding: "14px", fontSize: 16, fontWeight: 800, borderRadius: 12, cursor: "pointer", marginBottom: 9, boxShadow: "0 4px 20px rgba(124,58,237,0.35)" } }, React.createElement(Icon, { name: "globe", size: 15, style: { verticalAlign: "-2px", marginRight: 6 } }), t('tutorialToOnline')),
-    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { width: "100%", background: "rgba(255,255,255,0.06)", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.12)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
+    /* @__PURE__ */ React.createElement("div", { style: { ...titel(28), marginBottom: 8 } }, t('tutorialDoneTitle')),
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#dbe7fb", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { ...knopf("gold", { fontSize: 19 }), width: "100%", padding: "14px", borderRadius: 12, cursor: "pointer", marginBottom: 9 } }, React.createElement(Icon, { name: "globe", size: 15, style: { verticalAlign: "-2px", marginRight: 6 } }), t('tutorialToOnline')),
+    /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "12px", borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
   )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: `calc(var(--sa-top,0px) + ${hudH + 10}px)`, left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", // Ohne width:max-content bleibt das Schild auf der HALBEN Bildschirm-
       // breite haengen: bei left:50% ohne right reicht der Platz eines fest
       // positionierten Kastens nur noch bis zum rechten Rand. Der Text brach
       // deshalb auf drei Zeilen um und deckte ein Drittel des Bretts zu.
-      width: "max-content", background: pb.bg, border: `1.5px solid ${pb.color}`, borderRadius: 14, padding: "9px 20px", boxShadow: `0 0 34px ${pb.glow}, 0 6px 24px rgba(0,0,0,0.6)`, maxWidth: "min(92vw,430px)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: pb.color, display: "flex", flexShrink: 0, filter: `drop-shadow(0 0 12px ${pb.glow})` } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 900, color: pb.color, letterSpacing: "0.04em", textShadow: `0 0 16px ${pb.glow}`, lineHeight: 1.15 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", marginTop: 2, fontWeight: 600, lineHeight: 1.3 } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: buehneStil }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: "max-content", ...spielerKasten({ setup: "blau", build: "gruen", shoot: "rot", cannon: "gold" }[phaseBanner] || "blau", { borderRadius: 18, padding: "9px 20px", boxShadow: `0 5px 0 ${FARBE.kontur}, 0 10px 24px rgba(0,0,0,0.5), inset 0 3px 0 rgba(255,255,255,0.45)` }), maxWidth: "min(92vw,430px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: FARBE.text, display: "flex", flexShrink: 0, filter: "drop-shadow(0 2px 0 #1b0f06)" } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 23, fontFamily: SCHRIFT_TITEL, color: FARBE.text, letterSpacing: "0.03em", textShadow: KONTURTEXT, lineHeight: 1.1 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#fff", marginTop: 2, fontWeight: 800, lineHeight: 1.3, textShadow: "0 1px 0 #1b0f06, 0 0 3px rgba(0,0,0,0.6)" } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: buehneStil }, /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
-    border: buildUrgencyOpen ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 14,
+    border: buildUrgencyOpen ? "3px solid #ef4b34" : "3px solid #1b0f06",
+    borderRadius: 16,
     overflow: "hidden",
-    boxShadow: buildUrgencyOpen ? undefined : "0 8px 40px rgba(0,0,0,0.7)",
+    boxShadow: buildUrgencyOpen ? undefined : "0 0 0 2px #ffd23a, 0 5px 0 2px #1b0f06, 0 10px 30px rgba(0,0,0,0.6)",
     animation: buildUrgencyOpen ? "dangerGlow 0.6s ease-in-out infinite" : undefined,
     position: "relative"
   } }, /* @__PURE__ */ React.createElement(
@@ -9636,51 +9153,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     (!online.current || myRole.current === 1) && readyPanel(1),
     (!online.current && !botMode.current || online.current && myRole.current === 2) && readyPanel(2),
     (!online.current && numPlayers === 3 || online.current && myRole.current === 3) && readyPanel(3)
-  ) : null), showQuitConfirm &&/* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(2,6,15,0.78)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1200,
-    padding: 20
-  } }, /* @__PURE__ */ React.createElement("div", { style: {
-    background: "linear-gradient(165deg, rgba(16,32,54,0.85), rgba(8,18,37,0.9))",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 20,
-    padding: 24,
-    maxWidth: 340,
-    width: "100%",
-    textAlign: "center",
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-    boxShadow: "0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#f87171", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "x", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { margin: "0 0 6px", fontSize: 20 } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#64748b", fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: {
-    width: "100%",
-    background: "linear-gradient(135deg,#ef4444,#991b1b)",
-    color: "white",
-    border: "1px solid rgba(239,68,68,0.5)",
-    padding: "14px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
-    cursor: "pointer",
-    marginBottom: 10,
-    boxShadow: "0 4px 20px rgba(239,68,68,0.3)"
-  } }, t('quitYes')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: {
-    width: "100%",
-    background: "rgba(255,255,255,0.06)",
-    color: "#cbd5e1",
-    border: "1px solid rgba(255,255,255,0.14)",
-    padding: "13px",
-    fontSize: 14,
-    fontWeight: 600,
-    borderRadius: 14,
-    cursor: "pointer"
-  } }, t('quitContinue')))));
+  ) : null), showQuitConfirm &&/* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#f87171", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "x", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: { ...knopf("rot", { fontSize: 18 }), width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, t('quitYes')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer" } }, t('quitContinue')))));
 };
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));
