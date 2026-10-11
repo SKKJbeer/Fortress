@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.122.0
+- **Aktuelle Version**: v3.123.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -432,6 +432,12 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   `knopf`/`panel`/`titel`/… von dort, KEINE neuen Inline-Farben. Schriften
   Lilita One + Nunito lokal in `public/fonts`. Keine lokale Variable darf einen
   Baustein ueberdecken (`tests/stil.test.js` — echter Fehler im Umbau).
+- **Menues rollen nicht (seit v3.123.0, Wunsch des Betreibers).** Mehr Inhalt
+  als Platz → `Reiter` + `Seiten` aus `src/ui/blaettern.js`, Eintraege je Seite
+  ueber `zeilenFuer` aus der echten Fensterhoehe. KEIN neues `overflowY: auto`
+  in einem Menue. `suiteKeinRollen` (`NUR=rollen`) prueft neun Menues auf SE,
+  iPhone und iPad. Tests, die Inhalte hinter einem Reiter suchen, klicken ihn
+  per `reiterWahl(page, key)` (`data-reiter`).
 - **Logo ist gesetzt, nicht gemalt** (`tools/logo.cjs`); aufs Ladebild nur in
   der sicheren Zone (`ladebild.py --logo`).
 

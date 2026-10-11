@@ -16,6 +16,7 @@ import { useState, useEffect } from "react";
 import { Icon } from "./icons.js";
 // WinFx baut auf dem Konfetti aus v3.96.0 auf.
 import { ConfettiBurst } from "./anzeigen.js";
+import { Seiten, useSchirm, zeilenFuer } from "./blaettern.js";
 import { ACHIEVEMENTS } from "../engine/achievements.js";
 import { CANNON_SKIN, IMPACT_FX, TRAIL_COLOR, TRAIL_FORM, MASTER_TRAIL, WIN_ICON, forgeRarity }
   from "../engine/catalog.ts";
@@ -132,6 +133,7 @@ export function AchievementPopup({ item, onDone , achTitle }) {
 }
 
 export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDesc }) {
+  const h = React.createElement;
   const achs = Array.isArray(prof && prof.achievements) ? prof.achievements : [];
   const unlockedCount = achs.filter(a => a.unlocked).length;
   const cats = [
@@ -142,101 +144,86 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
     { key: 'elo',         icon: 'barChart', label: t('achcat_elo'),          color: '#a78bfa' },
     { key: 'serien',      icon: 'flame',    label: t('achcat_serien'),       color: '#34d399' },
   ];
-  return React.createElement("div", { style: {
+  const [katKey, setKat] = useState('siege');
+  const kat = cats.find(c => c.key === katKey) || cats[0];
+  const schirm = useSchirm();
+  const erreicht = (id) => !!(achs.find(a => a.id === id && a.unlocked));
+  // v3.123.0: kein Rollen mehr. Kategorien als 3x2-Reiterfeld (mit Stand je
+  // Kategorie), die Erfolge einer Kategorie als blaetterbare Seiten. Kopf
+  // ~74, Reiter ~92, Blaettern ~46, Rand ~40 — der Rest gehoert den Karten.
+  const proSeite = zeilenFuer(schirm.h - 74 - 92 - 46 - 40, 74);
+  // Reiterbreite: Symbol nur, wenn Wort UND Zaehler daneben Platz haben.
+  const mitSymbol = (Math.min(schirm.w, 480) - 40) / 3 >= 132;
+  const karteFuer = (def) => {
+    const entry = achs.find(a => a.id === def.id);
+    const unlocked = !!(entry && entry.unlocked);
+    const progress = entry ? entry.progress : 0;
+    const pct = Math.min(100, Math.round(progress / def.target * 100));
+    const isHidden = def.hidden && !unlocked;
+    return h("div", { key: def.id, "data-erfolg": def.id, style: {
+      display: "flex", alignItems: "center", gap: 10, height: 74, boxSizing: "border-box",
+      ...karte({ borderRadius: 14, padding: "8px 10px" }),
+      border: unlocked ? "2px solid " + FARBE.gold : "2px solid rgba(10,20,50,0.55)",
+      boxShadow: unlocked ? "0 0 10px rgba(255,210,58,0.35)" : "none",
+    } },
+      h("div", { style: {
+        width: 42, height: 42, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+        border: "2px solid " + FARBE.kontur,
+        background: unlocked ? "linear-gradient(180deg,#fff2a0,#ffc72e 50%,#f08a12)" : "rgba(13,31,69,0.6)",
+        color: unlocked ? FARBE.textDunkel : "#8ea3c7",
+      } }, h(Icon, { name: isHidden ? "helpCircle" : def.icon, size: 24 })),
+      h("div", { style: { flex: 1, minWidth: 0 } },
+        h("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 15, color: unlocked ? FARBE.goldHell : FARBE.text, textShadow: KONTURTEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } },
+          isHidden ? "???" : achTitle(def)),
+        h("div", { style: { fontSize: 11, color: FARBE.textGedaempft, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: "1px 0 4px" } },
+          isHidden ? t('achSecret') : achDesc(def)),
+        unlocked
+          ? h("div", { style: { fontSize: 11, color: FARBE.laterne, fontWeight: 800 } }, t('achDone'))
+          : h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+              h("div", { style: { flex: 1, height: 7, background: "rgba(0,0,0,0.35)", border: "1.5px solid " + FARBE.kontur, borderRadius: 5, overflow: "hidden" } },
+                h("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg," + kat.color + "aa," + kat.color + ")", transition: "width 0.4s ease" } })),
+              h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.textGedaempft, whiteSpace: "nowrap" } }, progress + " / " + def.target))),
+      h("div", { style: { display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end", flexShrink: 0 } },
+        def.xp > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: "#e9d5ff", background: "rgba(139,85,224,0.45)", padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.xp + " XP"),
+        def.gold > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.textDunkel, background: FARBE.gold, padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.gold + " Gold")));
+  };
+  return h("div", { style: {
     position: "fixed", inset: 0, zIndex: 3000,
     background: "linear-gradient(180deg, #2c69c9 0%, #1d4a9e 30%, #0d1f45 100%)", fontFamily: SCHRIFT_TEXT, color: FARBE.text,
-    display: "flex", flexDirection: "column", alignItems: "center",
+    display: "flex", flexDirection: "column", alignItems: "center", overflow: "hidden",
     // **Oben MUSS der Sicherheitsabstand mit.** `position: fixed` sitzt am
     // Sichtfenster, nicht im Koerper — die Polsterung des Koerpers gilt hier
     // also nicht. Ohne diese Zeile lag die Ueberschrift unter der Uhrzeit und
     // der Schliessen-Knopf hinter der Batterieanzeige.
     padding: "var(--sa-top,0px) var(--sa-right,0px) var(--sa-bottom,0px) var(--sa-left,0px)"
   } },
-    React.createElement("div", { style: {
-      width: "100%", maxWidth: 480,
-      display: "flex", flexDirection: "column", height: "100%"
-    } },
-      React.createElement("div", { style: {
+    h("div", { style: { width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", height: "100%" } },
+      h("div", { style: {
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "16px 18px 12px", borderBottom: "3px solid #1b0f06", boxShadow: "0 3px 0 rgba(255,210,58,0.6)",
+        padding: "12px 16px 10px", borderBottom: "3px solid #1b0f06", boxShadow: "0 3px 0 rgba(255,210,58,0.6)",
         flexShrink: 0
       } },
-        React.createElement("div", null,
-          React.createElement("div", { style: { ...titel(26), display: "flex", alignItems: "center", gap: 8 } },
-            React.createElement(Icon, { name: "trophy", size: 24, color: FARBE.gold }), "Achievements"),
-          React.createElement("div", { style: { fontSize: 12, color: FARBE.textGedaempft, marginTop: 4, fontWeight: 700 } },
-            t('achUnlocked', { n: unlockedCount, total: ACHIEVEMENTS.length })
-          )
-        ),
-        React.createElement("button", { onClick: onClose, "aria-label": "Schlie\xDFen", style: symbolKnopf("rot", { width: 40, height: 40 }) }, React.createElement(Icon, { name: "x", size: 18 }))
-      ),
-      React.createElement("div", { style: { overflowY: "auto", flex: 1, padding: "12px 14px 20px" } },
-        cats.map(cat => {
-          const catAchs = ACHIEVEMENTS.filter(d => d.cat === cat.key);
-          return React.createElement("div", { key: cat.key, style: { marginBottom: 18 } },
-            React.createElement("div", { style: {
-              fontSize: 17, fontFamily: SCHRIFT_TITEL, color: cat.color, letterSpacing: "0.04em", textShadow: KONTURTEXT,
-              marginBottom: 8, paddingBottom: 4
-            } }, React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
-              React.createElement(Icon, { name: cat.icon, size: 12 }), cat.label)),
-            catAchs.map(def => {
-              const entry = achs.find(a => a.id === def.id);
-              const unlocked = !!(entry && entry.unlocked);
-              const progress = entry ? entry.progress : 0;
-              const pct = Math.min(100, Math.round(progress / def.target * 100));
-              const isHidden = def.hidden && !unlocked;
-              return React.createElement("div", { key: def.id, style: {
-                display: "flex", alignItems: "flex-start", gap: 12,
-                ...karte({ borderRadius: 14, padding: "10px 12px", marginBottom: 8 }),
-                border: unlocked ? "2px solid " + FARBE.gold : "2px solid rgba(10,20,50,0.55)",
-                opacity: unlocked ? 1 : 0.82
-              } },
-                React.createElement("div", { style: {
-                  lineHeight: 1, flexShrink: 0, width: 36, display: "flex", justifyContent: "center", paddingTop: 2,
-                  color: unlocked ? "#e2e8f0" : "#64748b"
-                } }, React.createElement(Icon, { name: isHidden ? "helpCircle" : def.icon, size: 26 })),
-                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                  React.createElement("div", { style: {
-                    fontWeight: 800, fontSize: 13, color: unlocked ? "#e2e8f0" : "#94a3b8",
-                    marginBottom: 2
-                  } }, isHidden ? "???" : achTitle(def)),
-                  React.createElement("div", { style: { fontSize: 11, color: "#a9bfe3", marginBottom: 6 } },
-                    isHidden ? t('achSecret') : achDesc(def)
-                  ),
-                  !unlocked && React.createElement("div", { style: { marginBottom: 6 } },
-                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } },
-                      React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, progress + " / " + def.target),
-                      React.createElement("span", { style: { fontSize: 9, color: "#334155" } }, pct + "%")
-                    ),
-                    React.createElement("div", { style: { height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" } },
-                      React.createElement("div", { style: {
-                        height: "100%", width: pct + "%",
-                        background: "linear-gradient(90deg," + cat.color + "99," + cat.color + ")",
-                        borderRadius: 2, transition: "width 0.4s ease"
-                      } })
-                    )
-                  ),
-                  unlocked && React.createElement("div", { style: { fontSize: 10, color: "#22d3ee", marginBottom: 6, fontWeight: 700 } }, t('achDone')),
-                  React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
-                    def.xp > 0 && React.createElement("span", { style: {
-                      fontSize: 10, fontWeight: 700, color: "#a78bfa",
-                      background: "rgba(167,139,250,0.15)", padding: "2px 7px", borderRadius: 6,
-                      border: "1px solid rgba(167,139,250,0.25)"
-                    } }, "+" + def.xp + " XP"),
-                    def.gold > 0 && React.createElement("span", { style: {
-                      fontSize: 10, fontWeight: 700, color: "#fbbf24",
-                      background: "rgba(251,191,36,0.12)", padding: "2px 7px", borderRadius: 6,
-                      border: "1px solid rgba(251,191,36,0.25)"
-                    } }, "+" + def.gold + " Gold")
-                  )
-                )
-              );
-            })
-          );
-        })
-      )
-    )
-  );
+        h("div", null,
+          h("div", { style: { ...titel(26), display: "flex", alignItems: "center", gap: 8 } },
+            h(Icon, { name: "trophy", size: 24, color: FARBE.gold }), "Achievements"),
+          h("div", { style: { fontSize: 12, color: FARBE.textGedaempft, marginTop: 3, fontWeight: 700 } },
+            t('achUnlocked', { n: unlockedCount, total: ACHIEVEMENTS.length }))),
+        h("button", { onClick: onClose, "aria-label": "Schlie\xDFen", style: symbolKnopf("rot", { width: 40, height: 40 }) }, h(Icon, { name: "x", size: 18 }))),
+      h("div", { "data-erfolge-koerper": "1", style: { flex: 1, minHeight: 0, overflow: "hidden", padding: "12px 14px" } },
+        h("div", { role: "tablist", style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 6, marginBottom: 12 } },
+          cats.map(c => {
+            const liste = ACHIEVEMENTS.filter(d => d.cat === c.key);
+            const n = liste.filter(d => erreicht(d.id)).length, an = c.key === katKey;
+            return h("button", { key: c.key, role: "tab", "aria-selected": an, "data-reiter": c.key, onClick: () => setKat(c.key), style: {
+              ...knopf(an ? "gold" : "grau", { padding: "5px 4px", fontSize: 13, borderRadius: 12, gap: 5,
+                boxShadow: "0 3px 0 " + FARBE.kontur + ", inset 0 2px 0 rgba(255,255,255,0.45)" }),
+              opacity: an ? 1 : 0.86, minWidth: 0,
+            } },
+              mitSymbol ? h(Icon, { name: c.icon, size: 14 }) : null,
+              h("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.label),
+              h("span", { style: { fontSize: 10.5, fontFamily: SCHRIFT_TEXT, fontWeight: 900, opacity: 0.9 } }, n + "/" + liste.length));
+          })),
+        h(Seiten, { schluessel: katKey, eintraege: ACHIEVEMENTS.filter(d => d.cat === katKey), proSeite, spalten: 1, render: karteFuer }))));
 }
 
 export function ItemRevealModal({ rec, onClose , t }) {
@@ -420,13 +407,13 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
     const isCurrent = i === streakIdx;
     return React.createElement("div", { key: i, style: {
       flex: 1, textAlign: "center",
-      background: isCurrent ? "rgba(251,191,36,0.18)" : isPast ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",
-      border: "1px solid " + (isCurrent ? "rgba(251,191,36,0.6)" : isPast ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.08)"),
-      borderRadius: 8, padding: "6px 2px",
+      background: isCurrent ? "linear-gradient(180deg,#fff2a0,#ffc72e 50%,#f08a12)" : isPast ? "linear-gradient(180deg,#b6f59a,#4fd36b 50%,#1c8a3a)" : "rgba(13,31,69,0.55)",
+      border: "2px solid " + FARBE.kontur, boxShadow: isCurrent ? "0 3px 0 " + FARBE.kontur : "none",
+      borderRadius: 10, padding: "6px 1px", minWidth: 0,
       animation: isCurrent ? "streakGlow 2s ease infinite" : "none"
     } },
-      React.createElement("div", { style: { fontSize: 8, color: "#c9dbf7", marginBottom: 2 } }, "T" + (i + 1)),
-      React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: isCurrent ? "#fbbf24" : isPast ? "#4ade80" : "#475569" } },
+      React.createElement("div", { style: { fontSize: 10, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 2 } }, "T" + (i + 1)),
+      React.createElement("div", { style: { fontSize: 10.5, fontWeight: 900, color: isCurrent || isPast ? FARBE.text : FARBE.textGedaempft, textShadow: isCurrent || isPast ? KONTURTEXT : "none", whiteSpace: "nowrap" } },
         isPast ? "✓" : r.special === "chest" ? "★" : "+" + Math.round(r.gold * mult) + "G"
       )
     );
@@ -435,28 +422,25 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
     style: { position: "fixed", inset: 0, background: "rgba(8,16,40,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "calc(var(--sa-top,0px) + 20px) calc(var(--sa-right,0px) + 20px) calc(var(--sa-bottom,0px) + 20px) calc(var(--sa-left,0px) + 20px)" }
   },
     React.createElement("div", { style: {
-      ...panel({ padding: 24 }),
+      ...panel({ padding: "22px 18px 18px" }), position: "relative",
        maxWidth: 360, width: "100%", textAlign: "center",
       animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both"
     } },
-      React.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } },
-        React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: "#a9bfe3", cursor: "pointer" } },
-          React.createElement(Icon, { name: "x", size: 18 })
-        )
-      ),
-      React.createElement("div", { style: { marginBottom: 4, color: "#fbbf24", display: "flex", justifyContent: "center" } },
-        React.createElement(Icon, { name: "zap", size: 28, color: "#fbbf24" })
-      ),
-      React.createElement("h2", { style: { margin: "0 0 4px", fontSize: 20, color: "#f1f5f9" } }, t('dailyTitle')),
-      React.createElement("p", { style: { color: "#c9dbf7", fontSize: 12, marginBottom: mult > 1 ? 6 : 16 } }, t('dailyStreak', { n: daily.streak || 0 })),
+      React.createElement("button", { onClick: onClose, "aria-label": t('close'), style: symbolKnopf("rot", { position: "absolute", top: 12, right: 12, width: 36, height: 36 }) },
+        React.createElement(Icon, { name: "x", size: 16 })),
+      React.createElement("div", { style: { margin: "0 auto 8px", width: 64, height: 64, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", color: FARBE.textDunkel,
+        background: "linear-gradient(180deg,#fff2a0,#ffc72e 50%,#f08a12)", border: "3px solid " + FARBE.kontur, boxShadow: "0 4px 0 " + FARBE.kontur + ", 0 0 22px rgba(255,210,58,0.55)" } },
+        React.createElement(Icon, { name: "gift", size: 34 })),
+      React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('dailyTitle')),
+      React.createElement("p", { style: { color: FARBE.textGedaempft, fontWeight: 700, fontSize: 13, margin: "0 0 " + (mult > 1 ? 6 : 14) + "px" } }, t('dailyStreak', { n: daily.streak || 0 })),
       mult > 1 && React.createElement("div", { style: { display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 14, background: "rgba(251,146,60,0.15)", border: "1px solid rgba(251,146,60,0.45)", color: "#fdba74", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", animation: "streakGlow 2s ease infinite" } }, React.createElement(Icon, { name: "flame", size: 12 }), t('dailyLoyalty', { m: mult, w: week })),
       React.createElement("div", { style: { display: "flex", gap: 4, marginBottom: 16 } }, ...days),
       collected
-        ? React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#4ade80", marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
+        ? React.createElement("div", { style: { ...titel(24), color: FARBE.laterne, marginBottom: 12, animation: "collectBounce 0.5s ease" } }, t('dailyCollected'))
         : canCollect
           ? React.createElement("div", { style: { marginBottom: 12 } },
-              React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#fbbf24" } }, "+" + reward.gold + " Gold"),
-              reward.xp > 0 && React.createElement("div", { style: { fontSize: 14, color: "#a78bfa", marginTop: 4 } }, "+" + reward.xp + " XP"),
+              React.createElement("div", { style: titel(32) }, "+" + reward.gold + " Gold"),
+              reward.xp > 0 && React.createElement("div", { style: { fontSize: 15, fontFamily: SCHRIFT_TITEL, color: "#e9d5ff", textShadow: KONTURTEXT, marginTop: 4 } }, "+" + reward.xp + " XP"),
               reward.special === "chest" && React.createElement("div", { style: { fontSize: 12, color: "#22d3ee", marginTop: 4 } }, t('dailyChest'))
             )
           : React.createElement("div", { style: { fontSize: 13, color: "#c9dbf7", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),

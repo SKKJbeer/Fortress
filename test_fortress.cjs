@@ -2572,6 +2572,11 @@ async function suiteCloudSave(browser, fbPort) {
       }
     });
     await p3.waitForTimeout(600);
+    // Seit v3.123.0 steht die Sicherung im Reiter „Konto" — und der Reiter
+    // traegt ein Abzeichen, solange nichts gesichert ist.
+    const kontoMarke = await p3.evaluate(() => /!/.test((document.querySelector('[data-reiter="konto"]') || {}).textContent || ''));
+    kontoMarke ? ok('Cloud-Save: Reiter „Konto" zeigt „!" solange ungesichert ✓') : fail('Cloud-Save: Reiter „Konto" ohne Hinweis-Abzeichen');
+    await reiterWahl(p3, 'konto');
     const ui = await p3.evaluate(() => ({
       warnung: /nur auf diesem Ger/i.test(document.body.innerText),
       knopf: [...document.querySelectorAll('button')].some(b => /Mit Google sichern/i.test(b.textContent))
@@ -2606,6 +2611,7 @@ async function suiteCloudSave(browser, fbPort) {
         }
       });
       await p4.waitForTimeout(600);
+      await reiterWahl(p4, 'konto');
       const ui = await p4.evaluate(() => ({
         authDa: !!(window.__fb && window.__fb.auth),
         uid: (window.__fb && window.__fb.uid) || null,
@@ -2774,6 +2780,7 @@ async function suitePlattform(browser) {
       await page.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
       await page.waitForTimeout(900);
       await oeffneProfil(page);
+      await reiterWahl(page, 'konto');
 
       const ui = await page.evaluate(() => ({
         link: [...document.querySelectorAll('button')].some(b => /Mit Google sichern|Save with Google/i.test(b.textContent)),
@@ -4931,10 +4938,13 @@ async function suiteProgression(browser) {
           b.getAttribute('title') === 'skelett');
         const skelettImg = skelettBtn ? skelettBtn.querySelector('img') : null;
         const skelettSrcOk = !!(skelettImg && (skelettImg.getAttribute('src') || '').startsWith('data:image/'));
-        // Sektions-Labels
-        const divTexts = Array.from(document.querySelectorAll('div')).map(d => (d.textContent || '').trim());
-        const hasAktiv  = divTexts.some(t => /AVATAR GALERIE/i.test(t));
-        const hasGesperrt = divTexts.some(t => /GESPERRT/i.test(t));
+        // Seit v3.123.0 EIN Raster mit allen Avataren; gesperrte tragen
+        // Schloss + Stufe und sind nicht waehlbar (statt zweier Sektionen).
+        const raster = document.querySelector('[data-avatar-raster]');
+        const alle = raster ? raster.querySelectorAll('[data-avatar]').length : 0;
+        const gesperrt = raster ? [...raster.querySelectorAll('[data-avatar]')].filter(b => b.disabled && /L\d+/.test(b.textContent || '')).length : 0;
+        const hasAktiv = alle >= 12;
+        const hasGesperrt = gesperrt > 0;
         return { count: imgs.length, circularCount, skelettSrcOk, hasAktiv, hasGesperrt };
       });
       avatarRender.count >= 4
@@ -4947,11 +4957,11 @@ async function suiteProgression(browser) {
         ? ok('Skelett-Avatar: data-URI korrekt geladen ✓')
         : fail('Skelett-Avatar: kein img-Element oder src fehlt');
       avatarRender.hasAktiv
-        ? ok('Profil-Editor: "AVATAR GALERIE" Sektion vorhanden ✓')
-        : fail('Profil-Editor: "AVATAR GALERIE" Label fehlt');
+        ? ok('Profil-Editor: Avatar-Raster mit allen zwoelf ✓')
+        : fail('Profil-Editor: Avatar-Raster fehlt oder unvollstaendig');
       avatarRender.hasGesperrt
-        ? ok('Profil-Editor: "GESPERRT" Sektion vorhanden ✓')
-        : fail('Profil-Editor: "GESPERRT" Label fehlt');
+        ? ok('Profil-Editor: gesperrte Avatare mit Schloss + Stufe, nicht waehlbar ✓')
+        : fail('Profil-Editor: keine gesperrten Avatare markiert');
     }
 
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Progressionssystem: Keine JS-Fehler ✓');
@@ -5582,14 +5592,20 @@ async function suiteSchmiede(browser) {
         title: /Schmiede|Forge/.test(t),
         mats: /Eisensplitter|Iron shards/i.test(t) || /Deine Materialien|Your materials/i.test(t),
         matCount: /50/.test(t),
-        sections: /Kanonen-Skins|Cannon skins/i.test(t) && /Einschlag-Effekte|Impact effects/i.test(t) && /Veredeln|Refine/i.test(t),
-        recipes: /Kristallkanone|Crystal cannon/.test(t) && /Lava-Einschlag|Lava impact/.test(t) && /Infernospur|Inferno trail/.test(t)
+        sections: ['cannon', 'impact', 'trail'].every(k => !!document.querySelector('[data-reiter="' + k + '"]')),
+        kanone: /Kristallkanone|Crystal cannon/.test(t)
       };
     });
+    // Rezepte je Reiter (v3.123.0): jede Kategorie einmal aufschlagen.
+    await reiterWahl(page, 'impact');
+    const lava = await page.evaluate(() => /Lava-Einschlag|Lava impact/.test(document.body.innerText));
+    await reiterWahl(page, 'trail');
+    const inferno = await page.evaluate(() => /Infernospur|Inferno trail/.test(document.body.innerText));
+    view.recipes = view.kanone && lava && inferno;
     view.title ? ok('Schmiede: Modal mit Titel ✓') : fail('Schmiede: Modal fehlt');
     view.mats && view.matCount ? ok('Schmiede: Material-Inventar sichtbar (50 Eisen) ✓') : fail('Schmiede: Material-Inventar fehlt');
-    view.sections ? ok('Schmiede: 3 Kategorien sichtbar ✓') : fail('Schmiede: Kategorien fehlen');
-    view.recipes ? ok('Schmiede: Rezeptkarten sichtbar ✓') : fail('Schmiede: Rezepte fehlen');
+    view.sections ? ok('Schmiede: 3 Kategorie-Reiter ✓') : fail('Schmiede: Kategorien fehlen');
+    view.recipes ? ok('Schmiede: Rezeptkarten in allen drei Reitern ✓') : fail(`Schmiede: Rezepte fehlen (Kanone=${view.kanone}, Lava=${lava}, Inferno=${inferno})`);
 
     // ── Veredeln ohne Basis-Trail muss gesperrt sein ──
     const lockCheck = await page.evaluate(() => {
@@ -5601,6 +5617,7 @@ async function suiteSchmiede(browser) {
       : fail('Schmiede: Veredeln-Sperre fehlt (' + JSON.stringify(lockCheck) + ')');
 
     // ── Craften: Kristallkanone (20 Eisen + 5 Silber + 200 G), zweistufig ──
+    await reiterWahl(page, 'cannon');
     await page.evaluate(() => {
       const b = [...document.querySelectorAll('button')].find(x => /Kristallkanone|Crystal cannon/.test(x.textContent || ''));
       b && b.click();
@@ -5679,6 +5696,114 @@ async function suiteSchmiede(browser) {
   return { res, errs };
 }
 
+// ── Kein Menue rollt (v3.123.0) ─────────────────────────────────────────
+//
+// Wunsch des Betreibers: Jedes Menue auf EINEN Blick, ohne Rollen. Wo mehr
+// Inhalt ist als Platz, blaettert man (Reiter, Seiten). Diese Suite oeffnet
+// jedes Menue auf drei Groessen (iPhone SE, iPhone, iPad) und verlangt:
+//   1. kein Kasten mit overflow auto/scroll, der tatsaechlich ueberlaeuft,
+//   2. kein Knopf unter dem Fensterrand oder von einem Elternteil abgeschnitten.
+// Gegengeprueft: Shop-Panel auf 300 px mit overflow auto → rot (v3.123.0).
+async function suiteKeinRollen(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Kein Menue rollt\n' + '='.repeat(50));
+  const miss = (page) => page.evaluate(() => {
+    const roll = [], raus = [];
+    for (const d of document.querySelectorAll('div')) {
+      const cs = getComputedStyle(d);
+      if (/(auto|scroll)/.test(cs.overflowY) && d.scrollHeight > d.clientHeight + 2)
+        roll.push(d.scrollHeight + '>' + d.clientHeight + ' „' + (d.textContent || '').trim().slice(0, 24) + '"');
+    }
+    for (const b of document.querySelectorAll('button')) {
+      const r = b.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      let el = b.parentElement, weg = r.bottom > innerHeight + 1;
+      while (el && !weg) {
+        const cs = getComputedStyle(el);
+        if (cs.overflow === 'hidden' || cs.overflowY === 'hidden') {
+          const q = el.getBoundingClientRect();
+          if (r.bottom > q.bottom + 1 || r.top < q.top - 1) weg = true;
+        }
+        el = el.parentElement;
+      }
+      if (weg) raus.push((b.textContent || b.title || b.getAttribute('aria-label') || '?').trim().slice(0, 24));
+    }
+    return { roll, raus };
+  });
+  // Bestenliste mit 30 Eintraegen — sonst gaebe es nichts zu blaettern.
+  const LB = `window.__fb.ref = (db, pfad) => ({ __pfad: String(pfad) });
+    window.__fb.get = async (r) => {
+      if (((r && r.__pfad) || '').indexOf('leaderboard') !== 0) return { exists: () => false, val: () => null };
+      const v = {}; for (let i = 0; i < 30; i++) v['p' + i] = { name: 'Spieler' + i, elo: 1500 - i * 10, wins: 30 - i, losses: i, games: 30 };
+      return { exists: () => true, val: () => v };
+    };`;
+  const ziele = [
+    ['Menue', null], ['Lokal', ['LOKAL', 'PLAY LOCAL']], ['Online', ['ONLINE SPIELEN', 'PLAY ONLINE']],
+    ['Profil', (p) => p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Profil bearbeiten|Edit profile/.test(x.title || '')); b && b.click(); return !!b; })],
+    ['Gold-Shop', (p) => p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Gold-Shop|Gold shop/i.test(x.title || '')); b && b.click(); return !!b; })],
+    ['Schmiede', (p) => p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Schmiede|Forge/i.test(x.title || '')); b && b.click(); return !!b; })],
+    ['Aufgaben', (p) => p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => /Tagesaufgaben|Daily tasks/i.test(x.title || '')); b && b.click(); return !!b; })],
+    ['Erfolge', (p) => p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => x.title === 'Achievements'); b && b.click(); return !!b; })],
+    ['Bestenliste', ['Bestenliste', 'Leaderboard']],
+  ];
+  for (const [vw, vh] of [[375, 667], [390, 844], [768, 1024]]) {
+    const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    await page.addInitScript(LB);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    const schlecht = [];
+    let gezaehlt = 0;
+    try {
+      for (const [name, oeffne] of ziele) {
+        await loadMenu(page);
+        let offen = true;
+        if (Array.isArray(oeffne)) offen = !!(await jsClick(page, oeffne));
+        else if (oeffne) offen = await oeffne(page);
+        await page.waitForTimeout(500);
+        if (!offen) { schlecht.push(name + ': nicht geoeffnet'); continue; }
+        gezaehlt++;
+        const m = await miss(page);
+        if (m.roll.length) schlecht.push(name + ' rollt ' + m.roll.join('; '));
+        if (m.raus.length) schlecht.push(name + ' abgeschnitten: ' + m.raus.join(', '));
+      }
+      schlecht.length === 0
+        ? ok(`Kein Rollen ${vw}x${vh}: ${gezaehlt} Menues passen auf einen Schirm ✓`)
+        : fail(`Kein Rollen ${vw}x${vh}: ${schlecht.join(' | ')}`);
+      // Die Bestenliste MUSS hier blaettern (30 Eintraege) — sonst hat die
+      // Pruefung oben die Liste nie gesehen.
+      await loadMenu(page);
+      await jsClick(page, ['Bestenliste', 'Leaderboard']);
+      let seiten = 0;
+      for (let i = 0; i < 20 && !seiten; i++) { await page.waitForTimeout(150); seiten = await page.evaluate(() => +((document.querySelector('[data-seiten]') || {}).dataset || {}).seiten || 0); }
+      seiten > 1 ? ok(`Bestenliste ${vw}x${vh}: 30 Eintraege auf ${seiten} Seiten ✓`)
+                 : fail(`Bestenliste ${vw}x${vh}: keine Seiten (data-seiten=${seiten})`);
+      if (seiten > 1) {
+        const vor = await page.evaluate(() => document.querySelector('[data-lb-zeile]').textContent);
+        await page.evaluate(() => document.querySelector('[data-blaettern="vor"]').click());
+        await page.waitForTimeout(200);
+        const nach = await page.evaluate(() => ({ t: document.querySelector('[data-lb-zeile]').textContent, s: document.querySelector('[data-seiten]').dataset.seite }));
+        nach.s === '1' && nach.t !== vor ? ok(`Bestenliste ${vw}x${vh}: Blaettern zeigt die naechste Seite ✓`)
+                                         : fail(`Bestenliste ${vw}x${vh}: Blaettern ohne Wirkung (Seite ${nach.s})`);
+      }
+    } finally { await ctx.close(); }
+  }
+  return { res, errs };
+}
+
+// Reiter anklicken (v3.123.0): Menues rollen nicht mehr, Inhalte liegen in
+// Reitern. Liefert false, wenn es den Reiter nicht gibt — wer klickt, prueft.
+async function reiterWahl(page, key, attr = 'data-reiter') {
+  const ok = await page.evaluate(([k, a]) => {
+    const b = document.querySelector('[' + a + '="' + k + '"]');
+    if (!b) return false; b.click(); return true;
+  }, [key, attr]);
+  await page.waitForTimeout(180);
+  return ok;
+}
+
 async function suiteGoldShop(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -5698,12 +5823,17 @@ async function suiteGoldShop(browser) {
       const t = document.body.innerText;
       return {
         title: /Gold-Shop|Gold shop/.test(t),
-        sections: /Kugel-Trails|Ball trails/i.test(t) && /Wappen-Rahmen|Crest frames/i.test(t) && /Sieges-Effekte|Victory effects/i.test(t),
-        goldChip: /\d+ G/.test(t)
+        // Seit v3.123.0 Reiter statt einer langen Liste: alle vier Kategorien
+        // als Reiter, und KEIN rollbarer Kasten mehr.
+        sections: ['cannon', 'trail', 'frame', 'win'].every(k => !!document.querySelector('[data-reiter="' + k + '"]')),
+        rollt: [...document.querySelectorAll('div')].some(d => /(auto|scroll)/.test(getComputedStyle(d).overflowY) && d.scrollHeight > d.clientHeight + 2),
+        goldChip: /\d+ ?G/.test(t)
       };
     });
     view.title ? ok('Gold-Shop: Modal mit Titel ✓') : fail('Gold-Shop: Modal fehlt');
-    view.sections ? ok('Gold-Shop: 3 Kategorien sichtbar ✓') : fail('Gold-Shop: Kategorien fehlen');
+    view.sections ? ok('Gold-Shop: 4 Kategorie-Reiter ✓') : fail('Gold-Shop: Kategorien fehlen');
+    !view.rollt ? ok('Gold-Shop: rollt nicht ✓') : fail('Gold-Shop: Inhalt rollt wieder');
+    (await reiterWahl(page, 'trail')) ? ok('Gold-Shop: Reiter „Spuren" ✓') : fail('Gold-Shop: Reiter „Spuren" fehlt');
     view.goldChip ? ok('Gold-Shop: Gold-Kontostand angezeigt ✓') : fail('Gold-Shop: Kontostand fehlt');
     // ── v3.29.1: Sieges-Effekt-Previews sind SVG-Icons, keine Emojis ──
     const noEmoji = await page.evaluate(() => {
@@ -5767,11 +5897,7 @@ async function suiteGoldShop(browser) {
     // auch eine Geschütz-Kategorie hat, gibt es mehrere "Standard"-Buttons —
     // ein globales Suchen traf die erste (Geschütz) statt der gemeinten (Trail).
     await page.evaluate(() => {
-      const labels = [...document.querySelectorAll('div')]
-        .filter(d => /^(KUGEL-TRAILS|BALL TRAILS)$/i.test((d.textContent || '').trim()));
-      const sec = labels.length ? labels[labels.length - 1].parentElement : null;
-      const scope = sec || document;
-      const b = [...scope.querySelectorAll('button')].find(x => /Standard|Default/.test(x.textContent || ''));
+      const b = document.querySelector('[data-shop-artikel="trail_standard"]');
       b && b.click();
     });
     await page.waitForTimeout(300);
@@ -5809,6 +5935,8 @@ async function suiteGoldShop(browser) {
     });
     editorOpened ? ok('Profil-Editor geöffnet ✓') : fail('Profil-Editor-Button fehlt');
     await page2.waitForTimeout(300);
+    (await reiterWahl(page2, 'ausruestung')) ? ok('Profil: Reiter „Ausrüstung" ✓') : fail('Profil: Reiter „Ausrüstung" fehlt');
+    (await reiterWahl(page2, 'trail', 'data-inv-reiter')) ? ok('Inventar: Unterreiter „Spuren" ✓') : fail('Inventar: Unterreiter „Spuren" fehlt');
     const inv = await page2.evaluate(() => {
       const t = document.body.innerText;
       return {
@@ -5822,7 +5950,7 @@ async function suiteGoldShop(browser) {
     inv.shopLink ? ok('Inventar: Gold-Shop-Link ✓') : fail('Inventar: Shop-Link fehlt');
     // Anlegen aus dem Inventar: Glut-Karte tippen → equipped
     await page2.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find(x => /Glut|Ember/.test(x.textContent || '') && /Anlegen|Equip|Angelegt|Equipped/.test(x.textContent || ''));
+      const b = document.querySelector('[data-inv-artikel="trail_ember"]');
       b && b.click();
     });
     await page2.waitForTimeout(250);
@@ -5833,10 +5961,11 @@ async function suiteGoldShop(browser) {
     invEquip === 'trail_ember' ? ok('Inventar: Anlegen per Tipp ✓') : fail(`Inventar: Anlegen fehlgeschlagen (${invEquip})`);
     // Profil speichern → Käufe müssen bleiben (saveProfileEditor-Whitelist)
     await page2.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find(x => /💾/.test(x.textContent || ''));
-      b && b.click();
+      const b = [...document.querySelectorAll('button')].find(x => /^(Speichern|Save)$/i.test((x.textContent || '').trim()));
+      window.__gespeichert = !!b; b && b.click();
     });
     await page2.waitForTimeout(300);
+    (await page2.evaluate(() => window.__gespeichert)) ? ok('Profil: Speichern-Knopf gedrueckt ✓') : fail('Profil: Speichern-Knopf nicht gefunden');
     const afterSave = await page2.evaluate(() => {
       const p = JSON.parse(localStorage.getItem('fortress_profile'));
       return { owned: (p.cosmetics && p.cosmetics.owned) || [], trail: p.cosmetics && p.cosmetics.equipped && p.cosmetics.equipped.trail };
@@ -7095,6 +7224,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       aufgaben: () => suiteDailyTasks(browser),
       goldshop: () => suiteGoldShop(browser),
       schmiede: () => suiteSchmiede(browser),
+      rollen: () => suiteKeinRollen(browser),
     };
     const unbekannt = NUR.filter(n => !einzeln[n]);
     if (unbekannt.length) {
@@ -7162,7 +7292,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     const fbs = await suiteFirebaseStart(browser);
     return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
-  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede] = await Promise.all([
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
     suitePlattform(browser),
@@ -7189,6 +7319,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteDailyTasks(browser),
     suiteGoldShop(browser),
     suiteSchmiede(browser),
+    suiteKeinRollen(browser),
   ]);
 
   // Die drei Warteschlangen-Suiten laufen ALLEIN, nachdem alles andere fertig
@@ -7204,9 +7335,9 @@ async function suiteOnlineHaerte(browser, fbPort) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rRollen.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rRollen.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

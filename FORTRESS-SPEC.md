@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.122.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.123.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9079,3 +9079,45 @@ harmonisch und gleich".
   ersten Stichprobe (≈ 0 ms); der Verzug kommt von den vielen parallelen
   Browsern der Suite, nicht aus dem Spiel.
 - Die uebrigen sechs Welten rechnen; sie folgen in v3.123.0.
+
+## v3.123.0 — Menues ohne Rollen
+
+- **Wunsch des Betreibers:** Kein Menue rollt, alles auf einen Blick. Wo mehr
+  Inhalt ist als Platz, wird geblaettert statt gerollt.
+- **Bausteine** `src/ui/blaettern.js`: `Reiter` (Kategorien im Comic-Stil,
+  Symbol nur bei genug Breite, Abzeichen moeglich), `Seiten` (Raster mit
+  Punkten, Pfeilen und Wischen), `useSchirm`/`zeilenFuer` (Eintraege je Seite
+  aus der echten Fensterhoehe — iPhone SE bekommt weniger je Seite, das iPad
+  mehr).
+- **Profil:** kompakter Kopf (Avatar, Name, Stufe, XP), drei Reiter
+  *Avatar · Ausruestung · Konto*. Alle zwoelf Avatare in EINEM Raster,
+  gesperrte mit Schloss und Stufe. Ausruestung mit Unterreitern und Seiten.
+  Konto (Sicherung, Loeschen) traegt „!", solange nichts gesichert ist — der
+  Hinweis stand bisher immer offen und darf hinter dem Reiter nicht
+  untergehen.
+- **Gold-Shop, Schmiede:** Reiter je Kategorie, Seiten statt Liste. Die
+  Kosmetik-Vorschau (Kanone als echtes Modell, Spur, Rahmen, Sieg) liegt
+  einmal in `kosmetikVorschau` statt zweimal; gemalte Artikelbilder
+  (`src/ui/artikel.js`) gehen vor, sobald sie vorliegen.
+- **Erfolge:** sechs Kategorie-Reiter mit Stand je Kategorie (3x2), Karten
+  geblaettert.
+- **Bestenliste:** Seiten statt Rollliste; die eigene Zeile bleibt unten
+  angeheftet, wenn sie nicht auf der sichtbaren Seite steht.
+- **Tagesaufgaben, Tages-Belohnung:** im Designsystem. Der Knopf fuer die
+  Tages-Belohnung ist ein leuchtendes Geschenk oben rechts — als Knopf ueber
+  volle Breite schob er das Menue 13 px (iPhone) bzw. 41 px (SE) ueber den
+  Rand.
+- **iPad:** Das Logo wuchs mit der Vergroesserung (`zoom 1.34`) mit und schob
+  die Fusszeile 30 px unter den Rand; auf Tablets jetzt `min(64%, 260px)`.
+- **Neue Suite `suiteKeinRollen`** (`NUR=rollen`): oeffnet neun Menues auf
+  375x667, 390x844 und 768x1024 und verlangt: kein ueberlaufender
+  Rollkasten, kein abgeschnittener Knopf; dazu Bestenliste mit 30 Eintraegen
+  auf mehreren Seiten, Blaettern wirkt. Gegenprobe: ohne die iPad-Korrektur
+  rot (1054 > 1024).
+- **Bestehende Suiten auf Reiter umgestellt** (Shop, Schmiede, Inventar,
+  Konto, Avatar-Raster) — die Aussagen sind gleich streng geblieben, dazu
+  neu: „Shop rollt nicht", „Konto-Reiter zeigt !" (beide gegengeprueft). Die
+  Profil-Speichern-Pruefung suchte den Knopf seit v3.27.0 ueber ein Emoji und
+  drueckte NIE — sie meldet jetzt, ob der Knopf gefunden wurde.
+- `tests/modale.test.js`: Erfolge-Fenster hat jetzt Hooks und wird deshalb
+  wirklich gerendert; neue Pruefung „rollt nicht, sechs Reiter, Seiten".

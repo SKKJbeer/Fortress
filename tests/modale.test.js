@@ -64,21 +64,33 @@ test('forgeItemVisual zeichnet jedes Rezept des Katalogs', () => {
   }
 });
 
+// AchievementsModal hat seit v3.123.0 Hooks (Reiter, Seiten) — deshalb
+// gerendert statt als Funktion aufgerufen (`zeichne` steht weiter unten).
 test('AchievementsModal zeigt alle sechs Kategorien und den Zaehler', () => {
-  const el = AchievementsModal({
+  const html = zeichne(AchievementsModal, {
     profile: { achievements: [] }, onClose() {},
     t, achTitle: (d) => d.title, achDesc: (d) => d.desc,
   });
-  const txt = texte(el);
   for (const cat of ['siege', 'spiele', 'zerstoerung', 'gold', 'elo', 'serien']) {
-    assert.ok(txt.includes('T:achcat_' + cat), `Kategorie ${cat} fehlt`);
+    assert.ok(html.includes('T:achcat_' + cat), `Kategorie ${cat} fehlt`);
   }
+  assert.ok(html.includes('T:achUnlocked'), 'Zaehler fehlt');
+});
+
+test('AchievementsModal rollt nicht: Kategorien als Reiter, Inhalt geblaettert', () => {
+  const html = zeichne(AchievementsModal, {
+    profile: { achievements: [] }, onClose() {},
+    t, achTitle: (d) => d.title, achDesc: (d) => d.desc,
+  });
+  assert.ok(!/overflow-y:\s*auto/.test(html), 'Erfolge-Fenster rollt wieder');
+  assert.strictEqual((html.match(/data-reiter="/g) || []).length, 6, 'nicht sechs Reiter');
+  assert.ok(/data-seiten="\d+"/.test(html), 'kein Seiten-Raster');
 });
 
 test('AchievementsModal kommt mit einem leeren und einem kaputten Profil klar', () => {
   const props = { onClose() {}, t, achTitle: (d) => d.title, achDesc: (d) => d.desc };
   for (const prof of [null, undefined, {}, { achievements: null }, { achievements: 'murks' }]) {
-    assert.doesNotThrow(() => AchievementsModal({ ...props, profile: prof }),
+    assert.doesNotThrow(() => zeichne(AchievementsModal, { ...props, profile: prof }),
       `wirft bei ${JSON.stringify(prof)}`);
   }
 });

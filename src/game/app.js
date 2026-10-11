@@ -39,7 +39,51 @@ import { LevelBadge, ConfettiBurst, WappenAvatar, XpBarUI, MatPip, MatRow } from
 import { WinFx, AchievementPopup, AchievementsModal, ItemRevealModal, XpResultAnim, OnboardingModal, DailyRewardModal } from '../ui/modale.js';
 import { drawWall, drawRubble, ROOF_OF, FLAG_OF, ACCENT_OF, ACCENT_RGB, GHOST_RGB, GHOST_HEX, BALL_MID, BALL_DARK, BALL_GLOW, ballSprite, drawCastle, roundRectPath, SPR, mkSpriteCanvas, wallSprite, crackSprite, rubbleSprite, CANNON_NEON, cannonDomeSprite, BARREL_PAD, cannonBarrelSprite, drawCannonFull } from '../render/sprites.js';
 import { __spreadValues, __spreadProps } from '../spread.js';
+import { Reiter, Seiten, useSchirm, zeilenFuer } from '../ui/blaettern.js';
+import { ArtikelBild } from '../ui/artikel.js';
 import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, schleier, panel, karte, titel, pille, bildHintergrund, schalter, spielerKasten } from '../ui/stil.js';
+
+// Vorschau eines Kosmetik-Artikels (Shop UND Inventar, v3.123.0 zusammengelegt):
+// Kanonen zeichnen das ECHTE Modell in ein Mini-Canvas (v3.45.0), Spuren und
+// Rahmen ihre Farbe, Sieges-Effekte ihr Symbol. Gemalte Artikelbilder
+// (ui/artikel.js) gehen vor — das hier ist der Rueckfall.
+function kosmetikVorschau(cat, it, g = 26) {
+  const h = React.createElement;
+  if (cat === "cannon") return h("canvas", {
+    width: g * 3, height: g * 3,
+    style: { width: g * 1.5, height: g * 1.5, display: "block" },
+    ref: (el) => {
+      if (!el || el.__drawn === it.id) return;
+      el.__drawn = it.id;
+      const c2 = el.getContext("2d"), m = g * 1.5;
+      c2.clearRect(0, 0, g * 3, g * 3);
+      const k = 0.78 * g * 3 / 76;
+      c2.save(); c2.translate(m, m); c2.scale(k, k); c2.translate(-38, -38);
+      try {
+        drawCannonFull(c2, 38, 38, -0.6, 1, 1, 3000,
+          it.id === "cannon_standard" ? null : it.id,
+          it.id === "cannon_standard" ? null : CANNON_SKIN[it.id]);
+      } catch (e) {}
+      c2.restore();
+    }
+  });
+  if (cat === "trail") return h("div", { style: {
+    width: g, height: g, borderRadius: "50%",
+    background: TRAIL_COLOR[it.id] || "#93a4bd", border: "2px solid #1b0f06", boxSizing: "border-box",
+    boxShadow: TRAIL_COLOR[it.id] ? "0 0 10px " + TRAIL_COLOR[it.id] : "none"
+  } });
+  if (cat === "frame") { const fr = FRAME_STYLE[it.id]; return h("div", { style: {
+    width: g, height: g, borderRadius: "50%",
+    border: fr ? "3px solid " + fr.c : "2px dashed rgba(255,255,255,0.35)",
+    boxShadow: fr ? "0 0 10px " + fr.glow + ", inset 0 0 0 1px #1b0f06" : "none",
+    boxSizing: "border-box"
+  } }); }
+  const wi = WIN_ICON[it.id] || WIN_ICON.win_confetti;
+  return h("div", { style: {
+    width: g, height: g, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+    background: "rgba(255,255,255,0.1)", boxShadow: "0 0 10px " + wi.c + "55"
+  } }, h(Icon, { name: wi.name, size: Math.round(g * 0.62), color: wi.c }));
+}
 import { SFX, MUSIC } from '../audio.js';
 import { GameEventBus, GAME_EVENTS, ACHIEVEMENTS, ACH_EN, processAchievementEvents } from '../engine/achievements.js';
 import { SHADOW_DX, SHADOW_DY, SHAPES, rotateCW, randomShape } from '../engine/shapes.js';
@@ -1333,6 +1377,12 @@ window.StackSiegeApp = function StackSiegeApp() {
   const forgeReadyN = profile ? craftbar(profile) : 0; // Abzeichen am Schmiede-Button (v3.68.0)
   // ── Gold-Shop State (v3.23.0) ──
   const [showGoldShop, setShowGoldShop] = useState(false);
+  // Menues ohne Scrollen (v3.123.0): gewaehlter Reiter je Fenster
+  const [shopReiter, setShopReiter] = useState("cannon");
+  const [schmiedeReiter, setSchmiedeReiter] = useState("cannon");
+  const [profilReiter, setProfilReiter] = useState("avatar");
+  const [invReiter, setInvReiter] = useState("cannon");
+  const schirm = useSchirm();
   // Kauf-Bestätigung (v3.26.2): {cat, item} des zur Bestätigung anstehenden Kaufs
   const [confirmBuy, setConfirmBuy] = useState(null);
   function cosmeticOwned(cos, item) { return item.price === 0 || cos.owned.includes(item.id); }
@@ -7108,7 +7158,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   } }, /* @__PURE__ */ React.createElement("div", { className: "gross-spalte", style: { textAlign: "center", maxWidth: 440, width: "100%", margin: "auto 0" } }, /* @__PURE__ */ React.createElement("h1", { style: { margin: "4px 0 2px", lineHeight: 0 } },
     // Logo statt Verlaufsschrift (v3.121.0): dasselbe gesetzte Logo wie im
     // Ladebild (tools/logo.cjs). Der Text bleibt fuer Vorleser im alt.
-    React.createElement("img", { src: "logo.png", alt: "Stack & Siege", draggable: false, style: { width: "min(76%, 320px)", height: "auto", filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.45))" } })),
+    React.createElement("img", { src: "logo.png", alt: "Stack & Siege", draggable: false, className: "menue-logo", style: { width: "min(76%, 320px)", height: "auto", filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.45))" } })),
   /* @__PURE__ */ React.createElement("p", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 16, color: FARBE.text, textShadow: KONTURTEXT, margin: "2px 0 12px", letterSpacing: "0.04em" } }, t('subtitle')), profile && /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex",
     alignItems: "center",
@@ -7170,7 +7220,13 @@ window.StackSiegeApp = function StackSiegeApp() {
       onChange: (e) => setMusicVol(parseInt(e.target.value, 10) / 100),
       style: { flex: 1, maxWidth: 220, accentColor: FARBE.gold, height: 18, cursor: "pointer" } }),
     /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, width: 38, textAlign: "left" } }, Math.round(musicVol * 100) + "%")
-  ), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDailyModal(true), title: t('dailyTitle'), style: { width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", padding: "12px", fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", animation: "streakGlow 2s ease infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 16, color: "#fbbf24" }), t("dailyTitle")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
+  ), getDailyCollectable(dailyState) && /* @__PURE__ */ React.createElement("button", {
+    onClick: () => setShowDailyModal(true), title: t('dailyTitle'), "aria-label": t('dailyTitle'), "data-tagesbonus": "1",
+    // v3.123.0: Geschenk oben rechts statt Knopf ueber volle Breite — der
+    // schob das Menue 13 px (iPhone) bzw. 41 px (SE) ueber den Rand.
+    style: symbolKnopf("gold", { position: "fixed", zIndex: 30, top: "calc(var(--sa-top,0px) + 12px)", right: "calc(var(--sa-right,0px) + 12px)", width: 54, height: 54, borderRadius: 16, animation: "streakGlow 2s ease infinite", color: FARBE.textDunkel })
+  }, /* @__PURE__ */ React.createElement(Icon, { name: "gift", size: 28 }),
+    React.createElement("span", { style: { position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: "linear-gradient(180deg,#ff8a7a,#ef4b34 55%,#a8261a)", border: "2px solid " + FARBE.kontur, color: "#fff", fontFamily: SCHRIFT_TITEL, fontSize: 12, lineHeight: "14px", textShadow: KONTURTEXT } }, "!")), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("local"), style: {
     width: "100%",
     display: "flex",
     alignItems: "center",
@@ -7212,7 +7268,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.122.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.123.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7305,214 +7361,93 @@ window.StackSiegeApp = function StackSiegeApp() {
     // geben, und das sieht nicht nach einem Fenster aus, sondern nach einem
     // toten Feld.
     zIndex: 1160,
-    padding: "24px 16px",
-    overflowY: "auto"
+    padding: "16px",
+    alignItems: "center",
+    overflow: "hidden"
   } }, /* @__PURE__ */ React.createElement("div", { style: {
     ...panel({ padding: "14px 14px 14px" }),
     maxWidth: 400,
     width: "100%",
+    maxHeight: "calc(100dvh - 32px)",
+    overflow: "hidden",
     textAlign: "center"
   } },
-  /* ══ HEADER: AVATAR + NAME + LEVEL + XP ══ */
-  /* @__PURE__ */ React.createElement("div", { style: {
-    ...karte({ borderRadius: 18 }),
-    padding: "12px 14px 12px",
-    marginBottom: 10
-  } },
-    /* @__PURE__ */ React.createElement("div", { style: {
-      width: 72, height: 72, borderRadius: "50%",
-      margin: "0 auto 10px",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      boxShadow: "0 0 20px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "66,0 0 40px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "22"
-    } },
-      /* @__PURE__ */ React.createElement(WappenAvatar, { id: editWappen || "skelett", size: 72 })
-    ),
-    /* @__PURE__ */ React.createElement("input", {
-      value: editName,
-      onChange: (e) => setEditName(e.target.value.slice(0, 16)),
-      placeholder: t('profileNamePlaceholder'),
-      style: {
-        width: "100%", boxSizing: "border-box",
-        textAlign: "center", fontSize: 18, fontWeight: 900,
-        padding: "3px 8px",
-        border: "none",
-        borderBottom: "2px solid " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "55",
-        background: "transparent",
-        color: "#f1f5f9",
-        letterSpacing: "0.02em",
-        outline: "none",
-        marginBottom: 8
-      }
-    }),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 } },
-      /* @__PURE__ */ React.createElement(LevelBadge, { level: typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1, size: "lg" }),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#c9dbf7", fontWeight: 700, letterSpacing: "0.06em" } },
-        getLevelTier(typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1).label
-      )
-    ),
-    /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden", position: "relative", marginBottom: 3 } },
-      /* @__PURE__ */ React.createElement("div", { style: {
-        position: "absolute", top: 0, left: 0, height: "100%",
-        width: (() => { const l = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1; const x = typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0; return Math.min(100, x / xpToNextLevel(l) * 100) + "%"; })(),
-        background: "linear-gradient(90deg," + (WAPPEN_GLOW[editWappen] || "#7c3aed") + ",#22d3ee)",
-        borderRadius: 4,
-        boxShadow: "0 0 10px " + (WAPPEN_GLOW[editWappen] || "#7c3aed") + "88"
-      } })
-    ),
-    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#a9bfe3", fontWeight: 600 } },
-      (() => { const l = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1; const x = typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0; return x + " / " + xpToNextLevel(l) + " XP"; })()
+  /* ══ KOPF (v3.123.0 kompakt in einer Zeile): Avatar + Name + Level/XP ══ */
+  /* @__PURE__ */ React.createElement("div", { style: { ...karte({ borderRadius: 18 }), padding: "10px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 } },
+    /* @__PURE__ */ React.createElement("div", { style: { width: 64, height: 64, borderRadius: "50%", flexShrink: 0, border: "3px solid " + FARBE.kontur, boxShadow: "0 0 0 2px " + (WAPPEN_GLOW[editWappen] || FARBE.gold) + ", 0 3px 0 2px " + FARBE.kontur, overflow: "hidden", display: "flex" } },
+      /* @__PURE__ */ React.createElement(WappenAvatar, { id: editWappen || "skelett", size: 58 })),
+    /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0, textAlign: "left" } },
+      /* @__PURE__ */ React.createElement("input", {
+        value: editName,
+        onChange: (e) => setEditName(e.target.value.slice(0, 16)),
+        placeholder: t('profileNamePlaceholder'),
+        style: { width: "100%", boxSizing: "border-box", fontFamily: SCHRIFT_TITEL, fontSize: 20, padding: "4px 8px", border: "2px solid " + FARBE.kontur, borderRadius: 10, background: "rgba(255,255,255,0.92)", color: FARBE.textDunkel, outline: "none", marginBottom: 6 }
+      }),
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        /* @__PURE__ */ React.createElement(LevelBadge, { level: (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1) }),
+        /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, React.createElement(XpBarUI, { level: (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1), xp: (typeof (profile == null ? void 0 : profile.xp) === "number" ? profile.xp : 0) })))
     )
   ),
-  /* ══ AVATAR GALERIE ══ */
-  /* @__PURE__ */ React.createElement("div", { style: {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 16,
-    padding: "10px 12px",
-    marginBottom: 12
-  } },
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em" } }, React.createElement(Icon, { name: "sparkles", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarGallery')),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, background: "rgba(124,58,237,0.2)", color: "#a78bfa", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } },
-        WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + "/" + WAPPEN.length
-      )
-    ),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 10 } },
-      WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
-        const glowColor = WAPPEN_GLOW[w] || "#888";
-        const isSel = editWappen === w;
-        return /* @__PURE__ */ React.createElement("button", { key: w, onClick: () => setEditWappen(w), style: {
-          width: 52, height: 52, borderRadius: "50%", cursor: "pointer",
-          background: "transparent", border: "none", padding: 0,
-          position: "relative", flexShrink: 0,
-          boxShadow: isSel ? "0 0 0 3px #fff,0 0 0 5px " + glowColor + ",0 0 18px " + glowColor : "0 0 0 2px " + glowColor + "44",
-          outline: "none",
-          transform: isSel ? "scale(1.12)" : "scale(1)",
-          transition: "all 0.18s cubic-bezier(.36,1.6,.56,1)"
-        }, title: w },
-          /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 52 })
-        );
-      })
-    ),
-    /* @__PURE__ */ React.createElement("div", { style: { height: 1, background: "rgba(255,255,255,0.07)", margin: "0 0 8px" } }),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 } },
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#a9bfe3", letterSpacing: "0.08em" } }, React.createElement(Icon, { name: "lock", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('avatarLocked')),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "#334155", fontWeight: 600 } },
-        "(" + WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).length + ")"
-      )
-    ),
-    /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 10 } },
-      WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1)).map((w) => {
-        const reqLevel = AVATAR_UNLOCKS[w] || 1;
-        return /* @__PURE__ */ React.createElement("div", { key: w, style: {
-          width: 52, height: 52, borderRadius: "50%",
-          position: "relative", flexShrink: 0, cursor: "not-allowed"
-        }, title: t("lockedAt", { n: reqLevel }) },
-          /* @__PURE__ */ React.createElement("div", { style: { filter: "grayscale(0.75) brightness(0.45)", width: 52, height: 52 } },
-            /* @__PURE__ */ React.createElement(WappenAvatar, { id: w, size: 52 })
-          ),
-          /* @__PURE__ */ React.createElement("div", { style: {
-            position: "absolute", inset: 0,
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-            borderRadius: "50%",
-            background: "rgba(2,6,15,0.45)", gap: 2
-          } },
-            /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 14 }),
-            /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#dbe7fb", fontWeight: 800, letterSpacing: "0.05em" } }, "L" + reqLevel)
-          )
-        );
-      })
-    ),
-    (() => {
-      const lvl = typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1;
-      const nextW = WAPPEN.filter((w) => (AVATAR_UNLOCKS[w] || 1) > lvl).sort((a, b) => (AVATAR_UNLOCKS[a] || 1) - (AVATAR_UNLOCKS[b] || 1))[0];
-      if (!nextW) return null;
-      const reqLvl = AVATAR_UNLOCKS[nextW] || 1;
-      const pct = Math.min(99, Math.round(lvl / reqLvl * 100));
-      const gc = WAPPEN_GLOW[nextW] || "#888";
-      return /* @__PURE__ */ React.createElement("div", { style: {
-        background: "linear-gradient(135deg,rgba(124,58,237,0.12),rgba(34,211,238,0.06))",
-        border: "1px solid " + gc + "33",
-        borderRadius: 12,
-        padding: "10px 12px",
-        display: "flex", alignItems: "center", gap: 10
-      } },
-        /* @__PURE__ */ React.createElement("div", { style: { filter: "grayscale(0.5) brightness(0.55)", flexShrink: 0 } },
-          /* @__PURE__ */ React.createElement(WappenAvatar, { id: nextW, size: 40 })
-        ),
-        /* @__PURE__ */ React.createElement("div", { style: { flex: 1, textAlign: "left" } },
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#c9dbf7", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 } }, t('nextUnlock')),
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#e2e8f0", fontWeight: 800, marginBottom: 5 } }, nextW),
-          /* @__PURE__ */ React.createElement("div", { style: { height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" } },
-            /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg," + gc + ",#22d3ee)", borderRadius: 2 } })
-          )
-        ),
-        /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } },
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, color: gc, fontWeight: 900 } }, "L" + reqLvl),
-          /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: "#a9bfe3" } }, t('requiredLabel'))
-        )
-      );
-    })()
+  // Reiter (v3.123.0): statt einer langen Liste drei Bereiche — kein Rollen.
+  profile && React.createElement(Reiter, { aktiv: profilReiter, onWahl: setProfilReiter, reiter: [
+    { key: "avatar", label: t("tabAvatar"), icon: "user" },
+    { key: "ausruestung", label: t("tabAusruestung"), icon: "backpack" },
+    // Abzeichen, solange nichts gesichert ist: der Hinweis darf hinter dem
+    // Reiter nicht verschwinden (er stand bis v3.122.0 immer offen da).
+    { key: "konto", label: t("tabKonto"), icon: "cloud", badge: MP_CONFIGURED && !(authUid() && ((typeof window !== "undefined" && window.__fb) || {}).anon === false) ? "!" : null }
+  ] }),
+  /* ══ AVATARE (v3.123.0): alle zwoelf in EINEM Raster — gesperrte mit Schloss ══ */
+  (profilReiter === "avatar" || !profile) && React.createElement("div", { "data-avatar-raster": "1", style: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, marginBottom: 10 } },
+    WAPPEN.map((w) => {
+      const req = AVATAR_UNLOCKS[w] || 1, frei = req <= (typeof (profile == null ? void 0 : profile.level) === "number" ? profile.level : 1), isSel = editWappen === w;
+      return React.createElement("button", { key: w, title: frei ? w : t("lockedAt", { n: req }), disabled: !frei,
+        onClick: () => frei && setEditWappen(w), "data-avatar": w,
+        style: { position: "relative", aspectRatio: "1", width: "100%", padding: 0, borderRadius: 16, cursor: frei ? "pointer" : "not-allowed",
+          border: isSel ? "3px solid " + FARBE.gold : "3px solid " + FARBE.kontur, overflow: "hidden", background: FARBE.nacht,
+          boxShadow: isSel ? "0 0 0 2px " + FARBE.kontur + ", 0 0 14px " + FARBE.gold : "0 3px 0 " + FARBE.kontur,
+          transform: isSel ? "scale(1.05)" : "none", transition: "transform .15s" } },
+        React.createElement("div", { style: { filter: frei ? "none" : "grayscale(0.8) brightness(0.45)", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" } },
+          React.createElement(WappenAvatar, { id: w, size: 68 })),
+        !frei && React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, color: "#fff" } },
+          React.createElement(Icon, { name: "lock", size: 18 }),
+          React.createElement("span", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 14, textShadow: KONTURTEXT } }, "L" + req)));
+    })
   ),
   /* ══ INVENTAR (v3.26.1): gekaufte Kosmetik ansehen + anlegen ══ */
-  profile && (() => {
+  profilReiter === "ausruestung" && profile && (() => {
     const h = React.createElement;
     const cos = cosOf(profile);
-    const CATS = [["cannon", t("cosSectionCannon")], ["trail", t("cosSectionTrail")], ["frame", t("cosSectionFrame")], ["win", t("cosSectionWin")]];
-    const invPreview = (cat, it) => {
-      if (cat === "trail") return h("div", { style: {
-        width: 22, height: 22, borderRadius: "50%",
-        background: TRAIL_COLOR[it.id] || "#93a4bd",
-        boxShadow: TRAIL_COLOR[it.id] ? "0 0 8px " + TRAIL_COLOR[it.id] : "none"
-      } });
-      if (cat === "frame") { const fr = FRAME_STYLE[it.id]; return h("div", { style: {
-        width: 22, height: 22, borderRadius: "50%",
-        border: fr ? "3px solid " + fr.c : "2px dashed rgba(255,255,255,0.25)",
-        boxShadow: fr ? "0 0 8px " + fr.glow : "none", boxSizing: "border-box"
-      } }); }
-      const wi = WIN_ICON[it.id] || WIN_ICON.win_confetti;
-      return h("div", { style: {
-        width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(255,255,255,0.07)", boxShadow: "0 0 8px " + wi.c + "44"
-      } }, h(Icon, { name: wi.name, size: 14, color: wi.c }));
-    };
+    const CATS = [["cannon", t("tabKanonen")], ["trail", t("tabSpuren")], ["frame", t("tabRahmen")], ["win", t("tabSieg")]];
+    const invPreview = (cat, it) => kosmetikVorschau(cat, it, 24);
     const ownedTotal = Object.keys(COSMETICS).reduce((s, cat) => s + COSMETICS[cat].filter((it) => cosmeticOwned(cos, it)).length, 0);
-    return h("div", { style: {
-      background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 16, padding: "10px 12px", marginBottom: 12
-    } },
+    // v3.123.0: Kategorien als kleine Reiter, Artikel als blaetterbares Raster —
+    // auch mit allem gekauften rollt nichts.
+    const items = COSMETICS[invReiter].filter((it) => cosmeticOwned(cos, it));
+    const invZeilen = zeilenFuer(Math.min(schirm.h, 900) - 410, 84);
+    return h("div", { "data-inventar": "1", style: { ...karte({ borderRadius: 16 }), padding: "10px", marginBottom: 10 } },
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
-        h("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em" } }, h(Icon, { name: "backpack", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invTitle')),
-        h("span", { style: { fontSize: 10, background: "rgba(251,191,36,0.15)", color: "#fcd34d", padding: "2px 8px", borderRadius: 10, fontWeight: 700 } }, ownedTotal + "")
+        h("span", { style: { ...titel(16), display: "flex", alignItems: "center", gap: 6 } }, h(Icon, { name: "backpack", size: 15 }), t('invTitle')),
+        h("span", { style: pille("gold", { fontSize: 13, padding: "1px 10px" }) }, ownedTotal + "")
       ),
-      CATS.map(([cat, label]) => {
-        const items = COSMETICS[cat].filter((it) => cosmeticOwned(cos, it));
-        return h("div", { key: cat, style: { marginBottom: 8 } },
-          h("div", { style: { fontSize: 9, fontWeight: 800, color: "#c9dbf7", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5, textAlign: "left" } }, label),
-          h("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
-            items.map((it) => {
-              const equipped = cos.equipped[cat] === it.id;
-              return h("button", { key: it.id, onClick: () => buyOrEquipCosmetic(cat, it), title: t("cos_" + it.id), style: {
-                border: "none", borderRadius: 11, padding: "7px 9px 6px", minWidth: 62,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                cursor: equipped ? "default" : "pointer",
-                background: equipped ? "linear-gradient(180deg, rgba(52,211,153,0.2), rgba(10,14,24,0.6))" : "rgba(255,255,255,0.06)",
-                boxShadow: equipped ? "inset 0 0 0 1.5px rgba(52,211,153,0.7)" : "inset 0 0 0 1px rgba(255,255,255,0.09)"
-              } },
-                invPreview(cat, it),
-                h("span", { style: { fontSize: 8.5, fontWeight: 800, color: "#e2e8f0", whiteSpace: "nowrap" } }, t("cos_" + it.id)),
-                h("span", { style: { fontSize: 7.5, fontWeight: 900, color: equipped ? "#34d399" : "#64748b" } }, equipped ? t("cosEquipped") : t("invTapEquip"))
-              );
-            })
-          )
+      h("div", { style: { display: "flex", gap: 5, marginBottom: 8 } }, CATS.map(([cat, label]) => h("button", { key: cat, "data-inv-reiter": cat, onClick: () => setInvReiter(cat),
+        style: schalter(invReiter === cat, "blau", { flex: 1, minWidth: 0, padding: "4px 2px", fontSize: 11.5, borderRadius: 10 }) },
+        h("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, label)))),
+      h(Seiten, { schluessel: invReiter, eintraege: items, spalten: 4, luecke: 6, proSeite: 4 * invZeilen, render: (it) => {
+        const equipped = cos.equipped[invReiter] === it.id;
+        return h("button", { key: it.id, onClick: () => buyOrEquipCosmetic(invReiter, it), title: t("cos_" + it.id), "data-inv-artikel": it.id, style: {
+          border: "2px solid " + (equipped ? FARBE.gold : "rgba(10,20,50,0.55)"), borderRadius: 12, padding: "6px 3px 5px", minWidth: 0, height: 84,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+          cursor: equipped ? "default" : "pointer",
+          background: equipped ? "linear-gradient(180deg, rgba(255,210,58,0.32), rgba(13,31,69,0.6))" : "rgba(255,255,255,0.08)",
+          boxShadow: equipped ? "0 0 10px rgba(255,210,58,0.45)" : "none"
+        } },
+          h(ArtikelBild, { id: it.id, groesse: 36, ersatz: invPreview(invReiter, it) }),
+          h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.text, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + it.id)),
+          h("span", { style: { fontSize: 9, fontWeight: 900, color: equipped ? FARBE.gold : FARBE.textGedaempft } }, equipped ? t("cosEquipped") : t("invTapEquip"))
         );
-      }),
-      h("button", { onClick: () => { setShowProfileEditor(false); setShowGoldShop(true); }, style: {
-        width: "100%", marginTop: 2, border: "1px solid rgba(251,191,36,0.25)", cursor: "pointer",
-        borderRadius: 10, padding: "8px", background: "rgba(251,191,36,0.08)",
-        color: "#fcd34d", fontSize: 11.5, fontWeight: 800
-      } }, h(Icon, { name: "shoppingCart", size: 12, style: { verticalAlign: "-2px", marginRight: 5 } }), t('invMoreInShop'))
+      } }),
+      h("button", { onClick: () => { setShowProfileEditor(false); setShowGoldShop(true); }, style: knopf("gold", { width: "100%", marginTop: 8, padding: "7px", fontSize: 14, borderRadius: 12, gap: 6 }) },
+        h(Icon, { name: "shoppingCart", size: 14 }), t('invMoreInShop'))
     );
   })(),
   // ── Fortschritt sichern (v3.72.0, dritter Zustand v3.102.0) ────────────
@@ -7530,7 +7465,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   // Auskuenfte, und nur eine davon war wahr. Schwammige Formulierungen fuehren
   // dazu, dass niemand den Knopf drueckt — falsche dazu, dass er es fuer
   // unnoetig haelt.
-  MP_CONFIGURED && (() => {
+  profilReiter === "konto" && MP_CONFIGURED && (() => {
     const h = React.createElement;
     const F = (typeof window !== "undefined" && window.__fb) || {};
     const gesichert = !!authUid() && F.anon === false;
@@ -7592,69 +7527,52 @@ window.StackSiegeApp = function StackSiegeApp() {
     background: "transparent", color: "#a9bfe3",
     border: "none", fontSize: 13, cursor: "pointer",
     padding: "4px 12px", letterSpacing: "0.02em"
-  } }, t('cancel')))), showLeaderboard && /* @__PURE__ */ React.createElement("div", { style: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(8,16,40,0.72)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1100,
-    padding: 20
-  } }, /* @__PURE__ */ React.createElement("div", { style: {
-    ...panel({ padding: 22 }),
-    maxWidth: 420,
-    width: "100%",
-    maxHeight: "85vh",
-    display: "flex",
-    flexDirection: "column"
-  } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: 0 } }, t('lbTitle')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowLeaderboard(false), style: {
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    color: "#cbd5e1",
-    borderRadius: 8,
-    padding: "6px 12px",
-    fontSize: 14,
-    cursor: "pointer"
-  } }, "\u2715")), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 12, margin: "0 0 10px" } }, t('lbSubtitle')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => switchLbMode(m), style: {
-    ...schalter(lbMode === m, "gold", { flex: 1, padding: "8px", fontSize: 16 })
-  } }, m === 2 ? t('local2p') : React.createElement("span", null, React.createElement(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", flex: 1 } }, leaderboard === null && /* @__PURE__ */ React.createElement("div", { style: { color: "#c9dbf7", textAlign: "center", padding: "30px 0" } }, t('lbLoading')), lbFehler && /* @__PURE__ */ React.createElement("div", { "data-lb-fehler": "1", style: { color: "#f59e0b", textAlign: "center", padding: "24px 12px", fontSize: 14, lineHeight: 1.5 } }, lbFehler), leaderboard && leaderboard.length === 0 && !lbFehler && /* @__PURE__ */ React.createElement("div", { style: { color: "#c9dbf7", textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')), leaderboard && leaderboard.map((e, i) => {
-    const isMe = profile && e.id === profile.id;
-    const medalCol = i === 0 ? "#fbbf24" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : null;
-    const medal = medalCol ? React.createElement(Icon, { name: "medal", size: 16, color: medalCol }) : `${i + 1}.`;
-    return /* @__PURE__ */ React.createElement("div", { key: e.id, style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      background: isMe ? "rgba(202,138,4,0.15)" : "rgba(255,255,255,0.04)",
-      border: isMe ? "1px solid rgba(202,138,4,0.5)" : "1px solid rgba(255,255,255,0.06)",
-      borderRadius: 10,
-      padding: "9px 11px",
-      marginBottom: 6
-    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: "#dbe7fb", width: 28, textAlign: "center", flexShrink: 0 } }, medal), /* @__PURE__ */ React.createElement("div", { style: {
-      width: 34,
-      height: 34,
-      borderRadius: 9,
-      flexShrink: 0,
-      background: e.color || "#2563eb",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 18
-    } }, React.createElement(WappenAvatar, { id: e.wappen || "skelett", size: 22 })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: isMe ? "#fde68a" : "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && t('youSuffix')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#c9dbf7" } }, e.wins, " " + t('winsLabel') + " \xB7 ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, fontSize: 18, color: "#fbbf24" } }, e.elo), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#a9bfe3" } }, "ELO")));  })), /* @__PURE__ */ React.createElement("button", { onClick: openLeaderboard, style: {    marginTop: 12,
-    background: "rgba(255,255,255,0.06)",
-    color: "#cbd5e1",
-    border: "1px solid rgba(255,255,255,0.12)",
-    padding: "11px",
-    fontSize: 13,
-    fontWeight: 600,
-    borderRadius: 10,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8
-  } }, /* @__PURE__ */ React.createElement(Icon, { name: "rotateCw", size: 15 }), t('lbRefresh')))), showDailyModal && React.createElement(DailyRewardModal, { t,
+  } }, t('cancel')))), showLeaderboard && (() => {
+    // v3.123.0: Seiten statt Rollliste. Zeilen je Seite aus der echten
+    // Fensterhoehe; die eigene Zeile bleibt unten angeheftet, wenn sie nicht auf
+    // der sichtbaren Seite steht — so sieht man seinen Rang immer.
+    const h = React.createElement;
+    const lbZeilen = zeilenFuer(Math.min(schirm.h, 900) - 300, 52, 6);
+    const zeile = (e, i, angeheftet) => {
+      const isMe = profile && e.id === profile.id;
+      const medalCol = i === 0 ? FARBE.gold : i === 1 ? "#dfe7f2" : i === 2 ? "#e0893a" : null;
+      return h("div", { key: e.id + (angeheftet ? "-fix" : ""), "data-lb-zeile": angeheftet ? "fix" : String(i + 1), style: {
+        display: "flex", alignItems: "center", gap: 9, height: 52, boxSizing: "border-box",
+        ...karte({ borderRadius: 12, padding: "6px 10px" }),
+        border: isMe ? "2px solid " + FARBE.gold : "2px solid rgba(10,20,50,0.55)",
+        background: isMe ? "linear-gradient(180deg, rgba(255,210,58,0.32), rgba(13,31,69,0.5))" : void 0
+      } },
+        h("div", { style: { width: 30, flexShrink: 0, display: "flex", justifyContent: "center", fontFamily: SCHRIFT_TITEL, fontSize: 16, color: FARBE.text, textShadow: KONTURTEXT } },
+          medalCol ? h(Icon, { name: "medal", size: 20, color: medalCol }) : i + 1 + "."),
+        h("div", { style: { width: 36, height: 36, borderRadius: 10, flexShrink: 0, overflow: "hidden", border: "2px solid " + FARBE.kontur, background: e.color || FARBE.himmelTief, display: "flex", alignItems: "center", justifyContent: "center" } },
+          h(WappenAvatar, { id: e.wappen || "skelett", size: 32 })),
+        h("div", { style: { flex: 1, minWidth: 0, textAlign: "left" } },
+          h("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 15, color: isMe ? FARBE.goldHell : FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.name, isMe && t('youSuffix')),
+          h("div", { style: { fontSize: 11, color: FARBE.textGedaempft, fontWeight: 700 } }, e.wins, " " + t('winsLabel') + " \xB7 ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))),
+        h("div", { style: { textAlign: "right", flexShrink: 0 } },
+          h("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 19, color: FARBE.gold, textShadow: KONTURTEXT, lineHeight: 1 } }, e.elo),
+          h("div", { style: { fontSize: 9.5, color: FARBE.textGedaempft, fontWeight: 800 } }, "ELO")));
+    };
+    const meinIdx = leaderboard && profile ? leaderboard.findIndex((e) => e.id === profile.id) : -1;
+    const proSeite = Math.max(1, lbZeilen - (meinIdx >= lbZeilen ? 1 : 0));
+    return h("div", { style: { ...schleier(), zIndex: 1100, padding: 16 } },
+      h("div", { style: { ...panel({ padding: "16px 14px 14px" }), maxWidth: 420, width: "100%", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", display: "flex", flexDirection: "column" } },
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 } },
+          h("h2", { style: { ...titel(24), margin: 0, display: "flex", alignItems: "center", gap: 8 } }, h(Icon, { name: "trophy", size: 22, color: FARBE.gold }), t('lbTitle')),
+          h("button", { onClick: () => setShowLeaderboard(false), "aria-label": t("close") || "Schliessen", style: symbolKnopf("rot", { width: 38, height: 38 }) }, h(Icon, { name: "x", size: 17 }))),
+        h("p", { style: { color: FARBE.textGedaempft, fontSize: 12, margin: "0 0 10px", fontWeight: 700 } }, t('lbSubtitle')),
+        h("div", { style: { display: "flex", gap: 6, marginBottom: 12 } }, [2, 3].map((m) => h("button", { key: m, onClick: () => switchLbMode(m),
+          style: schalter(lbMode === m, "gold", { flex: 1, padding: "8px", fontSize: 16 }) },
+          m === 2 ? t('local2p') : h("span", null, h(Icon, { name: "crown", size: 13, style: { verticalAlign: "-2px", marginRight: 5 } }), t('online3p'))))),
+        h("div", { style: { flex: 1, minHeight: 0 } },
+          leaderboard === null && h("div", { style: { color: FARBE.textGedaempft, textAlign: "center", padding: "30px 0" } }, t('lbLoading')),
+          lbFehler && h("div", { "data-lb-fehler": "1", style: { color: FARBE.goldHell, textAlign: "center", padding: "24px 12px", fontSize: 14, lineHeight: 1.5 } }, lbFehler),
+          leaderboard && leaderboard.length === 0 && !lbFehler && h("div", { style: { color: FARBE.textGedaempft, textAlign: "center", padding: "30px 0", fontSize: 14 } }, lbMode === 3 ? t('lbEmpty3p') : t('lbEmpty')),
+          leaderboard && leaderboard.length > 0 && h(Seiten, { schluessel: lbMode, eintraege: leaderboard, proSeite, spalten: 1, luecke: 6, render: (e, i) => zeile(e, i, false) }),
+          meinIdx >= proSeite && h("div", { style: { marginTop: 8, paddingTop: 8, borderTop: "2px dashed rgba(255,255,255,0.25)" } }, zeile(leaderboard[meinIdx], meinIdx, true))),
+        h("button", { onClick: openLeaderboard, style: knopf("blau", { marginTop: 10, padding: "9px", fontSize: 15, borderRadius: 12, gap: 8 }) },
+          h(Icon, { name: "rotateCw", size: 15 }), t('lbRefresh'))));
+  })(), showDailyModal && React.createElement(DailyRewardModal, { t,
     daily: dailyState,
     onCollect: handleDailyCollect,
     onClose: () => setShowDailyModal(false),
@@ -7675,10 +7593,10 @@ window.StackSiegeApp = function StackSiegeApp() {
     return h("div", { onClick: () => setShowTasksModal(false), style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1450, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)" } },
       h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 400, width: "100%", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
-          h(Icon, { name: "clipboard", size: 17, color: "#34d399" }),
-          h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("tasksTitle"))
+          h(Icon, { name: "clipboard", size: 22, color: FARBE.laterne }),
+          h("div", { style: titel(24) }, t("tasksTitle"))
         ),
-        h("div", { style: { fontSize: 11.5, color: "#c9dbf7", marginBottom: 14 } }, t("tasksSub")),
+        h("div", { style: { fontSize: 12, color: FARBE.textGedaempft, fontWeight: 700, marginBottom: 12 } }, t("tasksSub")),
         h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 6 } },
           tasksState.tasks.map((tk) => {
             const def = taskDef(tk.id);
@@ -7687,43 +7605,39 @@ window.StackSiegeApp = function StackSiegeApp() {
             const ready = !tk.collected && prog >= def.target;
             const frac = prog / def.target;
             return h("div", { key: tk.id, style: {
-              display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 13,
-              background: tk.collected ? "rgba(74,222,128,0.06)" : ready ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.04)",
-              border: "1px solid " + (tk.collected ? "rgba(74,222,128,0.2)" : ready ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.08)")
+              display: "flex", alignItems: "center", gap: 10, ...karte({ padding: "9px 10px", borderRadius: 14 }),
+              opacity: tk.collected ? 0.7 : 1,
+              border: "2px solid " + (ready ? FARBE.gruen : tk.collected ? "rgba(79,211,107,0.5)" : "rgba(10,20,50,0.55)"),
+              boxShadow: ready ? "0 0 12px rgba(79,211,107,0.45)" : "none"
             } },
               h("div", { style: {
-                width: 34, height: 34, borderRadius: 999, flexShrink: 0,
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                background: tk.collected ? "rgba(255,255,255,0.05)" : "rgba(96,165,250,0.12)",
-                border: "1px solid " + (tk.collected ? "rgba(255,255,255,0.08)" : "rgba(96,165,250,0.3)")
-              } }, h(Icon, { name: def.icon, size: 17, color: tk.collected ? "#64748b" : "#93c5fd" })),
+                background: tk.collected ? "rgba(13,31,69,0.6)" : "linear-gradient(180deg,#8fd0ff,#3f97ea 50%,#1f5fc4)",
+                border: "2px solid " + FARBE.kontur, color: FARBE.text
+              } }, h(Icon, { name: def.icon, size: 21 })),
               h("div", { style: { flex: 1, minWidth: 0 } },
-                h("div", { style: { fontSize: 12.5, fontWeight: 700, color: tk.collected ? "#64748b" : "#e2e8f0", textDecoration: tk.collected ? "line-through" : "none" } }, t("task_" + tk.id)),
+                h("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 14.5, color: FARBE.text, textShadow: KONTURTEXT, textDecoration: tk.collected ? "line-through" : "none" } }, t("task_" + tk.id)),
                 h("div", { style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4 } },
-                  h("div", { style: { flex: 1, height: 5, borderRadius: 999, background: "rgba(0,0,0,0.4)", overflow: "hidden" } },
-                    h("div", { style: { width: Math.round(frac * 100) + "%", height: "100%", borderRadius: 999, background: tk.collected ? "#4ade80" : ready ? "linear-gradient(90deg,#34d399,#10b981)" : "linear-gradient(90deg,#60a5fa,#818cf8)", transition: "width 0.4s ease" } })
+                  h("div", { style: { flex: 1, height: 8, borderRadius: 999, background: "rgba(0,0,0,0.35)", border: "1.5px solid " + FARBE.kontur, overflow: "hidden" } },
+                    h("div", { style: { width: Math.round(frac * 100) + "%", height: "100%", borderRadius: 999, background: tk.collected || ready ? "linear-gradient(90deg,#b6f59a,#4fd36b)" : "linear-gradient(90deg,#fff2a0,#ffc72e)", transition: "width 0.4s ease" } })
                   ),
                   h("span", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", flexShrink: 0 } }, prog + "/" + def.target)
                 )
               ),
               tk.collected
-                ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#4ade80", flexShrink: 0 } }, "✓")
+                ? h("span", { style: { fontSize: 18, fontFamily: SCHRIFT_TITEL, color: FARBE.laterne, textShadow: KONTURTEXT, flexShrink: 0 } }, "✓")
                 : ready
-                  ? h("button", { onClick: () => collectDailyTask(tk.id), style: {
-                      flexShrink: 0, border: "none", cursor: "pointer", borderRadius: 9, padding: "7px 11px",
-                      background: "linear-gradient(180deg,#34d399,#059669)", color: "#052e1a",
-                      fontSize: 11.5, fontWeight: 900, boxShadow: "0 3px 10px rgba(16,185,129,0.4)",
-                      animation: "streakGlow 2s ease infinite"
-                    } }, t("tasksCollect"))
+                  ? h("button", { onClick: () => collectDailyTask(tk.id), style: knopf("gruen", { flexShrink: 0, padding: "7px 11px", fontSize: 14, borderRadius: 12, animation: "streakGlow 2s ease infinite" }) }, t("tasksCollect"))
                   : h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 } },
-                      h("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", background: "rgba(251,191,36,0.12)", padding: "3px 8px", borderRadius: 8 } }, "+" + def.gold + " G"),
+                      h("span", { style: pille("gold", { fontSize: 12, padding: "1px 9px" }) }, "+" + def.gold + " G"),
                       // Material war bisher eine stille Zugabe — jetzt steht sie dran
                       h(MatRow, { vals: TASK_MAT, nurPositive: true, plus: true, size: 9.5, gap: 5 })
                     )
             );
           })
         ),
-        allDone && h("div", { style: { fontSize: 11.5, color: "#4ade80", fontWeight: 700, textAlign: "center", margin: "6px 0 2px" } }, t("tasksAllDone")),
+        allDone && h("div", { style: { fontSize: 13, color: FARBE.laterne, fontFamily: SCHRIFT_TITEL, textShadow: KONTURTEXT, textAlign: "center", margin: "6px 0 2px" } }, t("tasksAllDone")),
         h("button", { onClick: () => setShowTasksModal(false), style: { ...knopf("grau", { fontSize: 16 }), width: "100%", marginTop: 10, cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("close"))
       )
     );
@@ -7733,94 +7647,52 @@ window.StackSiegeApp = function StackSiegeApp() {
     const h = React.createElement;
     const cos = cosOf(profile);
     const gold = typeof (profile && profile.gold) === "number" ? profile.gold : 100;
-    const preview = (cat, it) => {
-      // Kanonen-Vorschau (v3.45.0): zeichnet das ECHTE Modell in ein Mini-Canvas,
-      // damit im Shop sichtbar ist, was man bekommt — statt eines Farbpunkts.
-      if (cat === "cannon") return h("canvas", {
-        width: 76, height: 76,
-        style: { width: 38, height: 38, display: "block" },
-        ref: (el) => {
-          if (!el || el.__drawn === it.id) return;
-          el.__drawn = it.id;
-          const c2 = el.getContext("2d");
-          c2.clearRect(0, 0, 76, 76);
-          c2.save();
-          c2.translate(38, 38);
-          c2.scale(0.78, 0.78);
-          c2.translate(-38, -38);
-          try {
-            drawCannonFull(c2, 38, 38, -0.6, 1, 1, 3000,
-              it.id === "cannon_standard" ? null : it.id,
-              it.id === "cannon_standard" ? null : CANNON_SKIN[it.id]);
-          } catch (e) {}
-          c2.restore();
-        }
-      });
-      if (cat === "trail") return h("div", { style: {
-        width: 26, height: 26, borderRadius: "50%",
-        background: TRAIL_COLOR[it.id] || "#93a4bd",
-        boxShadow: TRAIL_COLOR[it.id] ? "0 0 10px " + TRAIL_COLOR[it.id] : "none"
-      } });
-      if (cat === "frame") { const fr = FRAME_STYLE[it.id]; return h("div", { style: {
-        width: 26, height: 26, borderRadius: "50%",
-        border: fr ? "3px solid " + fr.c : "2px dashed rgba(255,255,255,0.25)",
-        boxShadow: fr ? "0 0 10px " + fr.glow : "none",
-        boxSizing: "border-box"
-      } }); }
-      const wi = WIN_ICON[it.id] || WIN_ICON.win_confetti;
-      return h("div", { style: {
-        width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(255,255,255,0.07)", boxShadow: "0 0 10px " + wi.c + "55"
-      } }, h(Icon, { name: wi.name, size: 16, color: wi.c }));
+    const preview = (cat, it) => kosmetikVorschau(cat, it, 26);
+    // Eine Artikelkarte: gemaltes Bild (sonst bisherige Vorschau), Name, Zustand.
+    const karteFuer = (cat, it) => {
+      const owned = cosmeticOwned(cos, it);
+      const equipped = cos.equipped[cat] === it.id;
+      const afford = gold >= it.price;
+      const clickable = equipped ? false : (owned || afford);
+      // Kauf-Bestaetigung (v3.26.2): Besessenes wird direkt angelegt (gratis),
+      // unbesessene Artikel oeffnen erst den Bestaetigungsdialog.
+      return h("button", { key: it.id, "data-shop-artikel": it.id, onClick: () => owned ? buyOrEquipCosmetic(cat, it) : setConfirmBuy({ cat, item: it }), disabled: !clickable && !equipped, style: {
+        ...karte({ padding: "8px 4px 7px", borderRadius: 14 }), minWidth: 0,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+        cursor: clickable ? "pointer" : "default",
+        border: equipped ? "3px solid " + FARBE.gruen : "2px solid rgba(10,20,50,0.55)",
+        opacity: !owned && !afford ? 0.6 : 1
+      } },
+        h("div", { style: { height: 58, display: "flex", alignItems: "center", justifyContent: "center" } },
+          h(ArtikelBild, { id: it.id, groesse: 56, ersatz: preview(cat, it) })),
+        h("span", { style: { fontSize: 12, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, t("cos_" + it.id)),
+        equipped
+          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a" } }, t("cosEquipped"))
+          : owned
+            ? h("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb" } }, t("cosOwned"))
+            : h("span", { style: pille(afford ? "gold" : "grau", { fontSize: 12, padding: "1px 9px" }) }, it.price + " G")
+      );
     };
-    const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 13 } },
-      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 7, textAlign: "left" } }, label),
-      h("div", { style: { display: "flex", gap: 6 } },
-        COSMETICS[cat].map((it) => {
-          const owned = cosmeticOwned(cos, it);
-          const equipped = cos.equipped[cat] === it.id;
-          const afford = gold >= it.price;
-          const clickable = equipped ? false : (owned || afford);
-          // Kauf-Bestätigung (v3.26.2): Besessenes wird direkt angelegt (gratis),
-          // unbesessene Artikel öffnen erst den Bestätigungsdialog.
-          return h("button", { key: it.id, onClick: () => owned ? buyOrEquipCosmetic(cat, it) : setConfirmBuy({ cat, item: it }), disabled: !clickable && !equipped, style: {
-            flex: 1, minWidth: 0, border: "none", borderRadius: 12, padding: "9px 2px 7px",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-            cursor: clickable ? "pointer" : "default",
-            background: equipped ? "linear-gradient(180deg, rgba(52,211,153,0.2), rgba(10,14,24,0.6))" : owned ? "rgba(255,255,255,0.07)" : afford ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.03)",
-            boxShadow: equipped ? "inset 0 0 0 1.5px rgba(52,211,153,0.7)" : "inset 0 0 0 1px rgba(255,255,255,0.09)",
-            opacity: !owned && !afford ? 0.55 : 1
-          } },
-            preview(cat, it),
-            h("span", { style: { fontSize: 8.5, fontWeight: 800, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, t("cos_" + it.id)),
-            equipped
-              ? h("span", { style: { fontSize: 8, fontWeight: 900, color: "#34d399" } }, t("cosEquipped"))
-              : owned
-                ? h("span", { style: { fontSize: 8, fontWeight: 800, color: "#dbe7fb" } }, t("cosOwned"))
-                : h("span", { style: { fontSize: 9, fontWeight: 900, color: afford ? "#fcd34d" : "#64748b" } }, it.price + " G")
-          );
-        })
-      )
-    );
+    // Kartenhoehe ~118 px; was nicht passt, wandert auf die naechste Seite.
+    const shopZeilen = zeilenFuer(Math.min(schirm.h, 900) - 330, 118);
     return h("div", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1450, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)" } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 420, width: "100%", maxHeight: "88vh", overflowY: "auto", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 420, width: "100%", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-            h(Icon, { name: "shoppingCart", size: 17, color: "#fbbf24" }),
-            h("div", { style: { fontSize: 16, fontWeight: 900, color: "#f1f5f9" } }, t("goldShopTitle"))
+            h(Icon, { name: "shoppingCart", size: 22, color: FARBE.gold }),
+            h("div", { style: titel(24) }, t("goldShopTitle"))
           ),
-          h("div", { style: {
-            display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
-            background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.55)",
-            boxShadow: "0 2px 9px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.7)"
-          } }, h("span", { style: { fontSize: 13, fontWeight: 900, color: "#3b2606" } }, gold + " G"))
+          h("div", { style: pille("gold", { fontSize: 16 }) }, gold + " G")
         ),
         h("div", { style: { fontSize: 11.5, color: "#c9dbf7", marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
-        section("cannon", t("cosSectionCannon")),
-        section("trail", t("cosSectionTrail")),
-        section("frame", t("cosSectionFrame")),
-        section("win", t("cosSectionWin")),
+        h(Reiter, { aktiv: shopReiter, onWahl: setShopReiter, reiter: [
+          { key: "cannon", label: t("tabKanonen"), icon: "bomb" },
+          { key: "trail", label: t("tabSpuren"), icon: "flame" },
+          { key: "frame", label: t("tabRahmen"), icon: "shield" },
+          { key: "win", label: t("tabSieg"), icon: "trophy" }
+        ] }),
+        h(Seiten, { schluessel: shopReiter, eintraege: COSMETICS[shopReiter] || [], spalten: 3, proSeite: 3 * shopZeilen,
+          render: (it) => karteFuer(shopReiter, it) }),
         h("button", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: { ...knopf("grau", { fontSize: 16 }), width: "100%", marginTop: 4, cursor: "pointer", borderRadius: 12, padding: "10px" } }, t("close"))
       ),
       // ── Kauf-Bestätigung (v3.26.2): Overlay über dem Shop ──
@@ -7990,14 +7862,14 @@ window.StackSiegeApp = function StackSiegeApp() {
         if (afford) setConfirmCraft(rec);
       }, disabled: isEq || (!owned && !afford), style: {
         display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-        border: isEq ? "1px solid rgba(74,222,128,0.5)" : owned ? "1px solid rgba(96,165,250,0.35)" : "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 12, padding: "8px 11px", cursor: isEq || (!owned && !afford) ? "default" : "pointer",
-        background: isEq ? "rgba(74,222,128,0.07)" : "rgba(255,255,255,0.035)",
-        opacity: !owned && !afford ? 0.6 : 1, marginBottom: 6
+        ...karte({ padding: "7px 10px", borderRadius: 14 }),
+        border: isEq ? "3px solid " + FARBE.gruen : owned ? "2px solid " + FARBE.himmel : "2px solid rgba(10,20,50,0.55)",
+        cursor: isEq || (!owned && !afford) ? "default" : "pointer",
+        opacity: !owned && !afford ? 0.62 : 1
       } },
-        preview(rec),
+        h(ArtikelBild, { id: rec.id, groesse: 46, ersatz: preview(rec) }),
         h("div", { style: { flex: 1, minWidth: 0 } },
-          h("div", { style: { fontSize: 12.5, fontWeight: 800, color: "#f1f5f9", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + rec.id)),
+          h("div", { style: { fontSize: 15, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + rec.id)),
           owned ? null : needsBase
             ? h("div", { style: { fontSize: 9.5, color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 } }, h(Icon, { name: "lock", size: 9 }), t("forgeNeedsBase"))
             : h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } },
@@ -8009,35 +7881,19 @@ window.StackSiegeApp = function StackSiegeApp() {
           ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))
           : owned
             ? h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
-            : h("span", { style: {
-                // Massiver Button statt Umriss-Chip (v3.46.0): Schmieden ist die
-                // teuerste Aktion im Spiel und sah aus wie ein passives Label.
-                // Metallfassung + Glanzkante, gleiche Sprache wie die Shop-Plaketten.
-                fontSize: 11, fontWeight: 900, letterSpacing: "0.02em",
-                color: afford ? "#2a1705" : "#64748b",
-                border: afford ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.1)",
-                padding: "5px 13px", borderRadius: 999, whiteSpace: "nowrap",
-                background: afford
-                  ? "linear-gradient(180deg,#fdba74 0%,#f97316 55%,#c2410c 100%)"
-                  : "rgba(255,255,255,0.04)",
-                boxShadow: afford
-                  ? "inset 0 1.5px 0 rgba(255,255,255,0.6), inset 0 -2px 4px rgba(120,53,15,0.5), 0 3px 9px rgba(249,115,22,0.45)"
-                  : "none",
-                textShadow: afford ? "0 1px 0 rgba(255,255,255,0.35)" : "none"
-              } }, t("forgeCraft"))
+            : h("span", { style: knopf(afford ? "gold" : "grau", { fontSize: 14, padding: "5px 12px", borderRadius: 12, opacity: afford ? 1 : 0.7, boxShadow: "0 3px 0 #1b0f06, inset 0 2px 0 rgba(255,255,255,0.45)" }) }, t("forgeCraft"))
       );
     };
-    const section = (cat, label) => h("div", { key: cat, style: { marginBottom: 12 } },
-      h("div", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, textAlign: "left" } }, label),
-      cat !== "trail" ? stdCard(cat) : null,
-      RECIPES.filter((r) => r.cat === cat).map(recipeCard)
-    );
+    // Menues ohne Scrollen (v3.123.0): Kategorie als Reiter, Rezepte als Seiten.
+    const schmiedeEintraege = (cat) => (cat !== "trail" ? [{ std: cat }] : []).concat(RECIPES.filter((r) => r.cat === cat));
+    const bereitIn = (cat) => RECIPES.filter((r) => r.cat === cat && !cos.owned.includes(r.id) && canCraft(r)).length;
+    const schmiedeZeilen = zeilenFuer(Math.min(schirm.h, 900) - 340, 80, 7);
     return h("div", { key: "forgeModal", onClick: () => { setShowForge(false); setConfirmCraft(null); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1150, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 14px) calc(var(--sa-right,0px) + 14px) calc(var(--sa-bottom,0px) + 14px) calc(var(--sa-left,0px) + 14px)" } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 440, width: "100%", maxHeight: "90vh", overflowY: "auto", borderRadius: 20, padding: "16px 14px 13px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 440, width: "100%", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", borderRadius: 20, padding: "16px 14px 13px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-            h(Icon, { name: "hammer", size: 18, color: "#fdba74" }),
-            h("div", { style: { fontSize: 16, fontWeight: 900, color: "#fdba74" } }, t("forgeTitle"))
+            h(Icon, { name: "hammer", size: 22, color: FARBE.gold }),
+            h("div", { style: titel(24) }, t("forgeTitle"))
           ),
           h("div", { style: {
             display: "flex", alignItems: "center", gap: 4, padding: "3px 11px 3px 8px",
@@ -8065,9 +7921,13 @@ window.StackSiegeApp = function StackSiegeApp() {
             color: forgeReadyN > 0 ? "#fdba74" : "#475569"
           } }, forgeReadyN > 0 ? forgeReadyN + " " + t("forgeReady") : t("forgeNothing"))
         ),
-        section("cannon", t("forgeCatCannon")),
-        section("impact", t("forgeCatImpact")),
-        section("trail", t("forgeCatTrail")),
+        h(Reiter, { aktiv: schmiedeReiter, onWahl: setSchmiedeReiter, reiter: [
+          { key: "cannon", label: t("tabKanonen"), icon: "bomb", badge: bereitIn("cannon") || null },
+          { key: "impact", label: t("tabEinschlag"), icon: "zap", badge: bereitIn("impact") || null },
+          { key: "trail", label: t("tabSpuren"), icon: "flame", badge: bereitIn("trail") || null }
+        ] }),
+        h(Seiten, { schluessel: schmiedeReiter, eintraege: schmiedeEintraege(schmiedeReiter), spalten: 1, proSeite: schmiedeZeilen, luecke: 7,
+          render: (e) => e.std ? h("div", { key: "std" + e.std }, stdCard(e.std)) : recipeCard(e) }),
         h("button", { onClick: () => setShowForge(false), style: { ...knopf("grau", {}), width: "100%", cursor: "pointer", borderRadius: 12, padding: "11px", marginTop: 2 } }, t("shopInfoClose")),
         // Schmiede-Bestätigung (analog Kauf-Bestätigung v3.26.2)
         confirmCraft && (() => {
