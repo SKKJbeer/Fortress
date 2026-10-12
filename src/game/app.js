@@ -73,11 +73,14 @@ function kosmetikVorschau(cat, it, g = 26) {
     boxShadow: TRAIL_COLOR[it.id] ? "0 0 10px " + TRAIL_COLOR[it.id] : "none"
   } });
   if (cat === "frame") { const fr = FRAME_STYLE[it.id]; return h("div", { style: {
-    width: g, height: g, borderRadius: "50%",
-    border: fr ? "3px solid " + fr.c : "2px dashed rgba(255,255,255,0.35)",
-    boxShadow: fr ? "0 0 10px " + fr.glow + ", inset 0 0 0 1px #1b0f06" : "none",
-    boxSizing: "border-box"
-  } }); }
+    // Vorschau = derselbe gemusterte Ring wie am Menue-Wappen (v3.124.0),
+    // nicht mehr nur ein Farbrand.
+    width: g, height: g, borderRadius: "50%", boxSizing: "border-box",
+    padding: fr ? Math.max(3, Math.round(g * 0.16)) : 0,
+    background: fr ? fr.bg : "transparent",
+    border: fr ? "none" : "2px dashed rgba(255,255,255,0.35)",
+    boxShadow: fr ? "0 0 0 2px #1b0f06, 0 0 10px " + fr.glow + ", inset 0 0 0 1.5px #1b0f06" : "none"
+  } }, fr ? h("div", { style: { width: "100%", height: "100%", borderRadius: "50%", background: "radial-gradient(circle at 40% 35%, #3f6fc2, #0d1f45)", boxShadow: "inset 0 0 0 1.5px #1b0f06" } }) : null); }
   const wi = WIN_ICON[it.id] || WIN_ICON.win_confetti;
   return h("div", { style: {
     width: g, height: g, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
@@ -7184,9 +7187,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       border: "none",
       padding: fr ? (fr.dick || 4) : 0,
       background: fr ? fr.bg : "transparent",
+      // Comic-Kontur (v3.124.0): dunkler Aussenring + Innenring, dazu eine
+      // 3D-Kante nach unten wie bei den Knoepfen. Ohne Rahmen ein schlichter
+      // Konturring, damit das Wappen nicht ins Panel ausfranst.
       boxShadow: fr
-        ? `0 0 16px ${fr.glow}, inset 0 0 0 1px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.55)`
-        : `0 0 20px ${profile.color}77, 0 0 40px ${profile.color}33`
+        ? `0 0 0 3px ${FARBE.kontur}, 0 4px 0 2px ${FARBE.kontur}, 0 0 18px ${fr.glow}, inset 0 0 0 2px ${FARBE.kontur}`
+        : `0 0 0 3px ${FARBE.kontur}, 0 4px 0 2px ${FARBE.kontur}, 0 0 20px ${profile.color}77`
     };
   })() }, React.createElement("div", { style: { borderRadius: "50%", overflow: "hidden", background: "#0b101c", display: "flex", lineHeight: 0 } },
       React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 22, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#dbe7fb", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#dbe7fb", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"),
@@ -7268,7 +7274,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.123.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.124.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7647,7 +7653,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     const h = React.createElement;
     const cos = cosOf(profile);
     const gold = typeof (profile && profile.gold) === "number" ? profile.gold : 100;
-    const preview = (cat, it) => kosmetikVorschau(cat, it, 26);
+    const preview = (cat, it) => kosmetikVorschau(cat, it, cat === "cannon" ? 38 : 30);
     // Eine Artikelkarte: gemaltes Bild (sonst bisherige Vorschau), Name, Zustand.
     const karteFuer = (cat, it) => {
       const owned = cosmeticOwned(cos, it);

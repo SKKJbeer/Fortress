@@ -1432,6 +1432,36 @@ async function suiteOnline2P(browser, fbPort) {
 
     // ── Emotes (v3.25.0): Host sendet → beide sehen; Gast sendet → Host sieht ──
     {
+      // Beobachter statt Momentaufnahme (v3.124.0): Im Zeitraffer kuerzt
+      // TIMER_SPEEDUP auch setTimeout — die Blase steht nur ~520 ms statt
+      // 2,6 s. Unter Last dauerte eine einzelne Abfrage laenger, das 300-ms-
+      // Polling verpasste die Blase (zweimal im vollen Lauf rot, einzeln 6/6
+      // gruen). Der MutationObserver sieht JEDES Erscheinen.
+      const lauern = (page, zeichen) => page.evaluate((z) => {
+        window.__emoSah = false;
+        if (document.body.textContent.includes(z)) window.__emoSah = true;
+        const mo = new MutationObserver((recs) => {
+          for (const r of recs) for (const n of r.addedNodes) {
+            if ((n.textContent || '').includes(z)) { window.__emoSah = true; mo.disconnect(); return; }
+          }
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
+      }, zeichen);
+      // Frist 12 s: Im vollen Lauf teilen sich gut zwanzig Browser und der
+      // Datenbank-Nachbau vier Kerne; der Gast bekam dort zeitweise ueber 5 s
+      // keinen Zustand (auch mit unveraendertem v3.123.0 gemessen). Ob der
+      // Weg TOT ist, sagt die Meldung: sie nennt Phase und Timer davor/danach.
+      const blick = (page) => page.evaluate(() => (document.body.innerText.match(/(BAUEN|FEUER|KANONE|START|BUILD|FIRE|CANNON)[^\d]*(\d+)/) || []).slice(1, 3).join(' '));
+      const gesehen = async (page) => {
+        const vorher = await blick(page);
+        for (let i = 0; i < 48; i++) {
+          if (await page.evaluate(() => window.__emoSah)) return true;
+          await page.waitForTimeout(250);
+        }
+        gesehen.info = `Phase/Timer vorher „${vorher}", nachher „${await blick(page)}"`;
+        return false;
+      };
+      await lauern(pG, '👍');
       const emoteBtn = await pH.evaluate(() => {
         const b = [...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Emote');
         if (!b) return false; b.click(); return true;
@@ -1445,13 +1475,10 @@ async function suiteOnline2P(browser, fbPort) {
       await pH.waitForTimeout(250);
       const hostBubble = await pH.evaluate(() => /👍/.test(document.body.innerText));
       hostBubble ? ok('Emote: Host sieht eigene Bubble ✓') : fail('Emote: Host-Bubble fehlt');
-      let guestSaw = false;
-      for (let i = 0; i < 10 && !guestSaw; i++) {
-        guestSaw = await pG.evaluate(() => /👍/.test(document.body.innerText));
-        if (!guestSaw) await pG.waitForTimeout(300);
-      }
-      guestSaw ? ok('Emote: Gast empfängt Host-Emote via State ✓') : fail('Emote: Gast sieht Host-Emote nicht');
+      const guestSaw = await gesehen(pG);
+      guestSaw ? ok('Emote: Gast empfängt Host-Emote via State ✓') : fail('Emote: Gast sieht Host-Emote nicht — ' + gesehen.info);
       // Gast → Host (😮 kollidiert mit keinem Phasenbanner-Emoji)
+      await lauern(pH, '😮');
       await pG.evaluate(() => {
         const b = [...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Emote');
         b && b.click();
@@ -1461,12 +1488,8 @@ async function suiteOnline2P(browser, fbPort) {
         const btns = [...document.querySelectorAll('button')].filter(x => /^😮$/.test((x.textContent || '').trim()));
         btns[0] && btns[0].click();
       });
-      let hostSaw = false;
-      for (let i = 0; i < 10 && !hostSaw; i++) {
-        hostSaw = await pH.evaluate(() => document.body.innerText.includes('😮'));
-        if (!hostSaw) await pH.waitForTimeout(300);
-      }
-      hostSaw ? ok('Emote: Host empfängt Gast-Emote (Action→State) ✓') : fail('Emote: Host sieht Gast-Emote nicht');
+      const hostSaw = await gesehen(pH);
+      hostSaw ? ok('Emote: Host empfängt Gast-Emote (Action→State) ✓') : fail('Emote: Host sieht Gast-Emote nicht — ' + gesehen.info);
     }
 
     // ── JS-Fehler ─────────────────────────────────────────────
@@ -3049,7 +3072,8 @@ async function suiteSicherheitsbereiche(browser) {
       await jsClick(page, [spieler === 2 ? '2 Spieler' : '3 Spieler']);
       await page.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 8000 });
       // Auf das Schild warten, statt eine Wartezeit zu raten.
-      await page.waitForSelector('div[style*="phasebanner"]', { timeout: 6000 }).catch(() => {});
+      // Frist 15 s (v3.124.0): unter Volllast kam das Schild nach mehr als 6 s.
+      await page.waitForSelector('div[style*="phasebanner"]', { timeout: 15000 }).catch(() => {});
       const m = await lage(page);
 
       // Gemessen wird gegen den BILDSCHIRM, nicht gegen die Huelle. Im
@@ -3302,7 +3326,31 @@ async function suiteIPad(browser) {
       await page.waitForFunction(() => /BAUEN|BUILD/.test(document.body.textContent), { timeout: 20000 });
       await page.evaluate(() => window.__blastWall(2, 4));
       await page.waitForFunction(() => !document.querySelector('canvas'), { timeout: 25000 }).catch(() => {});
-      await page.waitForTimeout(400);
+      // Auf ein STABILES Layout warten (v3.124.0): Die Karten blenden mit
+      // einer Skalierung ein; unter Last traf die Messung nach festen 400 ms
+      // mitten in die Animation (556 px auf einem 393er-Telefon, einzeln
+      // 320 px). Zwei gleiche Messungen im Abstand von 200 ms gelten.
+      // Zwei gleiche Messungen reichen NICHT: unter Volllast rendert der
+      // Browser zwischendurch kein Bild, der Titel „siegt!" stand zweimal bei
+      // 1073 px mitten in seiner Skalierung. Deshalb zusaetzlich auf das Ende
+      // aller ENDLICHEN Animationen warten (Pulsieren laeuft endlos und zaehlt
+      // nicht).
+      await page.evaluate(() => Promise.race([
+        Promise.all(document.getAnimations()
+          .filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity)
+          .map(a => a.finished.catch(() => null))),
+        new Promise(r => setTimeout(r, 8000)),
+      ]).then(() => true));
+      let letzte = -1;
+      for (let i = 0; i < 25; i++) {
+        await page.waitForTimeout(200);
+        const b = await page.evaluate(() => {
+          const s = document.querySelector('.gross-schirm');
+          return s ? Array.from(s.children).map(e => Math.round(e.getBoundingClientRect().width)).join(',') : '';
+        });
+        if (b && b === letzte) break;
+        letzte = b;
+      }
       const m = await page.evaluate(() => {
         const s = document.querySelector('.gross-schirm');
         if (!s) return null;
@@ -5763,6 +5811,9 @@ async function suiteKeinRollen(browser) {
         if (Array.isArray(oeffne)) offen = !!(await jsClick(page, oeffne));
         else if (oeffne) offen = await oeffne(page);
         await page.waitForTimeout(500);
+        // Erst messen, wenn die Schriften stehen — vorher misst man die
+        // Ersatzschrift (gemessen: 672 statt 667 px auf dem SE).
+        await page.evaluate(() => document.fonts.ready.then(() => true));
         if (!offen) { schlecht.push(name + ': nicht geoeffnet'); continue; }
         gezaehlt++;
         const m = await miss(page);
@@ -5819,6 +5870,7 @@ async function suiteGoldShop(browser) {
     });
     opened ? ok('Gold-Shop: 🛒-Button im Menü ✓') : fail('Gold-Shop: Button fehlt');
     await page.waitForTimeout(300);
+    await page.evaluate(() => document.fonts.ready.then(() => true));
     const view = await page.evaluate(() => {
       const t = document.body.innerText;
       return {
@@ -5826,13 +5878,14 @@ async function suiteGoldShop(browser) {
         // Seit v3.123.0 Reiter statt einer langen Liste: alle vier Kategorien
         // als Reiter, und KEIN rollbarer Kasten mehr.
         sections: ['cannon', 'trail', 'frame', 'win'].every(k => !!document.querySelector('[data-reiter="' + k + '"]')),
-        rollt: [...document.querySelectorAll('div')].some(d => /(auto|scroll)/.test(getComputedStyle(d).overflowY) && d.scrollHeight > d.clientHeight + 2),
+        rollt: [...document.querySelectorAll('div')].filter(d => /(auto|scroll)/.test(getComputedStyle(d).overflowY) && d.scrollHeight > d.clientHeight + 2)
+          .map(d => d.scrollHeight + '>' + d.clientHeight + ' „' + (d.textContent || '').trim().slice(0, 30) + '"').join('; '),
         goldChip: /\d+ ?G/.test(t)
       };
     });
     view.title ? ok('Gold-Shop: Modal mit Titel ✓') : fail('Gold-Shop: Modal fehlt');
     view.sections ? ok('Gold-Shop: 4 Kategorie-Reiter ✓') : fail('Gold-Shop: Kategorien fehlen');
-    !view.rollt ? ok('Gold-Shop: rollt nicht ✓') : fail('Gold-Shop: Inhalt rollt wieder');
+    !view.rollt ? ok('Gold-Shop: rollt nicht ✓') : fail('Gold-Shop: Inhalt rollt wieder — ' + view.rollt);
     (await reiterWahl(page, 'trail')) ? ok('Gold-Shop: Reiter „Spuren" ✓') : fail('Gold-Shop: Reiter „Spuren" fehlt');
     view.goldChip ? ok('Gold-Shop: Gold-Kontostand angezeigt ✓') : fail('Gold-Shop: Kontostand fehlt');
     // ── v3.29.1: Sieges-Effekt-Previews sind SVG-Icons, keine Emojis ──
@@ -7292,7 +7345,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     const fbs = await suiteFirebaseStart(browser);
     return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
-  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rOnline2P, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen] = await Promise.all([
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen] = await Promise.all([
     suiteMenu(browser),
     suiteOffline(browser),
     suitePlattform(browser),
@@ -7304,7 +7357,6 @@ async function suiteOnlineHaerte(browser, fbPort) {
     suiteMechanics(browser),
     suiteQuitUX(browser),
     suiteOnlineUI(browser, FB_PORT),
-    suiteOnline2P(browser, FB_PORT),
     onlineHeavy,
     suiteProgression(browser),
     suiteAchievements(browser),
@@ -7327,6 +7379,11 @@ async function suiteOnlineHaerte(browser, fbPort) {
   // gut zwanzig parallelen Suiten trieben sie die Last so hoch, dass die
   // Phasen-Pruefung der alten Code-Join-Suite flatterte (Host BAUEN, Gast
   // KANONE ueber 3 s). Nach hinten gestellt kostet das rund eine Minute.
+  // Code-Beitritt ebenfalls allein (v3.124.0): Die Suite misst Synchron-Zeiten
+  // (Phasen-Gleichlauf, Gast-Timer, Emote). Im parallelen Block bekam der Gast
+  // zeitweise ueber 3-5 s keinen Zustand — auch mit unveraendertem v3.123.0
+  // nachgemessen, also Last der Testmaschine. Einzeln 6/6 gruen.
+  const rOnline2P = await suiteOnline2P(browser, FB_PORT);
   const rWQ = await suiteWarteschlangeMehrere(browser, FB_PORT);
   const rVN = await suiteVerlassenNeu(browser, FB_PORT);
   const rIH = await suiteIosHintergrund(browser, FB_PORT);

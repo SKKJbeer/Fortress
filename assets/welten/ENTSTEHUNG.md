@@ -14,6 +14,20 @@ top-down orthographic view of a mobile strategy game map ground, seen straight f
 | Welt | Seed | Motiv-Teil |
 |---|---|---|
 | Kristalltal | 7 | lush bright green grass meadow with subtle color variation, small clumps of flowers, a few tiny light blue crystal shards scattered, soft dirt patches |
+| Glutwüste | 7 | warm golden sand desert ground with gentle dune ripples, cracked light clay patches, scattered small orange pebbles and tiny dry tufts |
+| Frostreich | 7 | snowy white ground with soft blue shadows, patches of frosted pale green grass peeking through, small ice crystals and smooth snow drifts |
 
 Fluss, Berge und Burgen zeichnet weiter der Spielcode darueber; die
 prozedurale Deko entfaellt auf gemalten Boeden (wirkte dort wie Rauschen).
+
+## Retusche
+
+Das Modell haelt sich nicht immer an „no buildings": Frostreich kam mit zwei
+angeschnittenen Haeusern in den Ecken, zwei Kisten und einem Baumstamm. Sie
+sind mit sauberen Schneeflaechen AUS DEMSELBEN BILD ueberdeckt (Flicken mit
+weichem Rand), nicht neu gemalt. `*-rohbild.png` ist die Ausgabe des Modells,
+`*-retusche.png` die Vorlage fuer `public/welten/`.
+
+Glutwueste: zwei breite, dunkle Risse liefen quer ueber das ganze Feld und
+lasen sich wie Grenzlinien. Sie sind abgeschwaecht (dunkle Pixel zur Farbe der
+Umgebung gezogen), nicht entfernt — die Textur bleibt.

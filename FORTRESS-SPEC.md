@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.123.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.124.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9121,3 +9121,47 @@ harmonisch und gleich".
   drueckte NIE — sie meldet jetzt, ob der Knopf gefunden wurde.
 - `tests/modale.test.js`: Erfolge-Fenster hat jetzt Hooks und wird deshalb
   wirklich gerendert; neue Pruefung „rollt nicht, sechs Reiter, Seiten".
+
+## v3.124.0 — Frostreich, Glutwueste, Comic-Kanonen und -Rahmen
+
+- **Zwei weitere gemalte Welten:** Frostreich (Schnee, kraeftiges Eisblau als
+  Fluss) und Glutwueste (goldener Sand, tuerkise Oase). Paletten fuer Wasser,
+  Ufer und Berge auf die hellen Boeden abgestimmt.
+- **Retusche statt Neurechnen:** Frostreich kam mit zwei angeschnittenen
+  Haeusern, zwei Kisten und einem Baumstamm — ueberdeckt mit Flaechen aus
+  demselben Bild. In der Glutwueste lasen sich zwei breite Risse wie
+  Grenzlinien; abgeschwaecht, nicht entfernt. Rohbild und Retusche liegen in
+  `assets/welten/`, Herkunft in `ENTSTEHUNG.md`.
+- **Kanonen im Comic-Stil:** dunkle Umrisslinie um Sockel und Turm
+  (`comicKontur` in `render/sprites.js`) und hellere Grundfarben des
+  Standardmodells. Gebacken EINMAL in den Sprite-Cache — pro Frame keine
+  Mehrkosten (Performance-Regel). Halbdurchsichtige Schatten bekommen keinen
+  Rand (Schwelle auf Deckkraft).
+- **Wappen-Rahmen:** Konturring und 3D-Kante am Menue-Wappen; die
+  Rahmen-Vorschau in Shop und Inventar zeigt jetzt denselben gemusterten Ring
+  statt nur einer Randfarbe. Kanonen-Vorschau im Shop groesser (57 px).
+- Die uebrigen Welten, die zwoelf neuen Avatare und die Artikelbilder rechnen;
+  die Bilderzeugung musste nach einem Neustart der Umgebung neu anlaufen.
+- **Zwei Test-Messungen auf Wartebedingung umgestellt** (beide im vollen Lauf
+  rot, einzeln gruen): (1) Emote — der Zeitraffer kuerzt `setTimeout`, die
+  Blase steht im Test nur ~520 ms; das 300-ms-Polling verpasste sie unter
+  Last. Jetzt zaehlt ein MutationObserver jedes Erscheinen (Gegenprobe:
+  Gast-Anzeige abgeschaltet → rot). (2) Ergebniskarten — gemessen nach festen
+  400 ms, mitten in der Einblend-Skalierung (556 px auf 393 px Breite); jetzt
+  erst nach zwei gleichen Messungen.
+- **iPhone SE: Menue mit Reserve.** Es stand auf den Pixel genau voll
+  (667/667) und rollte 5 px, solange die Comic-Schrift noch nicht geladen war
+  (Ersatzschrift ist hoeher). Auf Schirmen unter 700 px Hoehe ist das Logo
+  jetzt kleiner. `suiteKeinRollen` misst erst nach `document.fonts.ready`.
+- **Emote-Pruefung:** Frist 12 s; im vollen Lauf bekam der Gast zeitweise ueber
+  5 s keinen Zustand — auch mit unveraendertem v3.123.0 nachgemessen, also
+  Last der Testmaschine, nicht das Spiel. Die Meldung nennt jetzt Phase und
+  Timer des Empfaengers davor und danach, damit ein toter Weg erkennbar bleibt.
+- **Code-Beitritts-Suite laeuft allein** nach dem parallelen Block (wie die
+  Warteschlangen-Suiten seit v3.116.0). Sie misst Synchron-Zeiten; im vollen
+  Lauf hing der Gast zeitweise 3–5 s hinter dem Host — mit unveraendertem
+  v3.123.0 auf derselben Maschine genauso, einzeln 6/6 gruen.
+- **Ergebniskarten-Messung wartet auf das Ende der Einblend-Animationen**
+  (`document.getAnimations()`, nur endliche): unter Volllast standen zwei
+  Messungen gleich bei 1073 px mitten in der Skalierung des Titels.
+- **Phasen-Schild-Pruefung:** Frist 6 → 15 s; unter Volllast kam das Schild spaeter.

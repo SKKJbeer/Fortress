@@ -1321,20 +1321,56 @@ function slayerTurretSprite(player) {
   return { canvas: c, ox, oy };
 }
 
+// ── Comic-Kontur (v3.124.0) ────────────────────────────────────────────────
+// Dunkle Umrisslinie um ein fertiges Sprite, passend zum Designsystem
+// (FARBE.kontur). Laeuft EINMAL beim Backen in den Cache, nie pro Frame:
+// Silhouette achtmal versetzt in Konturfarbe, das Sprite darueber.
+// Nur deutlich deckende Pixel zaehlen — sonst bekaeme der weiche
+// Schlagschatten selbst einen Rand.
+const KONTUR = "#1b0f06";
+export function comicKontur(src, d = 1.6) {
+  if (typeof document === "undefined") return src;
+  const P = Math.ceil(d) + 1;
+  const c = mkSpriteCanvas(src.width + P * 2, src.height + P * 2);
+  const x = c.getContext("2d");
+  // Maske: Sprite ohne halbdurchsichtige Anteile, eingefaerbt
+  const m = mkSpriteCanvas(src.width, src.height);
+  const mx = m.getContext("2d");
+  mx.drawImage(src, 0, 0);
+  try {
+    const img = mx.getImageData(0, 0, m.width, m.height), a = img.data;
+    for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 150; a[i] = 27; a[i + 1] = 15; a[i + 2] = 6; a[i + 3] = on ? 255 : 0; }
+    mx.putImageData(img, 0, 0);
+  } catch (e) {
+    mx.globalCompositeOperation = "source-in"; mx.fillStyle = KONTUR; mx.fillRect(0, 0, m.width, m.height);
+  }
+  for (let k = 0; k < 8; k++) {
+    const w = k / 8 * Math.PI * 2;
+    x.drawImage(m, P + Math.cos(w) * d, P + Math.sin(w) * d);
+  }
+  x.drawImage(src, P, P);
+  return c;
+}
+function comicTurm(t) {
+  if (!t || !t.canvas || typeof document === "undefined") return t;
+  const P = Math.ceil(1.6) + 1;
+  return { canvas: comicKontur(t.canvas), ox: t.ox + P, oy: t.oy + P };
+}
+
 export function cannonBaseSprite(player, skinId, skinDef, kt) {
   if (!SPR.base) SPR.base = {};
   const key = player + (skinId ? "|" + skinId : "") + (kt === "slayer" ? "|S" : "");
   if (SPR.base[key]) return SPR.base[key];
-  if (kt === "slayer") return (SPR.base[key] = slayerBaseSprite(player));
+  if (kt === "slayer") return (SPR.base[key] = comicKontur(slayerBaseSprite(player)));
   if (skinDef && skinDef.form)
-    return (SPR.base[key] = formBaseSprite(player, skinDef.form, skinDef.dome, skinDef.core));
+    return (SPR.base[key] = comicKontur(formBaseSprite(player, skinDef.form, skinDef.dome, skinDef.core)));
   const R = CELL * 1.6;
   const D = Math.ceil(R * 2.3);
   const c = mkSpriteCanvas(D, D);
   const x = c.getContext("2d");
   const n = CANNON_NEON[player] || CANNON_NEON[1];
   const cx = D / 2, cy = D / 2;
-  const cols = skinDef ? skinDef.dome : ["#5a6477", "#2c333f", "#10141d"];
+  const cols = skinDef ? skinDef.dome : ["#8d9ab0", "#56627a", "#262d3b"];
   // Achteckige Panzerplatte
   const plateR = R * 1.0;
   x.beginPath();
@@ -1400,17 +1436,16 @@ export function cannonBaseSprite(player, skinId, skinDef, kt) {
   x.beginPath();
   x.arc(cx, cy, R * 0.6, 0, Math.PI * 2);
   x.fill();
-  SPR.base[key] = c;
-  return c;
+  return (SPR.base[key] = comicKontur(c));
 }
 // Rotierender Teil: Turmgehäuse + Rohr, gezeichnet nach RECHTS (0°).
 export function cannonTurretSprite(player, skinId, skinDef, kt) {
   if (!SPR.turret) SPR.turret = {};
   const key = player + (skinId ? "|" + skinId : "") + (kt === "slayer" ? "|S" : "");
   if (SPR.turret[key]) return SPR.turret[key];
-  if (kt === "slayer") return (SPR.turret[key] = slayerTurretSprite(player));
+  if (kt === "slayer") return (SPR.turret[key] = comicTurm(slayerTurretSprite(player)));
   if (skinDef && skinDef.form)
-    return (SPR.turret[key] = formTurretSprite(player, skinDef.form, skinDef.dome, skinDef.core));
+    return (SPR.turret[key] = comicTurm(formTurretSprite(player, skinDef.form, skinDef.dome, skinDef.core)));
   const R = CELL * 1.6;
   const barrelLen = CELL * 2.9, barrelW = 8.5;
   const PAD = 12;
@@ -1420,7 +1455,7 @@ export function cannonTurretSprite(player, skinId, skinDef, kt) {
   const x = c.getContext("2d");
   const n = CANNON_NEON[player] || CANNON_NEON[1];
   const ox = PAD + R * 0.62, oy = H2 / 2;   // Drehzentrum
-  const cols = skinDef ? skinDef.dome : ["#7c8798", "#39424f", "#141922"];
+  const cols = skinDef ? skinDef.dome : ["#b3bfd2", "#66748c", "#2c3444"];
   const core = skinDef ? skinDef.core : n.lt;
   // Schlagschatten des ganzen Turms
   x.save();
@@ -1540,7 +1575,7 @@ export function cannonTurretSprite(player, skinId, skinDef, kt) {
   x.beginPath();
   x.arc(ox, oy, R * 0.2, 0, Math.PI * 2);
   x.fill();
-  SPR.turret[key] = { canvas: c, ox, oy };
+  SPR.turret[key] = comicTurm({ canvas: c, ox, oy });
   return SPR.turret[key];
 }
 
