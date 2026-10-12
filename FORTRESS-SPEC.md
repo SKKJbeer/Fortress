@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.126.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.127.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9215,3 +9215,24 @@ harmonisch und gleich".
   mit Farbangleich, `umfaerben.py`, `glut.py`, `risse.py`) liegen jetzt im
   Skill und sind dort beschrieben — fuer dieses und andere Projekte.
 - **3P-Online-Suite laeuft ebenfalls allein** nach dem parallelen Block (Phasen-Gleichlauf mit drei Clients, unter Last einmal 3 s Verzug, einzeln gruen).
+
+## v3.127.0 — Gemalte Artikelbilder fuer Shop, Schmiede und Inventar
+
+- **26 Artikel mit eigenem Bild** (Skill spielgrafik, FLUX.1-schnell lokal,
+  384 px): neun Kanonen, neun Kugelspuren, fuenf Einschlaege, drei
+  Sieges-Effekte. Als 192-px-WebP in `public/artikel/` (zusammen 148 KB),
+  gezeigt in Gold-Shop, Schmiede (Standard- und Rezeptkarten) und Inventar.
+  Rahmen bleiben gezeichnete Ringe (Comic-Kontur seit v3.124.0).
+- **Kein Geld-Motiv:** Gold-Spur, Gold-Meisterspur und Goldregen kamen
+  zweimal mit Dollarmuenzen bzw. Geldkoffer — in einem Spiel ohne
+  Echtgeld-Kaeufe das falsche Signal. Neu gemalt mit goldenen Sternen und
+  Funken; die letzte Kiste mit „$" ist wegretuschiert. Prompts, Seeds und
+  Eingriffe in `assets/artikel/ENTSTEHUNG.md`.
+- **Schutz:** `tests/artikel.test.js` verlangt fuer JEDEN kauf- und
+  schmiedbaren Artikel (ausser Rahmen) ein echtes WebP (< 30 KB) und eine
+  Herkunftszeile; umgekehrt muss jedes Bild zu einem Artikel gehoeren.
+- **Skill `spielgrafik`:** Stapel-Skript `schlange.sh` (ueberspringt Fertiges,
+  prueft am Ende Vollstaendigkeit). Gefundener Fehler: Ohne `</dev/null` las
+  der Generator die Liste der Schleife mit und verschluckte 15 von 16
+  Eintraegen — die Schlange meldete trotzdem „fertig". Dazu die Regel
+  „Verneinungen wirken kaum" (Motiv umschreiben statt verbieten).

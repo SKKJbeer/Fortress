@@ -7274,7 +7274,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.126.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.127.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7829,7 +7829,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       } },
         // Auch die Standard-Zeile zeigt das ECHTE Modell (v3.46.0) — sonst
         // bleibt genau die Zeile eine Farbkugel, gegen die man vergleicht.
-        h("canvas", { width: 80, height: 80, style: { width: 40, height: 40, display: "block", flexShrink: 0 },
+        h(ArtikelBild, { id: std, groesse: 46, ersatz: h("canvas", { width: 80, height: 80, style: { width: 40, height: 40, display: "block", flexShrink: 0 },
           ref: (el) => {
             if (!el || el.__drawn === cat) return;
             el.__drawn = cat;
@@ -7850,7 +7850,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               c2.beginPath(); c2.arc(40, 40, 20, 0, Math.PI * 2); c2.stroke();
             }
           }
-        }),
+        }) }),
         h("div", { style: { flex: 1, fontSize: 12.5, fontWeight: 800, color: "#cbd5e1" } }, t("forgeStandard")),
         isEq
           ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))

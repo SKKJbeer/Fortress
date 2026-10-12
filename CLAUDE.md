@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.126.0
+- **Aktuelle Version**: v3.127.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -438,6 +438,11 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   in einem Menue. `suiteKeinRollen` (`NUR=rollen`) prueft neun Menues auf SE,
   iPhone und iPad. Tests, die Inhalte hinter einem Reiter suchen, klicken ihn
   per `reiterWahl(page, key)` (`data-reiter`).
+- **Artikelbilder (seit v3.127.0):** `src/ui/artikel.js` (`VORHANDEN`,
+  `ArtikelBild`) — jeder kauf-/schmiedbare Artikel ausser Rahmen hat ein
+  gemaltes WebP in `public/artikel/`; fehlt eines, zeichnet der Aufrufer die
+  alte Vorschau. `tests/artikel.test.js` verlangt Bild UND Herkunft fuer JEDEN
+  Katalogeintrag — ein neuer Artikel ohne Bild faellt dort auf.
 - **Logo ist gesetzt, nicht gemalt** (`tools/logo.cjs`); aufs Ladebild nur in
   der sicheren Zone (`ladebild.py --logo`).
 

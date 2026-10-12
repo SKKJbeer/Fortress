@@ -88,6 +88,15 @@ Nie FLUX.1-dev, SDXL-Turbo oder SD-Turbo nehmen — nicht-kommerzielle Lizenz.
 - FLUX.1-schnell: `--cfg-scale 1.0 --steps 4 --sampling-method euler`.
   Mehr Schritte verbessern schnell nichts.
 
+## Viele Bilder auf einmal
+
+`scripts/schlange.sh liste.txt ausgabe/ seed groesse` — je Zeile `name|prompt`,
+fertige Bilder werden uebersprungen (nach einem Neustart einfach erneut
+aufrufen), am Ende prueft sie, ob WIRKLICH alle da sind. Auf vier CPU-Kernen
+rechnet ein 512er-Bild rund 20 Minuten, ein 384er rund 12 — Stapel ueber
+Stunden im Hintergrund laufen lassen (`setsid nohup … &`) und zwischendurch
+Gruppen ansehen, nicht erst am Ende.
+
 ## Nachbearbeitung: Fremdkoerper und Stoerer entfernen
 
 Das Modell haelt sich nicht immer an „no buildings / no water": Bei
@@ -109,6 +118,13 @@ Kanonenkugeln), Baeche (Verwechslung mit dem Fluss) und leuchtende Linien
 Rohbild UND Ergebnis aufbewahren und die Eingriffe in `ENTSTEHUNG.md`
 festhalten. Lieber retuschieren als neu rechnen, wenn ein Bild 20–45 Minuten
 kostet.
+
+## Verneinungen wirken kaum
+
+„no dollar signs" malte zweimal Dollarmuenzen — das Wort zieht das Motiv an.
+Unerwuenschtes nicht verbieten, sondern das Motiv so beschreiben, dass es gar
+nicht vorkommt (Muenzen → „goldene Sterne, Funken, Nuggets"). Fuer Spiele
+ohne Echtgeld: keine Muenzen mit Waehrungszeichen, keine Geldkoffer.
 
 ## Grenzen (dem Nutzer ehrlich sagen)
 - Kein gezieltes NEUMALEN einzelner Stellen (kein Inpainting). Kleine
