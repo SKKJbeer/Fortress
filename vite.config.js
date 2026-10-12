@@ -30,7 +30,7 @@ export default defineConfig({
       manifest: false,
       injectRegister: null,          // die Registrierung steht schon in index.html
       workbox: {
-        globPatterns: ['**/*.{html,js,css,png,jpg,svg,json,mp3,woff2}'],
+        globPatterns: ['**/*.{html,js,css,png,jpg,webp,svg,json,mp3,woff2}'],
         // Store-Screenshots sind 4,7 MB und werden im Spiel NIE gebraucht —
         // sie stehen nur im Manifest fuer die Installationsansicht. Ohne diese
         // Ausnahme zahlt jeder Erstbesucher sie beim Vorladen mit.

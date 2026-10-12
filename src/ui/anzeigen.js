@@ -67,14 +67,19 @@ export function ConfettiBurst({ active }) {
   }, ...particles);
 }
 
-export function WappenAvatar({ id, size = 36 }) {
+export function WappenAvatar({ id, size = 36, eckig = false }) {
   // `hasOwnProperty`, nicht nur `WAPPEN_SRC[id]` (v3.112.0): `id` kann aus
   // dem Netz kommen (playerInfo des Hosts). Bei `id = "constructor"` liefert
   // ein Objektliteral eine FUNKTION aus der Prototypkette — die stuende dann
   // als Bild-Adresse im DOM und der Browser fragte sie an.
   const src = Object.prototype.hasOwnProperty.call(WAPPEN_SRC, id)
     ? WAPPEN_SRC[id] : WAPPEN_SRC.skelett;
-  return React.createElement('img', { src, width: size, height: size, alt: '', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
+  // `eckig` (v3.125.0): Die gemalten Avatare sind quadratische Bilder mit
+  // eigenem Hintergrund — im Auswahl-Raster fuellen sie die Kachel ganz,
+  // statt rund ausgeschnitten mit dunklen Ecken darin zu sitzen.
+  if (eckig) return React.createElement('img', { src, alt: '', decoding: 'async', draggable: false,
+    style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 } });
+  return React.createElement('img', { src, width: size, height: size, alt: '', decoding: 'async', style: { display: 'block', flexShrink: 0, borderRadius: '50%', imageRendering: 'auto' } });  }
 
 export // Statische XP-Leiste (Profil-Karte, Profil-Editor)
 function XpBarUI({ level, xp }) {

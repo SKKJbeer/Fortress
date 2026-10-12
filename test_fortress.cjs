@@ -614,7 +614,7 @@ async function suiteNavHUD(browser, playerCount) {
         const src = img.getAttribute('src') || '';
         const style = window.getComputedStyle(img);
         const rect = img.getBoundingClientRect();
-        return src.startsWith('data:image/') && style.borderRadius === '50%' && rect.width > 0;
+        return /^(data:image\/|wappen\/)/.test(src) && img.complete && img.naturalWidth > 0 && style.borderRadius === '50%' && rect.width > 0;
       });
       return imgs.length;
     });
@@ -3914,17 +3914,26 @@ async function suiteOnline3P(browser, fbPort) {
     return c;
   };
   const inGame = (p, t) => p.waitForSelector('canvas', { timeout: t }).then(() => true).catch(() => false);
+  // Zurueck ins Menue als WARTEBEDINGUNG (v3.125.0): vorher drei Klicks mit
+  // festen 250/400/300 ms. Unter Volllast war der Bestaetigungsdialog noch
+  // nicht da, der Client blieb im Spiel, und der naechste Schritt meldete
+  // „Knopf ONLINE nicht gefunden" (dreimal im vollen Lauf, einzeln gruen).
+  // Jetzt: bis zu drei Versuche, bis der ONLINE-Knopf wirklich da ist.
   const quitBtn = async (p) => {
-    await p.evaluate(() => {
-      for (const b of document.querySelectorAll('button')) {
-        if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
+    for (let versuch = 0; versuch < 3; versuch++) {
+      if (await findBtn(p, ['ONLINE'])) return;
+      await p.evaluate(() => {
+        for (const b of document.querySelectorAll('button')) {
+          if (b.textContent.includes('beenden') || (b.title || '').includes('beenden') || b.textContent.trim() === '✕') { b.click(); return; }
+        }
+      });
+      await klickeWennDa(p, ['Ja', 'Beenden', 'verlassen'], 3000);
+      await klickeWennDa(p, ['Hauptmenü'], 4000);
+      for (let i = 0; i < 20; i++) {
+        if (await findBtn(p, ['ONLINE'])) return;
+        await p.waitForTimeout(150);
       }
-    });
-    await p.waitForTimeout(250);
-    await jsClick(p, ['Ja', 'Beenden', 'verlassen']);
-    await p.waitForTimeout(400);
-    await jsClick(p, ['Hauptmenü']);
-    await p.waitForTimeout(300);
+    }
   };
   const startMM3 = async (p) => {
     const fehlt = await starteSuche(p, 3);
@@ -4970,22 +4979,33 @@ async function suiteProgression(browser) {
       overlayOk ? ok('Profil-Editor: Level-Overlay (L5+) auf gesperrten Avataren ✓') : fail('Profil-Editor: Level-Overlay fehlt');
 
       // ── Avatar-Grafiken: Rendering & Darstellung ──────────────
+      // Seit v3.125.0 echte Dateien statt Base64: erst messen, wenn das
+      // Raster geladen ist (unter Volllast sonst 1 von 12 gezaehlt).
+      await page.waitForFunction(() => {
+        const r = document.querySelector('[data-avatar-raster]');
+        if (!r) return false;
+        const imgs = [...r.querySelectorAll('img')];
+        return imgs.length >= 12 && imgs.every(i => i.complete && i.naturalWidth > 0);
+      }, null, { timeout: 15000 }).catch(() => {});
       const avatarRender = await page.evaluate(() => {
         // Alle sichtbaren data-URI imgs (Avatar-Grafiken, SVG oder PNG)
         const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
           const src = img.getAttribute('src') || '';
           const rect = img.getBoundingClientRect();
-          return src.startsWith('data:image/') && rect.width > 0 && rect.height > 0;
+          return /^(data:image\/|wappen\/)/.test(src) && img.complete && img.naturalWidth > 0 && rect.width > 0 && rect.height > 0;
         });
         // Kreisrunde Darstellung (borderRadius 50%)
+        // Rund ODER Kachel im Auswahl-Raster (v3.125.0: dort fuellt das
+        // quadratische Bild die abgerundete Kachel, WappenAvatar eckig).
         const circularCount = imgs.filter(img =>
-          window.getComputedStyle(img).borderRadius === '50%'
+          window.getComputedStyle(img).borderRadius === '50%' ||
+          (!!img.closest('[data-avatar-raster]') && getComputedStyle(img).objectFit === 'cover')
         ).length;
         // Skelett-Avatar-Button mit korrektem data-URI src
         const skelettBtn = Array.from(document.querySelectorAll('button')).find(b =>
           b.getAttribute('title') === 'skelett');
         const skelettImg = skelettBtn ? skelettBtn.querySelector('img') : null;
-        const skelettSrcOk = !!(skelettImg && (skelettImg.getAttribute('src') || '').startsWith('data:image/'));
+        const skelettSrcOk = !!(skelettImg && /wappen\/skelett\.webp$/.test(skelettImg.getAttribute('src') || '') && skelettImg.complete && skelettImg.naturalWidth > 0);
         // Seit v3.123.0 EIN Raster mit allen Avataren; gesperrte tragen
         // Schloss + Stufe und sind nicht waehlbar (statt zweier Sektionen).
         const raster = document.querySelector('[data-avatar-raster]');
@@ -5002,8 +5022,8 @@ async function suiteProgression(browser) {
         ? ok(`Profil-Editor: ${avatarRender.circularCount} Avatare kreisrund (50%) ✓`)
         : fail(`Profil-Editor: Avatare nicht kreisrund (${avatarRender.circularCount} von ${avatarRender.count})`);
       avatarRender.skelettSrcOk
-        ? ok('Skelett-Avatar: data-URI korrekt geladen ✓')
-        : fail('Skelett-Avatar: kein img-Element oder src fehlt');
+        ? ok('Skelett-Avatar: Bilddatei geladen (wappen/skelett.webp) ✓')
+        : fail('Skelett-Avatar: Bild fehlt oder nicht geladen');
       avatarRender.hasAktiv
         ? ok('Profil-Editor: Avatar-Raster mit allen zwoelf ✓')
         : fail('Profil-Editor: Avatar-Raster fehlt oder unvollstaendig');
@@ -5262,13 +5282,29 @@ async function suiteBuildUrgency(browser) {
     //  Kanonenbeschuss Mauern zerstört hat — das erfordert eine komplexere
     //  Testsimulation und wird hier nicht vollautomatisch getestet.)
     console.log('⏳ Warte bis Bau-Timer ≤ 8 (Schwellen-Check)...');
-    const urgencyDeadline = Date.now() + 2000;
+    // Die SEITE schreibt mit (v3.125.0): Im Zeitraffer steht der Timer nur
+    // ~0,4 s im Bereich 1..8; unter Volllast dauerte eine einzelne Abfrage
+    // laenger, die Schleife sprang ueber das Fenster. Ein Beobachter mit der
+    // echten Uhr (__echtInterval) sieht jeden angezeigten Wert.
+    await page.evaluate(() => {
+      window.__timerFenster = null;
+      const lies = () => {
+        for (const el of document.querySelectorAll('*')) {
+          const t = (el.textContent || '').trim();
+          if (/^\d{2}$/.test(t) && el.children.length === 0) return parseInt(t, 10);
+        }
+        return null;
+      };
+      const iv = (window.__echtInterval || setInterval)(() => {
+        const t = lies();
+        if (t !== null && t <= 8 && t > 0 && window.__timerFenster === null) { window.__timerFenster = t; clearInterval(iv); }
+      }, 15);
+      setTimeout(() => clearInterval(iv), 60000);
+    });
     let timerAtUrgency = null;
-    while (Date.now() < urgencyDeadline) {
-      const t = await getTimerValue(page);
-      if (t !== null && t <= 8 && t > 0) { timerAtUrgency = t; break; }
-      if (t === 0 || t === null) break;
-      await page.waitForTimeout(60);
+    for (let i = 0; i < 40 && timerAtUrgency === null; i++) {
+      timerAtUrgency = await page.evaluate(() => window.__timerFenster);
+      if (timerAtUrgency === null) await page.waitForTimeout(250);
     }
 
     if (timerAtUrgency === null) {
@@ -7345,34 +7381,48 @@ async function suiteOnlineHaerte(browser, fbPort) {
     const fbs = await suiteFirebaseStart(browser);
     return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
-  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rHeavy, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen] = await Promise.all([
-    suiteMenu(browser),
-    suiteOffline(browser),
-    suitePlattform(browser),
-    suiteSicherheitsbereiche(browser),
-    suiteIPad(browser),
-    suiteProfilName(browser),
-    suiteNavHUD(browser, 2),
-    suiteNavHUD(browser, 3),
-    suiteMechanics(browser),
-    suiteQuitUX(browser),
-    suiteOnlineUI(browser, FB_PORT),
-    onlineHeavy,
-    suiteProgression(browser),
-    suiteAchievements(browser),
-    suiteBuildUrgency(browser),
-    suiteOnboarding(browser),
-    suiteSound(browser),
-    suiteI18n(browser),
-    suiteTutorial(browser),
-    suiteBallSettle(browser),
-    suiteArmoryReady(browser),
-    suiteCannonKill(browser),
-    suiteDailyTasks(browser),
-    suiteGoldShop(browser),
-    suiteSchmiede(browser),
-    suiteKeinRollen(browser),
-  ]);
+  // Begrenzte Gleichzeitigkeit (v3.125.0). Bis hier starteten gut zwanzig
+  // Suiten auf einmal neben der seriellen Online-Kette. Auf vier Kernen kam
+  // dabei JEDER volle Lauf mit ein bis sechs Zufallsausreissern (Emote,
+  // Phasen-Gleichlauf, Matchmaking-Start, Timer-Fenster …) — jede einzeln
+  // gruen, mit unveraendertem v3.123.0 genauso. Statt jede Frist zu dehnen,
+  // laufen die uebrigen Suiten jetzt hoechstens zu sechst; die Online-Kette
+  // laeuft daneben wie bisher.
+  const begrenzt = async (aufgaben, n) => {
+    const erg = new Array(aufgaben.length); let naechste = 0;
+    const arbeiter = async () => { while (naechste < aufgaben.length) { const i = naechste++; erg[i] = await aufgaben[i](); } };
+    await Promise.all(Array.from({ length: Math.min(n, aufgaben.length) }, arbeiter));
+    return erg;
+  };
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen] = await begrenzt([
+    () => suiteMenu(browser),
+    () => suiteOffline(browser),
+    () => suitePlattform(browser),
+    () => suiteSicherheitsbereiche(browser),
+    () => suiteIPad(browser),
+    () => suiteProfilName(browser),
+    () => suiteNavHUD(browser, 2),
+    () => suiteNavHUD(browser, 3),
+    () => suiteMechanics(browser),
+    () => suiteQuitUX(browser),
+    () => suiteOnlineUI(browser, FB_PORT),
+    () => suiteProgression(browser),
+    () => suiteAchievements(browser),
+    () => suiteBuildUrgency(browser),
+    () => suiteOnboarding(browser),
+    () => suiteSound(browser),
+    () => suiteI18n(browser),
+    () => suiteTutorial(browser),
+    () => suiteBallSettle(browser),
+    () => suiteArmoryReady(browser),
+    () => suiteCannonKill(browser),
+    () => suiteDailyTasks(browser),
+    () => suiteGoldShop(browser),
+    () => suiteSchmiede(browser),
+    () => suiteKeinRollen(browser),
+  ], 6);
+  const rHeavy = await onlineHeavy;
+
 
   // Die drei Warteschlangen-Suiten laufen ALLEIN, nachdem alles andere fertig
   // ist (v3.116.0). Sie halten bis zu sechs Clients in Echtzeit; neben den

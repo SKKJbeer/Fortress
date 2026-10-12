@@ -7274,7 +7274,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.124.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.125.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7413,7 +7413,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           boxShadow: isSel ? "0 0 0 2px " + FARBE.kontur + ", 0 0 14px " + FARBE.gold : "0 3px 0 " + FARBE.kontur,
           transform: isSel ? "scale(1.05)" : "none", transition: "transform .15s" } },
         React.createElement("div", { style: { filter: frei ? "none" : "grayscale(0.8) brightness(0.45)", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" } },
-          React.createElement(WappenAvatar, { id: w, size: 68 })),
+          React.createElement(WappenAvatar, { id: w, eckig: true })),
         !frei && React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, color: "#fff" } },
           React.createElement(Icon, { name: "lock", size: 18 }),
           React.createElement("span", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 14, textShadow: KONTURTEXT } }, "L" + req)));

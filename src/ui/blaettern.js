@@ -46,7 +46,7 @@ export function Reiter({ reiter, aktiv, onWahl }) {
   // („Kan…") sind schlechter als kein Symbol.
   const { w } = useSchirm();
   const proReiter = (Math.min(w, 420) - 76) / Math.max(1, reiter.length);
-  const mitSymbol = proReiter >= 104;
+  const mitSymbol = proReiter >= 116;
   return h("div", { role: "tablist", style: { display: "flex", gap: 6, marginBottom: 10 } },
     reiter.map((r) => h("button", {
       key: r.key, role: "tab", "aria-selected": aktiv === r.key, "data-reiter": r.key,

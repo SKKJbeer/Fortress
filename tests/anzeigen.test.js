@@ -45,10 +45,10 @@ test('ConfettiBurst rendert nur wenn aktiv, und deterministisch', () => {
 test('WappenAvatar faellt auf einen vorhandenen Avatar zurueck', () => {
   const gut = WappenAvatar({ id: 'skelett' });
   const murks = WappenAvatar({ id: 'gibtesnicht' });
-  assert.ok(gut.props.src.startsWith('data:image/'));
+  assert.strictEqual(gut.props.src, 'wappen/skelett.webp');
   // Ein unbekannter Schluessel darf kein leeres Bild ergeben — alte Profile
   // tragen alte Schluessel.
-  assert.ok(murks.props.src.startsWith('data:image/'));
+  assert.strictEqual(murks.props.src, 'wappen/skelett.webp');
   assert.strictEqual(WappenAvatar({ id: 'skelett', size: 64 }).props.width, 64);
 });
 

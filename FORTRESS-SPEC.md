@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.124.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.125.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9165,3 +9165,33 @@ harmonisch und gleich".
   (`document.getAnimations()`, nur endliche): unter Volllast standen zwei
   Messungen gleich bei 1073 px mitten in der Skalierung des Titels.
 - **Phasen-Schild-Pruefung:** Frist 6 → 15 s; unter Volllast kam das Schild spaeter.
+
+## v3.125.0 — Zwoelf neu gemalte Avatare
+
+- **Jeder Avatar einzeln neu gemalt** (Skill spielgrafik, FLUX.1-schnell lokal,
+  512 px, Seed 11): Skelett, Waldhueterin, Eismagier, Roboter, Hexerin,
+  Kanone, Frankenstein, Feuerschaedel, Pestdoktor, Blitz, Trojanisches Pferd,
+  Phoenix — im Comic-Stil von Ladebild und App-Symbol. Schluessel, Reihenfolge
+  und Freischaltstufen unveraendert (Netz-Vertrag `playerInfo.wappen`).
+- **Dateien statt Base64:** `public/wappen/<schluessel>.webp` (256 px, zusammen
+  108 KB) ersetzen 322 KB eingebettete PNGs im Bundle. Geladen wird nur, was
+  angezeigt wird; der Service Worker haelt WebP jetzt offline vor
+  (`globPatterns` um `webp` erweitert).
+- **Verworfen:** Die erste Hexerin folgte dem alten Motiv „witch skeleton" und
+  war dem Skelett zu aehnlich — neu gemalt als junge Hexe. Prompts und
+  Rohbilder in `assets/wappen/`.
+- **Auswahl-Raster:** Die quadratischen Bilder fuellen die Kachel
+  (`WappenAvatar eckig`) statt rund mit dunklen Ecken darin zu sitzen.
+  Reiter zeigen ihr Symbol erst ab 116 px Breite („Ausruestu…" war bei
+  390 px abgeschnitten).
+- Tests: Unit prueft je Avatar Pfad, echte WebP-Datei (< 40 KB), Herkunft und
+  dass kein Base64 zurueckkommt (Gegenprobe: Datei entfernt → rot). E2E
+  verlangt geladene Bilder (`naturalWidth > 0`) statt nur einer Adresse.
+- **Bau-Timer-Pruefung:** Die Seite schreibt die angezeigten Timerwerte selbst mit (echte Uhr), statt dass der Test das 0,4-s-Fenster per Abfrage treffen muss.
+- **Volle E2E-Laeufe mit begrenzter Gleichzeitigkeit:** Die gut zwanzig
+  uebrigen Suiten laufen hoechstens zu sechst neben der seriellen
+  Online-Kette, statt alle auf einmal. Vorher brachte auf vier Kernen jeder
+  volle Lauf ein bis sechs wechselnde Zeit-Ausreisser (einzeln gruen, mit
+  unveraendertem v3.123.0 genauso). Avatar-Pruefungen warten auf geladene
+  Bilder (echte Dateien statt Base64).
+- **3P-Suite: Rueckweg ins Menue als Wartebedingung** (bis drei Versuche, bis ONLINE wirklich da ist) statt drei Klicks mit festen Pausen — dreimal im vollen Lauf „Knopf ONLINE nicht gefunden", einzeln gruen.
