@@ -88,8 +88,32 @@ Nie FLUX.1-dev, SDXL-Turbo oder SD-Turbo nehmen — nicht-kommerzielle Lizenz.
 - FLUX.1-schnell: `--cfg-scale 1.0 --steps 4 --sampling-method euler`.
   Mehr Schritte verbessern schnell nichts.
 
+## Nachbearbeitung: Fremdkoerper und Stoerer entfernen
+
+Das Modell haelt sich nicht immer an „no buildings / no water": Bei
+Spielfeld-Boeden kamen Haeuser, Kisten, Kugeln (lasen sich wie
+Kanonenkugeln), Baeche (Verwechslung mit dem Fluss) und leuchtende Linien
+(wirken wie Grenzen). JEDES Bild in Spielgroesse ansehen, dann:
+
+- `scripts/retusche.py ein aus "x0,y0,x1,y1:sx,sy" ...` — Flicken aus dem
+  SELBEN Bild, farblich an den Rand des Ziels angeglichen; `RAND=20` fuer
+  weiche Kanten. Kasten grosszuegig um den Fremdkoerper legen.
+- `scripts/umfaerben.py ein aus "h0,h1,smin:hNeu,sFaktor,vFaktor" ...` —
+  Farbton-Bereich umfaerben (Kugeln → Moos, Bach → Moorwasser, Leuchten →
+  Plattenfarbe). Erst breit pruefen, dann eng nachziehen.
+- `scripts/glut.py ein aus staerke vFaktor sFaktor` — Leuchten (rot/orange)
+  daempfen, z. B. Lava, die mit einem Lavafluss konkurriert.
+- `scripts/risse.py ein aus staerke [fenster]` — dunkle Linien zur
+  Umgebungsfarbe ziehen (Risse, die wie Grenzen wirken).
+
+Rohbild UND Ergebnis aufbewahren und die Eingriffe in `ENTSTEHUNG.md`
+festhalten. Lieber retuschieren als neu rechnen, wenn ein Bild 20–45 Minuten
+kostet.
+
 ## Grenzen (dem Nutzer ehrlich sagen)
-- Kein gezieltes Nachbessern einzelner Stellen: neue Seeds statt Retusche.
+- Kein gezieltes NEUMALEN einzelner Stellen (kein Inpainting). Kleine
+  Fremdkoerper lassen sich wegretuschieren oder umfaerben (siehe oben);
+  alles, was das Motiv traegt, braucht einen neuen Seed.
 - Figuren aus dem Spiel werden nachempfunden, nicht exakt getroffen.
 - KI-Bilder sind urheberrechtlich schwach geschuetzt; nutzen darf man sie.
 

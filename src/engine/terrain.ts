@@ -65,29 +65,34 @@ export const WORLD_THEMES = [
     water: ["#3fd0e6", "#138fb8"], waterGlow: "rgba(45,212,191,0.55)", waterEdge: "rgba(225,255,250,0.85)", waterAnim: "225,255,250",
     mtn: ["#c47a42", "#7a3f1c"], mtnEdge: "rgba(253,230,138,0.45)", mtnCap: "rgba(254,243,199,0.9)",
     particles: ["rgba(253,230,138,0.5)", "rgba(251,191,36,0.4)", "rgba(254,215,170,0.45)"] },
-  { name: "Vulkanschlund", music: "w_volcano", bank: "#511f14", propType: "crystal", props: ["#6b5d55", "#2e2320", "#fb923c"],
+  { name: "Vulkanschlund", boden: "welten/vulkanschlund.jpg", music: "w_volcano", bank: "#3a2a28", propType: "crystal", props: ["#6b5d55", "#2e2320", "#fb923c"],
     bg: ["#2a130e", "#1c0d09", "#0d0504"], glow: "rgba(239,68,68,0.13)",
     tex1: "rgba(130,62,42,0.13)", tex2: "rgba(45,20,15,0.35)", dots: "rgba(248,113,113,0.05)",
-    water: ["#ea580c", "#9a3412"], waterGlow: "rgba(251,146,60,0.9)", waterEdge: "rgba(254,215,170,0.7)", waterAnim: "254,215,170",
-    mtn: ["#44403c", "#150f0d"], mtnEdge: "rgba(251,146,60,0.5)", mtnCap: "rgba(254,202,120,0.9)",
+    // Lavastrom kraeftig gegen den GEDAEMPFTEN Boden (v3.126.0): die Risse im
+    // gemalten Gestein glimmen nur, der Fluss leuchtet — so bleibt klar, wo
+    // nicht gebaut werden kann.
+    water: ["#ff8a1f", "#d4410c"], waterGlow: "rgba(255,170,60,0.9)", waterEdge: "rgba(255,236,160,0.9)", waterAnim: "255,236,160",
+    mtn: ["#6e6360", "#2c2422"], mtnEdge: "rgba(251,146,60,0.5)", mtnCap: "rgba(254,202,120,0.9)",
     particles: ["rgba(251,146,60,0.6)", "rgba(239,68,68,0.5)", "rgba(254,215,170,0.45)"] },
-  { name: "Nebelmoor", music: "w_swamp", bank: "#2e4522", propType: "tree", props: ["#6f9440", "#3c5423", "#d9f99d"],
+  { name: "Nebelmoor", boden: "welten/nebelmoor.jpg", music: "w_swamp", bank: "#4f6b33", propType: "tree", props: ["#6f9440", "#3c5423", "#d9f99d"],
     bg: ["#1a2a1e", "#121e16", "#090f0b"], glow: "rgba(134,239,172,0.09)",
     tex1: "rgba(74,124,89,0.13)", tex2: "rgba(20,40,30,0.35)", dots: "rgba(163,230,53,0.05)",
-    water: ["#4d7c0f", "#1a2e05"], waterGlow: "rgba(163,230,53,0.55)", waterEdge: "rgba(190,242,100,0.5)", waterAnim: "190,242,100",
-    mtn: ["#4d5a4a", "#181f18"], mtnEdge: "rgba(163,230,53,0.35)", mtnCap: "rgba(217,249,157,0.8)",
+    // Auf hellem Moosgruen braucht der Fluss einen GEGENTON (v3.126.0):
+    // gruenes Moorwasser waere im gruenen Boden verschwunden.
+    water: ["#3aa6c9", "#1a5f84"], waterGlow: "rgba(120,210,240,0.55)", waterEdge: "rgba(220,245,255,0.85)", waterAnim: "220,245,255",
+    mtn: ["#7d8c6b", "#3a4630"], mtnEdge: "rgba(163,230,53,0.35)", mtnCap: "rgba(217,249,157,0.8)",
     particles: ["rgba(190,242,100,0.6)", "rgba(253,224,71,0.5)", "rgba(134,239,172,0.45)"] },
-  { name: "Herbstwald", music: "w_autumn", bank: "#4a2f18", propType: "tree", props: ["#d97b2e", "#8a4114", "#fde047"],
+  { name: "Herbstwald", boden: "welten/herbstwald.jpg", music: "w_autumn", bank: "#b98c4c", propType: "tree", props: ["#d97b2e", "#8a4114", "#fde047"],
     bg: ["#2c1c10", "#20140b", "#110a05"], glow: "rgba(251,146,60,0.11)",
     tex1: "rgba(180,90,40,0.12)", tex2: "rgba(60,30,15,0.32)", dots: "rgba(253,186,116,0.05)",
-    water: ["#155e8a", "#0a3a5e"], waterGlow: "rgba(56,189,248,0.55)", waterEdge: "rgba(125,211,252,0.5)", waterAnim: "125,211,252",
-    mtn: ["#7c5836", "#2a1c10"], mtnEdge: "rgba(253,186,116,0.45)", mtnCap: "rgba(254,235,200,0.85)",
+    water: ["#4fb3f0", "#1f6fc4"], waterGlow: "rgba(56,189,248,0.5)", waterEdge: "rgba(235,248,255,0.85)", waterAnim: "235,248,255",
+    mtn: ["#9c8b74", "#4e4232"], mtnEdge: "rgba(253,186,116,0.45)", mtnCap: "rgba(254,235,200,0.85)",
     particles: ["rgba(251,146,60,0.55)", "rgba(239,68,68,0.45)", "rgba(253,224,71,0.5)"] },
-  { name: "Astralebene", music: "w_astral", bank: "#3b2360", propType: "crystal", props: ["#c084fc", "#6b21a8", "#f0abfc"],
+  { name: "Astralebene", boden: "welten/astralebene.jpg", music: "w_astral", bank: "#5a4a8a", propType: "crystal", props: ["#c084fc", "#6b21a8", "#f0abfc"],
     bg: ["#231539", "#180e2a", "#0b0616"], glow: "rgba(167,139,250,0.13)",
     tex1: "rgba(124,58,237,0.11)", tex2: "rgba(30,15,55,0.35)", dots: "rgba(196,181,253,0.06)",
-    water: ["#7e22ce", "#4a1272"], waterGlow: "rgba(217,70,239,0.7)", waterEdge: "rgba(240,171,252,0.55)", waterAnim: "240,171,252",
-    mtn: ["#4c3a6b", "#1a1030"], mtnEdge: "rgba(196,181,253,0.5)", mtnCap: "rgba(233,213,255,0.92)",
+    water: ["#e15cf5", "#8a2bd6"], waterGlow: "rgba(217,70,239,0.6)", waterEdge: "rgba(250,225,255,0.9)", waterAnim: "250,225,255",
+    mtn: ["#8c7bb8", "#3e3166"], mtnEdge: "rgba(196,181,253,0.5)", mtnCap: "rgba(233,213,255,0.92)",
     particles: ["rgba(240,171,252,0.5)", "rgba(129,140,248,0.5)", "rgba(255,255,255,0.45)"] }
 ];
 export function worldThemeOf(seed: number) {

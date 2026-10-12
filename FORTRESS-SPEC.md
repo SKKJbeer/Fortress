@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.125.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.126.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9195,3 +9195,23 @@ harmonisch und gleich".
   unveraendertem v3.123.0 genauso). Avatar-Pruefungen warten auf geladene
   Bilder (echte Dateien statt Base64).
 - **3P-Suite: Rueckweg ins Menue als Wartebedingung** (bis drei Versuche, bis ONLINE wirklich da ist) statt drei Klicks mit festen Pausen — dreimal im vollen Lauf „Knopf ONLINE nicht gefunden", einzeln gruen.
+
+## v3.126.0 — Alle sieben Welten gemalt
+
+- **Vulkanschlund, Nebelmoor, Herbstwald, Astralebene** tragen jetzt einen
+  gemalten Boden; damit sind alle sieben Welten im Comic-Stil. Der Fluss hat
+  je Welt einen klaren Gegenton zum Boden (Lavastrom, Blau auf Moosgruen und
+  Laub, Magenta auf Lavendel), Ufer und Berge sind auf die hellen Boeden
+  abgestimmt.
+- **Nachbearbeitung statt Neurechnen** (Rohbild + Ergebnis in
+  `assets/welten/`, Eingriffe in `ENTSTEHUNG.md`):
+  - Vulkanschlund: helle Lavastroeme quer ueber das Feld zu Glutrissen
+    gedaempft — sonst mit dem (nicht bebaubaren) Lavafluss zu verwechseln.
+  - Nebelmoor: orangefarbene Kugeln (wie Kanonenkugeln) zu Moospolstern, ein
+    blauer Bach zu Moorwasser umgefaerbt.
+  - Herbstwald: drei rote Aepfel entfernt, Flicken farblich angeglichen.
+  - Astralebene: eine leuchtende Linie, die wie eine Grenze wirkte, gedaempft.
+- **Skill `spielgrafik`:** die vier Nachbearbeitungs-Werkzeuge (`retusche.py`
+  mit Farbangleich, `umfaerben.py`, `glut.py`, `risse.py`) liegen jetzt im
+  Skill und sind dort beschrieben — fuer dieses und andere Projekte.
+- **3P-Online-Suite laeuft ebenfalls allein** nach dem parallelen Block (Phasen-Gleichlauf mit drei Clients, unter Last einmal 3 s Verzug, einzeln gruen).

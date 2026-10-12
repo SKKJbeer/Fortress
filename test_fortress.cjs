@@ -7339,7 +7339,6 @@ async function suiteOnlineHaerte(browser, fbPort) {
   // Spielen gleichzeitig überlasten den Runner → Phase-Sync-Flakes in 2P).
   const onlineHeavy = (async () => {
     const mm = await suiteMatchmaking(browser, FB_PORT);
-    const mm3 = await suiteOnline3P(browser, FB_PORT);
     // Herzschlag laeuft bewusst HIER (seriell) und nicht parallel: die Suite
     // haelt zwei Spielkontexte und wartet auf Fristen — parallel dazu noch
     // mehr Online-Kontexte erzeugen genau die Phase-Sync-Flakes von oben.
@@ -7379,7 +7378,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     // denen das SDK wirklich hochfaehrt, und wartet je 2,5 s auf den
     // Anmeldeversuch. Parallel dazu waere das eine Lastmessung.
     const fbs = await suiteFirebaseStart(browser);
-    return { mm, mm3, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
+    return { mm, hb, cs, tr, zm, hrt, akt, lb, bot, fbs };
   })();
   // Begrenzte Gleichzeitigkeit (v3.125.0). Bis hier starteten gut zwanzig
   // Suiten auf einmal neben der seriellen Online-Kette. Auf vier Kernen kam
@@ -7434,10 +7433,13 @@ async function suiteOnlineHaerte(browser, fbPort) {
   // zeitweise ueber 3-5 s keinen Zustand — auch mit unveraendertem v3.123.0
   // nachgemessen, also Last der Testmaschine. Einzeln 6/6 gruen.
   const rOnline2P = await suiteOnline2P(browser, FB_PORT);
+  // 3P ebenso allein (v3.126.0): Phasen-Gleichlauf mit drei Clients, unter
+  // Last einmal 3 s Verzug (BAUEN/FEUER/FEUER), einzeln gruen.
+  const rMM3 = await suiteOnline3P(browser, FB_PORT);
   const rWQ = await suiteWarteschlangeMehrere(browser, FB_PORT);
   const rVN = await suiteVerlassenNeu(browser, FB_PORT);
   const rIH = await suiteIosHintergrund(browser, FB_PORT);
-  const rMM = rHeavy.mm, rMM3 = rHeavy.mm3, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
+  const rMM = rHeavy.mm, rHB = rHeavy.hb, rCS = rHeavy.cs, rTR = rHeavy.tr, rWarn = rHeavy.zm, rHrt = rHeavy.hrt, rAkt = rHeavy.akt, rLB = rHeavy.lb, rBot2 = rHeavy.bot, rFbs = rHeavy.fbs;
   await browser.close();
   mockFbSrv.close();
 
