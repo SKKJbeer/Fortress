@@ -1,6 +1,6 @@
 # Stack & Siege — Marktstart-Checkliste
 
-> Stand: **v3.117.0, 04.10.2026.** **iOS zuerst.** Architektur: `ARCHITEKTUR.md`.
+> Stand: **v3.130.2, 13.10.2026.** **iOS zuerst.** Architektur: `ARCHITEKTUR.md`.
 > Store-Texte: `store/listing.md`. Fragebogen-Antworten: `store/app-datenschutz.md`.
 
 ---
@@ -234,12 +234,15 @@ nur, was fehlt.
 - [x] **Altersfreigabe** — 24 Angaben, mit Begründung in `scripts/asc-store.py`
 - [x] **Prüfkontakt vollständig** und Prüfhinweise hinterlegt
 - [x] **Bildschirmfotos** 4× iPhone 6,7" und 4× iPad 12,9"
-- [ ] **Bildschirmfotos im Comic-Stil** (v3.130.1) — neu aufgenommen in
-      `store/`; im Eintrag liegen noch die alten. Fassung 1.0 steht seit dem
-      13.10. auf `WAITING_FOR_REVIEW`, Bilder sind dort gesperrt.
-      **Entscheidung des Betreibers:** nicht zurueckziehen, sondern mit der
-      NAECHSTEN Fassung tauschen — `appstore.yml` mit `store-bilder-probe`,
-      dann `store-bilder` (erst hochladen, dann die alten loeschen).
+- [x] **Bildschirmfotos im Comic-Stil** — am 13.10. per `store-bilder` getauscht
+      (iPhone 6,7" und iPad 12,9", je 4).
+- [x] **Neu eingereicht 13.10. mit Bau 45 (v3.129.0)** — Apple hatte 1.0 mit
+      Bau 40 (v3.118.0, vor dem Comic-Umbau) freigegeben; auf Wunsch des
+      Betreibers zurueckgewiesen (`zurueckweisen`), Bau 45 angehaengt,
+      eingereicht. Zustand: `WAITING_FOR_REVIEW`, Veroeffentlichung von Hand.
+- [ ] **Nach Apples Freigabe veroeffentlichen** — `appstore.yml` mit
+      `freigeben-probe`, dann `freigeben` (Eingabe FREIGEBEN), oder in App
+      Store Connect „Diese Version veroeffentlichen".
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
 - [x] **Bau 28 (v3.94.0) der Fassung zugeordnet** (17.09., `→ store`)
