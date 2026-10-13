@@ -240,6 +240,10 @@ nur, was fehlt.
       Bau 40 (v3.118.0, vor dem Comic-Umbau) freigegeben; auf Wunsch des
       Betreibers zurueckgewiesen (`zurueckweisen`), Bau 45 angehaengt,
       eingereicht. Zustand: `WAITING_FOR_REVIEW`, Veroeffentlichung von Hand.
+- [x] **Review der Einreichung 13.10. (v3.130.3)** — Pruefhinweis
+      („turn-based" falsch, Loeschweg), Beschreibung DE/EN (Bezwinger, Welten,
+      Avatare), englische Bildschirmfotos fuer en-US/en-GB. Dafuer aus der
+      Pruefung zurueckgezogen und um 15:36 neu eingereicht: `WAITING_FOR_REVIEW`.
 - [ ] **Nach Apples Freigabe veroeffentlichen** — `appstore.yml` mit
       `freigeben-probe`, dann `freigeben` (Eingabe FREIGEBEN), oder in App
       Store Connect „Diese Version veroeffentlichen".
