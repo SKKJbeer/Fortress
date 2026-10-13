@@ -3889,8 +3889,19 @@ async function suiteHeartbeat(browser, fbPort) {
            : fail(`Herzschlag: kein Hinweis beim Host — ${lastDbg}`);
     ended ? ok('Herzschlag: Partie beendet statt Geisterspiel ✓')
           : fail(`Herzschlag: Host spielt nach hartem Abbruch weiter — ${lastDbg}`);
-    (ended && ended.left) ? ok('Herzschlag: Ergebnis nennt "verlassen" (reason=left) ✓')
-                          : fail('Herzschlag: Ergebnis ohne Verlassen-Begründung');
+    // Die Begruendung auf die ANZEIGE warten, nicht im selben Augenblick lesen,
+    // in dem `screen` auf result springt (v3.130.0): Der Ergebnisschirm baut
+    // sich einen Takt spaeter auf. Im vollen Lauf wurde das einmal rot, im
+    // Einzellauf nie — eine Momentaufnahme, wie in CLAUDE.md beschrieben.
+    let begruendet = !!(ended && ended.left), textEnde = '';
+    for (let i = 0; ended && !begruendet && i < 25; i++) {
+      await pH.waitForTimeout(120);
+      textEnde = await pH.evaluate(() => document.body.innerText.slice(0, 300).replace(/\s+/g, ' '));
+      begruendet = /verlassen/i.test(textEnde);
+    }
+    begruendet ? ok('Herzschlag: Ergebnis nennt "verlassen" (reason=left) ✓')
+               : fail('Herzschlag: Ergebnis ohne Verlassen-Begründung — '
+                      + (ended ? `nach 3 s sichtbar: "${textEnde}"` : 'kein Ergebnisschirm'));
 
     errs.length ? errs.slice(0, 3).forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`))
                 : ok('Herzschlag: keine JS-Fehler ✓');

@@ -187,3 +187,39 @@ test("Beide Sprachen: Sitemap, Bau-Bloecke, kein falsches Genre, Android erwaehn
   }
   assert.match(WEB, /<b>Deutsch, Englisch<\/b>/, "Sprachangabe stimmt nicht mit dem Spiel ueberein");
 });
+
+// ── Comic-Stil (v3.130.0) ─────────────────────────────────────────────────
+// Die Website zeigt die gemalten Avatare und Artikel des Spiels. Sie kommen
+// beim Bau aus public/ (scripts/website-bauen.sh) — ein Verweis auf eine
+// Datei, die es dort nicht gibt, fiele erst in `check-website.mjs` auf, also
+// im Ablauf nach dem Push. Hier steht es vorher fest.
+test("Website: Avatare, Artikel und Schriften kommen aus dem Spiel", () => {
+  for (const [name, html] of [["de", WEB], ["en", EN]]) {
+    const avatare = [...html.matchAll(/src="(?:\.\.\/)?wappen\/([a-z]+)\.webp"/g)].map((m) => m[1]);
+    const katalog = Object.keys((lies("src", "ui", "wappen.js").match(/WAPPEN_SRC = \{([\s\S]*?)\};/) || [])[1]
+      .split("\n").reduce((o, z) => { const m = z.match(/^\s*([a-z]+):/); if (m) o[m[1]] = 1; return o; }, {}));
+    assert.deepEqual(avatare, katalog, `${name}: Avatar-Galerie weicht vom Katalog ab (Reihenfolge = WAPPEN_SRC)`);
+    for (const m of html.matchAll(/src="(?:\.\.\/)?artikel\/([a-z_]+)\.webp"/g))
+      assert.ok(existsSync(join(WURZEL, "public", "artikel", m[1] + ".webp")), `${name}: artikel/${m[1]}.webp fehlt in public/`);
+  }
+  const bau = lies("scripts", "website-bauen.sh");
+  for (const zeile of [/^cp public\/fonts\/\*\.woff2 public\/fonts\/OFL-\*\.txt "\$ZIEL\/schriften\/"$/m,
+                       /^cp public\/wappen\/\*\.webp "\$ZIEL\/wappen\/"$/m,
+                       /^cp public\/artikel\/\*\.webp "\$ZIEL\/artikel\/"$/m])
+    assert.match(bau, zeile, "der Bau legt nicht alles dazu, worauf die Seite verweist");
+  const stil = lies("docs", "website", "stil.css");
+  const schriften = [...stil.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]);
+  assert.ok(schriften.length >= 2, "keine lokalen Schriften im Stil");
+  assert.ok(schriften.every((u) => /^schriften\/[a-z-]+\.woff2$/.test(u)), `fremde oder falsche Schriftadresse: ${schriften}`);
+  for (const u of schriften) assert.ok(existsSync(join(WURZEL, "public", "fonts", u.replace("schriften/", ""))), `${u} fehlt in public/fonts`);
+});
+
+test("Spiel: Vorschaubild fuer geteilte Links existiert und ist quer", () => {
+  const s = lies("index.html");
+  const url = (s.match(/<meta property="og:image" content="([^"]+)"/) || [])[1];
+  assert.ok(url && url.startsWith("https://skkjbeer.github.io/Fortress/"), "og:image des Spiels fehlt");
+  const datei = join(WURZEL, "public", url.replace("https://skkjbeer.github.io/Fortress/", ""));
+  assert.ok(existsSync(datei), `og:image des Spiels zeigt ins Leere: ${datei}`);
+  const m = jpegMasse(datei);
+  assert.ok(m && m.w === 1024 && m.h === 500, `og:image des Spiels nicht 1024x500: ${JSON.stringify(m)}`);
+});

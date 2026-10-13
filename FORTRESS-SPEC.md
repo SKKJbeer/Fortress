@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.129.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9307,3 +9307,43 @@ harmonisch und gleich".
   im CI scheiterte v3.128.0 daran („0 Textstuecke sichtbar" fuer Gold-Shop,
   Erfolge, Bestenliste), lokal nie. v3.128.0 ging deshalb nicht live; diese
   Version liefert sie mit aus.
+
+## v3.130.0 — Website im Comic-Stil, neue Vorschaubilder
+
+- **Website (`docs/website/`, DE + EN) neu gestaltet** mit den Bausteinen des
+  Spiels: Farben aus `FARBE`, Lilita One + Nunito (beim Bau aus `public/fonts`
+  kopiert, OFL-Lizenz liegt dabei), Knopf/Tafel/Pille mit Comic-Kontur, der
+  gemalte Menue-Hintergrund als Buehne, das gesetzte Logo als Ueberschrift.
+  Fliesstext steht nie direkt auf dem Bild, sondern in einer Tafel.
+- **Neuer Abschnitt „Wappen & Sammelstuecke“**: alle zwoelf gemalten Avatare
+  mit Freischalt-Stufe und sechzehn Artikelbilder. Beides kommt beim Bau aus
+  `public/wappen` bzw. `public/artikel` — eine Quelle fuer Spiel und Website.
+  Unit-Test: Galerie = `WAPPEN_SRC` (Inhalt und Reihenfolge), jeder Artikel
+  existiert in `public/`.
+- **Alle Bildschirmfotos neu** aus dem aktuellen Spiel, jetzt als WebP (1,1 MB
+  statt 1,9 MB als JPEG). `tools/make-screenshots.cjs` kodiert WebP im
+  Browser selbst (`canvas.toDataURL`), kein neues Paket. Die Welten-Kacheln
+  zeigen eine laufende Partie (Bot gegen Bot, Runde 2, Schussphase) statt
+  des leeren Startbretts; die Welt kommt aus `__weltSeed`, nicht mehr vom
+  Wuerfeln.
+- **Vorschaubilder fuer geteilte Links** (`tools/make-feature-graphic.cjs`):
+  eine Gestaltung fuer Spiel, Website (DE/EN) und Google Play. Die alte
+  Vorschau des Spiels trug noch einen frueheren Arbeitstitel als Schriftzug —
+  jeder geteilte Spiel-Link warb damit. `public/social-card.png` entfaellt,
+  neu `public/social-card.jpg` (97 kB statt PNG).
+- **Fehler behoben:** In gedrehten Zweispaltern tauschte nur die Reihenfolge,
+  nicht die Spalten — der Text landete in der schmalen 330-px-Spalte
+  („Zwei Kanonen, zwei Absichten" in vier Zeilen). Lange deutsche
+  Artikelnamen schoben die Seite am Telefon auf 457 px Breite (gemessen);
+  jetzt `minmax(0, 1fr)`-Spalten und weiche Trennstellen.
+- **Gewichtsgrenze erweitert:** `check-website.mjs` zaehlt jetzt auch
+  `wappen/` und `artikel/` (alle Bilder zusammen hoechstens 1700 kB, je Datei
+  100 kB) und verlangt die lokalen Schriften samt Lizenz.
+- **Werkzeug repariert:** Das Merkmal des Gold-Shops in `make-screenshots.cjs`
+  („GESCHÜTZ-MODELL") gab es seit dem Umbau nicht mehr; das Demo-Profil trug
+  einen entfallenen Avatar-Schluessel.
+- **Pruefung repariert („Herzschlag: Ergebnis ohne Verlassen-Begruendung"):**
+  las den Ergebnistext im selben Augenblick, in dem `screen` auf result sprang
+  — im vollen Lauf einmal rot, einzeln nie. Jetzt Wartebedingung (bis 3 s) und
+  eine Meldung mit dem sichtbaren Text. Gegenprobe: mit falschem Muster rot,
+  Meldung zeigt den Schirm.

@@ -43,6 +43,15 @@ done
 # App-Symbol aus public/ —, damit Spiel und Website dasselbe zeigen.
 cp public/icon-192.png "$ZIEL/icon-192.png"
 
+# Comic-Stil (v3.130.0): Schriften, gemalte Avatare und Artikelbilder kommen
+# aus dem Spiel — dieselben Dateien, keine zweite Fassung, die irgendwann
+# abweicht. Die Schriften stehen unter der SIL Open Font License; die Lizenz
+# gehoert mit dazu.
+mkdir -p "$ZIEL/schriften" "$ZIEL/wappen" "$ZIEL/artikel"
+cp public/fonts/*.woff2 public/fonts/OFL-*.txt "$ZIEL/schriften/"
+cp public/wappen/*.webp "$ZIEL/wappen/"
+cp public/artikel/*.webp "$ZIEL/artikel/"
+
 SPIEL="https://skkjbeer.github.io/Fortress/"
 for datei in impressum privacy agb; do
   sed -i.bak \

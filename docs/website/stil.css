@@ -7,222 +7,228 @@
  * keine Cookies und keine Uebertragung an Dritte — diese Seite braucht deshalb
  * kein Zustimmungsfenster.
  *
- * ── Warum wieder echte Aufnahmen ──────────────────────────────────────────
+ * ── Comic-Stil wie im Spiel (v3.130.0) ────────────────────────────────────
  *
- * Eine Zwischenfassung hatte die sieben Welten selbst gezeichnet: Dreiecke als
- * Berge, Rechtecke als Burgen. Das Urteil des Gruenders war „kindlich", und es
- * war richtig. Die beste Grafik in diesem Projekt ist die, die das Spiel selbst
- * rendert — Steintexturen, glimmende Fluesse, Burgdaecher, Ambient-Partikel.
- * Dagegen kommt eine handgesetzte SVG-Landschaft nicht an.
+ * Bis v3.129.0 trug die Seite noch den dunklen, zurueckhaltenden Look der
+ * alten Oberflaeche — waehrend das Spiel selbst seit v3.121.0 gemalt ist:
+ * Logo, Ladebild, Welten, Avatare, Artikel. Seite und App sahen aus wie zwei
+ * verschiedene Produkte.
  *
- * Die Arbeit steckt deshalb nicht mehr in eigenen Zeichnungen, sondern in der
- * DARSTELLUNG der echten Aufnahmen:
+ * Jetzt nimmt die Seite dieselben Bausteine wie `src/ui/stil.js`:
  *
- *   · gross gezeigt statt klein aufgereiht,
- *   · ein Haarstrich als Rahmen und ein weicher, tiefer Schatten — das liest
- *     sich als Bildschirm, ohne dass eine Telefon-Attrappe drumherum muss,
- *   · kein Zierrat: keine Zinnen, keine Nieten, keine Wimpel. Was teuer
- *     aussieht, ist Zurueckhaltung, nicht Schmuck,
- *   · viel Luft und ein grosser Sprung zwischen Ueberschrift und Fliesstext.
+ *   · Farben aus `FARBE` (Nachtblau, Gold, dunkle Comic-Kontur),
+ *   · Schriften Lilita One (Titel, Knoepfe) und Nunito (Text) — dieselben
+ *     Dateien wie im Spiel, beim Bau aus public/fonts kopiert (OFL, Lizenz
+ *     liegt daneben),
+ *   · Knopf, Tafel und Pille mit dicker Kontur und 3D-Kante,
+ *   · der gemalte Menue-Hintergrund als Buehne, das gesetzte Logo als Titel.
  *
- * ── Bewegung (Entwurf „Einschlag") ────────────────────────────────────────
- *
- * Geblieben: die Schichten im Anfang laufen beim Scrollen unterschiedlich
- * schnell, und alle paar Sekunden zittert die Ueberschrift kurz, als sei etwas
- * eingeschlagen. Weggefallen sind die quer fliegenden Kugeln — das war das
- * verspielteste Element und trug am wenigsten.
+ * Lesbarkeit (wie `suiteKontrast` im Spiel): Fliesstext steht nie direkt auf
+ * dem gemalten Bild, sondern auf Nachtblau oder in einer Tafel. Auf Bildern
+ * nur Text mit Comic-Kontur.
  *
  * `prefers-reduced-motion` friert jede Bewegung ein.
  */
 
+@font-face { font-family: "Lilita One"; src: url(schriften/lilita-one.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url(schriften/nunito.woff2) format("woff2"); font-weight: 200 1000; font-display: swap; }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
-  --grund:  #06070c;
-  --tiefer: #0b0d14;
-  --ink:    #f7f8fb;
-  --ink2:   #9aa1b4;
-  --ink3:   #616879;
-  --strich: #191c26;
-
-  --blau:  #4d8dff;
-  --rot:   #ff4d4d;
-  --gold:  #ffc233;
+  /* aus src/ui/stil.js (FARBE) */
+  --kontur:   #1b0f06;
+  --nacht:    #0d1f45;
+  --tiefer:   #091733;
+  --tafel1:   #2c69c9;
+  --tafel2:   #1d4a9e;
+  --gold:     #ffd23a;
+  --goldhell: #fff3a6;
+  --goldtief: #f08a12;
+  --ink:      #fffaf0;
+  --ink2:     #e3edff;
+  --ink3:     #b9cdf5;
+  --blau:     #3f97ea;
+  --rot:      #ef4b34;
+  --gruen:    #4fd36b;
+  --lila:     #8b55e0;
 
   --w-seite: 1180px;
-  --f: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
-       system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --titel: "Lilita One", "Nunito", system-ui, sans-serif;
+  --text:  "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  /* Ein weicher, tiefer Schatten — nicht mehrere harte. Das ist der
-     Unterschied zwischen „teuer" und „Baukasten". */
-  --schatten: 0 2px 6px rgba(0,0,0,.5), 0 30px 70px -28px rgba(0,0,0,.95);
+  /* Comic-Kontur fuer Schrift — dieselbe wie KONTURTEXT im Spiel */
+  --kontur-text: 0 2px 0 var(--kontur), 1.5px 1.5px 0 var(--kontur), -1.5px 1.5px 0 var(--kontur),
+                 1.5px -1px 0 var(--kontur), -1.5px -1px 0 var(--kontur);
+  --schatten: 0 8px 0 var(--kontur), 0 22px 44px -12px rgba(0,0,0,.65);
 }
 
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: dark; }
 body {
-  margin: 0; background: var(--grund); color: var(--ink); font-family: var(--f);
-  font-size: 18px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  margin: 0; color: var(--ink); font-family: var(--text);
+  font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  background: var(--nacht);
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: inherit; }
-h1, h2, h3 { margin: 0; font-weight: 900; letter-spacing: -.028em; line-height: 1.03; }
-p { margin: 0 0 .9em; max-width: 44ch; color: var(--ink2); }
+h1, h2, h3 { margin: 0; font-family: var(--titel); font-weight: 400; line-height: 1.05; }
+p { margin: 0 0 .9em; max-width: 46ch; color: var(--ink2); }
 p:last-child { margin-bottom: 0; }
-.bahn { width: 100%; max-width: var(--w-seite); margin-inline: auto; padding-inline: 26px; }
-.sprung { position: absolute; left: -9999px; background: var(--blau); color: #fff; padding: 10px 16px; z-index: 100; }
+strong { color: var(--ink); font-weight: 800; }
+.bahn { width: 100%; max-width: var(--w-seite); margin-inline: auto; padding-inline: 22px; }
+.sprung { position: absolute; left: -9999px; background: var(--gold); color: var(--kontur); padding: 10px 16px; z-index: 100; font-weight: 800; }
 .sprung:focus { left: 0; top: 0; }
-:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 
-/* Kleinueberschrift: nur Sperrung und Farbe. Kein Band, kein Wimpel. */
+/* Kleinueberschrift als blaue Pille — wie die Abzeichen im Spiel. */
 .label {
-  font-size: 12px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
-  color: var(--ink3); margin-bottom: 16px;
+  display: inline-block; margin: 0 0 16px; padding: 4px 14px;
+  font-family: var(--titel); font-size: 15px; letter-spacing: .04em; color: var(--ink);
+  background: linear-gradient(180deg, #8fd0ff, var(--blau) 55%, #1f5fc4);
+  border: 2.5px solid var(--kontur); border-radius: 999px;
+  box-shadow: 0 3px 0 var(--kontur), inset 0 2px 0 rgba(255,255,255,.45);
+  text-shadow: var(--kontur-text);
 }
 
-/* ── Anfang ────────────────────────────────────────────────────────────
-   Das echte Brett fuellt den Bildschirm, ein Schleier macht den Text
-   lesbar. Kein Aufbau drumherum — das Spiel selbst ist das Plakat. */
-.buehne {
-  position: relative; min-height: 92vh; overflow: hidden;
-  display: flex; align-items: center;
-  padding-block: clamp(60px, 9vw, 110px);
+/* Ueberschriften: Gold mit Kontur und Tiefe — `titel()` aus stil.js. */
+h2 {
+  font-size: clamp(32px, 5.4vw, 56px); max-width: 18ch; margin-bottom: 22px;
+  color: var(--goldhell); letter-spacing: .01em;
+  text-shadow: 0 4px 0 var(--goldtief), var(--kontur-text), 0 8px 14px rgba(0,0,0,.45);
 }
-.buehne-gitter { display: grid; gap: clamp(32px, 5vw, 72px); grid-template-columns: 1fr; align-items: center; width: 100%; }
+h2 em { font-style: normal; color: #ffb19e; text-shadow: 0 4px 0 #a8261a, var(--kontur-text), 0 8px 14px rgba(0,0,0,.45); }
+h3 { color: var(--goldhell); text-shadow: 0 3px 0 var(--goldtief), var(--kontur-text); letter-spacing: .01em; }
+
+/* ── Buehne ────────────────────────────────────────────────────────────
+   Der gemalte Menue-Hintergrund des Spiels fuellt den Bildschirm. Oben
+   bleibt der Himmel frei fuer das Logo, unten geht das Bild in Nachtblau
+   ueber, damit der Text darunter auf ruhigem Grund steht. */
+.buehne {
+  position: relative; min-height: 94vh; overflow: hidden;
+  display: flex; align-items: center;
+  padding-block: clamp(36px, 7vw, 96px) clamp(70px, 9vw, 120px);
+}
+.buehne-gitter { display: grid; gap: clamp(36px, 5vw, 72px); grid-template-columns: 1fr; align-items: center; width: 100%; }
 @media (min-width: 900px) { .buehne-gitter { grid-template-columns: minmax(0, 1fr) minmax(0, 470px); } }
 
-/* **Der Hintergrund ist ABSICHTLICH unscharf.** Die Aufnahme ist 485 px breit;
-   ueber einen 1280er Bildschirm gezogen waere sie einfach hochskaliert und
-   matschig. Weichgezeichnet und abgedunkelt wird daraus Tiefe statt eines
-   Mangels — die Schaerfe traegt das Bild im Vordergrund, das in seiner
-   natuerlichen Groesse steht. */
-.hintergrund { position: absolute; inset: -4%; }
-.hintergrund img {
-  width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%;
-  filter: blur(11px) brightness(.42) saturate(1.25); transform: scale(1.12);
-}
-/* Der Schleier: oben dunkel fuer die Kopfzeile, unten fast deckend fuer den
-   Text, in der Mitte offen, damit das Brett sichtbar bleibt. */
+.hintergrund { position: absolute; inset: 0; }
+.hintergrund img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; }
 .hintergrund::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(180deg,
-    rgba(6,7,12,.80) 0%, rgba(6,7,12,.18) 34%,
-    rgba(6,7,12,.86) 78%, var(--grund) 100%);
+    rgba(13,31,69,.10) 0%, rgba(13,31,69,0) 30%,
+    rgba(13,31,69,.45) 70%, var(--nacht) 100%);
 }
-.sterne {
-  position: absolute; inset: -10%; pointer-events: none;
-  background:
-    radial-gradient(1.6px 1.6px at 14% 18%, rgba(255,255,255,.45), transparent),
-    radial-gradient(1.6px 1.6px at 72% 12%, rgba(255,255,255,.32), transparent),
-    radial-gradient(1.2px 1.2px at 38% 62%, rgba(255,255,255,.35), transparent),
-    radial-gradient(1.6px 1.6px at 88% 70%, rgba(255,255,255,.28), transparent);
-  animation: treiben 30s linear infinite;
-}
-@keyframes treiben { from { transform: none } to { transform: translate3d(-34px, 16px, 0) } }
 @supports (animation-timeline: scroll()) {
-  .sterne      { animation: tiefe1 linear both; animation-timeline: scroll(root block); }
-  .hintergrund { animation: tiefe2 linear both; animation-timeline: scroll(root block); }
+  .hintergrund { animation: tiefe linear both; animation-timeline: scroll(root block); }
 }
-@keyframes tiefe1 { to { transform: translateY(-70px) scale(1.06) } }
-@keyframes tiefe2 { to { transform: translateY(-110px) scale(1.05) } }
+@keyframes tiefe { to { transform: translateY(-90px) scale(1.04) } }
 
 .buehne .bahn { position: relative; z-index: 2; }
 
-.marke {
-  font-size: clamp(44px, 11vw, 116px); line-height: .88; letter-spacing: -.04em;
-  text-transform: uppercase; animation: zittern 8s 2s ease-in-out infinite;
+/* Das Logo IST die Ueberschrift (h1 mit Bild, Alternativtext traegt den Namen). */
+.marke { margin: 0; }
+.marke img {
+  width: min(100%, 520px); height: auto;
+  filter: drop-shadow(0 10px 16px rgba(0,0,0,.45));
+  animation: zittern 8s 2s ease-in-out infinite;
 }
-/* Ein kurzer harter Stoss, dann lange Ruhe — gleichmaessiges Wackeln waere
-   Zierrat, so liest es sich als Treffer. */
+/* Ein kurzer harter Stoss, dann lange Ruhe — liest sich als Treffer. */
 @keyframes zittern {
   0%, 90%, 100% { transform: none }
-  91% { transform: translate(-6px, 3px) rotate(-.4deg) }
-  93% { transform: translate(5px, -2px) rotate(.3deg) }
+  91% { transform: translate(-6px, 3px) rotate(-.6deg) }
+  93% { transform: translate(5px, -2px) rotate(.4deg) }
   95% { transform: translate(-2px, 1px) }
   97% { transform: none }
 }
-.marke .b { color: var(--blau); }
-.marke .r { color: var(--rot); }
+
+/* Tafel: Text steht im Anfang auf einem Panel, nicht auf dem Bild — `panel()`
+   aus stil.js (tiefblau, goldener Innenrand, dicke Kontur). */
+.tafel, .buehne-text {
+  background: linear-gradient(180deg, var(--tafel1) 0%, var(--tafel2) 38%, var(--nacht) 100%);
+  border: 4px solid var(--kontur); border-radius: 22px;
+  box-shadow: inset 0 0 0 3px var(--gold), inset 0 6px 0 3px rgba(255,255,255,.12), var(--schatten);
+  padding: clamp(18px, 3vw, 28px);
+}
+.buehne-text { margin-top: clamp(16px, 3vw, 26px); max-width: 560px; }
+.zeile {
+  font-family: var(--titel); font-size: clamp(24px, 3.2vw, 34px); line-height: 1.15;
+  color: var(--goldhell); margin: 0; max-width: 24ch;
+  text-shadow: 0 3px 0 var(--goldtief), var(--kontur-text);
+}
+.dazu { margin: 12px 0 0; max-width: 44ch; font-size: 17.5px; color: var(--ink2); }
 
 .buehne .paar-geraete { max-width: 470px; margin-inline: auto; }
-.zeile { font-size: clamp(20px, 2.8vw, 29px); font-weight: 700; color: var(--ink);
-  margin: 24px 0 0; max-width: 22ch; }
-.dazu { margin: 14px 0 0; max-width: 42ch; font-size: 17px; }
 
-/* ── Knopf ─────────────────────────────────────────────────────────────── */
+/* ── Knopf ── `knopf('gold')` aus stil.js ─────────────────────────────── */
 .knopf {
-  display: inline-flex; align-items: center; gap: 11px; margin-top: 30px;
-  background: var(--ink); color: var(--grund); text-decoration: none;
-  font-weight: 800; font-size: 16px; padding: 16px 32px; border-radius: 100px;
-  transition: transform .2s, box-shadow .2s;
+  display: inline-flex; align-items: center; gap: 11px; margin-top: 24px;
+  font-family: var(--titel); font-size: 21px; letter-spacing: .02em; color: var(--ink);
+  text-decoration: none; text-shadow: var(--kontur-text);
+  padding: 14px 30px; border-radius: 16px; border: 3px solid var(--kontur);
+  background: linear-gradient(180deg, #fff2a0 0%, #ffc72e 48%, var(--goldtief) 100%);
+  box-shadow: 0 5px 0 #9a4a06, 0 7px 0 var(--kontur), 0 12px 22px rgba(0,0,0,.4),
+              inset 0 3px 0 rgba(255,255,255,.5), inset 0 -4px 0 rgba(0,0,0,.18);
+  transition: transform .12s, box-shadow .12s;
 }
-.knopf:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -14px rgba(255,255,255,.55); }
-.knopf svg { width: 19px; height: 19px; }
-.neben { display: block; margin-top: 14px; color: var(--ink2); font-size: 15px; }
-.neben a { color: var(--ink); }
+.knopf:hover { transform: translateY(-2px); }
+.knopf:active { transform: translateY(4px); box-shadow: 0 1px 0 #9a4a06, 0 3px 0 var(--kontur), inset 0 3px 0 rgba(255,255,255,.5); }
+.knopf { line-height: 1.15; text-align: center; justify-content: center; }
+@media (max-width: 420px) { .knopf { font-size: 19px; padding: 13px 20px; } }
+.knopf svg { width: 21px; height: 21px; filter: drop-shadow(0 2px 0 var(--kontur)); }
+.neben { display: block; margin-top: 18px; color: var(--ink2); font-size: 15.5px; max-width: 48ch; }
+.neben a { color: var(--goldhell); font-weight: 800; }
 
 /* ── Abschnitte ────────────────────────────────────────────────────────── */
-.welt { padding-block: clamp(64px, 10vw, 132px); border-top: 1px solid var(--strich); }
-.welt-tief { background: var(--tiefer); }
-h2 { font-size: clamp(30px, 5.2vw, 56px); max-width: 16ch; margin-bottom: 20px; }
-h2 em { font-style: normal; color: var(--rot); }
+.welt { position: relative; padding-block: clamp(64px, 9vw, 120px); }
+.welt-tief {
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(63,151,234,.16), transparent 70%),
+    var(--tiefer);
+}
+/* Eine Zinnenkante zwischen den Abschnitten — die einzige Zier, und sie ist
+   eine Mauer, also das Thema des Spiels. */
+.welt-tief::before, .welt-tief::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 14px; pointer-events: none;
+  background: linear-gradient(90deg, var(--nacht) 0 50%, transparent 50% 100%) 0 0 / 56px 14px repeat-x;
+}
+.welt-tief::before { top: 0; }
+.welt-tief::after { bottom: 0; transform: scaleY(-1); }
 
-/* ── Die Darstellung der Aufnahmen ───────────────────────────────────────
-   Ein Haarstrich und ein weicher, tiefer Schatten. `.schirm` bleibt fuer die
-   AUSSCHNITTE — die sieben Welten zeigen nur das Brett, kein ganzes Geraet.
-   Sie in einen Telefonrahmen zu setzen waere eine Behauptung, die das Bild
-   nicht deckt. Ganze Bildschirmfotos tragen dagegen `.geraet` (weiter
-   unten). Der Radius ist derselbe, den die Oberflaeche des Spiels benutzt. */
+/* ── Ausschnitte (Welten): dicke Kontur und goldener Innenrand ─────────── */
 .schirm {
-  position: relative; overflow: hidden; border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.09);
-  box-shadow: var(--schatten);
-  background: #0b0d14;
+  position: relative; overflow: hidden; border-radius: 18px;
+  border: 4px solid var(--kontur);
+  box-shadow: inset 0 0 0 2px var(--gold), var(--schatten);
+  background: var(--nacht);
 }
 .schirm img { width: 100%; }
 
 /* ── Geraete-Rahmen ──────────────────────────────────────────────────────
-   Hier stand bis v3.88.0 das Gegenteil: keine Telefon-Attrappe, der Rahmen
-   erzaehle nur den Vertriebsweg. Das galt fuer eine Seite, die fuer die
-   Browser-Fassung warb — dort war das Geraet wirklich Beiwerk.
+   Die Seite wirbt fuer eine App: Mit Rahmen ist ein Bildschirmfoto ein
+   Geraet, das jemand in der Hand haelt — iPhone UND iPad, ohne ein Wort.
 
-   Die Seite wirbt inzwischen fuer eine App, und damit dreht sich das
-   Argument um: Ein Bildschirmfoto ohne Rahmen ist ein Bild. Mit Rahmen ist
-   es ein Geraet, das jemand in der Hand haelt. Der Rahmen erzaehlt nicht den
-   Vertriebsweg, er IST die Aussage — und er sagt in einem Blick, was Absaetze
-   sonst behaupten muessten: Das laeuft auf dem iPhone UND auf dem iPad.
+   Alles in Container-Einheiten (1cqw = 1 % der Rahmenbreite), damit Steg,
+   Rundung und Insel in jeder Groesse stimmen.
 
-   Alles in Container-Einheiten (1cqw = 1 % der Rahmenbreite). Damit stimmen
-   die Verhaeltnisse in jeder Groesse; Steg, Rundung und Insel wachsen mit,
-   statt bei 250 px klobig und bei 500 px duenn zu wirken. Mit festen Pixeln
-   braeuchte jede Anzeigegroesse ihre eigene Klasse — und die erste, die
-   jemand vergisst, sieht falsch aus.
-
-   Die Verhaeltnisse sind von den echten Geraeten abgenommen: Beim iPhone ist
-   der Steg rund 3 % der Breite und die Ecke rund 14 %; beim iPad ist der Steg
-   breiter und die Ecke deutlich flacher. Genau daran erkennt man die beiden
-   auseinander — ohne ein Wort dazuzuschreiben. */
-/* `width: 100%` ist hier KEINE Redundanz. `container-type: inline-size` nimmt
-   dem Element die inhaltsabhaengige Breite — es traegt danach 0 zur
-   Groessenermittlung bei. Steht es dann als Rasterfeld mit `margin-inline:
-   auto` da, verbrauchen die automatischen Raender den freien Platz, das Feld
-   wird NICHT gestreckt und faellt auf genau diese 0 zusammen. Gemessen: der
-   Rahmen war 0 x 0, die ganze Aufnahme unsichtbar, ohne dass irgendetwas eine
-   Fehlermeldung ergeben haette. */
+   `width: 100%` ist hier KEINE Redundanz: `container-type: inline-size`
+   nimmt dem Element die inhaltsabhaengige Breite; als Rasterfeld mit
+   `margin-inline: auto` fiel es sonst auf 0 x 0 zusammen (gemessen). */
 .geraet { container-type: inline-size; position: relative; width: 100%; margin-inline: auto; }
 
 .geraet .rahmen {
   padding: 3.1cqw;
   border-radius: 14cqw;
-  /* Ein Verlauf ueber die Diagonale statt einer Farbe: So faengt die Kante
-     Licht, und der Rahmen sieht nach Metall aus statt nach grauem Kasten. */
   background: linear-gradient(157deg,
     #6e7381 0%, #3b404b 9%, #23262e 27%, #1b1e25 51%,
     #363a45 73%, #22252c 87%, #131519 100%);
+  /* Comic-Kontur um das Metall — so gehoert das Geraet zur gemalten Welt. */
   box-shadow:
-    inset 0 0 0 .3cqw rgba(255,255,255,.10),
+    0 0 0 1.1cqw var(--kontur),
     inset 0 .28cqw .5cqw rgba(255,255,255,.22),
     inset 0 -.28cqw .5cqw rgba(0,0,0,.6),
-    var(--schatten);
+    0 3cqw 0 .6cqw var(--kontur),
+    0 8cqw 14cqw -3cqw rgba(0,0,0,.7);
 }
 .geraet .glas {
   position: relative; display: block; overflow: hidden;
@@ -230,151 +236,209 @@ h2 em { font-style: normal; color: var(--rot); }
   box-shadow: inset 0 0 0 .28cqw rgba(0,0,0,.9);
 }
 .geraet .glas img { display: block; width: 100%; }
-/* Die Insel liegt AUF dem Glas — sie ist Teil der Anzeige, nicht des Stegs.
-   Beim iPad ist es umgekehrt: Die Linse sitzt im Steg. */
 .geraet .insel {
   position: absolute; top: 2.4cqw; left: 50%; transform: translateX(-50%);
   width: 29cqw; height: 8cqw; border-radius: 4.6cqw; background: #04060a;
 }
-/* Tasten nur angedeutet. Mehr Einzelheiten machen daraus Modellbau. */
 .geraet .taste { position: absolute; background: linear-gradient(90deg, #2b2f38, #4a505d); }
-.geraet .taste.l1 { left: -.5cqw; top: 20cqw; width: .75cqw; height: 4.4cqw; border-radius: .4cqw 0 0 .4cqw; }
-.geraet .taste.l2 { left: -.5cqw; top: 27cqw; width: .75cqw; height: 8.4cqw; border-radius: .4cqw 0 0 .4cqw; }
-.geraet .taste.r1 { right: -.5cqw; top: 24cqw; width: .75cqw; height: 12cqw; border-radius: 0 .4cqw .4cqw 0; }
+.geraet .taste.l1 { left: -1.4cqw; top: 20cqw; width: 1cqw; height: 4.4cqw; border-radius: .4cqw 0 0 .4cqw; }
+.geraet .taste.l2 { left: -1.4cqw; top: 27cqw; width: 1cqw; height: 8.4cqw; border-radius: .4cqw 0 0 .4cqw; }
+.geraet .taste.r1 { right: -1.4cqw; top: 24cqw; width: 1cqw; height: 12cqw; border-radius: 0 .4cqw .4cqw 0; }
 
-.geraet.pad .rahmen { padding: 4.1cqw; border-radius: 6.2cqw; }
+.geraet.pad .rahmen { padding: 4.1cqw; border-radius: 6.2cqw; box-shadow:
+    0 0 0 .7cqw var(--kontur), inset 0 .2cqw .4cqw rgba(255,255,255,.22),
+    0 1.8cqw 0 .4cqw var(--kontur), 0 5cqw 10cqw -2cqw rgba(0,0,0,.7); }
 .geraet.pad .glas   { border-radius: 2.5cqw; }
 .geraet.pad .taste.l1,
 .geraet.pad .taste.l2 { display: none; }
-.geraet.pad .taste.r1 { top: 8cqw; height: 7cqw; }
+.geraet.pad .taste.r1 { top: 8cqw; height: 7cqw; right: -.9cqw; width: .7cqw; }
 .geraet.pad .linse {
   position: absolute; top: 1.75cqw; left: 50%; transform: translateX(-50%);
   width: 1.15cqw; height: 1.15cqw; border-radius: 50%;
   background: #0a0d14; box-shadow: inset 0 0 0 .1cqw rgba(255,255,255,.16);
 }
 
-/* Dieselbe Hebung wie bei den Welten-Kacheln — ein Geraet, das auf den Zeiger
-   reagiert, liest sich als Gegenstand statt als Bild. */
 .zwei .geraet, .vier .geraet { transition: transform .35s cubic-bezier(.22,.8,.3,1); }
-.zwei figure:hover .geraet, .vier figure:hover .geraet { transform: translateY(-8px); }
+.zwei figure:hover .geraet, .vier figure:hover .geraet { transform: translateY(-8px) rotate(-1deg); }
 
-/* ── Das Paar im Anfang ──────────────────────────────────────────────────
-   iPad hinten, iPhone davor und leicht ueberlappend. Das ist die eine
-   Stelle, an der die Seite ohne einen einzigen Satz sagt: beide Geraete.
-   Unter 760 px steht nur noch das iPhone — zwei Geraete nebeneinander waeren
-   dort beide zu klein, um etwas zu zeigen. */
-.paar-geraete { position: relative; display: block; width: 100%; }
-.paar-geraete .gpad   { width: 78%; margin-left: 0; }
-.paar-geraete .gphone { width: 41%; position: absolute; right: 0; bottom: -6%; }
+/* ── Das Paar im Anfang: iPad hinten, iPhone davor ─────────────────────── */
+.paar-geraete { position: relative; display: block; width: 100%; padding-bottom: 6%; }
+.paar-geraete .gpad   { width: 78%; margin-left: 0; transform: rotate(-3deg); }
+.paar-geraete .gphone { width: 41%; position: absolute; right: 0; bottom: 0; transform: rotate(5deg); }
 
 /* ── Welten ────────────────────────────────────────────────────────────── */
 .welten {
-  display: flex; gap: 22px; overflow-x: auto; padding: 8px 26px 26px;
+  display: flex; gap: 22px; overflow-x: auto; padding: 14px 22px 34px;
   scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
 }
-.welten::-webkit-scrollbar { height: 6px; }
-.welten::-webkit-scrollbar-thumb { background: #222633; border-radius: 6px; }
-.kachel { flex: 0 0 auto; width: 250px; scroll-snap-align: center; }
-.kachel .schirm { transition: transform .35s cubic-bezier(.22,.8,.3,1), box-shadow .35s; }
-.kachel:hover .schirm { transform: translateY(-8px); box-shadow: 0 2px 6px rgba(0,0,0,.5), 0 44px 80px -30px rgba(0,0,0,1); }
+.welten::-webkit-scrollbar { height: 10px; }
+.welten::-webkit-scrollbar-track { background: rgba(0,0,0,.25); border-radius: 10px; }
+.welten::-webkit-scrollbar-thumb { background: var(--gold); border: 2px solid var(--kontur); border-radius: 10px; }
+.kachel { flex: 0 0 auto; width: 240px; scroll-snap-align: center; text-align: center; }
+.kachel .schirm { transition: transform .35s cubic-bezier(.22,.8,.3,1); }
+.kachel:hover .schirm { transform: translateY(-8px) rotate(-1.2deg); }
 .kachel b {
-  display: block; margin-top: 16px;
-  font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
-  color: var(--ink2);
+  display: inline-block; margin-top: 18px; padding: 3px 14px;
+  font-family: var(--titel); font-weight: 400; font-size: 17px; color: var(--ink);
+  text-shadow: var(--kontur-text);
+  background: linear-gradient(180deg, #fff2a0, #ffc72e 55%, var(--goldtief));
+  border: 2.5px solid var(--kontur); border-radius: 999px;
+  box-shadow: 0 3px 0 var(--kontur), inset 0 2px 0 rgba(255,255,255,.45);
 }
 
-/* Zwei Aufnahmen nebeneinander in der rechten Spalte eines Zweispalters. */
-.doppel { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.doppel .schirm { max-width: none; }
-
 /* ── Zweispalter: Text neben einer grossen Aufnahme ───────────────────── */
-.paar { display: grid; gap: clamp(30px, 5vw, 70px); grid-template-columns: 1fr; align-items: center; }
+.paar { display: grid; gap: clamp(36px, 5vw, 70px); grid-template-columns: 1fr; align-items: center; }
 @media (min-width: 880px) {
   .paar { grid-template-columns: minmax(0, 1fr) minmax(0, 330px); }
   .paar-gedreht > :first-child { order: 2; }
+  /* **Gedreht heisst: auch die SPALTEN tauschen.** Bis v3.129.0 tauschte nur
+     die Reihenfolge — der Text rutschte damit in die schmale 330-px-Spalte,
+     und „Zwei Kanonen, zwei Absichten" brach in vier Zeilen um, waehrend die
+     breite Spalte das Telefon trug. */
+  .paar-gedreht { grid-template-columns: minmax(0, 330px) minmax(0, 1fr); }
 }
 .paar .schirm, .paar .geraet { max-width: 330px; margin-inline: auto; }
-/* Ein iPad im Zweispalter darf breiter stehen als ein Telefon — sonst sieht
-   das groessere Geraet auf der Seite kleiner aus als das kleinere. */
 .paar-breit .geraet.pad { max-width: 430px; }
-@media (min-width: 880px) { .paar-breit { grid-template-columns: minmax(0, 1fr) minmax(0, 430px); } }
+@media (min-width: 880px) {
+  .paar-breit { grid-template-columns: minmax(0, 1fr) minmax(0, 430px); }
+  .paar-breit.paar-gedreht { grid-template-columns: minmax(0, 430px) minmax(0, 1fr); }
+}
 
-/* ── Zwei Aufnahmen nebeneinander ─────────────────────────────────────── */
-.zwei { display: grid; gap: clamp(26px, 4vw, 52px); grid-template-columns: 1fr;
+/* ── Bildunterschriften (zwei und vier) ───────────────────────────────── */
+.zwei { display: grid; gap: clamp(40px, 5vw, 60px); grid-template-columns: 1fr;
   margin-top: clamp(30px, 4vw, 48px); }
 @media (min-width: 760px) { .zwei { grid-template-columns: 1fr 1fr; max-width: 860px; } }
-.zwei figure { margin: 0; }
-.zwei .schirm, .zwei .geraet { max-width: 300px; }
-.zwei figcaption { margin-top: 18px; }
-.zwei b { display: block; font-size: 13px; font-weight: 700; letter-spacing: .2em;
-  text-transform: uppercase; margin-bottom: 8px; }
+.zwei figure, .vier figure { margin: 0; }
+.zwei .geraet { max-width: 300px; }
+.zwei figcaption, .vier figcaption { margin-top: 26px; }
+.zwei b, .vier b { display: block; font-family: var(--titel); font-weight: 400; font-size: 22px;
+  color: var(--goldhell); text-shadow: 0 2px 0 var(--goldtief), var(--kontur-text); margin-bottom: 6px; }
 .zwei span { color: var(--ink2); font-size: 17px; display: block; max-width: 32ch; }
 
-/* ── Vier Aufnahmen im Raster ─────────────────────────────────────────── */
-.vier { display: grid; gap: clamp(24px, 3.4vw, 40px);
+.vier { display: grid; gap: clamp(34px, 3.4vw, 44px);
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-top: clamp(30px, 4vw, 48px); }
-.vier figure { margin: 0; }
-.vier figcaption { margin-top: 18px; }
-.vier b { display: block; font-size: 13px; font-weight: 700; letter-spacing: .2em;
-  text-transform: uppercase; margin-bottom: 8px; }
+.vier .geraet { max-width: 280px; }
 .vier span { color: var(--ink2); font-size: 16px; display: block; max-width: 34ch; }
 
-/* ── Zwei Kanonen: reiner Satz, kein Bild ─────────────────────────────── */
-.kanonen { display: grid; gap: clamp(26px, 4vw, 48px); grid-template-columns: 1fr;
-  margin-top: clamp(30px, 4vw, 46px); }
+/* ── Zwei Kanonen: Karten im Stil der Ruestphase ─────────────────────── */
+.kanonen { display: grid; gap: 22px; grid-template-columns: 1fr; margin-top: clamp(28px, 4vw, 40px); }
 @media (min-width: 760px) { .kanonen { grid-template-columns: 1fr 1fr; } }
-.kanone { border-top: 2px solid var(--rot); padding-top: 22px; }
-.kanone.violett { border-top-color: #a78bfa; }
-.kanone h3 { font-size: 21px; margin-bottom: 10px; }
-.kanone p { font-size: 16.5px; max-width: 36ch; }
-.preis { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 700;
-  letter-spacing: .06em; color: var(--gold); border: 1px solid rgba(255,194,51,.3);
-  padding: 5px 12px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.kanone {
+  background: linear-gradient(180deg, #ef4b34 0%, #a8261a 60%, #62140c 100%);
+  border: 4px solid var(--kontur); border-radius: 20px; padding: 20px 20px 22px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.35), 0 6px 0 var(--kontur), 0 16px 30px -10px rgba(0,0,0,.6);
+}
+.kanone.violett { background: linear-gradient(180deg, #8b55e0 0%, #4f2a99 60%, #2c1660 100%); }
+.kanone h3 { font-size: 25px; margin-bottom: 8px; color: var(--ink); text-shadow: var(--kontur-text); }
+.kanone p { font-size: 16.5px; max-width: 36ch; color: #fff1ea; }
+.kanone.violett p { color: #f1eaff; }
+.kanone strong { color: #fff; }
+.preis {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+  font-family: var(--titel); font-size: 17px; color: var(--ink); text-shadow: var(--kontur-text);
+  background: linear-gradient(180deg, #fff2a0, #ffc72e 55%, var(--goldtief));
+  border: 2.5px solid var(--kontur); border-radius: 999px; padding: 3px 14px;
+  box-shadow: 0 3px 0 var(--kontur), inset 0 2px 0 rgba(255,255,255,.45);
+  font-variant-numeric: tabular-nums;
+}
 
-/* ── Haarstrich-Listen ─────────────────────────────────────────────────── */
-.liste { margin: clamp(28px, 4vw, 42px) 0 0; padding: 0; list-style: none; }
-.liste li { border-top: 1px solid var(--strich); padding: 24px 0; display: grid; gap: 6px 32px; }
-@media (min-width: 720px) { .liste li { grid-template-columns: 240px 1fr; } }
-.liste li:last-child { border-bottom: 1px solid var(--strich); }
-.liste b { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
-.liste span { color: var(--ink2); font-size: 17px; max-width: 54ch; }
+/* ── Sammeln: Avatare und Artikel ─────────────────────────────────────── */
+.avatare, .artikel { list-style: none; margin: clamp(26px, 4vw, 40px) 0 0; padding: 0; display: grid; }
+.avatare { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 14px; }
+/* Zwoelf Avatare: 3 x 4, 4 x 3 oder 6 x 2 — nie eine angebrochene Reihe. */
+@media (min-width: 520px) { .avatare { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .avatare { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 30px 20px; } }
+.avatare li, .artikel li { text-align: center; }
+.avatare img {
+  width: 100%; max-width: 132px; aspect-ratio: 1; margin-inline: auto; border-radius: 50%;
+  border: 4px solid var(--kontur);
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 0 3px var(--gold), 0 0 0 7px var(--kontur), 0 10px 18px rgba(0,0,0,.45);
+  transition: transform .3s cubic-bezier(.22,.8,.3,1);
+}
+.avatare li:hover img { transform: translateY(-6px) rotate(-3deg) scale(1.04); }
+.avatare b, .artikel b { display: block; margin-top: 14px; font-family: var(--titel); font-weight: 400;
+  font-size: 17px; line-height: 1.15; color: var(--ink); text-shadow: var(--kontur-text); }
+.avatare span { display: block; margin-top: 3px; font-size: 13.5px; font-weight: 700; color: var(--ink3); }
+.unterzeile { font-size: clamp(24px, 3.4vw, 34px); margin: clamp(56px, 7vw, 84px) 0 14px; }
+.artikel { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 12px; }
+@media (min-width: 900px) { .artikel { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 26px 16px; } }
+.artikel img {
+  width: 100%; max-width: 104px; aspect-ratio: 1; margin-inline: auto; border-radius: 18px;
+  border: 3px solid var(--kontur);
+  box-shadow: inset 0 0 0 2px rgba(255,210,58,.6), 0 4px 0 var(--kontur), 0 10px 16px rgba(0,0,0,.4);
+  transition: transform .3s cubic-bezier(.22,.8,.3,1);
+}
+.artikel li:hover img { transform: translateY(-5px) rotate(2deg); }
+.artikel b { font-size: 14.5px; }
+/* Lange deutsche Namen („Kristallkanone") sind breiter als eine Spalte am
+   Telefon — Spalten mit minmax(0, …) und weichen Trennstellen (&shy; im HTML), sonst schiebt ein
+   Wort die ganze Seite seitwaerts (gemessen: 457 px bei 390 Breite). */
+.avatare b, .artikel b { hyphens: manual; -webkit-hyphens: manual; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .artikel b { font-size: 13px; } }
 
-/* Die Beitritts-Adresse im Klartext: Wer die Seite am Rechner liest, kann sie
-   abtippen oder kopieren — ein Knopf allein hilft ihm nicht, weil der Beitritt
-   auf dem Geraet passieren muss. */
+/* ── Listen als Karten ─────────────────────────────────────────────────── */
+.liste { margin: clamp(28px, 4vw, 42px) 0 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.liste li {
+  display: grid; gap: 6px 28px; padding: 18px 20px;
+  background: linear-gradient(180deg, rgba(44,105,201,.55), rgba(29,74,158,.4));
+  border: 3px solid var(--kontur); border-radius: 16px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.14), 0 4px 0 var(--kontur);
+}
+@media (min-width: 720px) { .liste li { grid-template-columns: 240px 1fr; align-items: baseline; } }
+.liste b { font-family: var(--titel); font-weight: 400; font-size: 21px; line-height: 1.15;
+  color: var(--goldhell); text-shadow: 0 2px 0 var(--goldtief), var(--kontur-text); }
+.liste span { color: var(--ink2); font-size: 17px; max-width: 56ch; }
+
+/* Die Beitritts-Adresse im Klartext, zum Abtippen am Rechner. */
 .adresse {
   display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: .92em; color: var(--ink); background: rgba(255,255,255,.05);
-  border: 1px solid var(--strich); border-radius: 6px; padding: 2px 7px;
+  font-size: .92em; color: var(--ink); background: rgba(0,0,0,.3);
+  border: 2px solid var(--kontur); border-radius: 8px; padding: 2px 8px;
   word-break: break-all;
 }
 
-/* ── Die Regel ─────────────────────────────────────────────────────────── */
-.mauer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 250px; margin-inline: auto; }
-.mauer i { aspect-ratio: 1; background: #11141d; border-radius: 3px; }
-.mauer i.w { background: #9c4236; }
-.mauer i.k { background: #c3ccd9; }
-.mauer i.l { background: transparent; border: 2px dashed var(--rot);
-  animation: puls 2s ease-in-out infinite; }
+/* ── Die Regel: Mauerring aus Comic-Steinen ───────────────────────────── */
+.mauer {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 270px; margin-inline: auto;
+  padding: 16px; border-radius: 22px; border: 4px solid var(--kontur);
+  background: linear-gradient(180deg, #5c9b45, #3e7a33);
+  box-shadow: inset 0 0 0 3px var(--gold), var(--schatten);
+}
+.mauer i { aspect-ratio: 1; border-radius: 5px; }
+.mauer i.w {
+  background: linear-gradient(180deg, #9ad6ff 0%, var(--blau) 35%, #2a6fd0 75%, #173f8f 100%);
+  border: 2px solid var(--kontur); box-shadow: inset 0 2px 0 rgba(255,255,255,.35);
+}
+.mauer i.k {
+  background: linear-gradient(180deg, #fff2a0, #ffc72e 55%, var(--goldtief));
+  border: 2px solid var(--kontur);
+}
+.mauer i.l { border: 3px dashed #ffb19e; background: rgba(239,75,52,.25);
+  animation: puls 1.6s ease-in-out infinite; }
 @keyframes puls { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
 
 /* ── Abschluss ─────────────────────────────────────────────────────────── */
 .mitte { text-align: center; }
 .mitte .zeile, .mitte p, .mitte .label { margin-inline: auto; }
-.mitte .zeile { max-width: 26ch; }
-.angaben { display: flex; flex-wrap: wrap; justify-content: center;
-  margin: clamp(36px, 5vw, 56px) auto 0; border-top: 1px solid var(--strich); max-width: 760px; }
-.angaben div { flex: 1 1 150px; padding: 22px 12px; border-bottom: 1px solid var(--strich); }
-.angaben b { display: block; font-size: 19px; font-weight: 800; }
-.angaben span { display: block; margin-top: 5px; font-size: 11px; font-weight: 700;
-  letter-spacing: .2em; text-transform: uppercase; color: var(--ink3); }
+.mitte .zeile { max-width: 26ch; font-size: clamp(30px, 4.4vw, 46px); }
+.angaben { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px;
+  margin: clamp(40px, 5vw, 60px) auto 0; max-width: 820px; }
+.angaben div {
+  padding: 16px 12px; border: 3px solid var(--kontur); border-radius: 16px;
+  background: linear-gradient(180deg, rgba(29,74,158,.95), rgba(13,31,69,.95));
+  box-shadow: inset 0 0 0 1.5px rgba(255,210,58,.55), 0 3px 0 var(--kontur);
+}
+.angaben b { display: block; font-family: var(--titel); font-weight: 400; font-size: 22px;
+  color: var(--goldhell); text-shadow: 0 2px 0 var(--goldtief), var(--kontur-text); }
+.angaben span { display: block; margin-top: 4px; font-size: 13px; font-weight: 800;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
 
-.fuss { border-top: 1px solid var(--strich); padding-block: 32px 50px; }
-.fuss .bahn { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; justify-content: space-between; }
-.fuss a, .fuss span { font-size: 12px; font-weight: 600; letter-spacing: .16em;
-  text-transform: uppercase; color: var(--ink3); text-decoration: none; }
-.fuss a:hover { color: var(--ink); }
-.fuss nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+.fuss { background: var(--tiefer); border-top: 4px solid var(--kontur); padding-block: 30px 46px; }
+.fuss .bahn { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; }
+.fuss > .bahn > span { font-family: var(--titel); font-size: 20px; color: var(--goldhell); text-shadow: var(--kontur-text); }
+.fuss a { font-size: 14px; font-weight: 800; color: var(--ink3); text-decoration: none; }
+.fuss a:hover { color: var(--ink); text-decoration: underline; }
+.fuss nav { display: flex; flex-wrap: wrap; gap: 10px 22px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

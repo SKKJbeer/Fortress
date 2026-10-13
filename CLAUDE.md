@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.129.0
+- **Aktuelle Version**: v3.130.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -463,6 +463,16 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   anderes darf so aussehen. Prozedurale Berge entfallen auf gemalten Boeden.
 - **Logo ist gesetzt, nicht gemalt** (`tools/logo.cjs`); aufs Ladebild nur in
   der sicheren Zone (`ladebild.py --logo`).
+- **Website im selben Stil (seit v3.130.0):** `docs/website/stil.css` nimmt
+  die Werte aus `stil.js` (FARBE, Kontur, Knopf, Tafel) — wer das Designsystem
+  aendert, passt die Seite mit an. Schriften, Avatare und Artikel kopiert
+  `scripts/website-bauen.sh` aus `public/` (eine Quelle); ein neuer Avatar
+  gehoert auch in die Galerie beider Sprachfassungen (`tests/auffindbarkeit`
+  verlangt Galerie = `WAPPEN_SRC`). Bilder neu: `node tools/make-screenshots.cjs
+  website` (+ `website-pad`, `welten`), danach `node tools/make-feature-graphic.cjs`
+  (Vorschaubilder fuer Spiel, Website DE/EN und Google Play aus EINER
+  Gestaltung). Gross-/Querformate am Telefon messen: `scrollWidth` muss 390
+  bleiben — lange deutsche Woerter schoben die Seite einmal auf 457 px.
 
 - **Neue Grafik entsteht mit dem Skill `spielgrafik`** (`.claude/skills/spielgrafik/SKILL.md`):
   FLUX.1-schnell lokal, Varianten mit 512 px, Real-ESRGAN auf 1024. Kein

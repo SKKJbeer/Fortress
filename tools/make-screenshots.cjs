@@ -52,18 +52,18 @@ const ZIELE = [
   // oberen Rand der Anzeige. Ohne oberen Bereich beginnt die Kopfzeile bei 0
   // und verschwindet unter der Insel — auf einem echten Geraet tut sie das nie.
   // Die Store-Bilder bleiben ohne: Apple zeigt sie ohne Rahmen.
-  { name: 'website',  w: 390,  h: 844,  scale: 2, out: 'docs/website/bilder', jpeg: 82, sa: [59, 34] },
+  { name: 'website',  w: 390,  h: 844,  scale: 2, out: 'docs/website/bilder', webp: 0.78, sa: [59, 34] },
   // Zwei iPad-Aufnahmen fuer die Website. Die Rahmen dort zeigen ein iPad; ohne
   // Aufnahmen im Seitenverhaeltnis 3:4 waere das eine Behauptung mit einem
   // gestreckten Telefonbild darin. Faktor 1,4 statt 2 und Guete 72 statt 82:
   // Sie stehen rund 340-420 px breit, und die Seite hat eine harte
   // Gewichtsgrenze von 1400 kB fuer alle Bilder zusammen.
   { name: 'website-pad', w: 834, h: 1112, scale: 1.4, out: 'docs/website/bilder',
-    jpeg: 72, praefix: 'pad-', bilder: ['game', 'shoot'], sa: [24, 20] }
+    webp: 0.78, praefix: 'pad-', bilder: ['game', 'shoot'], sa: [24, 20] }
 ];
 
 const PROF = `try{localStorage.setItem('fortress_profile',JSON.stringify({
-  id:'demo',name:'ARIN',wappen:'ritter',color:'#2563eb',
+  id:'demo',name:'ARIN',wappen:'pestdoktor',color:'#2563eb',
   stats:{wins:24,losses:11,games:35},stats3:{wins:6,losses:4,games:10},
   elo:1284,elo3:1120,peakElo:1310,peakElo3:1150,gold:640,level:12,xp:340,
   unlockedRewards:[],achievements:[],dailyTasks:[],seasonXp:820,
@@ -115,6 +115,41 @@ async function warteAuf(p, pred, ms = 45000) {
   return false;
 }
 
+// **WebP fuer die Website (v3.130.0).** Playwright schreibt nur PNG und JPEG.
+// Kodiert wird deshalb im Browser selbst (`canvas.toDataURL('image/webp')`) —
+// kein zusaetzliches Paket. Die Bilder im neuen Comic-Stil wiegen als JPEG
+// fast doppelt so viel (1,9 MB statt 1,1 MB) und rissen die Gewichtsgrenze
+// der Website.
+let wandlerSeite = null;
+async function alsWebp(browser, png, guete) {
+  if (!wandlerSeite) {
+    // Laedt nie die App — die Sperre steht trotzdem, damit der Riegel in
+    // tests/testsperre.test.js keine Ausnahme braucht.
+    const ctx = await browser.newContext();
+    await ctx.addInitScript(FB_SPERRE);
+    wandlerSeite = await ctx.newPage();
+  }
+  const b64 = await wandlerSeite.evaluate(async ([d, q]) => {
+    const bild = new Image(); bild.src = 'data:image/png;base64,' + d; await bild.decode();
+    const c = document.createElement('canvas'); c.width = bild.naturalWidth; c.height = bild.naturalHeight;
+    c.getContext('2d').drawImage(bild, 0, 0);
+    return c.toDataURL('image/webp', q).split(',')[1];
+  }, [png.toString('base64'), guete]);
+  return Buffer.from(b64, 'base64');
+}
+// Ein Bild speichern — als WebP, wenn das Ziel es verlangt, sonst wie bisher.
+// `quelle` ist die Seite oder ein Locator (beide haben `screenshot`).
+async function speichere(browser, quelle, ziel, pfad, jpegGuete) {
+  if (ziel.webp) {
+    fs.writeFileSync(pfad, await alsWebp(browser, await quelle.screenshot({ type: 'png' }), ziel.webp));
+  } else if (jpegGuete || ziel.jpeg) {
+    await quelle.screenshot({ path: pfad, type: 'jpeg', quality: jpegGuete || ziel.jpeg });
+  } else {
+    await quelle.screenshot({ path: pfad });
+  }
+}
+const endungVon = (ziel) => ziel.webp ? '.webp' : ziel.jpeg ? '.jpg' : '.png';
+
 async function fuerZiel(browser, ziel) {
   const out = path.join(ROOT, ziel.out);
   fs.mkdirSync(out, { recursive: true });
@@ -136,7 +171,7 @@ async function fuerZiel(browser, ziel) {
   await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
   await p.waitForTimeout(1600);
 
-  const endung = ziel.jpeg ? '.jpg' : '.png';
+  const endung = endungVon(ziel);
   const shot = async (name) => {
     // `bilder` waehlt aus, `praefix` benennt um. Beides fuer die iPad-Bilder der
     // Website: Der Ablauf zum Fuellen des Bretts ist derselbe, gebraucht werden
@@ -144,9 +179,7 @@ async function fuerZiel(browser, ziel) {
     // ueberschreiben, die im selben Ordner liegen.
     if (ziel.bilder && !ziel.bilder.includes(name.replace(/\.png$/, ''))) return;
     const datei = (ziel.praefix || '') + name.replace(/\.png$/, endung);
-    await p.screenshot(ziel.jpeg
-      ? { path: path.join(out, datei), type: 'jpeg', quality: ziel.jpeg }
-      : { path: path.join(out, datei) });
+    await speichere(browser, p, ziel, path.join(out, datei));
     console.log('   ' + ziel.out + '/' + datei);
   };
 
@@ -250,67 +283,62 @@ async function lokalePartie(browser, ziel, spieler) {
   }, 120000);
   if (!ok) throw new Error('kein sauberes Bild fuer die Partie zu ' + spieler);
 
-  const datei = (spieler === 3 ? 'drei' : 'zwei') + (ziel.jpeg ? '.jpg' : '.png');
-  await p.screenshot(ziel.jpeg
-    ? { path: path.join(out, datei), type: 'jpeg', quality: ziel.jpeg }
-    : { path: path.join(out, datei) });
+  const datei = (spieler === 3 ? 'drei' : 'zwei') + endungVon(ziel);
+  await speichere(browser, p, ziel, path.join(out, datei));
   console.log('   ' + ziel.out + '/' + datei);
   await ctx.close();
 }
 
 // Ein Bild je WELT — nur das Brett, ohne Kopfzeile und Leiste.
 //
-// Die Welt haengt am Terrain-Seed (`worldThemeOf(seed) = seed % 7`), und der
-// ist bei jedem lokalen Spiel zufaellig. Einen Seed vorzugeben hiesse, dafuer
-// Spielcode zu aendern — fuer Werbebilder der falsche Preis. Also wird
-// gewuerfelt, bis alle sieben einmal dran waren: Das Spiel verraet die Welt
-// ueber den gesicherten Haken `__waterTheme().name`.
+// Die Welt haengt am Terrain-Seed (`worldThemeOf(seed) = seed % 7`). Seit
+// v3.130.0 wird er ueber den gesicherten Haken `__weltSeed` (nur mit
+// `__mmDebug`) vorgegeben, statt zu wuerfeln: 700 + w ergibt Welt w.
 //
-// Aufgenommen wird NUR das Spielfeld (`canvas`). Als Kachel in einer Galerie
-// traegt das Brett die Aussage; Kopfzeile und Bauteil-Leiste wiederholen sich
-// in jeder Welt und lenken ab.
+// **Eine laufende Partie, kein leeres Brett.** Bis v3.129.0 zeigten die
+// Kacheln die Aufstellphase — zwei nackte Burgen und ein Fluss. Jetzt spielt
+// der Bot gegen sich selbst (im Zeitraffer), und aufgenommen wird die
+// Schussphase ab Runde 2: Mauerringe, Kanonen, Truemmer. So sieht man, wie
+// die Welt beim Spielen aussieht, nicht nur ihren Boden.
 async function welten(browser, ziel) {
   const out = path.join(ROOT, ziel.out);
   fs.mkdirSync(out, { recursive: true });
+  const NAMEN = ['kristalltal', 'frostreich', 'glutwueste', 'vulkanschlund', 'nebelmoor', 'herbstwald', 'astralebene'];
   // Kleiner und staerker komprimiert als die Telefonbilder: Sieben Kacheln
   // nebeneinander duerfen zusammen nicht so viel wiegen wie die ganze uebrige
-  // Seite. Angezeigt werden sie rund 200 px breit.
-  const ctx = await browser.newContext({
-    viewport: { width: 390, height: 844 }, deviceScaleFactor: 1.25,
-    isMobile: true, hasTouch: true, serviceWorkers: 'block'
-  });
-  const p = await ctx.newPage();
-  await p.addInitScript(FB_SPERRE);
-  await p.addInitScript(PROF); await p.addInitScript(SPEED);
-  if (ziel.sa) await p.addInitScript(saInit(ziel));
-  for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
-
-  const gesehen = new Set();
-  for (let versuch = 0; versuch < 60 && gesehen.size < 7; versuch++) {
+  // Seite. Angezeigt werden sie rund 250 px breit.
+  for (let w = 0; w < 7; w++) {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 }, deviceScaleFactor: 1.25,
+      isMobile: true, hasTouch: true, serviceWorkers: 'block'
+    });
+    const p = await ctx.newPage();
+    await p.addInitScript(FB_SPERRE);
+    await p.addInitScript(PROF);
+    await p.addInitScript(`const _osi=window.setInterval;
+      window.setInterval=(f,m,...a)=>_osi(f, m===600?60 : (m===1000?200:m), ...a);
+      window.__mmDebug=true; window.__botSelfPlay=true; window.__weltSeed=${700 + w};`);
+    if (ziel.sa) await p.addInitScript(saInit(ziel));
+    for (const b of ['**firebase**', '**gstatic**', '**googleapis**']) await p.route(b, r => r.abort());
     await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
     await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
-    await p.waitForTimeout(700);
-    await click(p, ['LOKAL']); await p.waitForTimeout(220);
-    await click(p, ['2 Spieler']);
+    await p.waitForTimeout(900);
+    await click(p, ['LOKAL']); await p.waitForTimeout(250);
+    await click(p, ['gegen Bot', 'vs Bot']); await p.waitForTimeout(300);
+    await click(p, ['Mittel']);
     await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
-    // Das Phasen-Schild wegwarten — es liegt sonst ueber dem Brett.
-    const frei = await warteAuf(p, async () =>
-      await p.evaluate(() => !document.querySelector('div[style*="phasebanner"]')), 12000);
-    if (!frei) continue;
+    const ok = await warteAuf(p, async () => {
+      if (await round(p) < 2 || await phase(p) !== 'shoot') return false;
+      return await p.evaluate(() => !document.querySelector('div[style*="phasebanner"]'));
+    }, 120000);
     const name = await p.evaluate(() => (window.__waterTheme && window.__waterTheme() || {}).name || null);
-    if (!name || gesehen.has(name)) continue;
-    gesehen.add(name);
-    const datei = 'welt-' + name.toLowerCase()
-      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-      .replace(/[^a-z0-9]+/g, '-') + '.jpg';
-    await p.locator('canvas').screenshot({ path: path.join(out, datei), type: 'jpeg', quality: 68 });
+    if (!ok) throw new Error('kein sauberes Bild fuer Welt ' + w + ' (' + name + ')');
+    await p.waitForTimeout(350);
+    const datei = 'welt-' + NAMEN[w] + endungVon(ziel);
+    await speichere(browser, p.locator('canvas'), { ...ziel, webp: ziel.webp && 0.74 }, path.join(out, datei), 70);
     console.log('   ' + ziel.out + '/' + datei + '  (' + name + ')');
+    await ctx.close();
   }
-  if (gesehen.size < 7) {
-    console.log('   ::warning::nur ' + gesehen.size + ' von 7 Welten erwischt: '
-      + [...gesehen].join(', '));
-  }
-  await ctx.close();
 }
 
 // Die Menue-Fenster, die das Spiel sonst nirgends zeigt: Schmiede, Gold-Shop,
@@ -355,7 +383,7 @@ async function fenster(browser, ziel) {
   // koennte wieder viermal dasselbe Bild entstehen, ohne dass es auffaellt.
   const FENSTER = [
     ['Schmiede',      'schmiede', 'DEINE MATERIALIEN'],
-    ['Gold-Shop',     'goldshop', 'GESCHÜTZ-MODELL'],
+    ['Gold-Shop',     'goldshop', 'Kosmetik für erspieltes Gold'],
     ['Achievements',  'erfolge',  'freigeschaltet'],
     ['Tagesaufgaben', 'aufgaben', 'Aufgaben jeden Tag']
   ];
@@ -366,12 +394,12 @@ async function fenster(browser, ziel) {
     await p.waitForTimeout(900);
     const da = await p.evaluate(m => document.body.innerText.includes(m), merkmal);
     if (!da) { console.error('   FEHLER: "' + titel + '" zeigt nicht "' + merkmal + '"'); process.exit(1); }
-    const pfad = path.join(out, datei + '.jpg');
-    await p.screenshot({ path: pfad, type: 'jpeg', quality: 78 });
+    const pfad = path.join(out, datei + endungVon(ziel));
+    await speichere(browser, p, ziel, pfad, 78);
     const summe = require('crypto').createHash('md5').update(fs.readFileSync(pfad)).digest('hex');
-    if (gesehen.has(summe)) { console.error('   FEHLER: ' + datei + '.jpg ist Bild fuer Bild dasselbe wie ' + gesehen.get(summe)); process.exit(1); }
+    if (gesehen.has(summe)) { console.error('   FEHLER: ' + datei + endungVon(ziel) + ' ist Bild fuer Bild dasselbe wie ' + gesehen.get(summe)); process.exit(1); }
     gesehen.set(summe, datei);
-    console.log('   ' + ziel.out + '/' + datei + '.jpg');
+    console.log('   ' + ziel.out + '/' + datei + endungVon(ziel));
   }
   await ctx.close();
 }
@@ -381,6 +409,14 @@ async function fenster(browser, ziel) {
   // Alle fuenf dauern rund zehn Minuten — wer nur die Website-Bilder braucht,
   // soll nicht auf die iPad-Groessen warten muessen.
   const nur = process.argv[2];
+  // `welten` allein: nur die sieben Welten-Kacheln der Website neu aufnehmen.
+  if (nur === 'welten') {
+    const browser = await chromium.launch();
+    await welten(browser, ZIELE.find(z => z.name === 'website'));
+    await browser.close();
+    console.log('\n fertig');
+    return;
+  }
   if (nur && !ZIELE.some(z => z.name === nur)) {
     console.error('Unbekanntes Ziel: ' + nur + ' — bekannt sind: '
       + ZIELE.map(z => z.name).join(', '));

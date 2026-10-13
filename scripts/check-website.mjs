@@ -151,6 +151,28 @@ console.log("\nBilder");
   }
   sag(gesamt <= 1400 * 1024, `Bilder zusammen ${Math.round(gesamt / 1024)} kB (hoechstens 1400)`);
 
+  // **Alles, was der Browser an Bildern holen kann (v3.130.0).** Seit dem
+  // Comic-Stil liegen die gemalten Avatare und Artikel in eigenen Ordnern
+  // (aus public/ kopiert) — sie zaehlen genauso zum Gewicht der Seite. Ohne
+  // diese Zeile waere die Grenze oben mit einem neuen Ordner zu umgehen.
+  let alle = gesamt;
+  for (const neben of ["wappen", "artikel"]) {
+    const o = join(ordner, neben);
+    const fs = existsSync(o) ? readdirSync(o) : [];
+    for (const f of fs) {
+      const n = statSync(join(o, f)).size;
+      alle += n;
+      sag(n <= 100 * 1024, `${neben}/${f}: ${Math.round(n / 1024)} kB (hoechstens 100)`);
+      sag(extname(f) === ".webp", `${neben}/${f}: WebP`);
+    }
+  }
+  sag(alle <= 1700 * 1024, `Alle Bilder der Seite ${Math.round(alle / 1024)} kB (hoechstens 1700)`);
+
+  // Schriften liegen lokal — eine Schrift von einem fremden Server waere eine
+  // Anfrage an Dritte und kostete das Versprechen „keine Cookies".
+  for (const f of ["lilita-one.woff2", "nunito.woff2", "OFL-lilita-one.txt", "OFL-nunito.txt"])
+    sag(existsSync(join(ordner, "schriften", f)), `schriften/${f} vorhanden`);
+
   // Jedes Bild braucht einen Alternativtext, und zwar einen, der etwas sagt.
   // Alternativtexte auf JEDER Seite mit Bildern, nicht nur der Startseite.
   const bildTags = seiten.flatMap(d => [...readFileSync(join(ordner, d), "utf8").matchAll(/<img\b[^>]*>/gi)]
