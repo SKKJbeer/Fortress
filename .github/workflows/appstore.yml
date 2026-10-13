@@ -26,6 +26,8 @@ on:
           - store-bilder # liegende Bildschirmfotos durch die aus store/ ersetzen
           - freigeben-probe # nur lesen: kann die freigegebene Fassung veroeffentlicht werden?
           - freigeben  # die von Apple freigegebene Fassung VEROEFFENTLICHEN (Eingabe FREIGEBEN)
+          - neuer-bau-probe # nur lesen: kann die freigegebene Fassung fuer einen neueren Bau zurueckgewiesen werden?
+          - zurueckweisen # freigegebene Fassung zurueckweisen (Eingabe ZURUECKWEISEN), um neu einzureichen
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
           - pflichtangaben-stand # nur lesen: copyright, Support-URL, Preis, Datenschutz-Schnittstelle
@@ -36,7 +38,7 @@ on:
           - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
           - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
       bestaetigung:
-        description: 'Nur fuer einreichen (EINREICHEN) bzw. freigeben (FREIGEBEN)'
+        description: 'Nur fuer einreichen (EINREICHEN), freigeben (FREIGEBEN) bzw. zurueckweisen (ZURUECKWEISEN)'
         type: string
         default: ''
 
@@ -127,5 +129,12 @@ jobs:
                 exit 1
               fi
               python3 scripts/asc-freigeben.py --freigeben ;;
+            neuer-bau-probe) python3 scripts/asc-neuer-bau.py ;;
+            zurueckweisen)
+              if [ "$BESTAETIGUNG" != "ZURUECKWEISEN" ]; then
+                echo "::error::Zum Zurueckweisen die Eingabe 'bestaetigung' auf ZURUECKWEISEN setzen."
+                exit 1
+              fi
+              python3 scripts/asc-neuer-bau.py --zurueckweisen ;;
             *)          python3 scripts/asc.py --stand ;;
           esac

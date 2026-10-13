@@ -9388,3 +9388,9 @@ harmonisch und gleich".
   Warteschlange im selben Augenblick wie den Spielstart; das Loeschen laeuft
   asynchron. Jetzt bis 4 s warten, Meldung nennt das uebrige Ticket.
   Gegenprobe mit kuenstlicher Ticket-Leiche: rot.
+- **Neuer Bau statt altem Stand** (`scripts/asc-neuer-bau.py`, Modi
+  `neuer-bau-probe` / `zurueckweisen`, Eingabe ZURUECKWEISEN doppelt
+  geprueft): Apple hatte Fassung 1.0 mit Bau 40 (v3.118.0, vor dem
+  Comic-Umbau) freigegeben. Entscheidung des Betreibers: nicht diesen Stand
+  veroeffentlichen, sondern zurueckweisen, Bau 45+ und neue Bilder anhaengen,
+  neu einreichen.

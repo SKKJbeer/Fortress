@@ -108,3 +108,12 @@ test("Veroeffentlichen nur mit Eingabe FREIGEBEN — im Ablauf UND im Skript", (
   assert.ok(anfrage > s.indexOf('if not wirklich:'), "der Trockenlauf muss VOR der Veroeffentlichung aussteigen");
   assert.ok(anfrage > s.indexOf('if zustand != "PENDING_DEVELOPER_RELEASE":'));
 });
+
+test("Zurueckweisen nur mit Eingabe ZURUECKWEISEN — im Ablauf UND im Skript", () => {
+  const ablauf = readFileSync(join(WURZEL, ".github", "workflows", "appstore.yml"), "utf8");
+  assert.match(ablauf, /zurueckweisen\)\s*\n\s*if \[ "\$BESTAETIGUNG" != "ZURUECKWEISEN" \]; then[\s\S]{0,200}exit 1[\s\S]{0,40}python3 scripts\/asc-neuer-bau\.py --zurueckweisen ;;/);
+  const s = readFileSync(join(WURZEL, "scripts", "asc-neuer-bau.py"), "utf8");
+  assert.match(s, /if wirklich and os\.environ\.get\("BESTAETIGUNG"\) != "ZURUECKWEISEN":\s*\n[^\n]*\n\s*return 1/);
+  assert.ok(s.indexOf('apple.loeschen(f"v1/appStoreVersionSubmissions/') > s.indexOf("if not wirklich:"),
+    "der Trockenlauf muss vor dem Loeschen aussteigen");
+});
