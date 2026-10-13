@@ -5866,6 +5866,15 @@ async function suiteKontrast(browser) {
   };
   const pruefe = async (page, name) => {
     await page.evaluate(() => document.fonts.ready.then(() => true));
+    // Erst messen, wenn die Fenster fertig eingeblendet sind (v3.129.0): im CI
+    // lief die Einblendung beim Messen noch — „0 Textstuecke sichtbar" fuer
+    // Gold-Shop, Erfolge und Bestenliste, lokal nie. Pulsieren (endlos) zaehlt nicht.
+    await page.evaluate(() => Promise.race([
+      Promise.all(document.getAnimations()
+        .filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity)
+        .map(a => a.finished.catch(() => null))),
+      new Promise(r => setTimeout(r, 6000)),
+    ]).then(() => true));
     await page.waitForTimeout(250);
     const m = await KONTRAST_MESSEN(page);
     if (m.gesamt < 3) { fail(`Kontrast ${name}: nur ${m.gesamt} Textstuecke sichtbar — Schirm nicht erreicht?`); return; }
@@ -6504,8 +6513,10 @@ async function suiteBot(browser) {
         if (!wt) return null;
         const cv = document.querySelector('canvas');
         const img = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-        const W = cv.width, H = cv.height, CELL = 14;
-        const px = (x, y) => { const i = (Math.round(y) * W + Math.round(x)) * 4; return [img[i], img[i+1], img[i+2]]; };
+        // Seit v3.129.0 rendert das Canvas mit Faktor K (Retina) — gemessen
+        // wird weiter in logischen 616x952, gelesen am K-fachen Pixel.
+        const K = cv.width / 616, W = 616, H = 952, CELL = 14;
+        const px = (x, y) => { const i = (Math.round(y * K) * cv.width + Math.round(x * K)) * 4; return [img[i], img[i+1], img[i+2]]; };
         const dist = (a, b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
         const flipY = (r) => H - (r * CELL + CELL / 2);
         let wr = [0,0,0];

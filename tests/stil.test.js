@@ -60,3 +60,48 @@ test('Keine alten, unlesbaren Grautoene als Schriftfarbe', () => {
     }
   }
 });
+
+// Jedes verwendete Symbol muss es geben (v3.129.0). Ein unbekannter Name
+// zeichnet NICHTS — der „Teilen"-Knopf stand lange ohne Symbol da
+// („share2", „check" fehlten), und niemand hat es bemerkt.
+test('Jeder Icon-Name im Spielcode existiert in ICON_PATHS', async () => {
+  const { ICON_PATHS } = await import('../src/ui/icons.js');
+  const da = new Set(Object.keys(ICON_PATHS));
+  const fehlend = [];
+  for (const datei of ['src/game/app.js', 'src/ui/modale.js', 'src/ui/anzeigen.js', 'src/ui/blaettern.js']) {
+    const roh = fs.readFileSync(path.join(W, datei), 'utf8');
+    for (const m of roh.matchAll(/Icon, \{ name: ([^,}]+)/g))
+      for (const q of m[1].matchAll(/"([a-zA-Z0-9]+)"/g))
+        if (!da.has(q[1])) fehlend.push(`${datei}: ${q[1]}`);
+  }
+  assert.deepStrictEqual(fehlend, []);
+});
+
+// Schaerfe (v3.129.0): Sprites haben SK-fache Pixel, das Spielfeld rendert mit
+// Faktor K. Ein `drawImage(bild, x, y)` OHNE Zielgroesse zeichnet ein Sprite
+// dann SK-fach zu gross bzw. ein Hintergrund-Canvas K-fach — still, ohne
+// Fehler. Verlangt wird daher die Zielgroesse (5 oder 9 Argumente).
+test('drawImage im Spielfeld immer mit Zielgroesse', () => {
+  const fehler = [];
+  for (const datei of ['src/game/app.js', 'src/render/sprites.js']) {
+    const roh = fs.readFileSync(path.join(W, datei), 'utf8');
+    let i = 0;
+    while ((i = roh.indexOf('drawImage(', i)) !== -1) {
+      const zeileEnde = roh.indexOf('\n', i);
+      const zeileAnfang = roh.lastIndexOf('\n', i) + 1;
+      if (roh.slice(i, zeileEnde).includes('// Pixelraum') || roh.slice(zeileAnfang, i).includes('//')) { i += 10; continue; }
+      let t = 0, k = i + 'drawImage('.length, args = 1, q = null;
+      for (; k < roh.length; k++) {
+        const c = roh[k];
+        if (q) { if (c === q && roh[k - 1] !== '\\') q = null; continue; }
+        if (c === '"' || c === "'" || c === '`') q = c;
+        else if (c === '(' || c === '[' || c === '{') t++;
+        else if (c === ')' || c === ']' || c === '}') { if (t === 0) break; t--; }
+        else if (c === ',' && t === 0) args++;
+      }
+      if (args !== 5 && args !== 9) fehler.push(`${datei}:${roh.slice(0, i).split('\n').length} (${args} Argumente)`);
+      i = k;
+    }
+  }
+  assert.deepStrictEqual(fehler, []);
+});

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.128.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.129.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9281,3 +9281,29 @@ harmonisch und gleich".
   Stand: 9 von 12 Schirmen rot, darunter genau der gemeldete Ergebnisschirm.
 - **Unit-Test** verbietet die alten Grautoene als Schriftfarbe — er fand beim
   ersten Lauf fuenf weitere Stellen (Salven-Schalter, Kaufbestaetigung).
+
+## v3.129.0 — Mauern, Burg und Kanone im Comic-Stil, scharfes Spielfeld
+
+- **Mauern:** Spielerfarben aus der Knopf-Palette des Designsystems (Blau,
+  Rot, Gruen wie Knoepfe und Spielerkaesten), kraeftige Kontur an freien
+  Kanten, helle Oberkante, dunkle Vorderseite fuer Hoehe, dezente Fugen.
+  Verbundene Zellen bilden weiter EINEN Mauerzug mit klarer Aussenlinie.
+- **Hauptburg:** heller Stein mit Zinnenkranz, vier Ecktuerme mit Kegeldach
+  und ein Bergfried mit Walmdach und Fahne in Spielerfarbe, Holztor. Ersetzt
+  das dunkle Bauwerk mit Neon-Ecken aus v3.43.0.
+- **Standardkanone** (ohne gekaufte Skin): Holzplattform mit Eisenrand,
+  Spielerring, schwarzer Eisenlauf mit Bronzeringen, Nabe mit Spielerkappe.
+  Masse, Drehpunkt und Rohrlaenge unveraendert; gekaufte Skins bleiben.
+- **Scharfes Spielfeld:** Das Canvas rendert mit dem Retina-Faktor des Geraets
+  (`renderK`, bis 2,5) statt fest 616×952 — auf dem iPhone wurde bisher knapp
+  zweifach hochskaliert, alles wirkte weich. Sprites werden dreifach
+  aufgeloest gebacken. Spiellogik und Eingabe rechnen unveraendert in
+  logischen Einheiten. Zeichendauer gemessen unveraendert (0,4 ms/Bild).
+- **Symbole:** „Teilen" zeigte kein Symbol (`share2`/`check` gab es nicht).
+  Neuer Unit-Test: jeder Icon-Name im Spielcode muss existieren.
+- **Schutz:** Unit-Test verlangt `drawImage` im Spielfeld mit Zielgroesse
+  (sonst waere ein Sprite still SK-fach zu gross); Gegenprobe rot.
+- **Kontrast-Suite:** wartet vor dem Messen auf das Ende der Einblendungen —
+  im CI scheiterte v3.128.0 daran („0 Textstuecke sichtbar" fuer Gold-Shop,
+  Erfolge, Bestenliste), lokal nie. v3.128.0 ging deshalb nicht live; diese
+  Version liefert sie mit aus.

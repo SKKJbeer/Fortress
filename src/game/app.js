@@ -507,6 +507,8 @@ window.StackSiegeApp = function StackSiegeApp() {
   // ueberlagerten Meldungen haengen sich daran statt an eine geratene Zahl —
   // vorher stand 52 an sieben Stellen, und bei drei Spielern stimmte keine davon.
   const [viewSize, setViewSize] = useState({ w: W, h: H, bar: 52, top: 52, voll: W, tablett: false });
+  // Render-Faktor: Retina-Faktor x Anzeigegroesse / logische Breite (v3.129.0)
+  const renderK = Math.min(2.5, Math.max(1, Math.round((viewSize.w * ((typeof window !== "undefined" && window.devicePixelRatio) || 1)) / W * 4) / 4));
   const [warn, setWarn] = useState(null);
   const warnTimer = useRef(null);
   const [phaseBanner, setPhaseBanner] = useState(null);
@@ -2006,6 +2008,11 @@ window.StackSiegeApp = function StackSiegeApp() {
   const scoresRef = useRef({ 1: 0, 2: 0 });
   const bgCanvas = useRef(null);
   const bgDirty = useRef(true);
+  // Render-Faktor des Spielfelds (v3.129.0): intern W*K x H*K Pixel, damit das
+  // Brett auf Retina-Schirmen scharf ist. Gerechnet wird weiter in logischen
+  // 616x952 (Spiellogik, Eingabe, Sprites). Siehe `renderK` beim Canvas.
+  const renderKRef = useRef(1);
+  renderKRef.current = renderK;
   // Gemalte Weltboeden (v3.122.0, Skill spielgrafik): je Welt optional ein Bild
   // (WORLD_THEMES[].boden). Rein optisch — die Welt kommt weiter aus dem Seed,
   // online also synchron. Solange das Bild laedt (oder fehlt), zeichnet der
@@ -5769,6 +5776,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       p.life--;
     }
     particles.current = particles.current.filter((p) => p.life > 0);
+    const RK = renderKRef.current || 1;
+    ctx.setTransform(RK, 0, 0, RK, 0, 0);
     ctx.clearRect(0, 0, W, H);
     const didShake = shakeRef.current > 0.3;
     if (didShake) {
@@ -5803,15 +5812,17 @@ window.StackSiegeApp = function StackSiegeApp() {
     try {
     const terObj = terrain.current;
     const ter = terObj ? terObj.grid : null;
-    if (!bgCanvas.current) {
+    if (!bgCanvas.current || bgCanvas.current.__rk !== RK) {
       bgCanvas.current = document.createElement("canvas");
-      bgCanvas.current.width = W;
-      bgCanvas.current.height = H;
+      bgCanvas.current.width = Math.round(W * RK);
+      bgCanvas.current.height = Math.round(H * RK);
+      bgCanvas.current.__rk = RK;
       bgDirty.current = true;
     }
     if (bgDirty.current && ter) {
       bgDirty.current = false;
       const bc = bgCanvas.current.getContext("2d");
+      bc.setTransform(RK, 0, 0, RK, 0, 0);
       // Welt-Thema deterministisch aus dem Seed — identisch auf allen Clients.
       const WT = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
       // ⚠ KEIN Vor-Flip des Hintergrunds mehr (v3.30.2, Bug-Fix): Der frühere
@@ -6017,7 +6028,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Pass 2: Körper mit Glow — Ton wandert mit der Tiefe von dunkel nach hell
       bc.save();
       bc.shadowColor = WT.waterGlow;
-      bc.shadowBlur = 10;
+      bc.shadowBlur = 10 * RK;
       for (const [r, c] of waterCells) {
         // Untergrenze 0.30 (v3.43.0): Ufer-Zellen dürfen NICHT bis auf den
         // dunkelsten Ton abfallen, sonst liegen sie farblich zu nah am Land und
@@ -6230,7 +6241,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       bc.fillStyle = vg2;
       bc.fillRect(0, 0, W, H);
     }
-    if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0);
+    if (bgCanvas.current) ctx.drawImage(bgCanvas.current, 0, 0, W, H);
     const WTa = worldThemeOf((terObj && terObj.seed) || terrainSeed.current || 0);
     if (ter) {
       // Wasserzellen einmal pro Terrain cachen (v3.19.4): statt jeden Frame alle
@@ -6267,14 +6278,17 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Zonen-Overlay gecacht (v3.15.5): ändert sich nur mit dem Grid — in
     // Offscreen-Canvas rendern und pro Frame blitten statt >1000 fillRects.
     const zoneKey = gridVersion.current + ":" + players.join("");
-    if (!zoneCanvas.current) {
+    if (!zoneCanvas.current || zoneCanvas.current.__rk !== RK) {
       zoneCanvas.current = document.createElement("canvas");
-      zoneCanvas.current.width = W;
-      zoneCanvas.current.height = H;
+      zoneCanvas.current.width = Math.round(W * RK);
+      zoneCanvas.current.height = Math.round(H * RK);
+      zoneCanvas.current.__rk = RK;
+      zoneKeyRef.current = null;
     }
     if (zoneKeyRef.current !== zoneKey) {
       zoneKeyRef.current = zoneKey;
       const zc = zoneCanvas.current.getContext("2d");
+      zc.setTransform(RK, 0, 0, RK, 0, 0);
       zc.clearRect(0, 0, W, H);
       const ZONE_FILL = { 1: "rgba(56,120,230,0.28)", 2: "rgba(220,50,50,0.28)", 3: "rgba(16,150,90,0.28)" };
       for (const player of players) {
@@ -6289,7 +6303,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           }
       }
     }
-    ctx.drawImage(zoneCanvas.current, 0, 0);
+    ctx.drawImage(zoneCanvas.current, 0, 0, W, H);
     // ── Leck-Spur (v3.37.0): macht die Umschlossen-Regel SICHTBAR ──────────
     // Pulsierende rote Spur von der Burg durch die Lücke bis zum Feldrand.
     // Tutorial: die ganze Bauphase, solange offen. Normale Spiele: in den
@@ -6355,10 +6369,12 @@ window.StackSiegeApp = function StackSiegeApp() {
     // ~1/4. Gemessen: Bake-Spitze 14,7 ms → 3,6 ms (Worst Case ~1000 Zellen).
     // Wichtig, weil das Grid auch MITTEN im Schuss kippt (zerstörte Mauern).
     const SH_S = 0.5;
-    if (!shadowCanvas.current) {
+    if (!shadowCanvas.current || shadowCanvas.current.__rk !== RK) {
       shadowCanvas.current = document.createElement("canvas");
-      shadowCanvas.current.width = W;
-      shadowCanvas.current.height = H;
+      shadowCanvas.current.width = Math.round(W * RK);
+      shadowCanvas.current.height = Math.round(H * RK);
+      shadowCanvas.current.__rk = RK;
+      shadowKeyRef.current = null;
       shadowSilhouette.current = document.createElement("canvas");
       shadowSilhouette.current.width = Math.ceil(W * SH_S);
       shadowSilhouette.current.height = Math.ceil(H * SH_S);
@@ -6366,6 +6382,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     if (shadowKeyRef.current !== shKey) {
       shadowKeyRef.current = shKey;
       const sc = shadowCanvas.current.getContext("2d");
+      sc.setTransform(RK, 0, 0, RK, 0, 0);
       const sil = shadowSilhouette.current.getContext("2d");
       const sw = shadowSilhouette.current.width, shh = shadowSilhouette.current.height;
       sc.clearRect(0, 0, W, H);
@@ -6382,17 +6399,17 @@ window.StackSiegeApp = function StackSiegeApp() {
       const canBlur = typeof sc.filter === "string";
       // 2) breiter Schlagschatten, versetzt entlang der Lichtachse
       sc.globalAlpha = 0.5;
-      if (canBlur) sc.filter = "blur(2.6px)";
+      if (canBlur) sc.filter = "blur(" + (2.6 * RK).toFixed(2) + "px)";
       sc.drawImage(shadowSilhouette.current, SHADOW_DX, SHADOW_DY, W, H);
       if (canBlur) sc.filter = "none";
       // 3) enger, dunklerer Kontaktschatten direkt an der Kante (Andockung)
       sc.globalAlpha = 0.34;
-      if (canBlur) sc.filter = "blur(1.1px)";
+      if (canBlur) sc.filter = "blur(" + (1.1 * RK).toFixed(2) + "px)";
       sc.drawImage(shadowSilhouette.current, SHADOW_DX * 0.45, SHADOW_DY * 0.45, W, H);
       if (canBlur) sc.filter = "none";
       sc.globalAlpha = 1;
     }
-    ctx.drawImage(shadowCanvas.current, 0, 0);
+    ctx.drawImage(shadowCanvas.current, 0, 0, W, H);
     // Mauern/Trümmer als vorgerenderte Sprites blitten (v3.15.5) — pro Zelle
     // nur noch EIN drawImage statt Gradient + 6 Pfad-Operationen.
     // wallHp ist meist leer (keine Panzermauern gekauft) → String-Concat pro
@@ -6415,12 +6432,12 @@ window.StackSiegeApp = function StackSiegeApp() {
                    | (c < COLS - 1 && g[r][c + 1] === v ? 2 : 0)
                    | (r < ROWS - 1 && g[r + 1][c] === v ? 4 : 0)
                    | (c > 0 && g[r][c - 1] === v ? 8 : 0);
-          ctx.drawImage(wallSprite(v, (r * 7 + c * 3) % 4, mk), px, py);
+          ctx.drawImage(wallSprite(v, (r * 7 + c * 3) % 4, mk), px, py, CELL, CELL);
           // Panzermauer angeknackst (v3.16.0): Riss-Overlay
           if (anyCrack && wallHp.current[r + "_" + c])
-            ctx.drawImage(crackSprite((r * 3 + c) % 3), px, py);
+            ctx.drawImage(crackSprite((r * 3 + c) % 3), px, py, CELL, CELL);
         }
-        else if (v === RUBBLE || v === RUBBLE_C) ctx.drawImage(rubbleSprite((r * 5 + c * 2) % 3), px, py);
+        else if (v === RUBBLE || v === RUBBLE_C) ctx.drawImage(rubbleSprite((r * 5 + c * 2) % 3), px, py, CELL, CELL);
       }
     }
     for (const player of players) {
@@ -7282,7 +7299,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.128.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.129.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8359,7 +8376,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       ...knopf(shareShared ? "gruen" : "blau", { fontSize: 15, padding: "9px", borderRadius: 12, gap: 6 }),
       width: "100%", maxWidth: 320, marginBottom: 8
     }},
-      React.createElement(Icon, { name: shareShared ? "check" : "share2", size: 14 }),
+      React.createElement(Icon, { name: shareShared ? "check" : "share", size: 14 }),
       shareShared ? t("shareBtnDone") : t("shareBtn")
     ),
     // ── ACTION-BUTTONS ────────────────────────────────────────
@@ -9013,8 +9030,12 @@ window.StackSiegeApp = function StackSiegeApp() {
     "canvas",
     {
       ref: canvasRef,
-      width: W,
-      height: H,
+      // Interne Aufloesung = Anzeigegroesse x Retina-Faktor (v3.129.0),
+      // gedeckelt auf 2,5 und in Viertelschritten (kein Neuaufbau bei jedem
+      // Pixel Groessenaenderung). Vorher fest 616x952 — auf dem iPhone ~1,9-fach
+      // hochskaliert und weich.
+      width: Math.round(W * renderK),
+      height: Math.round(H * renderK),
       onPointerDown,
       onPointerMove,
       onPointerUp,

@@ -20,121 +20,85 @@ import { CELL } from '../engine/const.ts';
 // Dadurch wird aus vielen Einzelsteinen ein zusammenhaengendes Mauerwerk mit
 // klarer Aussenkante, statt eines Rasters gleich grosser Kacheln.
 export function drawWall(ctx, px, py, base, hi, lo, mortar, vr, mask) {
+  // Comic-Mauer (v3.129.0): Farben aus der Knopf-Palette des Designsystems,
+  // kraeftige Kontur an FREIEN Kanten, helle Oberkante, dunkle Vorderseite
+  // (Hoehe), dezente Fugen. Verbundene Seiten laufen bis an die Zellkante —
+  // aus vielen Zellen wird EIN Mauerzug mit klarer Aussenlinie.
   const V = vr || 0, MK = mask || 0;
   const frei = (bit) => (MK & bit) === 0;
   const rnd = (k) => Math.abs(Math.sin((k + V * 17.3) * 12.9898) * 43758.5453) % 1;
-  const mO = frei(1) ? 0.6 : 0, mR = frei(2) ? 0.6 : 0;
-  const mU = frei(4) ? 0.6 : 0, mL = frei(8) ? 0.6 : 0;
-  const x = px + mL, y = py + mO;
-  const w = CELL - mL - mR, hgt = CELL - mO - mU;
-  // Ecke nur runden, wenn BEIDE angrenzenden Seiten frei sind
+  const K = 1.3;                      // Konturbreite
+  const FRONT = frei(4) ? 3.2 : 0;    // sichtbare Vorderseite nur an freier Unterkante
+  const x = px, y = py, w = CELL, h = CELL;
+  const r = 3;
   const eck = {
-    ol: frei(1) && frei(8) ? 3.5 : 0, or: frei(1) && frei(2) ? 3.5 : 0,
-    ur: frei(4) && frei(2) ? 3.5 : 0, ul: frei(4) && frei(8) ? 3.5 : 0
+    ol: frei(1) && frei(8) ? r : 0, or: frei(1) && frei(2) ? r : 0,
+    ur: frei(4) && frei(2) ? r : 0, ul: frei(4) && frei(8) ? r : 0
   };
-  const pfad = () => {
+  const pfad = (x0, y0, x1, y1) => {
     ctx.beginPath();
-    ctx.moveTo(x + eck.ol, y);
-    ctx.lineTo(x + w - eck.or, y);
-    if (eck.or) ctx.quadraticCurveTo(x + w, y, x + w, y + eck.or); else ctx.lineTo(x + w, y);
-    ctx.lineTo(x + w, y + hgt - eck.ur);
-    if (eck.ur) ctx.quadraticCurveTo(x + w, y + hgt, x + w - eck.ur, y + hgt); else ctx.lineTo(x + w, y + hgt);
-    ctx.lineTo(x + eck.ul, y + hgt);
-    if (eck.ul) ctx.quadraticCurveTo(x, y + hgt, x, y + hgt - eck.ul); else ctx.lineTo(x, y + hgt);
-    ctx.lineTo(x, y + eck.ol);
-    if (eck.ol) ctx.quadraticCurveTo(x, y, x + eck.ol, y);
+    ctx.moveTo(x0 + eck.ol, y0);
+    ctx.lineTo(x1 - eck.or, y0);
+    if (eck.or) ctx.quadraticCurveTo(x1, y0, x1, y0 + eck.or); else ctx.lineTo(x1, y0);
+    ctx.lineTo(x1, y1 - eck.ur);
+    if (eck.ur) ctx.quadraticCurveTo(x1, y1, x1 - eck.ur, y1); else ctx.lineTo(x1, y1);
+    ctx.lineTo(x0 + eck.ul, y1);
+    if (eck.ul) ctx.quadraticCurveTo(x0, y1, x0, y1 - eck.ul); else ctx.lineTo(x0, y1);
+    ctx.lineTo(x0, y0 + eck.ol);
+    if (eck.ol) ctx.quadraticCurveTo(x0, y0, x0 + eck.ol, y0);
     ctx.closePath();
   };
-  // 1) Körper — Verlauf jetzt DIAGONAL entlang der Lichtachse statt rein vertikal
-  const g = ctx.createLinearGradient(px, py, px + CELL * 0.75, py + CELL);
-  g.addColorStop(0, hi);
-  g.addColorStop(0.26, base);
-  g.addColorStop(1, lo);
+  // Innenmasse: an freien Seiten Platz fuer die Kontur lassen
+  const ix0 = x + (frei(8) ? K / 2 : 0), iy0 = y + (frei(1) ? K / 2 : 0);
+  const ix1 = x + w - (frei(2) ? K / 2 : 0), iy1 = y + h - (frei(4) ? K / 2 : 0);
+  // 1) Vorderseite (dunkel) und Deckflaeche (hell) — die Hoehe des Steins
+  ctx.fillStyle = mortar;
+  pfad(ix0, iy0, ix1, iy1); ctx.fill();
+  const deckU = iy1 - FRONT;
+  ctx.save(); pfad(ix0, iy0, ix1, iy1); ctx.clip();
+  const g = ctx.createLinearGradient(0, iy0, 0, deckU);
+  g.addColorStop(0, hi); g.addColorStop(0.45, base); g.addColorStop(1, lo);
   ctx.fillStyle = g;
-  pfad();
-  ctx.fill();
-  // 2) Steinkorn — feine deterministische Sprenkel, brechen den Plastik-Look
-  ctx.save();
-  pfad();
-  ctx.clip();
-  for (let i = 0; i < 11; i++) {
-    // deterministisch aus i und Variante: bei jedem Backen identisch,
-    // zwischen den Varianten aber verschieden — kein Math.random
-    const h1 = rnd(i), h2 = rnd(i + 40);
-    ctx.fillStyle = h1 > 0.5 ? "rgba(255,255,255,0.11)" : "rgba(0,0,0,0.18)";
-    ctx.beginPath();
-    ctx.arc(x + h1 * w, y + h2 * hgt, 0.4 + h2 * 1.1, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // FUGENSCHNITT: eine versetzte Mauerfuge quer durch den Stein. Sie laesst
-  // benachbarte Zellen wie unterschiedlich grosse Quader wirken statt wie
-  // gleich grosse Kacheln.
-  const fy = y + hgt * (0.34 + rnd(3) * 0.34);
-  ctx.strokeStyle = "rgba(0,0,0,0.30)"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x, fy); ctx.lineTo(x + w, fy); ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.13)"; ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.moveTo(x, fy + 1); ctx.lineTo(x + w, fy + 1); ctx.stroke();
-  // senkrechte Stossfuge, je Variante an anderer Stelle
-  const fx = x + w * (0.28 + rnd(5) * 0.44);
-  ctx.strokeStyle = "rgba(0,0,0,0.24)"; ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(fx, rnd(6) > 0.5 ? y : fy);
-  ctx.lineTo(fx, rnd(6) > 0.5 ? fy : y + hgt);
-  ctx.stroke();
-  // ABPLATZUNG an einer Ecke — der Stein wirkt benutzt, nicht gegossen
-  const platz = Math.floor(rnd(9) * 4);
-  const ex = platz % 2 ? x + w : x, ey = platz < 2 ? y : y + hgt;
-  const sx2 = platz % 2 ? -1 : 1, sy2 = platz < 2 ? 1 : -1;
-  ctx.fillStyle = "rgba(0,0,0,0.30)";
-  ctx.beginPath();
-  ctx.moveTo(ex, ey + sy2 * (2 + rnd(11) * 2.5));
-  ctx.lineTo(ex + sx2 * (2.5 + rnd(12) * 2), ey);
-  ctx.lineTo(ex, ey);
-  ctx.closePath(); ctx.fill();
-  // 3) Ambient Occlusion — Abdunklung zur lichtabgewandten Seite (unten/rechts)
-  const ao = ctx.createLinearGradient(x + w * 0.35, y + hgt * 0.35, x + w, y + hgt);
-  ao.addColorStop(0, "rgba(0,0,0,0)");
-  ao.addColorStop(1, "rgba(0,0,0,0.40)");
-  ctx.fillStyle = ao;
-  ctx.fillRect(x, y, w, hgt);
-  // 4) Specular — weiches Glanzlicht an der lichtzugewandten Ecke
-  const sp = ctx.createRadialGradient(x + w * 0.28, y + hgt * 0.24, 0, x + w * 0.28, y + hgt * 0.24, w * 0.62);
-  sp.addColorStop(0, "rgba(255,255,255,0.26)");
-  sp.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = sp;
-  ctx.fillRect(x, y, w, hgt);
-  ctx.restore();
-  // 5) Leuchtende Oberkante NUR an einer freien Oberseite — sonst zieht sich
-  // ein heller Streifen quer durch das Innere des Mauerwerks.
+  ctx.fillRect(ix0, iy0, ix1 - ix0, deckU - iy0);
+  // Kante zwischen Deckflaeche und Vorderseite
+  if (FRONT) { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(ix0, deckU - 0.6, ix1 - ix0, 0.9); }
+  // 2) Fugen: eine waagerechte, eine versetzte senkrechte — in Steinfarbe dunkel
+  const fy = iy0 + (deckU - iy0) * (0.45 + rnd(3) * 0.12);
+  ctx.strokeStyle = "rgba(0,0,0,0.26)"; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(ix0, fy); ctx.lineTo(ix1, fy); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 0.6;
+  ctx.beginPath(); ctx.moveTo(ix0, fy + 0.8); ctx.lineTo(ix1, fy + 0.8); ctx.stroke();
+  const fx = ix0 + (ix1 - ix0) * (0.3 + rnd(5) * 0.4);
+  const oben = rnd(6) > 0.5;
+  ctx.strokeStyle = "rgba(0,0,0,0.24)"; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(fx, oben ? iy0 : fy); ctx.lineTo(fx, oben ? fy : deckU); ctx.stroke();
+  // 3) Glanzlicht oben links (Comic-Lichtpunkt) und Oberkante
   if (frei(1)) {
-    ctx.fillStyle = hi;
-    roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, 2.0, 1.3);
-    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fillRect(ix0 + (frei(8) ? 2 : 0), iy0 + 0.7, (ix1 - ix0) - (frei(8) ? 2 : 0) - (frei(2) ? 2 : 0), 1.2);
   }
-  // 6) Steinfase nur an FREIEN Kanten: helles Licht oben/links …
-  ctx.strokeStyle = "rgba(255,255,255,0.42)";
-  ctx.lineWidth = 1.1;
-  if (frei(8)) { ctx.beginPath();
-    ctx.moveTo(x + 1, y + hgt - (frei(4) ? 2.5 : 0));
-    ctx.lineTo(x + 1, y + (frei(1) ? 2.5 : 0)); ctx.stroke(); }
-  if (frei(1)) { ctx.beginPath();
-    ctx.moveTo(x + (frei(8) ? 2.5 : 0), y + 1);
-    ctx.lineTo(x + w - (frei(2) ? 2.5 : 0), y + 1); ctx.stroke(); }
-  // … dunkle Tiefe unten/rechts
-  ctx.strokeStyle = "rgba(0,0,0,0.52)";
-  ctx.lineWidth = 1.2;
-  if (frei(2)) { ctx.beginPath();
-    ctx.moveTo(x + w - 0.8, y + (frei(1) ? 2.5 : 0));
-    ctx.lineTo(x + w - 0.8, y + hgt - (frei(4) ? 2.5 : 0)); ctx.stroke(); }
-  if (frei(4)) { ctx.beginPath();
-    ctx.moveTo(x + w - (frei(2) ? 2.5 : 0), y + hgt - 0.8);
-    ctx.lineTo(x + (frei(8) ? 2.5 : 0), y + hgt - 0.8); ctx.stroke(); }
-  // 7) FUGE an verzahnten Kanten: eine feine dunkle Linie, damit die Steine
-  // nicht zu einer strukturlosen Flaeche verschmelzen.
-  ctx.strokeStyle = mortar || "rgba(0,0,0,0.34)";
-  ctx.lineWidth = 1;
-  if (!frei(2)) { ctx.beginPath(); ctx.moveTo(px + CELL - 0.5, py); ctx.lineTo(px + CELL - 0.5, py + CELL); ctx.stroke(); }
-  if (!frei(4)) { ctx.beginPath(); ctx.moveTo(px, py + CELL - 0.5); ctx.lineTo(px + CELL, py + CELL - 0.5); ctx.stroke(); }
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.beginPath(); ctx.ellipse(ix0 + 3.2 + rnd(7) * 2, iy0 + 3.4, 1.6, 0.9, -0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  // 4) Comic-Kontur NUR an freien Kanten
+  ctx.strokeStyle = "#1b0f06"; ctx.lineWidth = K; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const kx0 = x + K / 2, ky0 = y + K / 2, kx1 = x + w - K / 2, ky1 = y + h - K / 2;
+  ctx.beginPath();
+  if (frei(1)) { ctx.moveTo(kx0 + eck.ol, ky0); ctx.lineTo(kx1 - eck.or, ky0); }
+  if (frei(2)) { ctx.moveTo(kx1, ky0 + eck.or); ctx.lineTo(kx1, ky1 - eck.ur); }
+  if (frei(4)) { ctx.moveTo(kx1 - eck.ur, ky1); ctx.lineTo(kx0 + eck.ul, ky1); }
+  if (frei(8)) { ctx.moveTo(kx0, ky1 - eck.ul); ctx.lineTo(kx0, ky0 + eck.ol); }
+  ctx.stroke();
+  // runde Ecken nachziehen
+  ctx.beginPath();
+  if (eck.ol) { ctx.moveTo(kx0, ky0 + eck.ol); ctx.quadraticCurveTo(kx0, ky0, kx0 + eck.ol, ky0); }
+  if (eck.or) { ctx.moveTo(kx1 - eck.or, ky0); ctx.quadraticCurveTo(kx1, ky0, kx1, ky0 + eck.or); }
+  if (eck.ur) { ctx.moveTo(kx1, ky1 - eck.ur); ctx.quadraticCurveTo(kx1, ky1, kx1 - eck.ur, ky1); }
+  if (eck.ul) { ctx.moveTo(kx0 + eck.ul, ky1); ctx.quadraticCurveTo(kx0, ky1, kx0, ky1 - eck.ul); }
+  ctx.stroke();
+  // 5) feine Stossfuge an verbundenen Kanten — sonst verschwimmt der Zug
+  ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 0.7;
+  if (!frei(2)) { ctx.beginPath(); ctx.moveTo(x + w - 0.35, iy0 + 1); ctx.lineTo(x + w - 0.35, deckU - 0.5); ctx.stroke(); }
 }
 function __oldWall(ctx, px, py, base, hi, lo, mortar) {
   ctx.fillStyle = base;
@@ -244,12 +208,11 @@ const BALL_SPRITES = {};
 export function ballSprite(player) {
   if (!BALL_SPRITES[player]) {
     const HS = 24, BR = 8;
-    const c = document.createElement("canvas");
-    c.width = HS * 2; c.height = HS * 2;
+    const c = mkSpriteCanvas(HS * 2, HS * 2);
     const x = c.getContext("2d");
     // aeusserer Schein
     x.shadowColor = BALL_GLOW[player] || BALL_GLOW[1];
-    x.shadowBlur = 13;
+    x.shadowBlur = 13 * SK;
     const g = x.createRadialGradient(HS - 3, HS - 3.5, 0, HS, HS, BR);
     g.addColorStop(0, "#ffffff");
     g.addColorStop(0.30, BALL_MID[player] || BALL_MID[1]);
@@ -283,6 +246,10 @@ export function ballSprite(player) {
 // Licht global von OBEN LINKS - konsistent mit SHADOW_DX/DY und drawWall.
 const CASTLE_PAD = 16;
 export function castleSprite(player) {
+  // Comic-Burg (v3.129.0): heller Stein mit Zinnenkranz, vier Ecktuerme mit
+  // Kegeldaechern und ein Bergfried mit Walmdach in Spielerfarbe — dieselben
+  // Farben wie Mauern und Knoepfe, kraeftige Kontur wie im ganzen Spiel.
+  // Ersetzt das dunkle Bauwerk mit Neon-Ecken aus v3.43.0.
   if (!SPR.castle) SPR.castle = {};
   if (SPR.castle[player]) return SPR.castle[player];
   const S = CELL * 1.5;
@@ -290,200 +257,94 @@ export function castleSprite(player) {
   const c = mkSpriteCanvas(D, D);
   const x = c.getContext("2d");
   const cx = D / 2, cy = D / 2;
-  const roof = ROOF_OF[player] || "#2563eb";
-  const lt = { 1: "#93c5fd", 2: "#fca5a5", 3: "#6ee7b7" }[player] || "#93c5fd";
-  const glow = { 1: "rgba(59,130,246,", 2: "rgba(239,68,68,", 3: "rgba(16,185,129," }[player] || "rgba(59,130,246,";
-  const hash = (i) => Math.abs(Math.sin(i * 12.9898 + player * 7.13) * 43758.5453) % 1;
-  // 1) Schlagschatten (weich, entlang der Lichtachse)
-  x.save();
-  x.globalAlpha = 0.55;
-  x.fillStyle = "#000";
-  if (typeof x.filter === "string") x.filter = "blur(4px)";
-  roundRectPath(x, cx - S + 4, cy - S + 5, S * 2, S * 2, 5);
-  x.fill();
-  x.filter = "none";
-  x.restore();
-  // 2) Keep-Koerper - Verlauf diagonal entlang der Lichtachse
-  const bg = x.createLinearGradient(cx - S, cy - S, cx + S * 0.7, cy + S);
-  bg.addColorStop(0, "#69788f");
-  bg.addColorStop(0.45, "#3c4759");
-  bg.addColorStop(1, "#1b2230");
-  x.fillStyle = bg;
-  roundRectPath(x, cx - S, cy - S, S * 2, S * 2, 4);
-  x.fill();
-  // 3) Mauerwerk - versetzte Steinlagen, gibt der Flaeche Materialitaet
-  x.save();
-  roundRectPath(x, cx - S, cy - S, S * 2, S * 2, 4);
-  x.clip();
-  const courseH = S * 0.34;
-  for (let row = 0; row * courseH < S * 2; row++) {
-    const yy = cy - S + row * courseH;
-    x.strokeStyle = "rgba(0,0,0,0.34)";
-    x.lineWidth = 1;
-    x.beginPath();
-    x.moveTo(cx - S, yy);
-    x.lineTo(cx + S, yy);
-    x.stroke();
-    x.strokeStyle = "rgba(255,255,255,0.07)";
-    x.beginPath();
-    x.moveTo(cx - S, yy + 1);
-    x.lineTo(cx + S, yy + 1);
-    x.stroke();
-    const off = row % 2 ? courseH * 0.9 : 0;
-    for (let vx = cx - S + off; vx < cx + S; vx += courseH * 1.8) {
-      x.strokeStyle = "rgba(0,0,0,0.26)";
-      x.beginPath();
-      x.moveTo(vx, yy);
-      x.lineTo(vx, yy + courseH);
-      x.stroke();
-    }
+  const KO = "#1b0f06";
+  const pal = {
+    1: ["#9ad6ff", "#3f97ea", "#1f5fc4", "#123a80"],
+    2: ["#ffb6a3", "#ef4b34", "#a8261a", "#62140c"],
+    3: ["#bdf7a2", "#4fd36b", "#1c8a3a", "#0f5422"],
+  }[player] || ["#9ad6ff", "#3f97ea", "#1f5fc4", "#123a80"];
+  const [hell, mitte, tief, dunkel] = pal;
+  const stein = (y0, y1) => { const g = x.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, "#fbf0d4"); g.addColorStop(0.5, "#e6d1a4"); g.addColorStop(1, "#bc9d68"); return g; };
+  const umriss = (lw) => { x.lineWidth = lw; x.strokeStyle = KO; x.lineJoin = "round"; x.stroke(); };
+  // 1) Schlagschatten
+  x.fillStyle = "rgba(0,0,0,0.32)";
+  roundRectPath(x, cx - S + 3, cy - S + 4, S * 2, S * 2, 7); x.fill();
+  // 2) Burghof mit Mauerring
+  const B = S - 0.8;
+  x.fillStyle = stein(cy - B, cy + B);
+  roundRectPath(x, cx - B, cy - B, B * 2, B * 2, 6); x.fill(); umriss(1.6);
+  // Hof (etwas tiefer)
+  const H = B - 4.2;
+  x.fillStyle = "#cdb487";
+  roundRectPath(x, cx - H, cy - H, H * 2, H * 2, 3.5); x.fill();
+  x.lineWidth = 0.9; x.strokeStyle = "rgba(27,15,6,0.55)"; x.stroke();
+  // Zinnen auf dem Mauerring
+  x.fillStyle = "#fff6dc";
+  const zinne = (zx, zy) => { x.fillRect(zx - 1.3, zy - 1.3, 2.6, 2.6); x.lineWidth = 0.6; x.strokeStyle = "rgba(27,15,6,0.6)"; x.strokeRect(zx - 1.3, zy - 1.3, 2.6, 2.6); };
+  const zr = B - 2.1;
+  for (let t = -zr + 7; t <= zr - 7; t += 4.6) {
+    zinne(cx + t, cy - zr); zinne(cx + t, cy + zr);
+    zinne(cx - zr, cy + t); zinne(cx + zr, cy + t);
   }
-  // 4) Ambient Occlusion zur lichtabgewandten Seite
-  const ao = x.createLinearGradient(cx - S * 0.2, cy - S * 0.2, cx + S, cy + S);
-  ao.addColorStop(0, "rgba(0,0,0,0)");
-  ao.addColorStop(1, "rgba(0,0,0,0.38)");
-  x.fillStyle = ao;
-  x.fillRect(cx - S, cy - S, S * 2, S * 2);
-  x.restore();
-  // 5) Zinnenkranz oben - mit Lichtkante und eigenem Schatten auf den Koerper
-  const nM = 5, mW = (S * 2) / nM;
-  for (let i = 0; i < nM; i++) {
-    const mx = cx - S + i * mW;
-    x.fillStyle = "rgba(0,0,0,0.4)";
-    x.fillRect(mx + 2.4, cy - S - 4, mW - 3, 6);
-    const mg = x.createLinearGradient(mx, cy - S - 6, mx, cy - S + 1);
-    mg.addColorStop(0, "#5c6880");
-    mg.addColorStop(1, "#232b38");
-    x.fillStyle = mg;
-    x.fillRect(mx + 1, cy - S - 6, mW - 3, 7);
-    x.fillStyle = roof;
-    x.fillRect(mx + 1, cy - S - 6, mW - 3, 1.5);
-    x.fillStyle = "rgba(255,255,255,0.30)";
-    x.fillRect(mx + 1, cy - S - 4.5, 1, 5);
-  }
-  // 6) Ecktuerme - vier runde Bastionen mit Kegeldach in Spielerfarbe
+  // Tor unten (Holztor mit Bogen)
+  x.fillStyle = "#6b3f1d";
+  x.beginPath(); x.moveTo(cx - 3.4, cy + B + 0.4); x.lineTo(cx - 3.4, cy + B - 3.2);
+  x.arc(cx, cy + B - 3.2, 3.4, Math.PI, 0); x.lineTo(cx + 3.4, cy + B + 0.4); x.closePath(); x.fill(); umriss(1);
+  x.strokeStyle = "rgba(255,220,160,0.35)"; x.lineWidth = 0.5;
+  x.beginPath(); x.moveTo(cx, cy + B - 6.2); x.lineTo(cx, cy + B); x.stroke();
+  // 3) Bergfried mit Walmdach (vier Dachflaechen, Licht von oben links)
+  const k = 8.2, ky = cy - 0.8;
+  x.fillStyle = stein(ky - k - 1.5, ky + k + 1.5);
+  roundRectPath(x, cx - k - 1.5, ky - k - 1.5, (k + 1.5) * 2, (k + 1.5) * 2, 2.5); x.fill(); umriss(1.3);
+  const first = 2.2;   // kurzer First
+  const ecken = [[cx - k, ky - k], [cx + k, ky - k], [cx + k, ky + k], [cx - k, ky + k]];
+  const fa = [cx - first, ky], fb = [cx + first, ky];
+  const flaeche = (pts, farbe) => { x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (const q of pts.slice(1)) x.lineTo(q[0], q[1]); x.closePath(); x.fillStyle = farbe; x.fill(); };
+  flaeche([ecken[0], ecken[1], fb, fa], hell);      // oben
+  flaeche([ecken[1], ecken[2], fb], mitte);          // rechts
+  flaeche([ecken[2], ecken[3], fa, fb], tief);       // unten
+  flaeche([ecken[3], ecken[0], fa], mitte);          // links
+  x.strokeStyle = "rgba(27,15,6,0.55)"; x.lineWidth = 0.7;
+  x.beginPath();
+  x.moveTo(ecken[0][0], ecken[0][1]); x.lineTo(fa[0], fa[1]); x.lineTo(ecken[3][0], ecken[3][1]);
+  x.moveTo(ecken[1][0], ecken[1][1]); x.lineTo(fb[0], fb[1]); x.lineTo(ecken[2][0], ecken[2][1]);
+  x.moveTo(fa[0], fa[1]); x.lineTo(fb[0], fb[1]);
+  x.stroke();
+  x.beginPath(); x.rect(cx - k, ky - k, k * 2, k * 2); umriss(1.2);
+  // Dachziegel-Andeutung (helle Striche auf der Lichtseite)
+  x.strokeStyle = "rgba(255,255,255,0.35)"; x.lineWidth = 0.6;
+  for (let i = 1; i <= 2; i++) { const yy = ky - k + i * (k / 3); x.beginPath(); x.moveTo(cx - k + i * 2.2, yy); x.lineTo(cx + k - i * 2.2, yy); x.stroke(); }
+  // Fahne am First
+  x.strokeStyle = "#7a4a12"; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(fb[0], fb[1]); x.lineTo(fb[0] + 1, fb[1] - 9); x.stroke();
+  x.beginPath(); x.moveTo(fb[0] + 1, fb[1] - 9); x.lineTo(fb[0] + 8, fb[1] - 7); x.lineTo(fb[0] + 1, fb[1] - 4.8); x.closePath();
+  x.fillStyle = mitte; x.fill(); umriss(0.8);
+  x.fillStyle = "#ffd23a"; x.beginPath(); x.arc(fb[0] + 1, fb[1] - 9.4, 1.1, 0, Math.PI * 2); x.fill();
+  // 4) Ecktuerme mit Kegeldach
+  const T = B - 3.6, tr = 6.2;
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const tx = cx + sx * S, ty = cy + sy * S, tr = S * 0.34;
-    x.fillStyle = "rgba(0,0,0,0.5)";
-    x.beginPath();
-    x.arc(tx + 2, ty + 2.5, tr, 0, Math.PI * 2);
-    x.fill();
-    const tg = x.createRadialGradient(tx - tr * 0.4, ty - tr * 0.45, 0.5, tx, ty, tr);
-    tg.addColorStop(0, "#6b7890");
-    tg.addColorStop(0.55, "#38414f");
-    tg.addColorStop(1, "#141a24");
-    x.fillStyle = tg;
-    x.beginPath();
-    x.arc(tx, ty, tr, 0, Math.PI * 2);
-    x.fill();
-    // Zinnenkranz statt Vollring: der durchgehende Farbring ließ den Turm wie
-    // einen Knopf wirken. Einzelne Merlons lesen sich als Turmkrone von oben.
-    for (let mi = 0; mi < 7; mi++) {
-      const ma = mi / 7 * Math.PI * 2 + 0.3;
-      const mrx = tx + Math.cos(ma) * tr * 0.74, mry = ty + Math.sin(ma) * tr * 0.74;
-      x.fillStyle = "rgba(0,0,0,0.45)";
-      x.beginPath();
-      x.arc(mrx + 0.5, mry + 0.6, tr * 0.20, 0, Math.PI * 2);
-      x.fill();
-      // Lichtseite (oben links) heller als Schattenseite
-      const litT = (Math.cos(ma) < 0.15 && Math.sin(ma) < 0.15) ? 1 : 0;
-      x.fillStyle = litT ? "#7c8aa4" : "#3c4657";
-      x.beginPath();
-      x.arc(mrx, mry, tr * 0.19, 0, Math.PI * 2);
-      x.fill();
-    }
-    // Dunkle Turmöffnung mit farbigem Innenlicht (Team-Erkennung bleibt)
-    x.fillStyle = "#0d1119";
-    x.beginPath();
-    x.arc(tx, ty, tr * 0.42, 0, Math.PI * 2);
-    x.fill();
-    const tglow = x.createRadialGradient(tx, ty, 0.5, tx, ty, tr * 0.42);
-    tglow.addColorStop(0, roof);
-    tglow.addColorStop(1, glow + "0)");
-    x.fillStyle = tglow;
-    x.beginPath();
-    x.arc(tx, ty, tr * 0.42, 0, Math.PI * 2);
-    x.fill();
-    // Rim-Light auf der Lichtseite des Turms
-    x.strokeStyle = "rgba(255,255,255,0.34)";
-    x.lineWidth = 1.3;
-    x.beginPath();
-    x.arc(tx, ty, tr - 0.7, Math.PI * 0.8, Math.PI * 1.7);
-    x.stroke();
+    const tx = cx + sx * T, ty = cy + sy * T;
+    x.fillStyle = "rgba(0,0,0,0.28)";
+    x.beginPath(); x.arc(tx + 1.4, ty + 1.8, tr, 0, Math.PI * 2); x.fill();
+    x.fillStyle = stein(ty - tr, ty + tr);
+    x.beginPath(); x.arc(tx, ty, tr, 0, Math.PI * 2); x.fill(); umriss(1.4);
+    const rr = tr - 1.6;
+    const g = x.createRadialGradient(tx - rr * 0.45, ty - rr * 0.5, 0.3, tx, ty, rr);
+    g.addColorStop(0, hell); g.addColorStop(0.55, mitte); g.addColorStop(1, tief);
+    x.fillStyle = g;
+    x.beginPath(); x.arc(tx, ty, rr, 0, Math.PI * 2); x.fill(); umriss(1);
+    x.strokeStyle = "rgba(27,15,6,0.45)"; x.lineWidth = 0.6;
+    for (let i = 0; i < 6; i++) { const w2 = i / 6 * Math.PI * 2 + 0.3; x.beginPath(); x.moveTo(tx, ty); x.lineTo(tx + Math.cos(w2) * rr, ty + Math.sin(w2) * rr); x.stroke(); }
+    x.fillStyle = "#ffd23a"; x.beginPath(); x.arc(tx, ty, 1.2, 0, Math.PI * 2); x.fill();
+    x.lineWidth = 0.6; x.strokeStyle = KO; x.stroke();
   }
-  // 7) Innenhof - dunkle Vertiefung mit warmem Eigenlicht (bewohnt wirken)
-  const yardR = S * 0.62;
-  const yg = x.createRadialGradient(cx, cy - S * 0.1, 1, cx, cy - S * 0.1, yardR);
-  yg.addColorStop(0, glow + "0.30)");
-  yg.addColorStop(0.6, "rgba(12,17,24,0.55)");
-  yg.addColorStop(1, "rgba(8,11,16,0.75)");
-  x.fillStyle = yg;
-  roundRectPath(x, cx - yardR, cy - S * 0.72, yardR * 2, yardR * 1.5, 5);
-  x.fill();
-  // 8) Torbogen unten - Tiefe durch dunklen Kern + beleuchtete Laibung
-  x.fillStyle = "#080c12";
-  roundRectPath(x, cx - 6, cy + S * 0.18, 12, S * 0.82, 5);
-  x.fill();
-  x.strokeStyle = glow + "0.65)";
-  x.lineWidth = 1.3;
-  x.stroke();
-  x.fillStyle = "rgba(255,255,255,0.18)";
-  roundRectPath(x, cx - 6, cy + S * 0.18, 3, S * 0.82, 3);
-  x.fill();
-  // 9) Wappen-Scheibe mit Glow
-  const crestY = cy - S * 0.36;
-  const crestGlow = x.createRadialGradient(cx, crestY, CELL * 0.15, cx, crestY, CELL * 0.9);
-  crestGlow.addColorStop(0, glow + "0.34)");
-  crestGlow.addColorStop(1, glow + "0)");
-  x.fillStyle = crestGlow;
-  x.beginPath();
-  x.arc(cx, crestY, CELL * 0.9, 0, Math.PI * 2);
-  x.fill();
-  const disc = x.createRadialGradient(cx - 2, crestY - 2, 0.5, cx, crestY, CELL * 0.62);
-  disc.addColorStop(0, "#39424f");
-  disc.addColorStop(1, "#151b25");
-  x.fillStyle = disc;
-  x.beginPath();
-  x.arc(cx, crestY, CELL * 0.62, 0, Math.PI * 2);
-  x.fill();
-  x.strokeStyle = lt;
-  x.lineWidth = 1.5;
-  x.beginPath();
-  x.arc(cx, crestY, CELL * 0.62, 0, Math.PI * 2);
-  x.stroke();
-  x.fillStyle = "rgba(255,255,255,0.96)";
-  x.font = `${CELL * 0.7}px serif`;
-  x.textAlign = "center";
-  x.textBaseline = "middle";
-  x.fillText(FLAG_OF[player] || "♔", cx, crestY);
-  x.textAlign = "left";
-  x.textBaseline = "alphabetic";
-  // 10) Steinkorn + helle Fase oben/links (Licht) als Abschluss
-  x.save();
-  roundRectPath(x, cx - S, cy - S, S * 2, S * 2, 4);
-  x.clip();
-  for (let i = 0; i < 26; i++) {
-    x.fillStyle = hash(i) > 0.5 ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.14)";
-    x.beginPath();
-    x.arc(cx - S + hash(i + 3) * S * 2, cy - S + hash(i + 60) * S * 2, 0.6 + hash(i + 9) * 1.3, 0, Math.PI * 2);
-    x.fill();
-  }
-  x.restore();
-  x.strokeStyle = "rgba(255,255,255,0.34)";
-  x.lineWidth = 1.4;
-  x.beginPath();
-  x.moveTo(cx - S + 1, cy + S - 4);
-  x.lineTo(cx - S + 1, cy - S + 3);
-  x.lineTo(cx - S + 4, cy - S + 1);
-  x.lineTo(cx + S - 4, cy - S + 1);
-  x.stroke();
   SPR.castle[player] = c;
   return c;
 }
 export function drawCastle(ctx, cx, cy, player, open, now) {
   const S = CELL * 1.5;
   const spr = castleSprite(player);
-  ctx.drawImage(spr, cx - spr.width / 2, cy - spr.height / 2);
+  ctx.drawImage(spr, cx - spr.lw / 2, cy - spr.lh / 2, spr.lw, spr.lh);
   if (open) {
     const a = 0.4 + 0.3 * Math.sin(now / 180);
     ctx.strokeStyle = `rgba(239,68,68,${a})`;
@@ -513,16 +374,33 @@ export function roundRectPath(ctx, x, y, w, h, r) {
 // vorgerendert; pro Frame bleibt nur drawImage (Blit, um Gr\u00f6\u00dfenordnungen
 // billiger). NIEMALS wieder Gradients/shadowBlur pro Objekt pro Frame!
 export const SPR = { wall: {}, rubble: null, dome: {}, barrel: {} };
+// Sprites in DREIFACHER Aufloesung (v3.129.0). Das Spielfeld rechnet in
+// logischen 616x952 Punkten, ein iPhone zeigt es aber mit ~1,9 Geraetepixeln je
+// Punkt — 14-px-Sprites wurden dabei hochskaliert und weich. Jetzt hat jedes
+// Sprite-Canvas SK-fach Pixel, sein Kontext ist vorskaliert (gezeichnet wird
+// weiter in logischen Einheiten), und `lw`/`lh` tragen die LOGISCHE Groesse.
+// Gezeichnet wird ueber `blit()` bzw. mit ausdruecklicher Zielgroesse —
+// NIE `drawImage(spr, x, y)` ohne Groesse, das waere SK-fach zu gross.
+export const SK = 3;
 export function mkSpriteCanvas(w, h) {
   const c = document.createElement("canvas");
-  c.width = Math.ceil(w);
-  c.height = Math.ceil(h);
+  c.lw = Math.ceil(w); c.lh = Math.ceil(h);
+  c.width = c.lw * SK;
+  c.height = c.lh * SK;
+  const x = c.getContext("2d");
+  x.setTransform(SK, 0, 0, SK, 0, 0);
   return c;
 }
+/** Sprite in logischer Groesse zeichnen. */
+export function blit(ctx, spr, x, y) {
+  ctx.drawImage(spr, x, y, spr.lw || spr.width, spr.lh || spr.height);
+}
+// [Grundton, hell, tief, Vorderseite] — aus der Knopf-Palette von ui/stil.js,
+// damit Mauern, Knoepfe und Spielerkaesten DIESELBEN Spielerfarben tragen.
 const WALL_SPRITE_COLORS = {
-  [1]: ["#3b82f6", "#93c5fd", "#1e40af", "#172a63"],
-  [2]: ["#ef4444", "#fca5a5", "#991b1b", "#5e1414"],
-  [10]: ["#10b981", "#6ee7b7", "#065f46", "#044a37"]
+  [1]: ["#3f97ea", "#9ad6ff", "#2a6fd0", "#173f8f"],
+  [2]: ["#ef4b34", "#ffb6a3", "#c4321f", "#6f1a10"],
+  [10]: ["#4fd36b", "#bdf7a2", "#2a9f47", "#11602a"]
 };
 export const WALL_VARIANTEN = 4;
 // Gebacken wird je (Farbe, Variante, Nachbarschaftsmaske) — und zwar LAZY:
@@ -856,7 +734,7 @@ export function cannonBarrelSprite(player, skinId, skinDef) {
     x.fillStyle = n.ac;
     x.fillRect(ox + CELL * 0.2, oy - 1, barrelLen - CELL * 0.55, 1.3);
     x.shadowColor = n.ac;
-    x.shadowBlur = 9;
+    x.shadowBlur = 9 * SK;
     x.fillStyle = skinDef ? skinDef.core : n.lt;
     roundRectPath(x, ox + barrelLen - CELL * 0.4, oy - barrelW / 2 - 1.5, 4.5, barrelW + 3, 2);
     x.fill();
@@ -1331,12 +1209,14 @@ const KONTUR = "#1b0f06";
 export function comicKontur(src, d = 1.6) {
   if (typeof document === "undefined") return src;
   const P = Math.ceil(d) + 1;
-  const c = mkSpriteCanvas(src.width + P * 2, src.height + P * 2);
+  const LW = src.lw || src.width, LH = src.lh || src.height;
+  const c = mkSpriteCanvas(LW + P * 2, LH + P * 2);
   const x = c.getContext("2d");
-  // Maske: Sprite ohne halbdurchsichtige Anteile, eingefaerbt
-  const m = mkSpriteCanvas(src.width, src.height);
+  // Maske: Sprite ohne halbdurchsichtige Anteile, eingefaerbt — in PIXELN
+  // des Quell-Sprites (kein vorskalierter Kontext)
+  const m = document.createElement("canvas"); m.width = src.width; m.height = src.height;
   const mx = m.getContext("2d");
-  mx.drawImage(src, 0, 0);
+  mx.drawImage(src, 0, 0); // Pixelraum: Maske in Quellpixeln
   try {
     const img = mx.getImageData(0, 0, m.width, m.height), a = img.data;
     for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 150; a[i] = 27; a[i + 1] = 15; a[i + 2] = 6; a[i + 3] = on ? 255 : 0; }
@@ -1346,15 +1226,105 @@ export function comicKontur(src, d = 1.6) {
   }
   for (let k = 0; k < 8; k++) {
     const w = k / 8 * Math.PI * 2;
-    x.drawImage(m, P + Math.cos(w) * d, P + Math.sin(w) * d);
+    x.drawImage(m, P + Math.cos(w) * d, P + Math.sin(w) * d, LW, LH);
   }
-  x.drawImage(src, P, P);
+  x.drawImage(src, P, P, LW, LH);
   return c;
 }
 function comicTurm(t) {
   if (!t || !t.canvas || typeof document === "undefined") return t;
   const P = Math.ceil(1.6) + 1;
   return { canvas: comicKontur(t.canvas), ox: t.ox + P, oy: t.oy + P };
+}
+
+// ── Comic-Standardkanone (v3.129.0) ─────────────────────────────────────────
+// Das Standardmodell (ohne gekaufte Skin) war ein dunkler Geschuetzturm mit
+// Neonringen — technisch, nicht mittelalterlich, und nicht im Comic-Stil.
+// Jetzt: Holzplattform mit Eisenrand, Spielerring, schwarzer Eisenlauf mit
+// Bronzeringen. Masse, Drehpunkt und Rohrlaenge wie vorher (Zielen/Treffer
+// unveraendert). Gekaufte Skins behalten ihr eigenes Aussehen.
+const KANONE_PAL = {
+  1: ["#9ad6ff", "#3f97ea", "#1f5fc4"],
+  2: ["#ffb6a3", "#ef4b34", "#a8261a"],
+  3: ["#bdf7a2", "#4fd36b", "#1c8a3a"],
+};
+function comicKanoneSockel(player) {
+  const R = CELL * 1.6, D = Math.ceil(R * 2.3);
+  const c = mkSpriteCanvas(D, D); const x = c.getContext("2d");
+  const cx = D / 2, cy = D / 2, KO = "#1b0f06";
+  const [hell, mitte, tief] = KANONE_PAL[player] || KANONE_PAL[1];
+  const r = R * 0.9;
+  // Holzplattform
+  const g = x.createRadialGradient(cx - r * 0.35, cy - r * 0.4, 1, cx, cy, r);
+  g.addColorStop(0, "#e8b878"); g.addColorStop(0.55, "#b77a40"); g.addColorStop(1, "#7a4a22");
+  x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
+  // Bohlen
+  x.save(); x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.clip();
+  x.strokeStyle = "rgba(60,30,10,0.45)"; x.lineWidth = 0.8;
+  for (let i = -3; i <= 3; i++) { x.beginPath(); x.moveTo(cx + i * 5.6, cy - r); x.lineTo(cx + i * 5.6, cy + r); x.stroke(); }
+  x.restore();
+  // Eisenrand mit Glanz
+  x.lineWidth = 2.6; x.strokeStyle = "#3a3f4a"; x.beginPath(); x.arc(cx, cy, r - 1.4, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 1; x.strokeStyle = "rgba(255,255,255,0.45)"; x.beginPath(); x.arc(cx, cy, r - 1.6, Math.PI * 1.05, Math.PI * 1.6); x.stroke();
+  // Bolzen
+  for (let i = 0; i < 8; i++) { const w = i / 8 * Math.PI * 2 + Math.PI / 8; x.fillStyle = "#d9dde6"; x.beginPath(); x.arc(cx + Math.cos(w) * (r - 1.4), cy + Math.sin(w) * (r - 1.4), 0.9, 0, Math.PI * 2); x.fill(); }
+  // Spielerring
+  x.lineWidth = 2.8; x.strokeStyle = mitte; x.beginPath(); x.arc(cx, cy, r * 0.62, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 0.8; x.strokeStyle = hell; x.beginPath(); x.arc(cx, cy, r * 0.62 + 0.5, Math.PI * 1.1, Math.PI * 1.6); x.stroke();
+  x.lineWidth = 0.7; x.strokeStyle = KO;
+  x.beginPath(); x.arc(cx, cy, r * 0.62 + 1.4, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.arc(cx, cy, r * 0.62 - 1.4, 0, Math.PI * 2); x.stroke();
+  // Aussenkontur
+  x.lineWidth = 1.6; x.strokeStyle = KO; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.stroke();
+  return c;
+}
+function comicKanoneRohr(player) {
+  const R = CELL * 1.6, barrelLen = CELL * 2.9, PAD = 12;
+  const W2 = Math.ceil(R * 0.95 + barrelLen + PAD * 2), H2 = Math.ceil(R * 1.5 + PAD * 2);
+  const c = mkSpriteCanvas(W2, H2); const x = c.getContext("2d");
+  const ox = PAD + R * 0.62, oy = H2 / 2, KO = "#1b0f06";
+  const [hell, mitte, tief] = KANONE_PAL[player] || KANONE_PAL[1];
+  const x0 = ox - R * 0.1, x1 = ox + R * 0.25 + barrelLen * 0.78;
+  const hb = 5.8, hv = 4.4;              // halbe Laufbreite hinten / vorn
+  const lauf = () => {
+    x.beginPath();
+    x.moveTo(x0, oy - hb); x.lineTo(x1, oy - hv); x.lineTo(x1, oy + hv); x.lineTo(x0, oy + hb);
+    x.arc(x0, oy, hb, Math.PI / 2, Math.PI * 1.5); x.closePath();
+  };
+  // Schlagschatten
+  x.save(); x.translate(1.6, 2.4); lauf(); x.fillStyle = "rgba(0,0,0,0.32)"; x.fill(); x.restore();
+  // Eisenlauf
+  const g = x.createLinearGradient(0, oy - hb, 0, oy + hb);
+  g.addColorStop(0, "#7c8597"); g.addColorStop(0.35, "#3a404c"); g.addColorStop(1, "#14171d");
+  lauf(); x.fillStyle = g; x.fill(); x.lineWidth = 1.5; x.strokeStyle = KO; x.lineJoin = "round"; x.stroke();
+  // Glanzlinie oben
+  x.strokeStyle = "rgba(255,255,255,0.45)"; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(x0 + 2, oy - hb + 1.6); x.lineTo(x1 - 3, oy - hv + 1.4); x.stroke();
+  // Ringe: Spielerfarbe hinten, Bronze vorn
+  const ring = (t, farbeA, farbeB, extra) => {
+    const xx = x0 + (x1 - x0) * t, hw = hb + (hv - hb) * t + (extra || 0.9);
+    const gg = x.createLinearGradient(0, oy - hw, 0, oy + hw); gg.addColorStop(0, farbeA); gg.addColorStop(1, farbeB);
+    x.fillStyle = gg; x.beginPath(); x.rect(xx - 1.6, oy - hw, 3.2, hw * 2); x.fill();
+    x.lineWidth = 0.9; x.strokeStyle = KO; x.stroke();
+  };
+  ring(0.12, hell, tief, 1.1);
+  ring(0.5, "#ffe08a", "#a8701c");
+  // Muendungswulst + Rohroeffnung
+  const mx = x1, mw = hv + 1.8;
+  const mg = x.createLinearGradient(0, oy - mw, 0, oy + mw); mg.addColorStop(0, "#ffe08a"); mg.addColorStop(1, "#a8701c");
+  x.fillStyle = mg; roundRectPath(x, mx - 2.2, oy - mw, 4.4, mw * 2, 1.6); x.fill(); x.lineWidth = 1.1; x.strokeStyle = KO; x.stroke();
+  x.fillStyle = "#0b0d11"; x.beginPath(); x.ellipse(mx + 1.6, oy, 1.4, hv - 0.6, 0, 0, Math.PI * 2); x.fill();
+  // Nabe mit Spielerkappe
+  const nr = R * 0.42;
+  const ng = x.createRadialGradient(ox - nr * 0.4, oy - nr * 0.45, 0.5, ox, oy, nr);
+  ng.addColorStop(0, "#9aa3b5"); ng.addColorStop(0.6, "#454c5a"); ng.addColorStop(1, "#1d2129");
+  x.fillStyle = ng; x.beginPath(); x.arc(ox, oy, nr, 0, Math.PI * 2); x.fill(); x.lineWidth = 1.4; x.strokeStyle = KO; x.stroke();
+  const kr = nr * 0.55;
+  const kg = x.createRadialGradient(ox - kr * 0.4, oy - kr * 0.45, 0.3, ox, oy, kr);
+  kg.addColorStop(0, hell); kg.addColorStop(0.6, mitte); kg.addColorStop(1, tief);
+  x.fillStyle = kg; x.beginPath(); x.arc(ox, oy, kr, 0, Math.PI * 2); x.fill(); x.lineWidth = 0.9; x.strokeStyle = KO; x.stroke();
+  x.fillStyle = "#ffd23a"; x.beginPath(); x.arc(ox, oy, 1.1, 0, Math.PI * 2); x.fill();
+  return { canvas: c, ox, oy };
 }
 
 export function cannonBaseSprite(player, skinId, skinDef, kt) {
@@ -1364,6 +1334,7 @@ export function cannonBaseSprite(player, skinId, skinDef, kt) {
   if (kt === "slayer") return (SPR.base[key] = comicKontur(slayerBaseSprite(player)));
   if (skinDef && skinDef.form)
     return (SPR.base[key] = comicKontur(formBaseSprite(player, skinDef.form, skinDef.dome, skinDef.core)));
+  if (!skinDef) return (SPR.base[key] = comicKanoneSockel(player));
   const R = CELL * 1.6;
   const D = Math.ceil(R * 2.3);
   const c = mkSpriteCanvas(D, D);
@@ -1446,6 +1417,7 @@ export function cannonTurretSprite(player, skinId, skinDef, kt) {
   if (kt === "slayer") return (SPR.turret[key] = comicTurm(slayerTurretSprite(player)));
   if (skinDef && skinDef.form)
     return (SPR.turret[key] = comicTurm(formTurretSprite(player, skinDef.form, skinDef.dome, skinDef.core)));
+  if (!skinDef) return (SPR.turret[key] = comicKanoneRohr(player));
   const R = CELL * 1.6;
   const barrelLen = CELL * 2.9, barrelW = 8.5;
   const PAD = 12;
@@ -1461,7 +1433,7 @@ export function cannonTurretSprite(player, skinId, skinDef, kt) {
   x.save();
   x.globalAlpha = 0.5;
   x.fillStyle = "#000";
-  if (typeof x.filter === "string") x.filter = "blur(3px)";
+  if (typeof x.filter === "string") x.filter = "blur(" + 3 * SK + "px)";
   roundRectPath(x, ox - R * 0.55 + 2, oy - R * 0.5 + 3, R * 1.1 + barrelLen * 0.5, R, 7);
   x.fill();
   x.filter = "none";
@@ -1594,24 +1566,25 @@ export function drawCannonFull(ctx, cx, cy, angle, player, reloadFrac, nowT, ski
   // FESTER Unterbau: Panzerplatte + Turmring (dreht NICHT mit — das ist der
   // Kern des Redesigns v3.45.0; vorher rotierte nur ein Stab an einer Kuppel)
   const base = cannonBaseSprite(player, skinId, skinDef, kt);
-  ctx.drawImage(base, cx - base.width / 2, cy - base.height / 2);
+  ctx.drawImage(base, cx - base.lw / 2, cy - base.lh / 2, base.lw, base.lh);
   // ROTIERENDER Turm: Gehäuse + Rohr + Rücklaufzylinder + Mündungsbremse
   const tur = cannonTurretSprite(player, skinId, skinDef, kt);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angle);
-  ctx.drawImage(tur.canvas, -tur.ox, -tur.oy);
+  ctx.drawImage(tur.canvas, -tur.ox, -tur.oy, tur.canvas.lw, tur.canvas.lh);
   ctx.restore();
   // Kuppel-Sprite liefert weiterhin die Skin-Signatur (Facetten/Runen/Schuppen)
   // als Aufsatz auf dem Turmdach — kleiner skaliert, damit der Turm dominiert.
   // Skins mit eigener Form tragen KEINE Kuppel mehr — ihr Modell IST die
   // Signatur. Die runde Scheibe lag frueher ueber jedem Sockel und machte
   // alle Kanonen wieder gleich; genau das sollte die Formvielfalt beheben.
-  if (kt !== "slayer" && !(skinDef && skinDef.form)) {
+  // Standardmodell (ohne Skin) traegt seit v3.129.0 eine eigene Nabe — keine Kuppel
+  if (kt !== "slayer" && skinDef && !skinDef.form) {
     const dome = cannonDomeSprite(player, skinId, skinDef);
     ctx.save();
     ctx.globalAlpha = 0.92;
-    ctx.drawImage(dome, cx - dome.width * 0.31, cy - dome.height * 0.31, dome.width * 0.62, dome.height * 0.62);
+    ctx.drawImage(dome, cx - dome.lw * 0.31, cy - dome.lh * 0.31, dome.lw * 0.62, dome.lh * 0.62);
     ctx.restore();
   }
   // ── Kennzeichnung Kanonen-Bezwinger ────────────────────────────────────

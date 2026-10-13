@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.128.0
+- **Aktuelle Version**: v3.129.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -318,6 +318,14 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 - **`setGrid(newG)`** muss verwendet werden (erhöht `gridVersion`) — NIE `grid.current =` direkt
 - **`canvasRect.current`**: nur bei pointerdown/resize/scroll neu holen, nicht bei pointermove
 - Alle Spielzustände in **Refs** (keine React-Re-Renders im Render-Loop)
+- **Schaerfe (seit v3.129.0):** Das Spielfeld rendert mit Faktor `renderK`
+  (Retina-Faktor × Anzeigegroesse / 616, Viertelschritte, max 2,5); gerechnet
+  wird weiter in logischen 616×952. Sprites haben `SK`=3-fache Pixel
+  (`mkSpriteCanvas`, logische Groesse in `lw`/`lh`). Darum: **`drawImage` im
+  Spielfeld IMMER mit Zielgroesse** (`tests/stil.test.js` erzwingt 5 oder 9
+  Argumente), `shadowBlur`/`filter: blur()` mit `SK` bzw. `RK` multiplizieren
+  (wirken in Pixeln). Gemessen: Zeichendauer 0,4 ms/Bild bei 616×952 wie bei
+  1232×1904.
 - **Sprite-Cache `SPR` (seit v3.15.5)**: Mauern/Trümmer/Kanonenkuppel/-rohr/Bälle werden EINMAL offscreen vorgerendert und pro Frame nur geblittet. Zonen-Overlay in `zoneCanvas` (Key: gridVersion). NIE Gradients oder `shadowBlur` pro Objekt pro Frame in den Render-Loop — das war die Lag-Ursache ab ~15 Kanonen auf Mobilgeräten. Perf-Messung: `window.__perfDbg=true` → `__frameMs` (Zeichendauer, gated).
 
 ---
