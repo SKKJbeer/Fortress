@@ -240,3 +240,19 @@ test("Rechtstexte: ein gemeinsamer Stil, an beiden Adressen vorhanden", () => {
     assert.ok(existsSync(join(WURZEL, "public", u)), `${u} fehlt in public/`);
   }
 });
+
+test("Website: Bildschirmfotos laden sofort, nicht verzoegert (Safari)", () => {
+  // Gemeldet vom iPhone: schwarze Bildschirme in den Telefonrahmen. Safari laedt
+  // `loading="lazy"` erst, wenn das Bild fast im Sichtfeld ist — bis dahin
+  // zeigte das Glas seinen fast schwarzen Hintergrund. Nachgemessen mit
+  // WebKit: im Durchlauf fehlten nach 1,5 s 40 von 49 Bildern. Verzoegert
+  // bleiben nur die kleinen Avatar- und Artikelbilder.
+  for (const [name, html] of [["de", WEB], ["en", EN]]) {
+    for (const tag of html.match(/<img\b[^>]*>/g)) {
+      if (/src="(?:\.\.\/)?bilder\//.test(tag))
+        assert.doesNotMatch(tag, /loading="lazy"/, `${name}: Bildschirmfoto verzoegert geladen: ${tag.slice(0, 80)}`);
+    }
+  }
+  assert.doesNotMatch(lies("docs", "website", "stil.css").match(/\.geraet \.glas \{[^}]*\}/)[0], /background:\s*#0/,
+    "Glas-Platzhalter wieder fast schwarz");
+});

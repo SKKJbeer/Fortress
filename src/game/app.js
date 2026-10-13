@@ -7299,7 +7299,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.130.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.130.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

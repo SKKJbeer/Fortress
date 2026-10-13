@@ -230,9 +230,13 @@ h3 { color: var(--goldhell); text-shadow: 0 3px 0 var(--goldtief), var(--kontur-
     0 3cqw 0 .6cqw var(--kontur),
     0 8cqw 14cqw -3cqw rgba(0,0,0,.7);
 }
+/* **Kein Schwarz als Platzhalter (v3.130.2).** Bis das Bild da ist, zeigt das
+   Glas Spielblau statt fast Schwarz — auf dem iPhone sah ein noch ladender
+   Bildschirm sonst aus wie ein kaputtes Bild (gemeldet). */
 .geraet .glas {
   position: relative; display: block; overflow: hidden;
-  border-radius: 11.1cqw; background: #05070c;
+  border-radius: 11.1cqw;
+  background: linear-gradient(165deg, #2c69c9 0%, #1d4a9e 40%, var(--nacht) 100%);
   box-shadow: inset 0 0 0 .28cqw rgba(0,0,0,.9);
 }
 .geraet .glas img { display: block; width: 100%; }

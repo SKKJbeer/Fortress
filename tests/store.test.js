@@ -95,3 +95,16 @@ test("Store-Bildschirmfotos haben Apples Pflichtmasse", () => {
     for (const n of ["menu", "game", "shoot", "shop"])
       assert.deepEqual(masse(join(WURZEL, "store", ordner, n + ".png")), [w, h], `${ordner}/${n}.png`);
 });
+
+test("Veroeffentlichen nur mit Eingabe FREIGEBEN — im Ablauf UND im Skript", () => {
+  // Nicht zuruecknehmbar: einmal veroeffentlicht, ist die App oeffentlich.
+  // Zwei Riegel, damit ein Tippfehler im Ablauf allein nicht reicht.
+  const ablauf = readFileSync(join(WURZEL, ".github", "workflows", "appstore.yml"), "utf8");
+  assert.match(ablauf, /freigeben\)\s*\n\s*if \[ "\$BESTAETIGUNG" != "FREIGEBEN" \]; then[\s\S]{0,200}exit 1[\s\S]{0,40}python3 scripts\/asc-freigeben\.py --freigeben ;;/);
+  assert.match(ablauf, /freigeben-probe\) python3 scripts\/asc-freigeben\.py ;;/);
+  const s = readFileSync(join(WURZEL, "scripts", "asc-freigeben.py"), "utf8");
+  assert.match(s, /if wirklich and os\.environ\.get\("BESTAETIGUNG"\) != "FREIGEBEN":\s*\n[^\n]*\n\s*return 1/);
+  const anfrage = s.indexOf('apple.anlegen("v1/appStoreVersionReleaseRequests"');
+  assert.ok(anfrage > s.indexOf('if not wirklich:'), "der Trockenlauf muss VOR der Veroeffentlichung aussteigen");
+  assert.ok(anfrage > s.indexOf('if zustand != "PENDING_DEVELOPER_RELEASE":'));
+});

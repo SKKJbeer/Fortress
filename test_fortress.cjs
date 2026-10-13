@@ -1735,12 +1735,20 @@ async function suiteMatchmaking(browser, fbPort) {
         if (backfilled) {
           const isBot = await pE.evaluate(() => window.__botMode ? window.__botMode() : null);
           isBot === true ? ok('Bot-Backfill: Bot-Modus aktiv (kein ELO) ✓') : fail(`Bot-Backfill: botMode=${isBot}`);
-          // Ticket muss aus der Queue gelöscht sein (keine Geister-Suche)
-          const q = await pE.evaluate(async (port) => {
-            try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=queue2')).json(); } catch (e) { return 'ERR'; }
-          }, fbPort);
-          const qN = q && q !== 'ERR' ? Object.keys(q).length : 0;
-          qN === 0 ? ok('Bot-Backfill: Queue-Ticket gelöscht ✓') : fail(`Bot-Backfill: ${qN} Ticket(s) übrig`);
+          // Ticket muss aus der Queue gelöscht sein (keine Geister-Suche).
+          // Wartebedingung statt Momentaufnahme (v3.130.2): das Loeschen laeuft
+          // asynchron nach dem Spielstart; im vollen Lauf las die Pruefung
+          // einmal zu frueh. Bleibt das Ticket 4 s stehen, ist es eine Leiche.
+          let q = null, qN = -1;
+          for (let i = 0; i < 20 && qN !== 0; i++) {
+            if (i) await pE.waitForTimeout(200);
+            q = await pE.evaluate(async (port) => {
+              try { return await (await fetch('http://localhost:' + port + '/fb?op=get&path=queue2')).json(); } catch (e) { return 'ERR'; }
+            }, fbPort);
+            qN = q && q !== 'ERR' ? Object.keys(q).length : 0;
+          }
+          qN === 0 ? ok('Bot-Backfill: Queue-Ticket gelöscht ✓')
+                   : fail(`Bot-Backfill: ${qN} Ticket(s) nach 4 s übrig — ${JSON.stringify(q).slice(0, 200)}`);
         }
       }
     } finally {

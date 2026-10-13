@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9365,3 +9365,26 @@ harmonisch und gleich".
   aus. Erst hochladen, dann die alten loeschen — bei einem Fehler bleiben die
   alten stehen, der Eintrag ist nie leer. Wiederholbar ueber Pruefsummen.
   Unit-Test haelt die Reihenfolge fest; Gegenprobe rot.
+
+## v3.130.2 — Website: keine schwarzen Bildschirme mehr auf dem iPhone
+
+- **Gemeldet:** Auf dem iPhone zeigten die Telefonrahmen der Website schwarze
+  Bildschirme. **Ursache, nachgemessen mit WebKit** (Safaris Engine):
+  `loading="lazy"` laedt in Safari erst, wenn das Bild fast im Sichtfeld ist;
+  bis dahin zeigte das Glas seinen fast schwarzen Hintergrund. Im Durchlauf
+  gegen die Live-Seite fehlten nach 1,5 s 40 von 49 Bildern. Einzeln
+  angesteuert und abgewartet luden alle — die Dateien selbst waren in Ordnung.
+- **Behoben:** Bildschirmfotos und Welten laden sofort (17 je Sprache);
+  verzoegert bleiben nur Avatare und Artikel. Das Glas zeigt beim Laden
+  Spielblau statt Schwarz.
+- **Unit-Test:** kein `loading="lazy"` an Bildern aus `bilder/`, kein fast
+  schwarzer Glas-Platzhalter. Gegenprobe rot.
+- **App-Store-Veroeffentlichung per Ablauf:** `scripts/asc-freigeben.py`,
+  `appstore.yml` Modi `freigeben-probe` (nur lesen: Zustand, Bau,
+  Verfuegbarkeit) und `freigeben` (Eingabe FREIGEBEN, im Ablauf UND im
+  Skript geprueft). Veroeffentlicht nur aus `PENDING_DEVELOPER_RELEASE`.
+  Unit-Test haelt beide Riegel; Gegenprobe rot.
+- **Pruefung repariert („Bot-Backfill: 1 Ticket(s) uebrig"):** las die
+  Warteschlange im selben Augenblick wie den Spielstart; das Loeschen laeuft
+  asynchron. Jetzt bis 4 s warten, Meldung nennt das uebrige Ticket.
+  Gegenprobe mit kuenstlicher Ticket-Leiche: rot.

@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.130.1
+- **Aktuelle Version**: v3.130.2
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -473,6 +473,11 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   (Vorschaubilder fuer Spiel, Website DE/EN und Google Play aus EINER
   Gestaltung). Gross-/Querformate am Telefon messen: `scrollWidth` muss 390
   bleiben — lange deutsche Woerter schoben die Seite einmal auf 457 px.
+  **Safari pruefen, nicht nur Chromium** (v3.130.2): Bildschirmfotos ohne
+  `loading="lazy"` — Safari laedt verzoegerte Bilder so spaet, dass die
+  Telefonrahmen beim Scrollen schwarz blieben. WebKit laesst sich hier
+  nachinstallieren (`PLAYWRIGHT_BROWSERS_PATH=<scratchpad>/pw npx playwright
+  install webkit` + `install-deps webkit`).
 - **Rechtstexte** (`impressum`/`privacy`/`agb` in `public/`) teilen sich
   `public/rechtstext.css` (seit v3.130.1) — KEIN Stilblock in den Seiten. Sie
   liegen im Spiel UND auf der Website: nur relative Pfade, Schriften unter

@@ -24,6 +24,8 @@ on:
           - store      # Kategorie, Altersfreigabe, Bau, Bildschirmfotos eintragen
           - store-bilder-probe # Trockenlauf: welche Bildschirmfotos wuerden ersetzt?
           - store-bilder # liegende Bildschirmfotos durch die aus store/ ersetzen
+          - freigeben-probe # nur lesen: kann die freigegebene Fassung veroeffentlicht werden?
+          - freigeben  # die von Apple freigegebene Fassung VEROEFFENTLICHEN (Eingabe FREIGEBEN)
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
           - pflichtangaben-stand # nur lesen: copyright, Support-URL, Preis, Datenschutz-Schnittstelle
@@ -34,7 +36,7 @@ on:
           - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
           - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
       bestaetigung:
-        description: 'Nur fuer einreichen: das Wort EINREICHEN (Veroeffentlichung bleibt von Hand)'
+        description: 'Nur fuer einreichen (EINREICHEN) bzw. freigeben (FREIGEBEN)'
         type: string
         default: ''
 
@@ -117,5 +119,13 @@ jobs:
             store)      python3 scripts/asc-store.py --alles ;;
             store-bilder-probe) python3 scripts/asc-store.py --bilder-ersetzen --trocken ;;
             store-bilder) python3 scripts/asc-store.py --bilder-ersetzen ;;
+            freigeben-probe) python3 scripts/asc-freigeben.py ;;
+            # Veroeffentlichen: nur mit der Eingabe FREIGEBEN, ueber die Umgebung.
+            freigeben)
+              if [ "$BESTAETIGUNG" != "FREIGEBEN" ]; then
+                echo "::error::Zum Veroeffentlichen die Eingabe 'bestaetigung' auf FREIGEBEN setzen."
+                exit 1
+              fi
+              python3 scripts/asc-freigeben.py --freigeben ;;
             *)          python3 scripts/asc.py --stand ;;
           esac
