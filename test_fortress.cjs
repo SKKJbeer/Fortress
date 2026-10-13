@@ -6170,11 +6170,21 @@ async function suiteCannonKill(browser) {
       while (Date.now() < deadline) {
         const ph = window.__phase && window.__phase();
         const cnt = window.__enemyCannonCount(1);
-        if (ph === 'shoot' && cnt >= 1 && window.__readTimer() > 10) {
-          window.__testCannonKill(1);
+        window.__aidSpur = window.__aidSpur || [];
+        const spur = ph + ':' + cnt + ':' + window.__readTimer();
+        if (window.__aidSpur[window.__aidSpur.length - 1] !== spur) window.__aidSpur.push(spur);
+        // Restzeit > 2 genuegt (v3.127.0): alle Kanonen fallen auf einmal, und
+        // der Nachlauf haelt die Phase fuer fliegende Kugeln offen. Mit > 10
+        // wartete der Test auf die NAECHSTE Schussphase — die kam nie, weil der
+        // Bot (Mauern vom Kanonen-Kill weggesprengt) am Bauende verlor
+        // (gemessene Spur: shoot:1:10 … cannon … build … result).
+        if (ph === 'shoot' && cnt >= 1 && window.__readTimer() > 2) {
+          // ALLE Feindkanonen auf einmal (v3.127.0): Kanone fuer Kanone lief
+          // ueber die ~1-s-Phase hinaus, der Bot kaufte nach (CI zweimal rot).
+          window.__testCannonKill(1, true);
           const d2 = Date.now() + 3000;
-          while (Date.now() < d2 && window.__enemyCannonCount(1) >= cnt) await new Promise(r => setTimeout(r, 30));
-          if (window.__enemyCannonCount(1) > 0) continue; // noch eine übrig → nächster Durchlauf
+          while (Date.now() < d2 && window.__enemyCannonCount(1) > 0) await new Promise(r => setTimeout(r, 30));
+          if (window.__enemyCannonCount(1) > 0) continue; // nicht alle getroffen → naechste Schussphase
           // 0 Kanonen: Status (A: aktiv, B: Basispreis) + C: Bergung sofort testen
           const info = window.__rebuildAid(2);
           const before = window.__readScrap(2);
@@ -6190,9 +6200,9 @@ async function suiteCannonKill(browser) {
         }
         await new Promise(r => setTimeout(r, 40));
       }
-      return null;
+      return { gesehen: window.__aidSpur || [] };
     });
-    if (!aid) { fail('Wiederaufbau: 0-Kanonen-Zustand nicht erreicht'); }
+    if (!aid || aid.gesehen) { fail('Wiederaufbau: 0-Kanonen-Zustand nicht erreicht — beobachtet: ' + JSON.stringify(aid && aid.gesehen).slice(-700)); }
     else {
       (aid.info && aid.info.active) ? ok('Wiederaufbau: Status aktiv bei 0 Kanonen ✓') : fail(`Wiederaufbau: Status inaktiv (${JSON.stringify(aid.info)})`);
       (aid.info && aid.info.price === 200) ? ok('Wiederaufbau: Kanone zum Basispreis 200 ✓') : fail(`Wiederaufbau: Preis ${aid.info && aid.info.price} statt 200`);

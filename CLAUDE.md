@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.127.0
+- **Aktuelle Version**: v3.127.1
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -587,6 +587,10 @@ npm run test:e2e
   Pruefungen sagten nichts — `FB_SPERRE` verhindert, dass firebase-boot.js
   ueberhaupt laeuft, und der Probelauf prueft sonst nur, DASS die App startet.
 - **Regel: Kein Commit ohne grünen Test**
+- **Nach JEDEM Push den `deploy.yml`-Lauf ansehen** (seit v3.127.1): v3.125.0
+  und v3.126.0 scheiterten im CI an einer lokal gruenen Pruefung und gingen
+  nie live — bemerkt erst zwei Versionen spaeter. Gruen lokal heisst nicht
+  ausgeliefert.
 - **Wartebedingung statt Momentaufnahme** (seit v3.108.0): Im Zeitraffer
   (`TIMER_SPEEDUP`: 1000 ms → 50 ms) dauert eine Phase **rund eine Sekunde**.
   Jede Pruefung, die den DOM EINMAL liest oder zwei Werte im Abstand von

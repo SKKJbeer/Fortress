@@ -932,18 +932,21 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Testhilfe: Reset-Hover-Zustand lesen (v3.18.2, Bottom-Placement-Fix)
     window.__cancelHover = gated((p) => !!cancelHover.current[p]);
     // Testhilfe: Kanonen-Kill auslösen (CANNON_HP Bälle auf eine Feindkanone)
-    window.__testCannonKill = gated((shooter) => {
+    // `alle` (v3.127.0): auf JEDE Feindkanone zugleich. Der Wiederaufbau-Test
+    // braucht 0 Kanonen in EINER Schussphase; Kanone fuer Kanone lief er im
+    // Zeitraffer (Phase ~1 s) ueber die Phasengrenze, der Bot kaufte in der
+    // Ruestphase nach — im CI zweimal rot, lokal nie.
+    window.__testCannonKill = gated((shooter, alle = false) => {
       const g = grid.current; if (!g) return null;
       const ep = shooter === 1 ? 2 : 1;
       const list = cannons.current[ep] || [];
       if (!list.length) return null;
-      const cn = list[0];
       const before = scrap.current[shooter] || 0;
       // Seit v3.57.0 toeten NUR Bezwinger-Kugeln (kt:"slayer") Kanonen —
       // Mauerbrecher richten dort nichts aus. Der Testschuss muss also die
       // richtige Art tragen, sonst prueft er eine Wirkung, die es nicht gibt.
       const n = Math.ceil(CANNON_HP / SLAYER_DMG);
-      for (let i = 0; i < n; i++) {
+      for (const cn of (alle ? list : [list[0]])) for (let i = 0; i < n; i++) {
         balls.current.push({ sx: cn.c * CELL + CELL / 2, sy: (cn.r + 6) * CELL, tx: cn.c * CELL + CELL / 2, ty: cn.r * CELL + CELL / 2, prog: 0.8, dur: 16, arcH: 6, player: shooter, alive: true, cannonIndex: 0, kt: "slayer", trail: [] });
       }
       return { before, beforeCannons: list.length, hp: CANNON_HP, schuesse: n };
@@ -7274,7 +7277,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.127.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.127.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.127.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.127.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9236,3 +9236,21 @@ harmonisch und gleich".
   der Generator die Liste der Schleife mit und verschluckte 15 von 16
   Eintraegen — die Schlange meldete trotzdem „fertig". Dazu die Regel
   „Verneinungen wirken kaum" (Motiv umschreiben statt verbieten).
+
+## v3.127.1 — Auslieferung wieder frei (Wiederaufbau-Pruefung)
+
+- **v3.125.0 und v3.126.0 wurden NICHT ausgeliefert:** Im CI scheiterte beide
+  Male genau eine Pruefung, „Wiederaufbau: 0-Kanonen-Zustand nicht erreicht"
+  (lokal gruen). Live blieb v3.124.0. Erst beim Pruefen der Auslieferung von
+  v3.127.0 bemerkt — Lehre: nach JEDEM Push den deploy-Lauf ansehen, nicht
+  nur nach dem ersten.
+- **Ursache, gemessen per Spur (Phase:Kanonen:Timer):** Der Test wartete auf
+  eine Schussphase mit Restzeit > 10. Die laufende stand nach dem ersten
+  Kill-Test schon bei 10, also wartete er auf die naechste — die kam nie: Die
+  Kanonen-Kills sprengen Bot-Mauern weg, der Bot verlor am Bauende, das Spiel
+  endete (`shoot:1:10 … cannon … build … result`). Ob es klappte, hing an
+  Zehntelsekunden.
+- **Behoben:** `__testCannonKill(shooter, alle)` trifft auf Wunsch ALLE
+  Feindkanonen zugleich; Restzeit > 2 genuegt, der Nachlauf haelt die Phase
+  fuer fliegende Kugeln offen. Viermal hintereinander gruen, 4 statt 24 s.
+- Die Meldung nennt bei einem Fehlschlag jetzt die beobachtete Spur.
