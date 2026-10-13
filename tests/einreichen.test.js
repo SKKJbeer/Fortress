@@ -48,7 +48,12 @@ test("Skript: Veroeffentlichung von Hand, VOR dem Abschicken gesetzt", () => {
 });
 
 test("Skript: Voraussetzungen — richtige Fassung, neuester Bau, keine laufende Einreichung", () => {
-  assert.match(SKRIPT, /zustand != "PREPARE_FOR_SUBMISSION"/);
+  assert.match(SKRIPT, /if zustand not in EINREICHBAR:/);
+  // Nur bearbeitbare Zustaende — nie aus der Pruefung oder nach der Freigabe.
+  const liste = (SKRIPT.match(/EINREICHBAR = \(([^)]*)\)/) || [])[1] || "";
+  assert.match(liste, /"PREPARE_FOR_SUBMISSION"/);
+  assert.match(liste, /"DEVELOPER_REJECTED"/);
+  assert.doesNotMatch(liste, /WAITING_FOR_REVIEW|IN_REVIEW|PENDING_DEVELOPER_RELEASE|READY_FOR_SALE/);
   assert.match(SKRIPT, /nummer\(dran\) != nummer\(neu\)/);
   assert.match(SKRIPT, /not in \("COMPLETE", "CANCELING"\)/);
   // Nur eine NOCH NICHT ABGESCHICKTE Einreichung (READY_FOR_REVIEW) wird

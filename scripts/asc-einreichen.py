@@ -38,6 +38,8 @@ from asc import Apple, BUNDLE, FASSUNG, erste, feld, kurz  # noqa: E402
 # bis v3.94.0 gehabt (Bau 20 dran, Bau 28 da).
 sag = print
 
+EINREICHBAR = ("PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED")
+
 
 def verbundene_fehler(antwort) -> list:
     """Apples „associated errors": Bei 409 sagt der Kopf nur „kann nicht geprueft
@@ -76,8 +78,13 @@ def vorbedingungen(apple: Apple):
     fass_id = fass["id"]
     zustand = feld(fass, "appStoreState")
     sag(f"App {feld(app, 'name')}, Fassung {FASSUNG} ({zustand})")
-    if zustand != "PREPARE_FOR_SUBMISSION":
-        fehler.append(f"Fassung steht auf {zustand}, nicht PREPARE_FOR_SUBMISSION")
+    # Einreichbar sind alle Zustaende, in denen die Fassung bearbeitbar ist —
+    # auch nach einem eigenen Zurueckziehen (DEVELOPER_REJECTED, v3.130.3:
+    # Apple setzt dort NICHT zurueck auf PREPARE_FOR_SUBMISSION) oder einer
+    # Ablehnung durch Apple. Gemessen am 13.10.: der Trockenlauf brach genau
+    # an dieser Stelle ab, obwohl alles andere stand.
+    if zustand not in EINREICHBAR:
+        fehler.append(f"Fassung steht auf {zustand}, nicht einreichbar ({', '.join(EINREICHBAR)})")
 
     # Haengt der NEUESTE gueltige Bau dran?
     stand, dran = erste(apple, f"v1/appStoreVersions/{fass_id}/build")

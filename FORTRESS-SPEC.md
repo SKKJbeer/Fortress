@@ -9418,3 +9418,8 @@ Vollstaendige Durchsicht dessen, was Apple sieht, gegen das aktuelle Spiel:
   genannte Beschriftung existiert so im Spiel (DE und EN); englische
   Bildmasse; Zurueckziehen erst nach Trockenlauf-Ausstieg. Gegenprobe:
   „turn-based" wieder eingesetzt → rot.
+- **Einreichen aus DEVELOPER_REJECTED:** `asc-einreichen.py` verlangte
+  `PREPARE_FOR_SUBMISSION` — nach dem Zurueckziehen bleibt Apple aber auf
+  DEVELOPER_REJECTED, und der Trockenlauf brach ab. Jetzt `EINREICHBAR`
+  (alle bearbeitbaren Zustaende); Test schliesst Pruef- und Freigabezustaende
+  aus, Gegenprobe rot.
