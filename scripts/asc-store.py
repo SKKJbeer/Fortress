@@ -7,8 +7,13 @@ steht nicht im Repository, sondern ist eine Einstellung am Eintrag:
     --kategorien     Haupt- und Unterkategorie
     --altersfreigabe den Inhaltsfragebogen
     --bau            den neuesten gueltigen Bau an die Fassung haengen
-    --bilder         die Bildschirmfotos hochladen
+    --bilder         die Bildschirmfotos hochladen (nur, wo noch keine liegen)
     --alles          alle vier
+
+    --bilder-ersetzen  vorhandene Bildschirmfotos durch die aus store/ ERSETZEN
+                       (v3.130.1 — nach dem Comic-Umbau zeigte der Eintrag noch
+                       die alte Oberflaeche; `--bilder` laesst liegende Bilder
+                       absichtlich in Ruhe). Nicht Teil von --alles.
 
     --trocken        nichts schreiben, nur sagen, was geschehen wuerde
 
@@ -264,6 +269,73 @@ def bilder(apple: Apple, fass_id: str, trocken: bool):
             if gut == len(dateien) else f"  ! {typ}: nur {gut} von {len(dateien)}")
 
 
+def bilder_ersetzen(apple: Apple, fass_id: str, trocken: bool):
+    """Liegende Bildschirmfotos durch die aktuellen aus store/ ersetzen.
+
+    **Reihenfolge: erst hochladen, dann loeschen.** Andersherum stuende der
+    Eintrag bei einem Fehler mitten im Lauf ohne Bilder da — und ohne Bilder
+    nimmt Apple keine Einreichung an. Ein Satz fasst zehn Bilder; vier alte
+    plus vier neue passen.
+
+    **Wiederholbar:** Stimmen die Pruefsummen der liegenden Bilder schon mit
+    den Dateien ueberein, passiert nichts.
+    """
+    stand, lok = erste(apple, f"v1/appStoreVersions/{fass_id}/appStoreVersionLocalizations",
+                       **{"filter[locale]": SPRACHE})
+    if not lok:
+        sag(f"  ! Keine Sprachfassung {SPRACHE} (HTTP {stand})"); return
+    stand, antwort = apple.holen(f"v1/appStoreVersionLocalizations/{lok['id']}/appScreenshotSets")
+    vorhanden = {}
+    if stand == 200:
+        for satz in antwort.json().get("data") or []:
+            vorhanden[feld(satz, "screenshotDisplayType")] = satz["id"]
+
+    for typ, (ordner, namen) in BILDER.items():
+        dateien = [WURZEL / ordner / f"{n}.png" for n in namen]
+        fehlend = [d for d in dateien if not d.exists()]
+        if fehlend:
+            sag(f"  ! {typ}: Datei fehlt: {fehlend[0]}"); continue
+        neu_summen = [hashlib.md5(d.read_bytes()).hexdigest() for d in dateien]
+        satz_id = vorhanden.get(typ)
+        alte = []
+        if satz_id:
+            st, aw = apple.holen(f"v1/appScreenshotSets/{satz_id}/appScreenshots")
+            alte = (aw.json().get("data") or []) if st == 200 else []
+        if [feld(b, "sourceFileChecksum") for b in alte] == neu_summen:
+            sag(f"  ✓ {typ}: die {len(alte)} Bilder sind schon die aktuellen"); continue
+        if trocken:
+            sag(f"  → {typ}: wuerde {len(dateien)} Bilder aus {ordner} hochladen "
+                f"und danach {len(alte)} alte entfernen"); continue
+        if not satz_id:
+            st, aw = apple.anlegen("v1/appScreenshotSets", {"data": {
+                "type": "appScreenshotSets",
+                "attributes": {"screenshotDisplayType": typ},
+                "relationships": {"appStoreVersionLocalization": {"data": {
+                    "type": "appStoreVersionLocalizations", "id": lok["id"]}}}}})
+            if st not in (200, 201):
+                sag(f"  ! {typ}: Satz nicht anlegbar ({st}): {kurz(aw)}"); continue
+            satz_id = aw.json()["data"]["id"]
+        gut = 0
+        for datei in dateien:
+            if not hochladen(apple, satz_id, datei):
+                break
+            gut += 1
+        if gut < len(dateien):
+            # Alte bleiben stehen — lieber doppelt als leer.
+            sag(f"  ! {typ}: nur {gut} von {len(dateien)} neuen hochgeladen — alte bleiben stehen"); continue
+        weg = 0
+        for b in alte:
+            st, aw = apple.loeschen(f"v1/appScreenshots/{b['id']}")
+            if st == 204:
+                weg += 1
+            else:
+                sag(f"      ! altes Bild {b['id']} nicht entfernt ({st}): {kurz(aw)}")
+        st, aw = apple.holen(f"v1/appScreenshotSets/{satz_id}/appScreenshots")
+        jetzt = len(aw.json().get("data") or []) if st == 200 else -1
+        sag(f"  ✓ {typ}: {gut} neue hochgeladen, {weg} von {len(alte)} alten entfernt, "
+            f"im Satz jetzt {jetzt}")
+
+
 def hochladen(apple: Apple, satz_id: str, datei: pathlib.Path) -> bool:
     """Apples dreistufiger Weg: anmelden, Stuecke schicken, bestaetigen."""
     inhalt = datei.read_bytes()
@@ -316,6 +388,8 @@ def main() -> int:
         sag("\nBau an die Fassung"); bau_anhaengen(apple, app_id, fass_id, trocken)
     if alles or "--bilder" in argumente:
         sag("\nBildschirmfotos"); bilder(apple, fass_id, trocken)
+    if "--bilder-ersetzen" in argumente:
+        sag("\nBildschirmfotos ersetzen"); bilder_ersetzen(apple, fass_id, trocken)
 
     sag("\nEingereicht wird hier nichts — das bleibt ein eigener, bewusster Schritt.")
     return 0

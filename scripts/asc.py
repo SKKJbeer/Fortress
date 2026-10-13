@@ -82,6 +82,10 @@ class Apple:
                            data=json.dumps(koerper), timeout=60)
         return a.status_code, a
 
+    def loeschen(self, pfad: str):
+        a = requests.delete(f"{BASIS}/{pfad}", headers=self.kopf, timeout=60)
+        return a.status_code, a
+
 
 def kurz(antwort) -> str:
     """Apples Fehlertext statt einer nackten Zahl."""

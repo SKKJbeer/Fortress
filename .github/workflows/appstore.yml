@@ -22,6 +22,8 @@ on:
           - beta-stand # nur lesen: nimmt die oeffentliche Beta Tester an?
           - store-probe # Trockenlauf: was wuerde eingetragen?
           - store      # Kategorie, Altersfreigabe, Bau, Bildschirmfotos eintragen
+          - store-bilder-probe # Trockenlauf: welche Bildschirmfotos wuerden ersetzt?
+          - store-bilder # liegende Bildschirmfotos durch die aus store/ ersetzen
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
           - pflichtangaben-stand # nur lesen: copyright, Support-URL, Preis, Datenschutz-Schnittstelle
@@ -113,5 +115,7 @@ jobs:
               python3 scripts/asc-einreichen.py --einreichen ;;
             store-probe) python3 scripts/asc-store.py --alles --trocken ;;
             store)      python3 scripts/asc-store.py --alles ;;
+            store-bilder-probe) python3 scripts/asc-store.py --bilder-ersetzen --trocken ;;
+            store-bilder) python3 scripts/asc-store.py --bilder-ersetzen ;;
             *)          python3 scripts/asc.py --stand ;;
           esac

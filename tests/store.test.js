@@ -70,3 +70,28 @@ test("asc-sprachen.py schreibt en-US UND en-GB, mit denselben Grenzen wie asc.py
   // Schreiben nur mit --eintragen.
   assert.match(s, /schreiben = "--eintragen" in sys\.argv\[1:\]/);
 });
+
+// ── Bildschirmfotos (v3.130.1) ────────────────────────────────────────────
+// Nach dem Comic-Umbau zeigte der Store-Eintrag noch die alte Oberflaeche:
+// `--bilder` laedt nur hoch, wo nichts liegt. `--bilder-ersetzen` tauscht aus —
+// und muss ERST hochladen, DANN loeschen, sonst steht der Eintrag bei einem
+// Fehler ohne Bilder da (dann nimmt Apple keine Einreichung an).
+test("asc-store.py: Bilder ersetzen laedt erst hoch, dann loescht es", () => {
+  const s = readFileSync(join(WURZEL, "scripts", "asc-store.py"), "utf8");
+  const f = s.slice(s.indexOf("def bilder_ersetzen("), s.indexOf("def hochladen("));
+  assert.ok(f.length > 100, "bilder_ersetzen fehlt");
+  const hoch = f.indexOf("hochladen(apple, satz_id, datei)");
+  const weg = f.indexOf("apple.loeschen(");
+  assert.ok(hoch > 0 && weg > 0 && hoch < weg, "Reihenfolge: erst hochladen, dann loeschen");
+  assert.match(f, /if gut < len\(dateien\):[\s\S]{0,200}continue/, "bei Fehlschlag duerfen die alten nicht geloescht werden");
+  const ablauf = readFileSync(join(WURZEL, ".github", "workflows", "appstore.yml"), "utf8");
+  assert.match(ablauf, /store-bilder-probe\) python3 scripts\/asc-store\.py --bilder-ersetzen --trocken ;;/);
+});
+
+test("Store-Bildschirmfotos haben Apples Pflichtmasse", () => {
+  // PNG-Kopf: Breite/Hoehe als 32-Bit-Zahlen ab Byte 16.
+  const masse = (p) => { const d = readFileSync(p); return [d.readUInt32BE(16), d.readUInt32BE(20)]; };
+  for (const [ordner, w, h] of [["ios-6.7", 1290, 2796], ["ipad-12.9", 2048, 2732]])
+    for (const n of ["menu", "game", "shoot", "shop"])
+      assert.deepEqual(masse(join(WURZEL, "store", ordner, n + ".png")), [w, h], `${ordner}/${n}.png`);
+});

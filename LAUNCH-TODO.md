@@ -234,6 +234,10 @@ nur, was fehlt.
 - [x] **Altersfreigabe** — 24 Angaben, mit Begründung in `scripts/asc-store.py`
 - [x] **Prüfkontakt vollständig** und Prüfhinweise hinterlegt
 - [x] **Bildschirmfotos** 4× iPhone 6,7" und 4× iPad 12,9"
+- [ ] **Bildschirmfotos im Comic-Stil** (v3.130.1) — neu aufgenommen in
+      `store/`; im Eintrag liegen noch die alten. Austausch: `appstore.yml`
+      mit `store-bilder-probe`, dann `store-bilder` (erst hochladen, dann die
+      alten loeschen).
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
 - [x] **Bau 28 (v3.94.0) der Fassung zugeordnet** (17.09., `→ store`)

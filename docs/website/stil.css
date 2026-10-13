@@ -30,8 +30,8 @@
  * `prefers-reduced-motion` friert jede Bewegung ein.
  */
 
-@font-face { font-family: "Lilita One"; src: url(schriften/lilita-one.woff2) format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Nunito"; src: url(schriften/nunito.woff2) format("woff2"); font-weight: 200 1000; font-display: swap; }
+@font-face { font-family: "Lilita One"; src: url(fonts/lilita-one.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url(fonts/nunito.woff2) format("woff2"); font-weight: 200 1000; font-display: swap; }
 
 *, *::before, *::after { box-sizing: border-box; }
 

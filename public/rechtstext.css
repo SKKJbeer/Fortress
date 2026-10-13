@@ -1,0 +1,110 @@
+/* Rechtstexte (Impressum, Datenschutz, Nutzungsbedingungen) — v3.130.0
+ *
+ * EINE Datei fuer alle drei Seiten. Bis v3.129.0 trug jede Seite denselben
+ * Stilblock inline, im dunklen Look der alten Oberflaeche — waehrend Spiel
+ * und Website seit dem Umbau gemalt und im Comic-Stil sind.
+ *
+ * Die Seiten liegen an ZWEI Adressen: im Spiel (public/ → GitHub Pages) und
+ * auf der Website (scripts/website-bauen.sh kopiert sie). Deshalb nur
+ * relative Pfade, und die Schriften liegen an beiden Orten unter `fonts/`.
+ *
+ * Werte aus src/ui/stil.js (FARBE, Kontur, Tafel). Langer Text braucht Ruhe:
+ * Fliesstext in Nunito auf Nachtblau, nur Ueberschriften im Comic-Satz.
+ * Keine fremde Anfrage — die Inhaltsrichtlinie der Seiten erlaubt nur 'self'.
+ */
+@font-face { font-family: "Lilita One"; src: url(fonts/lilita-one.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url(fonts/nunito.woff2) format("woff2"); font-weight: 200 1000; font-display: swap; }
+
+:root {
+  --kontur: #1b0f06; --nacht: #0d1f45; --tiefer: #091733;
+  --gold: #ffd23a; --goldhell: #fff3a6; --goldtief: #f08a12;
+  /* Namen wie bisher, damit Inline-Angaben in den Seiten weiter greifen */
+  --bg: #091733; --ink: #fffaf0; --muted: #e3edff; --faint: #b9cdf5;
+  --acc: #fff3a6; --good: #7ee08f; --warn: #ffc56b;
+  --line: rgba(255,255,255,.12); --line2: rgba(255,255,255,.22);
+  --fm: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  --kontur-text: 0 2px 0 var(--kontur), 1.5px 1.5px 0 var(--kontur), -1.5px 1.5px 0 var(--kontur),
+                 1.5px -1px 0 var(--kontur), -1.5px -1px 0 var(--kontur);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
+body {
+  margin: 0; color: var(--ink); line-height: 1.65; -webkit-font-smoothing: antialiased;
+  font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: radial-gradient(120% 60% at 50% 0%, rgba(63,151,234,.22), transparent 70%), var(--tiefer);
+  min-height: 100vh;
+}
+.wrap {
+  max-width: 800px; margin: clamp(14px, 4vw, 40px) auto clamp(24px, 5vw, 56px);
+  padding: clamp(18px, 4vw, 38px);
+  background: linear-gradient(180deg, #1d4a9e 0%, #163a7c 120px, var(--nacht) 420px);
+  border: 4px solid var(--kontur); border-radius: 24px;
+  box-shadow: inset 0 0 0 3px var(--gold), inset 0 6px 0 3px rgba(255,255,255,.1),
+              0 8px 0 var(--kontur), 0 22px 44px -12px rgba(0,0,0,.65);
+}
+@media (max-width: 560px) { .wrap { margin-inline: 10px; } }
+
+header { padding: 4px 0 24px; border-bottom: 2px dashed var(--line2); }
+.kick {
+  display: inline-block; margin-bottom: 16px; padding: 3px 14px;
+  font-family: "Lilita One", "Nunito", sans-serif; font-size: 15px; letter-spacing: .03em; color: var(--ink);
+  background: linear-gradient(180deg, #8fd0ff, #3f97ea 55%, #1f5fc4);
+  border: 2.5px solid var(--kontur); border-radius: 999px;
+  box-shadow: 0 3px 0 var(--kontur), inset 0 2px 0 rgba(255,255,255,.45);
+  text-shadow: var(--kontur-text);
+}
+h1, h2, h3 { font-family: "Lilita One", "Nunito", sans-serif; font-weight: 400; letter-spacing: .01em; }
+h1 {
+  font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0 0 14px; color: var(--goldhell);
+  text-shadow: 0 4px 0 var(--goldtief), var(--kontur-text), 0 8px 14px rgba(0,0,0,.45);
+}
+.lede { color: var(--muted); font-size: 16.5px; margin: 0; max-width: 62ch; }
+.meta { display: flex; gap: 10px 22px; flex-wrap: wrap; margin-top: 18px; font-size: 13.5px; color: var(--faint); }
+.meta b { color: var(--ink); font-weight: 800; }
+
+section { padding: 28px 0; border-bottom: 2px dashed var(--line2); }
+section:last-of-type { border-bottom: 0; }
+h2 {
+  font-size: clamp(21px, 3.4vw, 27px); line-height: 1.15; margin: 0 0 12px; color: var(--goldhell);
+  text-shadow: 0 3px 0 var(--goldtief), var(--kontur-text);
+  display: flex; align-items: center; gap: 12px;
+}
+h2 .n {
+  flex: 0 0 auto; display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 6px;
+  font-size: 17px; color: var(--ink); text-shadow: var(--kontur-text);
+  background: linear-gradient(180deg, #fff2a0, #ffc72e 55%, var(--goldtief));
+  border: 2.5px solid var(--kontur); border-radius: 12px;
+  box-shadow: 0 3px 0 var(--kontur), inset 0 2px 0 rgba(255,255,255,.45);
+}
+h3 { font-size: 19px; margin: 22px 0 8px; color: var(--ink); text-shadow: var(--kontur-text); }
+p { margin: 0 0 12px; color: var(--muted); font-size: 16px; }
+p:last-child { margin-bottom: 0; }
+b, strong { color: var(--ink); font-weight: 800; }
+a { color: var(--goldhell); font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px;
+    text-underline-offset: 3px; text-decoration-color: rgba(255,210,58,.45); }
+a:hover { text-decoration-color: var(--gold); }
+ul { margin: 0 0 12px; padding-left: 22px; color: var(--muted); font-size: 16px; }
+li { margin-bottom: 6px; }
+li::marker { color: var(--gold); }
+code, .mono {
+  font-family: var(--fm); font-size: 13.5px; color: #cfe8ff;
+  background: rgba(0,0,0,.3); border: 1.5px solid rgba(10,20,50,.8); border-radius: 6px; padding: 1px 6px;
+}
+.box {
+  margin: 16px 0; padding: 16px 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+  border: 3px solid var(--kontur); border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 0 var(--kontur);
+}
+.box.good { background: linear-gradient(180deg, rgba(79,211,107,.22), rgba(28,138,58,.12)); }
+.box .l { font-family: "Lilita One", "Nunito", sans-serif; font-size: 16px; color: var(--goldhell);
+  text-shadow: var(--kontur-text); margin-bottom: 8px; }
+.box.good .l { color: #c9ffd2; }
+.tw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 14px 0; }
+th { text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+  font-weight: 800; padding: 0 12px 9px 0; border-bottom: 2px solid var(--line2); white-space: nowrap; }
+td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); color: var(--muted); vertical-align: top; }
+td b { color: var(--ink); }
+footer { padding: 26px 0 6px; font-size: 14px; color: var(--faint); }
+footer a { font-weight: 800; }

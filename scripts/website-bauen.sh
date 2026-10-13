@@ -31,6 +31,9 @@ for datei in impressum privacy agb; do
   fi
   cp "public/$datei.html" "$ZIEL/$datei.html"
 done
+# Ihr gemeinsamer Stil (v3.130.0) — dieselbe Datei wie im Spiel. Die
+# Schriften, auf die er relativ verweist (fonts/), legt der Bau weiter unten dazu.
+cp public/rechtstext.css "$ZIEL/rechtstext.css"
 
 # **„Zum Spiel" muss zum Spiel fuehren.** In `public/` zeigen diese Verweise
 # auf die eigene Wurzel („./") beziehungsweise auf „/Fortress/" — beides
@@ -47,8 +50,8 @@ cp public/icon-192.png "$ZIEL/icon-192.png"
 # aus dem Spiel — dieselben Dateien, keine zweite Fassung, die irgendwann
 # abweicht. Die Schriften stehen unter der SIL Open Font License; die Lizenz
 # gehoert mit dazu.
-mkdir -p "$ZIEL/schriften" "$ZIEL/wappen" "$ZIEL/artikel"
-cp public/fonts/*.woff2 public/fonts/OFL-*.txt "$ZIEL/schriften/"
+mkdir -p "$ZIEL/fonts" "$ZIEL/wappen" "$ZIEL/artikel"
+cp public/fonts/*.woff2 public/fonts/OFL-*.txt "$ZIEL/fonts/"
 cp public/wappen/*.webp "$ZIEL/wappen/"
 cp public/artikel/*.webp "$ZIEL/artikel/"
 

@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9347,3 +9347,21 @@ harmonisch und gleich".
   — im vollen Lauf einmal rot, einzeln nie. Jetzt Wartebedingung (bis 3 s) und
   eine Meldung mit dem sichtbaren Text. Gegenprobe: mit falschem Muster rot,
   Meldung zeigt den Schirm.
+
+## v3.130.1 — Rechtstexte und Store-Bilder im neuen Stil
+
+- **Impressum, Datenschutz, Nutzungsbedingungen** im Comic-Stil: EIN
+  gemeinsamer Stil `public/rechtstext.css` statt drei gleicher Inline-Bloecke
+  (Lilita One fuer Ueberschriften, Nunito fuer den Text, Tafel mit goldenem
+  Rand, nummerierte Abschnitte als Gold-Abzeichen). Die Seiten liegen an zwei
+  Adressen (Spiel und Website) — deshalb relative Pfade, und die Website legt
+  die Schriften jetzt ebenfalls unter `fonts/` ab (vorher `schriften/`).
+  Unit-Test: kein eigener Stilblock mehr, Datei an beiden Adressen.
+- **Store-Bildschirmfotos neu** aus dem aktuellen Spiel: iPhone 6,7"/6,5",
+  iPad 13"/12,9", Play/PWA (`public/screenshots`). Unit-Test prueft Apples
+  Pflichtmasse (1290×2796, 2048×2732).
+- **`asc-store.py --bilder-ersetzen`** (Ablauf `appstore.yml`, Modi
+  `store-bilder-probe` / `store-bilder`): tauscht die Bilder im Store-Eintrag
+  aus. Erst hochladen, dann die alten loeschen — bei einem Fehler bleiben die
+  alten stehen, der Eintrag ist nie leer. Wiederholbar ueber Pruefsummen.
+  Unit-Test haelt die Reihenfolge fest; Gegenprobe rot.

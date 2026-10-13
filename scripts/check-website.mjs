@@ -171,7 +171,7 @@ console.log("\nBilder");
   // Schriften liegen lokal — eine Schrift von einem fremden Server waere eine
   // Anfrage an Dritte und kostete das Versprechen „keine Cookies".
   for (const f of ["lilita-one.woff2", "nunito.woff2", "OFL-lilita-one.txt", "OFL-nunito.txt"])
-    sag(existsSync(join(ordner, "schriften", f)), `schriften/${f} vorhanden`);
+    sag(existsSync(join(ordner, "fonts", f)), `fonts/${f} vorhanden`);
 
   // Jedes Bild braucht einen Alternativtext, und zwar einen, der etwas sagt.
   // Alternativtexte auf JEDER Seite mit Bildern, nicht nur der Startseite.

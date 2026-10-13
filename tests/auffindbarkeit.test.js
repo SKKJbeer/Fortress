@@ -203,15 +203,15 @@ test("Website: Avatare, Artikel und Schriften kommen aus dem Spiel", () => {
       assert.ok(existsSync(join(WURZEL, "public", "artikel", m[1] + ".webp")), `${name}: artikel/${m[1]}.webp fehlt in public/`);
   }
   const bau = lies("scripts", "website-bauen.sh");
-  for (const zeile of [/^cp public\/fonts\/\*\.woff2 public\/fonts\/OFL-\*\.txt "\$ZIEL\/schriften\/"$/m,
+  for (const zeile of [/^cp public\/fonts\/\*\.woff2 public\/fonts\/OFL-\*\.txt "\$ZIEL\/fonts\/"$/m,
                        /^cp public\/wappen\/\*\.webp "\$ZIEL\/wappen\/"$/m,
                        /^cp public\/artikel\/\*\.webp "\$ZIEL\/artikel\/"$/m])
     assert.match(bau, zeile, "der Bau legt nicht alles dazu, worauf die Seite verweist");
   const stil = lies("docs", "website", "stil.css");
   const schriften = [...stil.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]);
   assert.ok(schriften.length >= 2, "keine lokalen Schriften im Stil");
-  assert.ok(schriften.every((u) => /^schriften\/[a-z-]+\.woff2$/.test(u)), `fremde oder falsche Schriftadresse: ${schriften}`);
-  for (const u of schriften) assert.ok(existsSync(join(WURZEL, "public", "fonts", u.replace("schriften/", ""))), `${u} fehlt in public/fonts`);
+  assert.ok(schriften.every((u) => /^fonts\/[a-z-]+\.woff2$/.test(u)), `fremde oder falsche Schriftadresse: ${schriften}`);
+  for (const u of schriften) assert.ok(existsSync(join(WURZEL, "public", "fonts", u.replace("fonts/", ""))), `${u} fehlt in public/fonts`);
 });
 
 test("Spiel: Vorschaubild fuer geteilte Links existiert und ist quer", () => {
@@ -222,4 +222,21 @@ test("Spiel: Vorschaubild fuer geteilte Links existiert und ist quer", () => {
   assert.ok(existsSync(datei), `og:image des Spiels zeigt ins Leere: ${datei}`);
   const m = jpegMasse(datei);
   assert.ok(m && m.w === 1024 && m.h === 500, `og:image des Spiels nicht 1024x500: ${JSON.stringify(m)}`);
+});
+
+test("Rechtstexte: ein gemeinsamer Stil, an beiden Adressen vorhanden", () => {
+  // Bis v3.129.0 trug jede Seite denselben Stilblock inline — drei Kopien, die
+  // beim naechsten Umbau auseinanderlaufen. Jetzt EINE Datei, und der
+  // Website-Bau muss sie mitnehmen, sonst stehen die Seiten dort ungestaltet.
+  for (const n of ["impressum", "privacy", "agb"]) {
+    const s = lies("public", `${n}.html`);
+    assert.match(s, /<link rel="stylesheet" href="rechtstext\.css">/, `${n}.html ohne gemeinsamen Stil`);
+    assert.doesNotMatch(s, /<style\b/, `${n}.html traegt wieder einen eigenen Stilblock`);
+  }
+  assert.ok(existsSync(join(WURZEL, "public", "rechtstext.css")));
+  assert.match(lies("scripts", "website-bauen.sh"), /^cp public\/rechtstext\.css "\$ZIEL\/rechtstext\.css"$/m);
+  for (const u of [...lies("public", "rechtstext.css").matchAll(/url\(([^)]+)\)/g)].map((m) => m[1])) {
+    assert.match(u, /^fonts\/[a-z-]+\.woff2$/, `Schriftadresse ${u} gilt nicht an beiden Adressen`);
+    assert.ok(existsSync(join(WURZEL, "public", u)), `${u} fehlt in public/`);
+  }
 });
