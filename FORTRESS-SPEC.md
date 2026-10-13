@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9394,3 +9394,27 @@ harmonisch und gleich".
   Comic-Umbau) freigegeben. Entscheidung des Betreibers: nicht diesen Stand
   veroeffentlichen, sondern zurueckweisen, Bau 45+ und neue Bilder anhaengen,
   neu einreichen.
+
+## v3.130.3 — Review der App-Store-Einreichung
+
+Vollstaendige Durchsicht dessen, was Apple sieht, gegen das aktuelle Spiel:
+- **Pruefhinweis:** „turn-based" war falsch (alle spielen gleichzeitig in
+  Phasen mit Uhr) — jetzt „real-time ... there are no turns". Der Weg zu
+  „Fortschritt loeschen" stimmte seit den Reitern nicht mehr: jetzt
+  Profilknopf → Reiter „Konto"/„Account". Firebase-Dienste vollstaendig
+  genannt (Datenbank, anonyme Anmeldung, App Check), anonyme Partie-Statistik
+  offen benannt, gemalte Grafik und Schriftlizenz (OFL) erwaehnt. Auf 3944
+  Zeichen gekuerzt (Apple: hoechstens 4000).
+- **Beschreibung DE/EN:** Bezwinger „frueestens ab der zweiten Runde" (er
+  kostet 550, Runde 1 bringt hoechstens 530 — der alte Satz versprach, man
+  koenne ihn mit Verzicht in Runde 1 kaufen); „gleichzeitig, kein Zug";
+  neuer Absatz „Sieben Welten, zwoelf Gesichter"; zu dritt an einem Geraet.
+- **Englische Store-Bilder:** en-US/en-GB zeigten die deutschen. Jetzt eigene
+  Aufnahmen mit englischer Oberflaeche (`SPRACHE=en`, Ordner `-en`), und
+  `store-bilder` bestueckt alle drei Sprachfassungen.
+- **Zurueckziehen aus der Pruefung** (`zurueckweisen` jetzt auch fuer
+  WAITING_FOR_REVIEW): Texte und Bilder sind waehrend der Pruefung gesperrt.
+- **Unit-Tests:** Pruefhinweis ≤ 4000 Zeichen, kein falsches Genre, jede
+  genannte Beschriftung existiert so im Spiel (DE und EN); englische
+  Bildmasse; Zurueckziehen erst nach Trockenlauf-Ausstieg. Gegenprobe:
+  „turn-based" wieder eingesetzt → rot.

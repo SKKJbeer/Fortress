@@ -91,7 +91,8 @@ test("asc-store.py: Bilder ersetzen laedt erst hoch, dann loescht es", () => {
 test("Store-Bildschirmfotos haben Apples Pflichtmasse", () => {
   // PNG-Kopf: Breite/Hoehe als 32-Bit-Zahlen ab Byte 16.
   const masse = (p) => { const d = readFileSync(p); return [d.readUInt32BE(16), d.readUInt32BE(20)]; };
-  for (const [ordner, w, h] of [["ios-6.7", 1290, 2796], ["ipad-12.9", 2048, 2732]])
+  for (const [ordner, w, h] of [["ios-6.7", 1290, 2796], ["ipad-12.9", 2048, 2732],
+                                ["ios-6.7-en", 1290, 2796], ["ipad-12.9-en", 2048, 2732]])
     for (const n of ["menu", "game", "shoot", "shop"])
       assert.deepEqual(masse(join(WURZEL, "store", ordner, n + ".png")), [w, h], `${ordner}/${n}.png`);
 });
@@ -114,6 +115,24 @@ test("Zurueckweisen nur mit Eingabe ZURUECKWEISEN — im Ablauf UND im Skript", 
   assert.match(ablauf, /zurueckweisen\)\s*\n\s*if \[ "\$BESTAETIGUNG" != "ZURUECKWEISEN" \]; then[\s\S]{0,200}exit 1[\s\S]{0,40}python3 scripts\/asc-neuer-bau\.py --zurueckweisen ;;/);
   const s = readFileSync(join(WURZEL, "scripts", "asc-neuer-bau.py"), "utf8");
   assert.match(s, /if wirklich and os\.environ\.get\("BESTAETIGUNG"\) != "ZURUECKWEISEN":\s*\n[^\n]*\n\s*return 1/);
-  assert.ok(s.indexOf('apple.loeschen(f"v1/appStoreVersionSubmissions/') > s.indexOf("if not wirklich:"),
+  assert.ok(s.indexOf('apple.loeschen(f"v1/appStoreVersionSubmissions/') > s.lastIndexOf("if not wirklich:"),
     "der Trockenlauf muss vor dem Loeschen aussteigen");
+  // Zurueckziehen einer laufenden Pruefung: auch hier erst der Trockenlauf.
+  const zieh = s.indexOf('"attributes": {"canceled": True}');
+  assert.ok(zieh > 0 && zieh > s.indexOf("if not wirklich:"), "Zurueckziehen ohne vorherigen Trockenlauf-Ausstieg");
+});
+
+test("Pruefhinweis: innerhalb Apples Grenze und ohne falsches Genre", () => {
+  // Apple nimmt fuer „App Review Information → Notes" hoechstens 4000 Zeichen.
+  // Bis v3.130.2 stand dort „turn-based" — falsch, gespielt wird gleichzeitig.
+  const t = lies("store", "listing.md");
+  const n = [...t.matchAll(/```\n([\s\S]*?)\n```/g)].map((m) => m[1]).find((b) => b.includes("NO ACCOUNT, NO LOGIN"));
+  assert.ok(n, "Pruefhinweis nicht gefunden");
+  assert.ok(n.length <= 4000, `Pruefhinweis ${n.length} Zeichen > 4000`);
+  assert.doesNotMatch(n, FALSCH, "falscher Genre-Begriff im Pruefhinweis");
+  // Was der Hinweis als Beschriftung nennt, muss es im Spiel geben.
+  for (const k of ["playLocal", "playOnline", "vsBot", "wipeButton", "tabKonto", "profileTitle"])
+    for (const l of ["de", "en"])
+      assert.ok(n.includes(LANGS[l][k].replace(/–/g, "-")) || n.includes(LANGS[l][k]),
+        `Pruefhinweis nennt „${LANGS[l][k]}" (${l}.${k}) nicht so, wie es im Spiel steht`);
 });

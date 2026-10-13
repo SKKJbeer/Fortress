@@ -47,23 +47,30 @@ verloren. Auch diagonal. Eine einzige Lücke genügt, und der Gegner
 weiß genau, wo sie ist.
 
 DER RHYTHMUS
-Bauen, schießen, aufrüsten — und wieder von vorn. Jede Runde dauert
+Bauen, schießen, aufrüsten — und wieder von vorn. Alle spielen
+gleichzeitig, niemand wartet auf einen Zug. Jede Phase dauert nur
 Sekunden, jede Entscheidung wirkt bis ins Endspiel.
 
 ZWEI ARTEN VON KANONEN
 Der Mauerbrecher reißt Löcher in die Verteidigung. Der Bezwinger
-trifft nur Kanonen und schaltet die Feuerkraft des Gegners aus — er
-ist so teuer, dass du in der ersten Runde auf alles andere verzichten
-musst, um ihn zu bekommen.
+trifft nur Kanonen und schaltet die Feuerkraft des Gegners aus — so
+teuer, dass er frühestens ab der zweiten Runde zu haben ist.
+
+SIEBEN WELTEN, ZWÖLF GESICHTER
+Jede Partie spielt in einer anderen gemalten Landschaft, vom
+Frostreich bis in den Vulkanschlund. Zwölf gemalte Avatare schaltest
+du mit steigender Stufe frei.
 
 ONLINE ODER ALLEIN
 Spiele online gegen zufällige Gegner, mit Freunden über einen Code,
-zu zweit an einem Gerät — oder offline gegen den Bot in drei Stufen.
+zu zweit oder zu dritt an einem Gerät — oder offline gegen den Bot in
+drei Stufen.
 
 SAMMELN UND SCHMIEDEN
-Erspielte Beute wird zu Ausbauten, erspieltes Gold zu Kosmetik.
-Seltene Materialien aus Online-Partien lassen sich in der Schmiede zu
-Stücken verarbeiten, die es im Shop nicht gibt.
+Erspielte Beute wird zu Ausbauten, erspieltes Gold zu Kosmetik:
+Kanonen, Einschläge, Kugelspuren, Siegeseffekte. Seltene Materialien
+aus Online-Partien lassen sich in der Schmiede zu Stücken verarbeiten,
+die es im Shop nicht gibt.
 
 EHRLICH GESAGT
 Stack & Siege ist kostenlos spielbar. Keine Werbung, kein Kaufzwang, kein
@@ -140,6 +147,8 @@ https://skkjbeer.github.io/Fortress/privacy.html
 
 **Grafiken** liegen unter `store/`:
 - `ios-6.7/` — 1290×2796, Pflichtformat für die Einreichung
+- `ios-6.7-en/`, `ipad-12.9-en/` — dieselben Bilder mit englischer Oberfläche
+  (für en-US und en-GB; `SPRACHE=en node tools/make-screenshots.cjs ios-6.7`)
 - `ios-6.5/` — 1242×2688
 - `feature-graphic-1024x500.png` — nur Google Play
 - Play-Telefonbilder: `public/screenshots/` (1080×2340)
@@ -164,15 +173,14 @@ Lösungscenter** — Apple verlangt beides.
 NO ACCOUNT, NO LOGIN, NO CREDENTIALS. This build has no sign-in and no user
 accounts, and therefore no account deletion flow. Progress is stored on the
 device and, as a backup, under an anonymous identifier. The player can erase
-everything at any time: main menu, the avatar button at the top, then
+everything at any time: main menu, the blue person button in the profile card
+("Edit profile" / "Profil bearbeiten"), tab "Account" / "Konto", then
 "Delete progress" / "Fortschritt löschen" - it wipes both the device and the
 backup.
 
 THE APP WILL BE IN ENGLISH ON YOUR DEVICE.
-The interface follows the device language: German on a German device, English
-everywhere else. On your device you will therefore see ENGLISH labels. Both
-are listed below so you can find them either way; a DE/EN switch sits in the
-main menu under the title.
+The interface follows the device language (German on a German device, English
+elsewhere). Both labels are listed below; a DE/EN switch sits in the main menu.
 
 SEEING EVERYTHING TAKES ONE MINUTE, WITH NO NETWORK.
 Main menu → "PLAY LOCAL (1 Device)" (German: "LOKAL SPIELEN (1 Gerät)"), then
@@ -180,9 +188,10 @@ Main menu → "PLAY LOCAL (1 Device)" (German: "LOKAL SPIELEN (1 Gerät)"), then
 match runs offline. That is the shortest path to the whole game.
 
 1. PURPOSE AND AUDIENCE
-Stack & Siege is a turn-based artillery game for two or three players, available in
-German and English. Each player walls in a castle from falling tetromino pieces during a
-timed build phase, then fires cannons at the other castles. A castle that is
+Stack & Siege is a real-time castle strategy game for one to three players,
+available in German and English. All players act at the same time in short timed
+phases - there are no turns. Each player walls in a castle from falling block pieces
+during the build phase, then fires cannons at the other castles. A castle that is
 not completely sealed when the build phase ends is lost. It is a game, not a
 utility; the audience is casual players.
 
@@ -192,32 +201,36 @@ utility; the audience is casual players.
   computer) and the tutorial "How to play?".
 - "PLAY ONLINE (2-3 Devices)" / "ONLINE SPIELEN (2-3 Geräte)": matchmaking
   against another player, or a six-character room code shared between friends.
-- Profile (menu, top): name, crest, colour, level, achievements, daily tasks,
-  and a cosmetics shop paid for with in-game gold that is earned by playing.
-  Gold cannot be bought. There is no real money anywhere in this app.
+- Profile card (menu, top): name, avatar, level and rating, with a row of round
+  buttons - profile, achievements, daily tasks, gold shop (cosmetics paid for
+  with in-game gold that is earned by playing) and forge. Gold cannot be
+  bought. There is no real money anywhere in this app.
 
 3. EXTERNAL SERVICES, TOOLS AND PLATFORMS
-One: Google Firebase Realtime Database, used solely for online matchmaking, the
-live state of an online match, and a leaderboard. Sign-in is anonymous - no
-e-mail, no password, no personal data. There is no advertising, no analytics
-product, no tracking across apps or websites, no AI service and no payment
-processor. The app loads no executable code at runtime; everything ships in the
+One: Google Firebase (Realtime Database, anonymous Authentication, App Check
+with App Attest), used solely for online matchmaking, the live state of an
+online match, a leaderboard, a backup of the player's progress and anonymous
+match statistics without name or identifier. Sign-in is anonymous - no e-mail,
+no password, no personal data. There is no advertising, no third-party
+analytics SDK, no tracking across apps or websites, no AI service and no
+payment processor. The app loads no executable code at runtime; everything ships in the
 bundle.
 
 4. REGIONAL DIFFERENCES
-None. Content and features are identical in every region. The interface follows
-the device language and offers German and English; that is a language setting,
-not a regional difference.
+None. Content and features are identical in every region; German/English is a
+language setting, not a regional difference.
 
 5. REGULATED INDUSTRY OR PROTECTED MATERIAL
-Neither. No regulated service, no gambling, no licensed media. Sound effects
-and music are CC0. The interface draws its own vector icons.
+Neither. No regulated service, no gambling, no licensed media. The painted
+artwork (backgrounds, avatars, item pictures) was made for this app. Sound
+effects and music are CC0, the two fonts are under the SIL Open Font License,
+and the interface draws its own vector icons.
 
 6. IN-APP PURCHASES
 None. No subscriptions, no consumables, no real currency. The in-game gold is
 earned only by playing and cannot be purchased.
 
-7. PLAYER-TO-PLAYER INTERACTION (declared for completeness)
+7. PLAYER-TO-PLAYER INTERACTION
 In an online match a player sees the opponent's self-chosen display name and
 can send one of six fixed emoji reactions. There is no free-form chat, no
 image or file sharing, and no way to send text to another player.

@@ -33,6 +33,11 @@ const path = require('path');
 const { FB_SPERRE } = require('../scripts/fb-sperre.cjs');
 
 const ROOT = path.join(__dirname, '..');
+// Sprache der Aufnahme (v3.130.3). `SPRACHE=en node tools/make-screenshots.cjs
+// ios-6.7` nimmt die englische Oberflaeche auf und schreibt nach `<ordner>-en`
+// — fuer die englischen Store-Eintraege (en-US, en-GB), die bis dahin die
+// deutschen Bilder zeigten.
+const SPRACHE = process.env.SPRACHE === 'en' ? 'en' : 'de';
 const ZIELE = [
   { name: 'ios-6.7',  w: 430,  h: 932,  scale: 3, out: 'store/ios-6.7' },
   { name: 'ios-6.5',  w: 414,  h: 896,  scale: 3, out: 'store/ios-6.5' },
@@ -72,7 +77,7 @@ const PROF = `try{localStorage.setItem('fortress_profile',JSON.stringify({
   cosmetics:{owned:['trail_ember'],equipped:{trail:'trail_ember'}}}));
 localStorage.setItem('fortress_onboarded','1');
 localStorage.setItem('fortress_tutorial_done','1');
-localStorage.setItem('fortress_lang','de');
+localStorage.setItem('fortress_lang','${SPRACHE}');
 localStorage.setItem('fortress_daily',JSON.stringify({lastCollect:Date.now(),streak:3,lastStreakDay:new Date().toISOString().slice(0,10)}));
 }catch(e){}`;
 
@@ -151,7 +156,7 @@ async function speichere(browser, quelle, ziel, pfad, jpegGuete) {
 const endungVon = (ziel) => ziel.webp ? '.webp' : ziel.jpeg ? '.jpg' : '.png';
 
 async function fuerZiel(browser, ziel) {
-  const out = path.join(ROOT, ziel.out);
+  const out = path.join(ROOT, ziel.out + (SPRACHE === 'en' ? '-en' : ''));
   fs.mkdirSync(out, { recursive: true });
   const ctx = await browser.newContext({
     viewport: { width: ziel.w, height: ziel.h }, deviceScaleFactor: ziel.scale,
@@ -180,13 +185,13 @@ async function fuerZiel(browser, ziel) {
     if (ziel.bilder && !ziel.bilder.includes(name.replace(/\.png$/, ''))) return;
     const datei = (ziel.praefix || '') + name.replace(/\.png$/, endung);
     await speichere(browser, p, ziel, path.join(out, datei));
-    console.log('   ' + ziel.out + '/' + datei);
+    console.log('   ' + path.relative(ROOT, out) + '/' + datei);
   };
 
   await shot('menu.png');
-  await click(p, ['LOKAL']); await p.waitForTimeout(250);
+  await click(p, ['LOKAL', 'LOCAL']); await p.waitForTimeout(250);
   await click(p, ['gegen Bot', 'vs Bot']); await p.waitForTimeout(300);
-  await click(p, ['Mittel']);
+  await click(p, ['Mittel', 'Medium']);
   await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
 
   // Ein paar Runden laufen lassen, damit Mauern, Truemmer und Kanonen stehen.
@@ -198,7 +203,9 @@ async function fuerZiel(browser, ziel) {
   // geforderten Elementen. Schlaegt hart fehl statt still ein schlechtes Bild
   // zu speichern — ein Store-Screenshot, den niemand ansieht, ist wertlos.
   const BANNER = ['Kaufe Upgrades im Shop', 'Zieh von deiner Burg weg',
-                  'Mauere deine Burg', 'Platziere 2 Kanonen'];
+                  'Mauere deine Burg', 'Platziere 2 Kanonen',
+                  'Buy upgrades in the shop', 'Drag from your castle',
+                  'Wall in your castle', 'Place 2 cannons'];
   const sauber = async (want, name, { muss = [], ohneBanner = true } = {}) => {
     const ok = await warteAuf(p, async () => {
       if (await phase(p) !== want) return false;
@@ -220,7 +227,7 @@ async function fuerZiel(browser, ziel) {
   await sauber('build',  'game.png');
   await sauber('shoot',  'shoot.png');
   // Banner hier zugelassen — siehe SPEED-Kommentar oben.
-  await sauber('cannon', 'shop.png', { muss: ['Bezwinger', 'Schnellladen'], ohneBanner: false });
+  await sauber('cannon', 'shop.png', { muss: SPRACHE === 'en' ? ['Slayer'] : ['Bezwinger', 'Schnellladen'], ohneBanner: false });
 
   // Duplikate erkennen, statt sie stillschweigend auszuliefern
   const crypto = require('crypto');
@@ -265,7 +272,7 @@ async function lokalePartie(browser, ziel, spieler) {
   await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
   await p.waitForTimeout(1200);
 
-  await click(p, ['LOKAL']); await p.waitForTimeout(300);
+  await click(p, ['LOKAL', 'LOCAL']); await p.waitForTimeout(300);
   await click(p, [spieler === 3 ? '3 Spieler' : '2 Spieler']);
   await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
 
@@ -323,9 +330,9 @@ async function welten(browser, ziel) {
     await p.goto('http://localhost:8765/', { waitUntil: 'domcontentloaded' });
     await p.waitForFunction(() => document.querySelectorAll('button').length > 0, { timeout: 15000 });
     await p.waitForTimeout(900);
-    await click(p, ['LOKAL']); await p.waitForTimeout(250);
+    await click(p, ['LOKAL', 'LOCAL']); await p.waitForTimeout(250);
     await click(p, ['gegen Bot', 'vs Bot']); await p.waitForTimeout(300);
-    await click(p, ['Mittel']);
+    await click(p, ['Mittel', 'Medium']);
     await p.waitForFunction(() => !!document.querySelector('canvas'), { timeout: 15000 });
     const ok = await warteAuf(p, async () => {
       if (await round(p) < 2 || await phase(p) !== 'shoot') return false;

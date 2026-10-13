@@ -269,7 +269,19 @@ def bilder(apple: Apple, fass_id: str, trocken: bool):
             if gut == len(dateien) else f"  ! {typ}: nur {gut} von {len(dateien)}")
 
 
+# Je Sprachfassung des Eintrags der Ordner-Zusatz (v3.130.3): Die englischen
+# Eintraege zeigten bis dahin die deutschen Bilder — Apple faellt auf die
+# Hauptsprache zurueck, und ein englischer Kaeufer sah deutsche Knoepfe.
+BILDER_SPRACHEN = {"de-DE": "", "en-US": "-en", "en-GB": "-en"}
+
+
 def bilder_ersetzen(apple: Apple, fass_id: str, trocken: bool):
+    for sprache, zusatz in BILDER_SPRACHEN.items():
+        sag(f"  [{sprache}]")
+        bilder_ersetzen_sprache(apple, fass_id, trocken, sprache, zusatz)
+
+
+def bilder_ersetzen_sprache(apple: Apple, fass_id: str, trocken: bool, sprache: str, zusatz: str):
     """Liegende Bildschirmfotos durch die aktuellen aus store/ ersetzen.
 
     **Reihenfolge: erst hochladen, dann loeschen.** Andersherum stuende der
@@ -281,9 +293,9 @@ def bilder_ersetzen(apple: Apple, fass_id: str, trocken: bool):
     den Dateien ueberein, passiert nichts.
     """
     stand, lok = erste(apple, f"v1/appStoreVersions/{fass_id}/appStoreVersionLocalizations",
-                       **{"filter[locale]": SPRACHE})
+                       **{"filter[locale]": sprache})
     if not lok:
-        sag(f"  ! Keine Sprachfassung {SPRACHE} (HTTP {stand})"); return
+        sag(f"  ! Keine Sprachfassung {sprache} (HTTP {stand})"); return
     stand, antwort = apple.holen(f"v1/appStoreVersionLocalizations/{lok['id']}/appScreenshotSets")
     vorhanden = {}
     if stand == 200:
@@ -291,6 +303,7 @@ def bilder_ersetzen(apple: Apple, fass_id: str, trocken: bool):
             vorhanden[feld(satz, "screenshotDisplayType")] = satz["id"]
 
     for typ, (ordner, namen) in BILDER.items():
+        ordner = ordner + zusatz
         dateien = [WURZEL / ordner / f"{n}.png" for n in namen]
         fehlend = [d for d in dateien if not d.exists()]
         if fehlend:

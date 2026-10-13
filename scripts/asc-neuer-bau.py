@@ -9,8 +9,16 @@ Fassung zur Website und zu den Store-Bildern passt.
 
     (ohne Argument)    TROCKENLAUF. Liest Zustand, Einreichungen und den
                        neuesten Bau. Schreibt nichts.
-    --zurueckweisen    Die Fassung zurueckweisen („Developer Reject"). Verlangt
-                       BESTAETIGUNG=ZURUECKWEISEN (appstore.yml).
+    --zurueckweisen    Die Fassung zurueckweisen („Developer Reject") bzw. eine
+                       wartende Einreichung zurueckziehen („Aus der Pruefung
+                       entfernen"). Verlangt BESTAETIGUNG=ZURUECKWEISEN.
+
+Zwei Zustaende, zwei Wege bei Apple:
+    PENDING_DEVELOPER_RELEASE  alte appStoreVersionSubmission loeschen
+    WAITING_FOR_REVIEW / IN_REVIEW / UNRESOLVED_ISSUES
+                               laufende reviewSubmission mit canceled=true
+                               zurueckziehen (v3.130.3: Texte und Bilder sind
+                               waehrend der Pruefung gesperrt)
 
 Danach — getrennte, schon vorhandene Schritte:
     store-bilder   Bildschirmfotos tauschen
@@ -65,12 +73,30 @@ def main() -> int:
     sag(f"  alte Einreichung (appStoreVersionSubmission): "
         + (alt_id if alt_id else f"keine (HTTP {st}{': ' + kurz(alt) if st != 200 else ''})"))
     st, rs = apple.holen(f"v1/apps/{app['id']}/reviewSubmissions", limit=5)
+    laufend = None
     if st == 200:
         for r in rs.json().get("data") or []:
             sag(f"  reviewSubmission {r['id']}: {feld(r, 'state')} ({feld(r, 'submittedDate')})")
+            if not laufend and feld(r, "state") in ("WAITING_FOR_REVIEW", "IN_REVIEW", "UNRESOLVED_ISSUES"):
+                laufend = r["id"]
+
+    if zustand in ("WAITING_FOR_REVIEW", "IN_REVIEW") and laufend:
+        if not wirklich:
+            sag(f"\n→ wuerde die laufende Einreichung {laufend} zurueckziehen (Aus der Pruefung entfernen)")
+            return 0
+        st, aw = apple.aendern(f"v1/reviewSubmissions/{laufend}", {"data": {
+            "type": "reviewSubmissions", "id": laufend, "attributes": {"canceled": True}}})
+        if st != 200:
+            sag(f"\n! Zurueckziehen abgelehnt ({st}): {kurz(aw)}"); return 1
+        st, neu = apple.holen(f"v1/appStoreVersions/{fass['id']}")
+        sag(f"\n✓ aus der Pruefung zurueckgezogen — Einreichung: {feld(aw.json()['data'], 'state')}, "
+            f"Fassung: {feld(neu.json()['data'], 'appStoreState') if st == 200 else '?'}")
+        sag("  Apple braucht dafuer oft einige Minuten (CANCELING → DEVELOPER_REJECTED).")
+        return 0
 
     if zustand != "PENDING_DEVELOPER_RELEASE":
-        sag(f"\nNichts zu tun: zurueckgewiesen wird nur aus PENDING_DEVELOPER_RELEASE (jetzt {zustand}).")
+        sag(f"\nNichts zu tun: zurueckgewiesen wird nur aus PENDING_DEVELOPER_RELEASE oder einer"
+            f" laufenden Pruefung (jetzt {zustand}).")
         return 0
     if not alt_id:
         sag("\n! Apples Schnittstelle bietet hier keinen Weg zum Zurueckweisen —"
