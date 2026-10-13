@@ -87,7 +87,7 @@ function XpBarUI({ level, xp }) {
   const pct = Math.min(100, xp / needed * 100);
   return React.createElement("div", { style: { marginTop: 5 } },
     React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 3 } },
-      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", textShadow: "0 1px 0 #1b0f06" } }, xp + " / " + needed + " XP")
+      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#fffaf0", textShadow: "0 1px 0 #1b0f06, 0 0 3px rgba(27,15,6,0.6)" } }, xp + " / " + needed + " XP")
     ),
     React.createElement("div", { style: { height: 12, background: "#0d1f45", border: "2px solid #1b0f06", borderRadius: 8, overflow: "hidden", position: "relative", boxSizing: "border-box" } },
       React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(180deg,#d8f7ff 0%,#4fc3ff 45%,#1f7fd8 100%)", borderRadius: 6, boxShadow: "inset 0 2px 0 rgba(255,255,255,0.5)", transition: "width 0.4s ease" } })
@@ -118,7 +118,8 @@ function MatRow({ vals, nurPositive, plus, size, gap, t }) {
       return React.createElement("span", { key: k, title: t ? t("mat_" + k) : void 0, style: {
         display: "inline-flex", alignItems: "center", gap: 4,
         fontSize: size || 11, fontWeight: 900,
-        color: n > 0 ? "#e2e8f0" : "#475569", opacity: n > 0 ? 1 : 0.55
+        // 0 bleibt erkennbar gedimmt, aber lesbar (v3.128.0: vorher 2,2:1)
+        color: n > 0 ? "#e2e8f0" : "#9fb0cc", opacity: n > 0 ? 1 : 0.85
       } },
         React.createElement(MatPip, { k, size: size ? size - 2 : 9 }),
         (plus && n > 0 ? "+" : "") + n

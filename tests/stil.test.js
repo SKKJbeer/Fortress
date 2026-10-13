@@ -45,3 +45,18 @@ test('Schriften, Logo und Menue-Bild sind eingebunden und offline vorgeladen', (
   assert.match(app, /bildHintergrund\("menu-hintergrund\.jpg"\)/);
   assert.match(app, /src: "logo\.png", alt: "Stack & Siege"/);
 });
+
+// Lesbarkeit (v3.128.0): Diese Grautoene stammen aus der Zeit vor dem
+// Designsystem. Als Schriftfarbe auf dem Comic-Blau lagen sie bei 1,2–3,8:1 —
+// Hinweiszeilen in Gegnersuche und Warteraum waren praktisch unsichtbar.
+// Schriftfarben kommen aus FARBE (text, textGedaempft) oder sind hell genug.
+test('Keine alten, unlesbaren Grautoene als Schriftfarbe', () => {
+  const verboten = ['#334155', '#475569', '#64748b'];
+  for (const datei of ['src/game/app.js', 'src/ui/modale.js', 'src/ui/anzeigen.js', 'src/ui/blaettern.js']) {
+    const roh = fs.readFileSync(path.join(W, datei), 'utf8');
+    for (const f of verboten) {
+      const treffer = roh.match(new RegExp('(?<![a-zA-Z])color: [^,}]*"' + f + '"', 'g')) || [];
+      assert.deepStrictEqual(treffer, [], `${datei}: Schriftfarbe ${f} (${treffer.length}×)`);
+    }
+  }
+});

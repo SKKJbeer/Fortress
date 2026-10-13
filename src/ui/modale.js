@@ -184,7 +184,7 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
                 h("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg," + kat.color + "aa," + kat.color + ")", transition: "width 0.4s ease" } })),
               h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.textGedaempft, whiteSpace: "nowrap" } }, progress + " / " + def.target))),
       h("div", { style: { display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end", flexShrink: 0 } },
-        def.xp > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: "#e9d5ff", background: "rgba(139,85,224,0.45)", padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.xp + " XP"),
+        def.xp > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: "#ffffff", background: "rgba(109,60,200,0.85)", padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.xp + " XP"),
         def.gold > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.textDunkel, background: FARBE.gold, padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.gold + " Gold")));
   };
   return h("div", { style: {
@@ -315,9 +315,9 @@ function XpResultAnim({ xpChange , t }) {
       borderRadius: 14, padding: "11px 18px", textAlign: "center",
       boxShadow: "0 2px 18px rgba(167,139,250,0.12)"
     } },
-      React.createElement("div", { style: { fontSize: 9, color: "#c9dbf7", letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
+      React.createElement("div", { style: { fontSize: 9, color: FARBE.textGedaempft, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
       React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: "0 0 16px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
-      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "#c9dbf7", marginBottom: 6 } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: FARBE.textGedaempft, marginBottom: 6 } },
         React.createElement("span", null, "Level " + xpChange.newLevel),
         React.createElement("span", null, xpChange.newXp + " / " + needed)
       ),
@@ -331,7 +331,7 @@ function XpResultAnim({ xpChange , t }) {
         } })
       )
     ),
-    nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: "#c9dbf7", textAlign: "center", fontStyle: "italic" } },
+    nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: FARBE.textGedaempft, textAlign: "center", fontStyle: "italic" } },
       t('nextRewardAt', { n: nextUnlockEntry[1] })
     )
   );
@@ -358,7 +358,7 @@ function OnboardingModal({ step, setStep, onFinish , t }) {
       animation: "dailyBounceIn 0.45s cubic-bezier(.36,1.6,.56,1) both" 
     } },
       React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", minHeight: 18, marginBottom: 2 } },
-        !isLast && React.createElement("button", { onClick: onFinish, style: { background: "none", border: "none", color: "#c9dbf7", cursor: "pointer", fontSize: 12, fontWeight: 600 } }, t('onbSkip'))
+        !isLast && React.createElement("button", { onClick: onFinish, style: { background: "none", border: "none", color: FARBE.textGedaempft, cursor: "pointer", fontSize: 12, fontWeight: 600 } }, t('onbSkip'))
       ),
       React.createElement("div", { key: "onbico" + i, style: { marginBottom: 12, display: "flex", justifyContent: "center", animation: "badgePop 0.4s ease both" } },
         React.createElement("div", { style: { width: 76, height: 76, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.05)", border: "1px solid " + cur.col + "55", boxShadow: "0 0 24px " + cur.col + "33" } },
@@ -443,7 +443,7 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
               reward.xp > 0 && React.createElement("div", { style: { fontSize: 15, fontFamily: SCHRIFT_TITEL, color: "#e9d5ff", textShadow: KONTURTEXT, marginTop: 4 } }, "+" + reward.xp + " XP"),
               reward.special === "chest" && React.createElement("div", { style: { fontSize: 12, color: "#22d3ee", marginTop: 4 } }, t('dailyChest'))
             )
-          : React.createElement("div", { style: { fontSize: 13, color: "#c9dbf7", marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
+          : React.createElement("div", { style: { fontSize: 13, color: FARBE.textGedaempft, marginBottom: 12 } }, t('dailyNextIn', { h: hLeft, m: mLeft })),
       canCollect && !collected && React.createElement("button", {
         onClick: handleCollect,
         style: knopf("gold", { width: "100%", padding: "15px", fontSize: 20 })

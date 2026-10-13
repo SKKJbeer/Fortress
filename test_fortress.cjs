@@ -5780,6 +5780,139 @@ async function suiteSchmiede(browser) {
   return { res, errs };
 }
 
+// ── Lesbarkeit: Text-Kontrast gegen den ECHTEN Hintergrund (v3.128.0) ────
+//
+// Anlass: Auf dem Ergebnisschirm waren Statistik-Kacheln, Untertitel und
+// Nebenknoepfe auf dem hellen Bild kaum zu sehen (gemeldet aus TestFlight),
+// dazu Hinweiszeilen in #334155 auf Dunkelblau (1,2:1). Eine Pruefung auf
+// CSS-Farben allein haette das nicht gesehen: der Hintergrund ist oft ein
+// BILD. Deshalb: Bildschirmfoto → in der Seite in ein Canvas → je sichtbarem
+// Textstueck die haeufigste Farbe in einem Ring um den Text als Hintergrund,
+// Kontrast nach WCAG (4,5:1 klein, 3:1 gross). Text mit Comic-Kontur
+// (KONTURTEXT) traegt seine Lesbarkeit selbst und ist ausgenommen; verdeckter
+// Text (hinter einem Dialog-Schleier) zaehlt nicht.
+// Gegengeprueft: eine Hinweiszeile zurueck auf #334155 → rot.
+const KONTRAST_MESSEN = async (page) => {
+  const b64 = (await page.screenshot({ type: 'png' })).toString('base64');
+  return page.evaluate(async (b64) => {
+    const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0);
+    const sx = img.width / innerWidth;
+    const lum = ([r, g, b]) => { const k = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * k(r) + 0.7152 * k(g) + 0.0722 * k(b); };
+    const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const deck = (el) => { let o = 1; for (let e = el; e && e.nodeType === 1; e = e.parentElement) { const cs = getComputedStyle(e); o *= parseFloat(cs.opacity || '1'); if (cs.visibility === 'hidden') return 0; } return o; };
+    const schlecht = []; let geprueft = 0, gesamt = 0;
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+    while ((n = w.nextNode())) {
+      const t = n.textContent.replace(/\s+/g, ' ').trim(); if (t.length < 2) continue;
+      const el = n.parentElement; if (!el || el.closest('svg,canvas,input,script,style')) continue;
+      const rg = document.createRange(); rg.selectNodeContents(n); const rc = rg.getBoundingClientRect();
+      if (rc.width < 4 || rc.height < 4 || rc.top < 0 || rc.bottom > innerHeight || rc.left < 0 || rc.right > innerWidth) continue;
+      const oben = document.elementFromPoint(rc.left + rc.width / 2, rc.top + rc.height / 2);
+      if (!oben || !(oben === el || el.contains(oben) || oben.contains(el))) continue;
+      const cs = getComputedStyle(el); const o = deck(el); if (o < 0.05) continue;
+      const ts = cs.textShadow || 'none';
+      gesamt++;
+      if (ts !== 'none' && (ts.match(/rgb\(27, 15, 6\)|rgb\(0, 0, 0\)|rgba\(0, 0, 0, 0\.[6-9]/g) || []).length >= 3) continue;
+      // Ring 3 px um den Text, Farben auf 16er-Stufen gerundet, haeufigste gewinnt
+      // Hat das Element (oder sein Elternteil) einen eigenen Hintergrund —
+      // Abzeichen, Pille —, bleibt der Ring INNERHALB davon; sonst misst er
+      // bei engen Abzeichen das Umfeld statt des Abzeichens.
+      let gr = { left: -1e9, top: -1e9, right: 1e9, bottom: 1e9 };
+      for (let e = el, i = 0; e && i < 2; e = e.parentElement, i++) {
+        const c2 = getComputedStyle(e); const bgA = (c2.backgroundColor.match(/[\d.]+/g) || []).map(Number)[3];
+        if (c2.backgroundImage !== 'none' || (c2.backgroundColor !== 'rgba(0, 0, 0, 0)' && (bgA === undefined || bgA > 0.5))) { gr = e.getBoundingClientRect(); break; }
+      }
+      const m = 3;
+      const x0 = Math.max(0, Math.floor(Math.max(rc.left - m, gr.left + 1) * sx)), y0 = Math.max(0, Math.floor(Math.max(rc.top - m, gr.top + 1) * sx));
+      const x1 = Math.min(cv.width, Math.ceil(Math.min(rc.right + m, gr.right - 1) * sx)), y1 = Math.min(cv.height, Math.ceil(Math.min(rc.bottom + m, gr.bottom - 1) * sx));
+      const d = cx.getImageData(x0, y0, x1 - x0, y1 - y0).data, ww = x1 - x0;
+      const ix0 = Math.floor(rc.left * sx) - x0, iy0 = Math.floor(rc.top * sx) - y0, ix1 = Math.ceil(rc.right * sx) - x0, iy1 = Math.ceil(rc.bottom * sx) - y0;
+      const zaehl = new Map();
+      for (let yy = 0; yy < y1 - y0; yy++) for (let xx = 0; xx < ww; xx++) {
+        if (xx >= ix0 && xx < ix1 && yy >= iy0 && yy < iy1) continue;
+        const i = (yy * ww + xx) * 4; const key = (d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4);
+        const z = zaehl.get(key) || { n: 0, r: 0, g: 0, b: 0 }; z.n++; z.r += d[i]; z.g += d[i + 1]; z.b += d[i + 2]; zaehl.set(key, z);
+      }
+      let best = null; for (const z of zaehl.values()) if (!best || z.n > best.n) best = z;
+      if (!best) continue;
+      const hg = [best.r / best.n, best.g / best.n, best.b / best.n];
+      const f = (cs.color.match(/[\d.]+/g) || []).map(Number); const a = (f.length > 3 ? f[3] : 1) * o;
+      const tx = [0, 1, 2].map(i => f[i] * a + hg[i] * (1 - a));
+      const px = parseFloat(cs.fontSize), fw = parseInt(cs.fontWeight) || 400;
+      const soll = (px >= 18 || (px >= 14 && fw >= 700)) ? 3 : 4.5;
+      const k = kontrast(tx, hg); geprueft++;
+      if (k < soll) schlecht.push(`„${t.slice(0, 30)}" ${k.toFixed(2)}:1 (${px}px, soll ${soll})`);
+    }
+    return { schlecht, geprueft, gesamt };
+  }, b64);
+};
+
+async function suiteKontrast(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Lesbarkeit (Kontrast)\n' + '='.repeat(50));
+  const kontext = async (extra = '') => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    await page.addInitScript(TIMER_SPEEDUP);
+    await page.addInitScript('window.__mmDebug = true;' + extra);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    return { ctx, page };
+  };
+  const pruefe = async (page, name) => {
+    await page.evaluate(() => document.fonts.ready.then(() => true));
+    await page.waitForTimeout(250);
+    const m = await KONTRAST_MESSEN(page);
+    if (m.gesamt < 3) { fail(`Kontrast ${name}: nur ${m.gesamt} Textstuecke sichtbar — Schirm nicht erreicht?`); return; }
+    m.schlecht.length === 0
+      ? ok(`Kontrast ${name}: ${m.geprueft} gemessen, ${m.gesamt - m.geprueft} mit Kontur, alle lesbar ✓`)
+      : fail(`Kontrast ${name}: ${m.schlecht.length} von ${m.geprueft} zu schwach — ${m.schlecht.slice(0, 4).join(' | ')}`);
+  };
+  const ziele = [
+    ['Menue', null], ['Lokal', ['LOKAL', 'PLAY LOCAL']], ['Online', ['ONLINE SPIELEN', 'PLAY ONLINE']],
+    ['Profil', ['Profil bearbeiten']], ['Gold-Shop', ['Gold-Shop']], ['Schmiede', ['Schmiede']],
+    ['Aufgaben', ['Tagesaufgaben']], ['Erfolge', ['Achievements']], ['Bestenliste', ['Bestenliste']],
+  ];
+  {
+    const { ctx, page } = await kontext();
+    try {
+      for (const [name, wo] of ziele) {
+        await loadMenu(page);
+        // jsClick liefert den Knopftext — bei Symbolknoepfen ''; nur null heisst „nicht gefunden"
+        if (wo && (await jsClick(page, wo)) === null) { fail(`Kontrast ${name}: nicht geoeffnet`); continue; }
+        await page.waitForTimeout(500);
+        await pruefe(page, name);
+      }
+      // Gegnersuche und Warteraum (die Zeilen mit 1,2:1 und 1,3:1)
+      await loadMenu(page); await jsClick(page, ['ONLINE SPIELEN', 'PLAY ONLINE']); await page.waitForTimeout(300);
+      await jsClick(page, ['Matchmaking']); await page.waitForTimeout(800); await pruefe(page, 'Gegnersuche');
+      await loadMenu(page); await jsClick(page, ['ONLINE SPIELEN', 'PLAY ONLINE']); await page.waitForTimeout(300);
+      await jsClick(page, ['Spiel erstellen']); await page.waitForTimeout(1200); await pruefe(page, 'Warteraum');
+    } finally { await ctx.close(); }
+  }
+  // Ergebnisschirm — der gemeldete Fall
+  {
+    const { ctx, page } = await kontext();
+    try {
+      await loadMenu(page); await jsClick(page, ['LOKAL']); await page.waitForTimeout(250); await jsClick(page, ['2 Spieler']);
+      await page.waitForFunction(() => /BAUEN|BUILD/.test(document.body.textContent), null, { timeout: 30000 });
+      await page.evaluate(() => window.__blastWall(1, 4));
+      const da = await page.waitForFunction(() => !!document.querySelector('.gross-schirm'), null, { timeout: 30000 }).then(() => true).catch(() => false);
+      if (!da) fail('Kontrast Ergebnis: Ergebnisschirm nicht erreicht');
+      else {
+        await page.evaluate(() => Promise.race([Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => 0))), new Promise(r => setTimeout(r, 6000))]));
+        await pruefe(page, 'Ergebnis');
+      }
+    } finally { await ctx.close(); }
+  }
+  return { res, errs };
+}
+
 // ── Kein Menue rollt (v3.123.0) ─────────────────────────────────────────
 //
 // Wunsch des Betreibers: Jedes Menue auf EINEN Blick, ohne Rollen. Wo mehr
@@ -7324,6 +7457,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       goldshop: () => suiteGoldShop(browser),
       schmiede: () => suiteSchmiede(browser),
       rollen: () => suiteKeinRollen(browser),
+      kontrast: () => suiteKontrast(browser),
     };
     const unbekannt = NUR.filter(n => !einzeln[n]);
     if (unbekannt.length) {
@@ -7403,7 +7537,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     await Promise.all(Array.from({ length: Math.min(n, aufgaben.length) }, arbeiter));
     return erg;
   };
-  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen] = await begrenzt([
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen, rKontrast] = await begrenzt([
     () => suiteMenu(browser),
     () => suiteOffline(browser),
     () => suitePlattform(browser),
@@ -7429,6 +7563,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     () => suiteGoldShop(browser),
     () => suiteSchmiede(browser),
     () => suiteKeinRollen(browser),
+    () => suiteKontrast(browser),
   ], 6);
   const rHeavy = await onlineHeavy;
 
@@ -7454,9 +7589,9 @@ async function suiteOnlineHaerte(browser, fbPort) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rRollen.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rRollen.res, ...rKontrast.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rRollen.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rRollen.errs, ...rKontrast.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

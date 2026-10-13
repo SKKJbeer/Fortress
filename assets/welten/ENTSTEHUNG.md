@@ -56,3 +56,20 @@ Lavendel der Platten umgefaerbt und gedaempft.
 Werkzeuge der Nachbearbeitung: `retusche.py` (Flicken mit Farbangleich),
 `umfaerben.py` (Farbton-Bereiche), `glut.py` (Leuchten daempfen),
 `risse.py` (dunkle Linien abschwaechen) — im Skill spielgrafik dokumentiert.
+
+## Beruhigt fuer das Spielfeld (v3.128.0)
+
+Gemeldet aus TestFlight: Die gemalten Elemente (Steine, Bueschel, Laub,
+Moospolster) waren so kontrastreich, dass sie wie Hindernisse wirkten —
+„man muss / kann ja darueber bauen". Hindernis ist allein der Fluss.
+
+Deshalb laeuft jedes Bild (Retusche bzw. Rohbild) vor der Auslieferung durch
+`scripts/beruhigen.py` des Skills spielgrafik mit
+`anteil_scharf 0.7, radius 4, kontrast 0.62, saettigung 0.82`: leicht
+weichgezeichnet, flacher, etwas entsaettigt. Starke Weichzeichnung wurde
+probiert und verworfen — das Laub im Herbstwald sah dann unscharf aus wie ein
+zu klein aufgeloestes Bild. Was Hindernis-Charakter erzeugt, ist die
+plastische Schattierung, nicht die Kante.
+
+Dazu zeichnet das Spiel auf gemalten Boeden keine prozeduralen Berge mehr
+(Code 4 — sie sperrten nie, sahen aber wie Felsen aus).

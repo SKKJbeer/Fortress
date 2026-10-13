@@ -119,6 +119,16 @@ Rohbild UND Ergebnis aufbewahren und die Eingriffe in `ENTSTEHUNG.md`
 festhalten. Lieber retuschieren als neu rechnen, wenn ein Bild 20–45 Minuten
 kostet.
 
+## Spielfeld-Hintergruende beruhigen
+
+Ein Hintergrund, auf dem gespielt (gebaut, gezogen) wird, darf nichts zeigen,
+was wie ein Hindernis aussieht. Gemalte Steine, Bueschel und Laub sind dafuer
+zu plastisch. `scripts/beruhigen.py ein aus 0.7 4 0.62 0.82` (Anteil scharf,
+Weichzeichner-Radius, Kontrast, Saettigung) macht sie flacher, ohne das Bild
+unscharf wirken zu lassen. Starke Weichzeichnung sieht billig aus — die
+plastische Schattierung ist das Problem, nicht die Kante. Im Spiel ansehen,
+nicht im Kleinbild.
+
 ## Verneinungen wirken kaum
 
 „no dollar signs" malte zweimal Dollarmuenzen — das Wort zieht das Motiv an.

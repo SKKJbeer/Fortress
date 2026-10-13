@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.127.1
+- **Aktuelle Version**: v3.128.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -443,6 +443,16 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   gemaltes WebP in `public/artikel/`; fehlt eines, zeichnet der Aufrufer die
   alte Vorschau. `tests/artikel.test.js` verlangt Bild UND Herkunft fuer JEDEN
   Katalogeintrag — ein neuer Artikel ohne Bild faellt dort auf.
+- **Lesbarkeit wird GEMESSEN (seit v3.128.0):** `suiteKontrast` (`NUR=kontrast`)
+  fotografiert zwoelf Schirme, misst je Textstueck den Kontrast gegen den
+  ECHTEN Hintergrund (Pixel im Ring um den Text, nicht CSS) und verlangt WCAG
+  4,5:1 bzw. 3:1; Text mit Comic-Kontur ist ausgenommen. Text direkt auf einem
+  Bild braucht `bildHintergrundDunkel` oder `wertKachel` (stil.js). Die alten
+  Grautoene `#334155/#475569/#64748b` als Schriftfarbe verbietet
+  `tests/stil.test.js` (lagen bei 1,2–3,8:1).
+- **Spielfeld-Boeden sind beruhigt** (`beruhigen.py`, siehe
+  `assets/welten/ENTSTEHUNG.md`): Hindernis ist allein der Fluss — nichts
+  anderes darf so aussehen. Prozedurale Berge entfallen auf gemalten Boeden.
 - **Logo ist gesetzt, nicht gemalt** (`tools/logo.cjs`); aufs Ladebild nur in
   der sicheren Zone (`ladebild.py --logo`).
 

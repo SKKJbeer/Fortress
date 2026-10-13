@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.127.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.128.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9254,3 +9254,30 @@ harmonisch und gleich".
   Feindkanonen zugleich; Restzeit > 2 genuegt, der Nachlauf haelt die Phase
   fuer fliegende Kugeln offen. Viermal hintereinander gruen, 4 statt 24 s.
 - Die Meldung nennt bei einem Fehlschlag jetzt die beobachtete Spur.
+
+## v3.128.0 — Lesbarkeit und ruhige Spielfelder
+
+- **Gemeldet aus TestFlight:** Auf dem Ergebnisschirm waren die Statistiken
+  kaum zu sehen, und die gemalten Boeden wirkten so kontrastreich, dass man
+  glauben konnte, dort nicht bauen zu duerfen.
+- **Ergebnisschirm:** Bild kraeftig abgedunkelt (`bildHintergrundDunkel`),
+  Statistik-Kacheln und Punktestand auf festen Wertkacheln (`wertKachel`)
+  mit Comic-Schrift, Untertitel mit Kontur, „Teilen" und „Hauptmenue" als
+  echte Knoepfe statt grau-transparent. Gemessen vorher: Untertitel 1,1:1,
+  Punktestand 1,8:1.
+- **Lesbarkeits-Durchgang ueber alle Schirme** mit einem Messwerkzeug
+  (Bildschirmfoto → Kontrast je Textstueck gegen den echten Hintergrund):
+  Hinweiszeilen in Gegnersuche (1,2:1) und Warteraum (1,3:1), Materialkosten
+  gesperrter Rezepte (2,2–2,8:1), Ruestphasen-Shop (Unterzeilen 7,8 px,
+  graue Preise), Salven-Schalter, Kaufbestaetigung, Gold-/ELO-Zahlen im
+  Menue, Verbindungszeile, XP-Abzeichen. `textGedaempft` heller
+  (`#cfe0ff` → `#e3edff`, 3,9 → 4,7:1); 39 alte Grautoene darauf vereinheitlicht.
+- **Boeden beruhigt:** alle sieben Welten flacher und etwas entsaettigt
+  (`beruhigen.py`), Hindernis ist allein der Fluss. Prozedurale Berge entfallen
+  auf gemalten Boeden — sie sperrten nie (`isBuildable` kennt nur Wasser),
+  sahen aber wie Felsen aus.
+- **Neue Suite `suiteKontrast`** (`NUR=kontrast`): zwoelf Schirme, Kontrast
+  gegen den echten Hintergrund, WCAG 4,5:1 / 3:1. Gegenprobe gegen den alten
+  Stand: 9 von 12 Schirmen rot, darunter genau der gemeldete Ergebnisschirm.
+- **Unit-Test** verbietet die alten Grautoene als Schriftfarbe — er fand beim
+  ersten Lauf fuenf weitere Stellen (Salven-Schalter, Kaufbestaetigung).

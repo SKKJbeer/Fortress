@@ -41,7 +41,7 @@ import { drawWall, drawRubble, ROOF_OF, FLAG_OF, ACCENT_OF, ACCENT_RGB, GHOST_RG
 import { __spreadValues, __spreadProps } from '../spread.js';
 import { Reiter, Seiten, useSchirm, zeilenFuer } from '../ui/blaettern.js';
 import { ArtikelBild } from '../ui/artikel.js';
-import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, schleier, panel, karte, titel, pille, bildHintergrund, schalter, spielerKasten } from '../ui/stil.js';
+import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, schleier, panel, karte, titel, pille, bildHintergrund, bildHintergrundDunkel, wertKachel, schalter, spielerKasten } from '../ui/stil.js';
 
 // Vorschau eines Kosmetik-Artikels (Shop UND Inventar, v3.123.0 zusammengelegt):
 // Kanonen zeichnen das ECHTE Modell in ein Mini-Canvas (v3.45.0), Spuren und
@@ -6072,7 +6072,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       }
       riverFlow.current = { cells: flowCells.slice(0, 220), anim: WT.waterAnim || "255,255,255" };
       // — Plastische Berge: Bodenschatten + Licht-/Schattenfacette + Gipfel —
-      for (let r = 0; r < ROWS; r++)
+      // NICHT auf gemalten Boeden (v3.128.0): Berge (Code 4) sind reine Deko —
+      // `isBuildable` sperrt nur Wasser —, sahen als plastische Dreiecke aber
+      // wie Hindernisse aus. Gemeldet: „es kann den Eindruck vermitteln, dass
+      // man dort nicht bauen kann." Auf gemalten Boeden traegt das Bild die
+      // Landschaft; Hindernis ist allein der Fluss.
+      for (let r = 0; r < ROWS && !bodenImg; r++)
         for (let c = 0; c < COLS; c++) {
           if (ter[r][c] !== 4) continue;
           const cx3 = c * CELL + CELL / 2, baseY3 = r * CELL + CELL, topY = r * CELL - 2;
@@ -7198,11 +7203,11 @@ window.StackSiegeApp = function StackSiegeApp() {
         : `0 0 0 3px ${FARBE.kontur}, 0 4px 0 2px ${FARBE.kontur}, 0 0 20px ${profile.color}77`
     };
   })() }, React.createElement("div", { style: { borderRadius: "50%", overflow: "hidden", background: "#0b101c", display: "flex", lineHeight: 0 } },
-      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 22, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#dbe7fb", marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#dbe7fb", marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: "#fbbf24", fontWeight: 700 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#f59e0b", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"),
+      React.createElement(WappenAvatar, { id: profile.wappen, size: FRAME_STYLE[cosOf(profile).equipped.frame] ? 62 : 72 }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 22, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: FARBE.text, marginTop: 3, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "swords", size: 12, color: "#60a5fa" }), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.gold, fontWeight: 800 } }, typeof profile.elo === "number" ? profile.elo : 1e3), " ELO \xB7 ", profile.stats.wins, "S \xB7 ", profile.stats.losses, "N \xB7 ", Math.round(profile.stats.wins * 100 / Math.max(1, profile.stats.games || profile.stats.wins + profile.stats.losses)), "%"), profile.stats3 && profile.stats3.games > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: FARBE.text, marginTop: 2, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 12, color: "#34d399" }), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.gold, fontWeight: 800 } }, typeof profile.elo3 === "number" ? profile.elo3 : 1e3), " ELO \xB7 ", profile.stats3.wins, "S \xB7 ", profile.stats3.losses, "N"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: FARBE.gold, fontWeight: 800, marginTop: 4, display: "flex", alignItems: "center", gap: 4 } }, /* @__PURE__ */ React.createElement(Icon, { name: "coins", size: 13, color: "#fbbf24" }), typeof profile.gold === "number" ? profile.gold : 100, " Gold"),
     // Schmiede-Bestand (v3.68.0): steht jetzt direkt neben dem Gold, damit man
     // sieht, dass sich Material ansammelt — Klick fuehrt in die Schmiede.
     /* @__PURE__ */ React.createElement("div", { onClick: () => setShowForge(true), title: t("matToForge"), style: { display: "flex", alignItems: "center", gap: 7, marginTop: 4, cursor: "pointer" } },
-      React.createElement(Icon, { name: "hammer", size: 12, color: forgeReadyN > 0 ? "#fb923c" : "#64748b" }),
+      React.createElement(Icon, { name: "hammer", size: 12, color: forgeReadyN > 0 ? "#fb923c" : "#9fb0cc" }),
       React.createElement(MatRow, { t, vals: matOf(profile), size: 11, gap: 4 })
     ), React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 } }, React.createElement(LevelBadge, { level: typeof profile.level === "number" ? profile.level : 1 }), React.createElement(XpBarUI, { level: typeof profile.level === "number" ? profile.level : 1, xp: typeof profile.xp === "number" ? profile.xp : 0 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, flexBasis: "100%", justifyContent: "space-between", marginTop: 12 } },
     /* @__PURE__ */ React.createElement("button", { onClick: openProfileEditor, title: t('profileTitle'), style: symbolKnopf("blau") }, /* @__PURE__ */ React.createElement(Icon, { name: "user", size: 20 })),
@@ -7277,12 +7282,12 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.127.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.128.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
     // Plattform-Weiche (ARCHITEKTUR.md E7).
-    !istNativ() && /* @__PURE__ */ React.createElement("div", { key: "recht" }, /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: "#334155", fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: "#a9bfe3", letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink')))), showTutorialIntro && (() => {
+    !istNativ() && /* @__PURE__ */ React.createElement("div", { key: "recht" }, /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink')))), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7493,7 +7498,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         h(Icon, { name: gesichert ? "shieldCheck" : "cloud", size: 14, color: farbe }),
         h("span", { style: { fontSize: 12, fontWeight: 800, color: helle } },
           t(gesichert ? "cloudOnTitle" : "cloudOffTitle")),
-        cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: "#c9dbf7", marginLeft: "auto" } }, t("cloudSyncing")) : null,
+        cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: FARBE.textGedaempft, marginLeft: "auto" } }, t("cloudSyncing")) : null,
         cloudState === "saved" ? h("span", { style: { fontSize: 9.5, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
       ),
       h("div", { style: { fontSize: 10.5, color: "#dbe7fb", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
@@ -7533,7 +7538,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   )),
   /* @__PURE__ */ React.createElement("button", { onClick: saveProfileEditor, style: { ...knopf("lila", { fontSize: 19 }), width: "100%", padding: "16px", borderRadius: 12, cursor: "pointer", marginBottom: profile ? 10 : 0, textTransform: "uppercase" } }, React.createElement(Icon, { name: profile ? "save" : "swords", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), profile ? t('profileSave') : t('profileCreate')),
   profile && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowProfileEditor(false), style: {
-    background: "transparent", color: "#a9bfe3",
+    background: "transparent", color: FARBE.textGedaempft,
     border: "none", fontSize: 13, cursor: "pointer",
     padding: "4px 12px", letterSpacing: "0.02em"
   } }, t('cancel')))), showLeaderboard && (() => {
@@ -7693,7 +7698,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           ),
           h("div", { style: pille("gold", { fontSize: 16 }) }, gold + " G")
         ),
-        h("div", { style: { fontSize: 11.5, color: "#c9dbf7", marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
+        h("div", { style: { fontSize: 11.5, color: FARBE.textGedaempft, marginBottom: 14, textAlign: "left" } }, t("goldShopSub")),
         h(Reiter, { aktiv: shopReiter, onWahl: setShopReiter, reiter: [
           { key: "cannon", label: t("tabKanonen"), icon: "bomb" },
           { key: "trail", label: t("tabSpuren"), icon: "flame" },
@@ -7718,19 +7723,19 @@ window.StackSiegeApp = function StackSiegeApp() {
               padding: "8px 10px", borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)"
             } },
               h("div", null,
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#c9dbf7", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: FARBE.textGedaempft, textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
                 h("div", { style: { fontSize: 15, fontWeight: 900, color: "#fcd34d" } }, it.price + " G")
               ),
               h("div", { style: { width: 1, height: 26, background: "rgba(255,255,255,0.1)" } }),
               h("div", null,
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: "#c9dbf7", textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: FARBE.textGedaempft, textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
                 h("div", { style: { fontSize: 15, fontWeight: 900, color: canPay ? "#e2e8f0" : "#ef4444" } }, (gold - it.price) + " G")
               )
             ),
             h("button", { onClick: () => { buyOrEquipCosmetic(cat, it); setConfirmBuy(null); }, disabled: !canPay, style: {
               width: "100%", border: "none", cursor: canPay ? "pointer" : "default", borderRadius: 12, padding: "12px",
-              background: canPay ? "linear-gradient(180deg,#fde68a,#f59e0b)" : "rgba(255,255,255,0.06)",
-              color: canPay ? "#3b2606" : "#64748b", fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
+              background: canPay ? "linear-gradient(180deg,#fde68a,#f59e0b)" : "rgba(255,255,255,0.1)",
+              color: canPay ? "#3b2606" : "#c3cee0", fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
               boxShadow: canPay ? "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 14px rgba(245,158,11,0.4)" : "none",
               marginBottom: 8
             } }, "✓ " + t("confirmBuyYes")),
@@ -7806,8 +7811,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     };
     const matChip = (k, n, need) => h("span", { key: k, style: {
       display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999,
-      background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.1)",
-      fontSize: 10.5, fontWeight: 800, color: need !== void 0 && need > (mats[k] || 0) ? "#f87171" : "#e2e8f0", whiteSpace: "nowrap"
+      // Fehlbetraege hellrot auf dunklerem Grund (v3.128.0: vorher 2,2–2,8:1)
+      background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.14)",
+      fontSize: 10.5, fontWeight: 800, color: need !== void 0 && need > (mats[k] || 0) ? "#ffb4a8" : "#f1f5f9", whiteSpace: "nowrap"
     } },
       h("span", { style: { width: 8, height: 8, background: MAT_META[k].c, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 5px " + MAT_META[k].c, flexShrink: 0 } }),
       // Fehlt etwas, steht der Fortschritt dran (v3.68.0) — "2/5" sagt, wie weit
@@ -7818,8 +7824,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     );
     const goldChip = (n, short) => h("span", { style: {
       display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999,
-      background: "rgba(0,0,0,0.35)", border: "1px solid rgba(251,191,36,0.3)",
-      fontSize: 10.5, fontWeight: 800, color: n > gold ? "#f87171" : "#fcd34d", whiteSpace: "nowrap"
+      background: "rgba(0,0,0,0.5)", border: "1px solid rgba(251,191,36,0.35)",
+      fontSize: 10.5, fontWeight: 800, color: n > gold ? "#ffb4a8" : "#ffe27a", whiteSpace: "nowrap"
     } }, h(Icon, { name: "coins", size: 10, color: "#fbbf24" }), n);
     const stdCard = (cat) => {
       const std = cat === "cannon" ? "cannon_standard" : "impact_standard";
@@ -7856,7 +7862,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         }) }),
         h("div", { style: { flex: 1, fontSize: 12.5, fontWeight: 800, color: "#cbd5e1" } }, t("forgeStandard")),
         isEq
-          ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))
+          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: "0 1px 0 #1b0f06" } }, t("forgeEquipped"))
           : h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
       );
     };
@@ -7874,7 +7880,8 @@ window.StackSiegeApp = function StackSiegeApp() {
         ...karte({ padding: "7px 10px", borderRadius: 14 }),
         border: isEq ? "3px solid " + FARBE.gruen : owned ? "2px solid " + FARBE.himmel : "2px solid rgba(10,20,50,0.55)",
         cursor: isEq || (!owned && !afford) ? "default" : "pointer",
-        opacity: !owned && !afford ? 0.62 : 1
+        // Nicht leistbar: nur leicht gedimmt — die Kosten muessen lesbar bleiben
+        opacity: !owned && !afford ? 0.88 : 1
       } },
         h(ArtikelBild, { id: rec.id, groesse: 46, ersatz: preview(rec) }),
         h("div", { style: { flex: 1, minWidth: 0 } },
@@ -7887,7 +7894,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               )
         ),
         isEq
-          ? h("span", { style: { fontSize: 10, fontWeight: 900, color: "#4ade80", whiteSpace: "nowrap" } }, t("forgeEquipped"))
+          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: "0 1px 0 #1b0f06" } }, t("forgeEquipped"))
           : owned
             ? h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
             : h("span", { style: knopf(afford ? "gold" : "grau", { fontSize: 14, padding: "5px 12px", borderRadius: 12, opacity: afford ? 1 : 0.7, boxShadow: "0 3px 0 #1b0f06, inset 0 2px 0 rgba(255,255,255,0.45)" }) }, t("forgeCraft"))
@@ -7912,7 +7919,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         ),
         h("div", { style: { fontSize: 11, color: "#dbe7fb", marginBottom: 11, lineHeight: 1.4 } }, t("forgeSub")),
         h("div", { style: { marginBottom: 12, padding: "8px 10px", borderRadius: 12, background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.18)" } },
-          h("div", { style: { fontSize: 9.5, fontWeight: 800, color: "#fdba74", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("forgeMats")),
+          h("div", { style: { fontSize: 11, fontWeight: 900, color: "#ffe2c4", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("forgeMats")),
           h("div", { style: { display: "flex", gap: 5, flexWrap: "wrap" } },
             MAT_ORDER.map((k) => h("span", { key: k, title: t("mat_" + k), style: {
               display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999,
@@ -7923,11 +7930,11 @@ window.StackSiegeApp = function StackSiegeApp() {
               mats[k] || 0
             ))
           ),
-          h("div", { style: { fontSize: 9, color: "#c9dbf7", marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
+          h("div", { style: { fontSize: 10, color: FARBE.textGedaempft, marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
           // Klartext, wie viele Rezepte gerade drin sind (v3.68.0)
           h("div", { style: {
-            fontSize: 10, fontWeight: 800, marginTop: 5,
-            color: forgeReadyN > 0 ? "#fdba74" : "#475569"
+            fontSize: 11, fontWeight: 900, marginTop: 5,
+            color: forgeReadyN > 0 ? "#ffd0a0" : FARBE.textGedaempft
           } }, forgeReadyN > 0 ? forgeReadyN + " " + t("forgeReady") : t("forgeNothing"))
         ),
         h(Reiter, { aktiv: schmiedeReiter, onWahl: setSchmiedeReiter, reiter: [
@@ -7977,7 +7984,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     key: "reveal_" + craftReveal.id,
     rec: craftReveal,
     onClose: () => setCraftReveal(null)
-  }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1e3, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 28, maxWidth: 380, width: "100%", textAlign: "center" } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => startGuidedTutorial(), style: { ...knopf("lila", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, React.createElement(Icon, { name: "gradCap", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: { ...knopf("gruen", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 18 }), t('vsBot')), botSelect && /* @__PURE__ */ React.createElement("div", { style: {
+  }), mpScreen && /* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1e3, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 28, maxWidth: 380, width: "100%", textAlign: "center" } }, mpScreen === "local" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "users", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('localTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 20 } }, t('localSub')), /* @__PURE__ */ React.createElement("button", { onClick: () => startGuidedTutorial(), style: { ...knopf("lila", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, React.createElement(Icon, { name: "gradCap", size: 16, style: { verticalAlign: "-3px", marginRight: 7 } }), t('guidedTutorial')), /* @__PURE__ */ React.createElement("button", { onClick: () => setBotSelect((s) => !s), style: { ...knopf("gruen", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 18 }), t('vsBot')), botSelect && /* @__PURE__ */ React.createElement("div", { style: {
     display: "flex", gap: 8, marginBottom: 12, marginTop: 10
   } }, [
     { k: "easy", icon: "moon", label: t('botLvlEasy') },
@@ -8010,7 +8017,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     setNumPlayers(3);
     setMpScreen(null);
     fullReset();
-  }, style: { ...knopf("lila", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 18 }), t('local3p')), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen(null), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "12px", borderRadius: 12, cursor: "pointer" } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { ...karte({ padding: "7px 10px", borderRadius: 10 }), fontSize: 11, lineHeight: 1.6, marginBottom: 14, color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? "#c9dbf7" : FARBE.gold, letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.online === false ? " \u00B7 navigator.onLine=false" : "", netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
+  }, style: { ...knopf("lila", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Icon, { name: "crown", size: 18 }), t('local3p')), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen(null), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "12px", borderRadius: 12, cursor: "pointer" } }, t('back'))), mpScreen === "online" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#22d3ee", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "globe", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(26), margin: "0 0 4px" } }, t('onlineTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 20 } }, t('onlineSubtitle')), /* @__PURE__ */ React.createElement("div", { "data-netz": "1", style: { ...karte({ padding: "7px 10px", borderRadius: 10 }), fontSize: 11, lineHeight: 1.6, marginBottom: 14, color: netzInfo && netzInfo.sdk && typeof netzInfo.lesen === "number" ? FARBE.text : FARBE.gold, letterSpacing: "0.02em" } }, netzInfo === null ? t('netzPruefe') : [t('netzLabel'), ": ", netzInfo.sdk ? "SDK \u2713" : "SDK \u2717", " \u00B7 ", netzInfo.uid ? netzInfo.uid : t('netzKeineAnmeldung'), " \u00B7 ", typeof netzInfo.lesen === "number" ? netzInfo.lesen + " ms" : t('netzKeineVerbindung'), netzInfo.online === false ? " \u00B7 navigator.onLine=false" : "", netzInfo.authFehler ? " \u00B7 " + netzInfo.authFehler : "", netzInfo.bootFehler ? " \u00B7 " + netzInfo.bootFehler : ""].join("")), !MP_CONFIGURED && /* @__PURE__ */ React.createElement("div", { style: {
     background: "rgba(245,158,11,0.12)",
     border: "1px solid rgba(245,158,11,0.3)",
     borderRadius: 8,
@@ -8019,12 +8026,12 @@ window.StackSiegeApp = function StackSiegeApp() {
     color: "#fbbf24",
     marginBottom: 16,
     lineHeight: 1.5
-  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#c9dbf7", textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
+  } }, t('fbMissing')), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: FARBE.textGedaempft, textAlign: "left", marginBottom: 6 } }, t('playerCount')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 16 } }, [2, 3].map((m) => /* @__PURE__ */ React.createElement("button", { key: m, onClick: () => {
     numPlayersRef.current = m;
     setNumPlayers(m);
-  }, style: schalter(numPlayers === m, "blau", { flex: 1, padding: "11px", fontSize: 17 }) }, /* @__PURE__ */ React.createElement(Icon, { name: m === 2 ? "swords" : "crown", size: 15 }), m === 2 ? t('local2p') : t('online3p')))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: { ...knopf("gold", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 19 }), t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: "#a9bfe3", fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#a9bfe3" } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: { ...knopf("gold", { fontSize: 18 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "15px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 17 }), `${t('createGame', {n: numPlayers})}`), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: { ...knopf("grau", { fontSize: 18 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 16 }), t('joinGameBtn')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  }, style: schalter(numPlayers === m, "blau", { flex: 1, padding: "11px", fontSize: 17 }) }, /* @__PURE__ */ React.createElement(Icon, { name: m === 2 ? "swords" : "crown", size: 15 }), m === 2 ? t('local2p') : t('online3p')))), /* @__PURE__ */ React.createElement("button", { onClick: () => startMatchmaking(numPlayers), style: { ...knopf("gold", { fontSize: 19 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: 14, cursor: "pointer", marginBottom: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "zap", size: 19 }), t('quickMatchBtn', { n: numPlayers })), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 11, marginBottom: 18 } }, t('quickMatchSub')), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: FARBE.textGedaempft } }, t('orDivider')), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "rgba(255,255,255,0.1)" } })), /* @__PURE__ */ React.createElement("button", { onClick: hostCreateGame, style: { ...knopf("gold", { fontSize: 18 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "15px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, /* @__PURE__ */ React.createElement(Icon, { name: "plus", size: 17 }), `${t('createGame', {n: numPlayers})}`), /* @__PURE__ */ React.createElement("button", { onClick: () => setMpScreen("joining"), style: { ...knopf("grau", { fontSize: 18 }), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 16 } }, /* @__PURE__ */ React.createElement(Icon, { name: "key", size: 16 }), t('joinGameBtn')), mpError && /* @__PURE__ */ React.createElement("div", { style: { color: "#f87171", fontSize: 12, marginBottom: 10 } }, mpError), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
-    color: "#c9dbf7",
+    color: FARBE.textGedaempft,
     border: "none",
     fontSize: 13,
     cursor: "pointer",
@@ -8038,7 +8045,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     justifyContent: "center",
     animation: "radarSpin 3s linear infinite",
     filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))"
-  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("button", {
+  } }, React.createElement(Icon, { name: "target", size: 48, color: "#22d3ee" })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('searchingOpponent')), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 6 } }, t('searchingSince', { s: mmElapsed })), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 11, marginBottom: 6 } }, t('searchingRadius', { r: Math.round(mmRadius(mmElapsed)) })), numPlayers === 2 && /* @__PURE__ */ React.createElement("button", {
     // Der Bot war bis v3.79.0 nur ein HINWEIS mit Countdown: "in 47 s spielst
     // du gegen den Bot". Bei zehn aktiven Spielern ist die Schlange fast immer
     // leer, und niemand sieht einem Suchbildschirm 60 Sekunden zu — die Suche
@@ -8062,7 +8069,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       animation: "badgePop 0.35s ease both"
     } },
       /* @__PURE__ */ React.createElement("span", { style: {
-        flexShrink: 0, fontSize: 9, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.12em",
+        flexShrink: 0, fontSize: 10.5, fontWeight: 900, color: "#7ee8ff", letterSpacing: "0.12em",
         background: "rgba(34,211,238,0.14)", borderRadius: 6, padding: "3px 7px", marginTop: 1
       } }, React.createElement(Icon, { name: "lightbulb", size: 12, style: { verticalAlign: "-2px", marginRight: 4 } }), t('queueTipLabel')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#dbe7fb", lineHeight: 1.45 } }, t('queueTip_' + tipIdx))
@@ -8094,12 +8101,12 @@ window.StackSiegeApp = function StackSiegeApp() {
     setMpError("");
   }, style: {
     background: "transparent",
-    color: "#c9dbf7",
+    color: FARBE.textGedaempft,
     border: "none",
     fontSize: 13,
     cursor: "pointer",
     textDecoration: "underline"
-  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center", animation: "glowpulse 1.6s ease-in-out infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "hourglass", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
+  } }, t('back'))), mpScreen === "waiting" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#a78bfa", display: "flex", justifyContent: "center", animation: "glowpulse 1.6s ease-in-out infinite" } }, /* @__PURE__ */ React.createElement(Icon, { name: "hourglass", size: 28 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, myRole.current === 1 ? t('waitingHost') : t('waitingGuest')), myRole.current === 1 && mpCode && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 10 } }, t('shareCode')), /* @__PURE__ */ React.createElement("button", { onClick: copyCode, style: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -8129,9 +8136,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     fontWeight: 700,
     transition: "all 0.2s",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-  } }, codeCopied ? t('copied') : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Icon, { name: "share", size: 16 }), t('inviteFriend'))), /* @__PURE__ */ React.createElement("p", { style: { color: "#334155", fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? t('waitFor', {count: (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0), total: 2}) : t('gameStartsAuto'))), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 18 } }, t('guestJoined', {n: myRole.current === 2 ? "2 ♚" : "3 ♜"}), /* @__PURE__ */ React.createElement("br", null), t('waitFirstState'), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#334155" } }, t('startsAuto'))), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
+  } }, codeCopied ? t('copied') : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Icon, { name: "share", size: 16 }), t('inviteFriend'))), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 11, marginBottom: 18 } }, numPlayers === 3 ? t('waitFor', {count: (joinedGuests.current[2] ? 1 : 0) + (joinedGuests.current[3] ? 1 : 0), total: 2}) : t('gameStartsAuto'))), myRole.current !== 1 && /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 18 } }, t('guestJoined', {n: myRole.current === 2 ? "2 ♚" : "3 ♜"}), /* @__PURE__ */ React.createElement("br", null), t('waitFirstState'), /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: FARBE.textGedaempft } }, t('startsAuto'))), /* @__PURE__ */ React.createElement("button", { onClick: leaveOnline, style: {
     background: "transparent",
-    color: "#c9dbf7",
+    color: FARBE.textGedaempft,
     border: "none",
     fontSize: 13,
     cursor: "pointer",
@@ -8160,7 +8167,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     });
     const LABEL = { fontSize: 11, color: "#dbe7fb", letterSpacing: "0.08em", fontFamily: SCHRIFT_TITEL, textTransform: "uppercase", marginBottom: 5, textShadow: "0 1px 0 #1b0f06" };
     return React.createElement("div", { className: "gross-schirm", style: {
-      ...bildHintergrund("menu-hintergrund.jpg"),
+      // Kraeftig abgedunkelt (v3.128.0): hier steht viel kleiner Text direkt
+      // auf dem Bild — mit dem Menue-Schleier war er kaum lesbar.
+      ...bildHintergrundDunkel("menu-hintergrund.jpg"),
       // Siehe Spiel-Huelle: 100% des bereits verkuerzten Koerpers, nicht 100dvh.
       // "safe center" zentriert nur, SOLANGE der Inhalt passt; wird er hoeher
       // (3 Spieler, Level-Aufstieg, langer Name), rutscht er auf flex-start
@@ -8188,16 +8197,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     }}),
     // ── ONLINE + SPIELERNAME CHIP ─────────────────────────────
     online.current && React.createElement("div", { style: {
-      fontSize: 11, color: "#4ade80", marginBottom: 14, fontWeight: 700,
-      background: "rgba(74,222,128,0.08)", borderRadius: 20, padding: "5px 14px",
-      display: "inline-flex", alignItems: "center", gap: 6,
-      border: "1px solid rgba(74,222,128,0.2)"
+      ...wertKachel({ borderRadius: 999, padding: "4px 14px" }), fontSize: 12, marginBottom: 14, fontWeight: 800,
+      display: "inline-flex", alignItems: "center", gap: 6
     }},
-      React.createElement(Icon, { name: "globe", size: 12, color: "#4ade80" }),
-      React.createElement("span", null, "ONLINE"),
-      React.createElement("span", { style: { color: "#334155" } }, "\xB7"),
-      React.createElement(WappenAvatar, { id: myWap, size: 15 }),
-      myName && React.createElement("span", { style: { color: "#cbd5e1", fontWeight: 600 } }, myName)
+      React.createElement(Icon, { name: "globe", size: 13, color: FARBE.laterne }),
+      React.createElement("span", { style: { color: FARBE.laterne } }, "ONLINE"),
+      React.createElement("span", { style: { color: FARBE.textGedaempft } }, "\xB7"),
+      React.createElement(WappenAvatar, { id: myWap, size: 16 }),
+      myName && React.createElement("span", { style: { color: FARBE.text } }, myName)
     ),
     // ── POKAL / VERLOREN-ICON MIT GLOW ────────────────────────
     React.createElement("div", { style: { position: "relative", marginBottom: 6, display: "flex", justifyContent: "center", alignItems: "center" }},
@@ -8232,7 +8239,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       return t("resultWinner", { name: wname(info.winner) });
     })()),
     // ── GRUND / UNTERTITEL ────────────────────────────────────
-    React.createElement("div", { style: { fontSize: 12, color: "#c9dbf7", marginBottom: 12 }},
+    React.createElement("div", { style: { fontSize: 15, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 12 }},
       info.reason === "left" || info.reason === "host_left" ? t("resultLeft")
       : info.numPlayers === 3 || numPlayers === 3 ? t("resultLastStanding")
       : info.reason === "breach" ? t("resultBurgDurch")
@@ -8240,19 +8247,16 @@ window.StackSiegeApp = function StackSiegeApp() {
     ),
     // ── SCORE-BOX ─────────────────────────────────────────────
     React.createElement("div", { style: {
+      ...wertKachel({ borderRadius: 16, padding: "6px 22px" }),
       display: "inline-flex", alignItems: "center", gap: 10,
-      marginBottom: 14,
-      background: "linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))",
-      borderRadius: 16, padding: "8px 22px",
-      border: "1px solid rgba(255,255,255,0.1)",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.06)"
+      marginBottom: 14, fontFamily: SCHRIFT_TITEL
     }},
-      React.createElement("span", { style: { color: "#60a5fa", fontSize: 26, fontWeight: 900, textShadow: "0 0 14px rgba(96,165,250,0.55)" }}, "♔ " + scores[1]),
-      React.createElement("span", { style: { color: "#334155", fontSize: 16, fontWeight: 400 }}, ":"),
-      React.createElement("span", { style: { color: "#f87171", fontSize: 26, fontWeight: 900, textShadow: "0 0 14px rgba(248,113,113,0.55)" }}, scores[2] + " ♚"),
+      React.createElement("span", { style: { color: "#8fd0ff", fontSize: 28, textShadow: KONTURTEXT }}, "♔ " + scores[1]),
+      React.createElement("span", { style: { color: FARBE.text, fontSize: 20, textShadow: KONTURTEXT }}, ":"),
+      React.createElement("span", { style: { color: "#ff9a8a", fontSize: 28, textShadow: KONTURTEXT }}, scores[2] + " ♚"),
       (info.numPlayers === 3 || numPlayers === 3) && React.createElement(React.Fragment, null,
-        React.createElement("span", { style: { color: "#334155", fontSize: 16, fontWeight: 400 }}, ":"),
-        React.createElement("span", { style: { color: "#34d399", fontSize: 26, fontWeight: 900, textShadow: "0 0 14px rgba(52,211,153,0.55)" }}, (scores[3] || 0) + " ♜")
+        React.createElement("span", { style: { color: FARBE.text, fontSize: 20, textShadow: KONTURTEXT }}, ":"),
+        React.createElement("span", { style: { color: "#7dff9a", fontSize: 28, textShadow: KONTURTEXT }}, (scores[3] || 0) + " ♜")
       )
     ),
     // ── MATCH-BILANZ (v3.21.0, SPEC 14.2): 4 Kacheln für den eigenen Spieler ──
@@ -8268,14 +8272,14 @@ window.StackSiegeApp = function StackSiegeApp() {
       ];
       return React.createElement("div", { style: { width: "100%", maxWidth: 320, marginBottom: 12 } },
         React.createElement("div", { style: { display: "flex", gap: 6 } },
-          tiles.map((tl, i) => React.createElement("div", { key: i, style: {
-            flex: 1, minWidth: 0, padding: "8px 2px 7px", borderRadius: 12,
-            background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.09)",
+          tiles.map((tl, i) => React.createElement("div", { key: i, "data-stat-kachel": tl.icon, style: {
+            ...wertKachel({ borderRadius: 12, padding: "7px 2px 6px" }),
+            flex: 1, minWidth: 0,
             display: "flex", flexDirection: "column", alignItems: "center", gap: 2
           } },
-            React.createElement(Icon, { name: tl.icon, size: 14 }),
-            React.createElement("span", { style: { fontSize: 16, fontWeight: 900, color: "#e2e8f0", lineHeight: 1.1 } }, tl.val),
-            React.createElement("span", { style: { fontSize: 8.5, fontWeight: 700, color: "#c9dbf7", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
+            React.createElement(Icon, { name: tl.icon, size: 15, color: FARBE.gold }),
+            React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, lineHeight: 1.05 } }, tl.val),
+            React.createElement("span", { style: { fontSize: 9.5, fontWeight: 800, color: FARBE.textGedaempft, letterSpacing: "0.03em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
           ))
         )
       );
@@ -8290,8 +8294,8 @@ window.StackSiegeApp = function StackSiegeApp() {
         eloChangeRef.current.delta >= 0 ? card(74, 222, 128) : card(239, 68, 68) },
         React.createElement("div", { style: LABEL }, t("eloChange")),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }},
-          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#c9dbf7" }}, eloChangeRef.current.oldElo),
-          React.createElement("span", { style: { color: "#334155", fontSize: 14 }}, "→"),
+          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: FARBE.textGedaempft }}, eloChangeRef.current.oldElo),
+          React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 16, fontWeight: 900 }}, "→"),
           React.createElement("span", { style: {
             fontSize: 28, fontWeight: 900,
             color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444",
@@ -8309,8 +8313,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       goldChangeRef.current && goldChangeRef.current.delta > 0 && React.createElement("div", { style: card(251, 191, 36) },
         React.createElement("div", { style: LABEL }, t("goldLabel")),
         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }},
-          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#c9dbf7" }}, goldChangeRef.current.oldGold),
-          React.createElement("span", { style: { color: "#334155", fontSize: 14 }}, "→"),
+          React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: FARBE.textGedaempft }}, goldChangeRef.current.oldGold),
+          React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 16, fontWeight: 900 }}, "→"),
           React.createElement("span", { style: {
             fontSize: 28, fontWeight: 900, color: "#fbbf24",
             textShadow: "0 0 10px rgba(251,191,36,0.5)"
@@ -8350,14 +8354,10 @@ window.StackSiegeApp = function StackSiegeApp() {
       t('challengeFriend')
     ),
     React.createElement("button", { onClick: () => shareResult(iWon, drawn), style: {
-      width: "100%", maxWidth: 320,
-      background: shareShared ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",
-      color: shareShared ? "#4ade80" : "#475569",
-      border: "1px solid " + (shareShared ? "rgba(74,222,128,0.25)" : "rgba(255,255,255,0.07)"),
-      padding: "10px", fontSize: 13, fontWeight: 600,
-      borderRadius: 12, cursor: "pointer",
-      marginBottom: 8, transition: "all 0.2s",
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+      // Ein echter Knopf (v3.128.0) — vorher grau-in-transparent, auf dem
+      // Bild praktisch unsichtbar.
+      ...knopf(shareShared ? "gruen" : "blau", { fontSize: 15, padding: "9px", borderRadius: 12, gap: 6 }),
+      width: "100%", maxWidth: 320, marginBottom: 8
     }},
       React.createElement(Icon, { name: shareShared ? "check" : "share2", size: 14 }),
       shareShared ? t("shareBtnDone") : t("shareBtn")
@@ -8377,9 +8377,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Gast: Warte-Status + Hauptmenü
       React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 320, alignItems: "center" }},
         React.createElement("div", { style: {
-          color: "#a9bfe3", fontSize: 12, fontStyle: "italic",
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: 12, padding: "13px 20px", width: "100%", boxSizing: "border-box"
+          ...wertKachel({ borderRadius: 12, padding: "12px 20px" }), fontSize: 13, fontWeight: 700,
+          color: FARBE.textGedaempft, width: "100%", boxSizing: "border-box"
         }}, t("waitHost")),
         React.createElement("button", { onClick: () => {
           scoresRef.current = { 1: 0, 2: 0 };
@@ -8398,12 +8397,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         setScores({ 1: 0, 2: 0 });
         if (online.current) leaveOnline();
         else { screenRef.current = "menu"; setScreen("menu"); }
-      }, style: {
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-        background: "transparent", color: "#a9bfe3",
-        border: "1px solid rgba(255,255,255,0.06)", padding: "10px",
-        fontSize: 13, borderRadius: 12, cursor: "pointer"
-      }}, React.createElement(Icon, { name: "home", size: 14 }), t("mainMenu"))
+      }, style: knopf("grau", { padding: "10px", fontSize: 15, borderRadius: 12, gap: 6 }) }, React.createElement(Icon, { name: "home", size: 14 }), t("mainMenu"))
     )
     );
   }
@@ -8571,13 +8565,14 @@ window.StackSiegeApp = function StackSiegeApp() {
           background: aktiv
             ? "linear-gradient(180deg,#2563eb,#1d4ed8)"
             : "linear-gradient(180deg, rgba(30,41,66,0.92), rgba(11,16,30,0.94))",
-          color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b"),
+          // Leer/gesperrt bleibt erkennbar gedimmt, aber lesbar (v3.128.0)
+          color: aktiv ? "#f8fafc" : (n ? "#e2e8f0" : "#aab8d0"),
           boxShadow: aktiv ? "0 3px 12px rgba(37,99,235,0.4)" : "none",
-          opacity: gesperrt && !aktiv ? 0.45 : (n ? 1 : 0.65),
+          opacity: gesperrt && !aktiv ? 0.6 : (n ? 1 : 0.8),
           touchAction: "manipulation", whiteSpace: "nowrap", overflow: "hidden"
         }
       },
-        React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#cbd5e1" : "#64748b") }),
+        React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#e2e8f0" : "#aab8d0") }),
         React.createElement("span", { style: { overflow: "hidden", textOverflow: "ellipsis" } }, label),
         React.createElement("span", { style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
     };
@@ -8588,8 +8583,8 @@ window.StackSiegeApp = function StackSiegeApp() {
       display: "flex", flexDirection: "column", gap: 4, justifyContent: "center"
     } },
       mitZeile ? React.createElement("div", { style: {
-        fontSize: 9.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
-        color: gesperrt ? "#fbbf24" : "#64748b", textAlign: "center"
+        fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+        color: gesperrt ? FARBE.gold : "#b9c6dc", textAlign: "center"
       } }, gesperrt ? t("salvoLock") + " " + (restMs / 1000).toFixed(1) + "s" : t("salvoHint")) : null,
       React.createElement("div", { style: { display: "flex", gap: 6 } },
         salvenKnopf("std", "bricks", t("salvoWalls")),
@@ -8674,7 +8669,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     let n = 0;
     for (let r = 0; r < g.length; r++) for (let c = 0; c < g[r].length; c++) if (g[r][c] !== 0) n++;
     return n;
-  })()), /* @__PURE__ */ React.createElement("div", { style: { color: "#fde68a" } }, "screen=", screenRef.current, " phase=", phase_r.current), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: "#a9bfe3", marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { ref: scoreBarRef, style: {
+  })()), /* @__PURE__ */ React.createElement("div", { style: { color: "#fde68a" } }, "screen=", screenRef.current, " phase=", phase_r.current), /* @__PURE__ */ React.createElement("div", { style: { color: "#86efac", wordBreak: "break-all" } }, dbg.current.lastInfo), dbg.current.lastErr && /* @__PURE__ */ React.createElement("div", { style: { color: "#fca5a5", wordBreak: "break-all" } }, "ERR: ", dbg.current.lastErr), /* @__PURE__ */ React.createElement("div", { style: { color: FARBE.textGedaempft, marginTop: 2 } }, "(tippen zum Schlie\xDFen)")), /* @__PURE__ */ React.createElement("div", { ref: scoreBarRef, style: {
     width: hudBreite,
     zoom: hudZ === 1 ? void 0 : hudZ,
     display: "flex",
@@ -8692,14 +8687,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     alignItems: "center",
     gap: 6,
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: "#c9dbf7", borderRadius: 6, padding: "1px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: FARBE.textGedaempft, borderRadius: 6, padding: "1px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
     fontSize: 34,
     fontFamily: SCHRIFT_TITEL,
     color: timerColor,
     textShadow: KONTURTEXT + (timer <= 5 ? `, 0 0 18px ${timerColor}` : ""),
     fontVariantNumeric: "tabular-nums",
     lineHeight: 1
-  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: "#c9dbf7" } }, t('roundLabel'), round))), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: FARBE.textGedaempft } }, t('roundLabel'), round))), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
     ...spielerKasten("rot"),
@@ -8762,8 +8757,8 @@ window.StackSiegeApp = function StackSiegeApp() {
           h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, padding: "0 3px" } },
             h("div", { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: "1 1 auto" } },
               h("span", { style: { fontSize: 15, lineHeight: 1, color: pColor, flexShrink: 0, textShadow: "0 0 8px " + pGlow } }, pFlag),
-              h("span", { style: { fontSize: 12.5, fontWeight: 800, letterSpacing: "0.03em", color: pColor, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 2px rgba(0,0,0,0.55)" } }, pName),
-              h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", color: "#c9dbf7", textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
+              h("span", { style: { fontSize: 13, fontFamily: SCHRIFT_TITEL, letterSpacing: "0.03em", color: FARBE.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: KONTURTEXT } }, pName),
+              h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", color: FARBE.textGedaempft, textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
             ),
             h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
               h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: { ...panel(), width: 22, height: 22, borderRadius: 999, cursor: "pointer", fontSize: 12, fontStyle: "italic", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" } }, "i"),
@@ -8826,8 +8821,8 @@ window.StackSiegeApp = function StackSiegeApp() {
                   h("div", { style: { position: "relative", display: "flex", filter: dim ? "none" : "drop-shadow(0 1px 1.5px rgba(0,0,0,0.55))" },
                     dangerouslySetInnerHTML: { __html: SHOP_ICONS[it.k] } })
                 ),
-                h("div", { style: { fontSize: 9.5, fontWeight: 800, color: dim ? "#94a3b8" : "#f1f5f9", textAlign: "center", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", textShadow: "0 1px 2px rgba(0,0,0,0.5)" } }, it.label),
-                h("div", { style: { fontSize: 7.8, fontWeight: 700, color: dim ? "rgba(148,163,184,0.7)" : "rgba(" + th.glow + ",0.95)", textAlign: "center", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", letterSpacing: "0.01em" } }, it.tag),
+                h("div", { style: { fontSize: 9.5, fontWeight: 800, color: dim ? "#c9d4e6" : "#f1f5f9", textAlign: "center", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", textShadow: "0 1px 2px rgba(0,0,0,0.5)" } }, it.label),
+                h("div", { style: { fontSize: 9, fontWeight: 800, color: dim ? "#b9c6dc" : "rgba(" + th.glow + ",1)", textAlign: "center", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", letterSpacing: "0.01em" } }, it.tag),
                 it.max
                   ? h("div", { style: { padding: "2px 9px", borderRadius: 999, background: "linear-gradient(180deg,#34d399,#059669)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 6px rgba(16,185,129,0.4)", fontSize: 9, fontWeight: 900, color: "#052e1a", letterSpacing: "0.05em" } }, t("shopMax"))
                   : h("div", { style: {
@@ -8836,7 +8831,8 @@ window.StackSiegeApp = function StackSiegeApp() {
                       border: "1px solid rgba(255,255,255,0.08)"
                     } },
                       React.createElement(Icon, { name: "gem", size: 10 }),
-                      h("span", { style: { fontSize: 11.5, fontWeight: 900, color: afford ? "#fcd34d" : "#64748b" } }, it.price)
+                      // Nicht leistbar: hellgrau statt #64748b (v3.128.0, vorher 3,8:1)
+                      h("span", { style: { fontSize: 11.5, fontWeight: 900, color: afford ? "#fcd34d" : "#c3cee0" } }, it.price)
                     )
               );
             })
@@ -9050,7 +9046,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     (!online.current || myRole.current === 1) && readyPanel(1),
     (!online.current && !botMode.current || online.current && myRole.current === 2) && readyPanel(2),
     (!online.current && numPlayers === 3 || online.current && myRole.current === 3) && readyPanel(3)
-  ) : null), showQuitConfirm &&/* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#f87171", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "x", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: "#c9dbf7", fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: { ...knopf("rot", { fontSize: 18 }), width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, t('quitYes')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer" } }, t('quitContinue')))));
+  ) : null), showQuitConfirm &&/* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#f87171", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "x", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: { ...knopf("rot", { fontSize: 18 }), width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, t('quitYes')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer" } }, t('quitContinue')))));
 };
 
 const _root = ReactDOM.createRoot(document.getElementById('root'));

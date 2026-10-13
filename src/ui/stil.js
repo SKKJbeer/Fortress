@@ -25,7 +25,9 @@ export const FARBE = {
   lila: '#8b55e0', lilaTief: '#4f2a99',
   holz: '#9a6232', holzTief: '#5c3716',
   pergament: '#fff6e0',
-  text: '#fffaf0', textGedaempft: '#cfe0ff', textDunkel: '#2a1a0a',
+  // textGedaempft (v3.128.0) heller: '#cfe0ff' lag auf dem oberen Panel-Blau bei
+  // 3,9:1 — gemessen, unter WCAG 4,5:1 fuer kleine Schrift. '#e3edff' ≈ 4,7:1.
+  text: '#fffaf0', textGedaempft: '#e3edff', textDunkel: '#2a1a0a',
 };
 
 // Knopf-Varianten: hell (oben), mitte, tief (unten), Kante (3D-Schatten)
@@ -128,6 +130,31 @@ export function bildHintergrund(url, extra = {}) {
     backgroundColor: FARBE.nacht,
     backgroundImage: `linear-gradient(180deg, rgba(13,31,69,0.15) 0%, rgba(13,31,69,0.05) 35%, rgba(13,31,69,0.55) 75%, rgba(13,31,69,0.85) 100%), url(${url})`,
     backgroundSize: 'cover', backgroundPosition: 'center', ...extra,
+  };
+}
+
+/**
+ * Hintergrundbild mit KRAEFTIGER Abdunklung (v3.128.0) — fuer Schirme, auf
+ * denen viel kleiner Text direkt ueber dem Bild steht (Ergebnis). Beim
+ * normalen `bildHintergrund` waren Statistik-Kacheln, Untertitel und
+ * Nebenknoepfe auf hellem Himmel und Wiese kaum zu sehen (gemeldet aus der
+ * TestFlight-App).
+ */
+export function bildHintergrundDunkel(url, extra = {}) {
+  return {
+    backgroundColor: FARBE.nacht,
+    backgroundImage: `linear-gradient(180deg, rgba(13,31,69,0.62) 0%, rgba(13,31,69,0.70) 45%, rgba(13,31,69,0.88) 100%), url(${url})`,
+    backgroundSize: 'cover', backgroundPosition: 'center', ...extra,
+  };
+}
+
+/** Feste dunkle Kachel fuer Werte direkt auf Bildern (lesbar auf jedem Grund). */
+export function wertKachel(extra = {}) {
+  return {
+    background: 'linear-gradient(180deg, rgba(29,74,158,0.95), rgba(13,31,69,0.95))',
+    border: `2.5px solid ${FARBE.kontur}`, borderRadius: 14,
+    boxShadow: `inset 0 0 0 1.5px rgba(255,210,58,0.55), 0 3px 0 ${FARBE.kontur}`,
+    color: FARBE.text, ...extra,
   };
 }
 
