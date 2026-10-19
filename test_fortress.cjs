@@ -5868,6 +5868,204 @@ const KONTRAST_MESSEN = async (page) => {
   }, b64);
 };
 
+// ── Zieler auf jedem Boden sichtbar (v3.131.0) ─────────────────────────
+//
+// Gemeldet: Das Gelb des Zielers (Linie und Fadenkreuz) verschwand auf
+// hellen Boeden. Gemessen wird je Welt: Bild ohne Zieler, Zieler halten, Bild
+// mit Zieler. Nur die Pixel, die sich dabei aendern UND im Bereich des
+// Fadenkreuzes bzw. der Ziehlinie liegen, zaehlen — der Bot schiesst
+// nebenher. Je Pixel: Kontrast gegen GENAU diesen Pixel ohne Zieler.
+//
+// Verlangt: Das staerkste Fuenftel der Pixel (80. Perzentil) schafft 3:1.
+// Zwei Schichten, eine davon traegt immer — auf hellem Boden die dunkle
+// Kontur, auf dunklem die helle Spielerfarbe; die Kontur stellt rund 45 % der
+// Pixel und muss deshalb im obersten Fuenftel auftauchen. Ohne Kontur liegt
+// Gelb auf Schnee, Sand oder Wiese bei 1,2 bis 2:1, auch im obersten Fuenftel.
+// (Erste Anlaeufe: „40 % aller Pixel" misst nichts — bei zwei Schichten liegt
+// immer etwa die Haelfte darunter; „dunklere gegen hellere Pixel" vermischt
+// sich, weil Gelb auf Schnee ebenfalls DUNKLER als der Grund ist.)
+// Gegengeprueft am Stand v3.130.3 (Gelb ohne Kontur): rot auf Frostreich,
+// Glutwueste und Herbstwald (SPEC v3.131.0).
+const ZIELER_MESSEN = async (page, ohneB64, mitB64, z, sx) => page.evaluate(async ({ ohneB64, mitB64, z, sx }) => {
+  const lade = async (b) => { const i = new Image(); i.src = 'data:image/png;base64,' + b; await i.decode();
+    const c = document.createElement('canvas'); c.width = i.width; c.height = i.height;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(i, 0, 0); return x.getImageData(0, 0, i.width, i.height); };
+  const A = await lade(ohneB64), M = await lade(mitB64);
+  const lum = (d, i) => { const k = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * k(d[i]) + 0.7152 * k(d[i + 1]) + 0.0722 * k(d[i + 2]); };
+  const bereich = (fx, fy) => {
+    // Pixel → Spielfeld-Koordinaten
+    const x = fx / sx, y = fy / sx;
+    if (Math.hypot(x - z.tx, y - z.ty) <= z.r) return 'kreuz';
+    const vx = z.px - z.ax, vy = z.py - z.ay, l2 = vx * vx + vy * vy || 1;
+    const t = Math.max(0, Math.min(1, ((x - z.ax) * vx + (y - z.ay) * vy) / l2));
+    return Math.hypot(x - (z.ax + t * vx), y - (z.ay + t * vy)) <= 4 ? 'linie' : null;
+  };
+  const erg = { kreuz: [], linie: [] };
+  for (let y = 0; y < A.height; y++) for (let x = 0; x < A.width; x++) {
+    const i = (y * A.width + x) * 4, a = A.data, m = M.data;
+    if (Math.abs(a[i] - m[i]) + Math.abs(a[i + 1] - m[i + 1]) + Math.abs(a[i + 2] - m[i + 2]) < 60) continue;
+    const b = bereich(x, y); if (!b) continue;
+    const l1 = lum(a, i), l2 = lum(m, i);
+    erg[b].push((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05));
+  }
+  const auswerten = (a) => {
+    a.sort((x, y) => x - y);
+    const p = (q) => a.length ? a[Math.min(a.length - 1, Math.floor(a.length * q))] : 0;
+    return { n: a.length, p50: p(0.5), p80: p(0.8) };
+  };
+  return { kreuz: auswerten(erg.kreuz), linie: auswerten(erg.linie) };
+}, { ohneB64, mitB64, z, sx });
+
+async function suiteZieler(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Zieler auf jedem Boden sichtbar\n' + '='.repeat(50));
+  for (let w = 0; w < 7; w++) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    // Sanfter Zeitraffer (1 s → 200 ms): Die Schussphase dauert so rund vier
+    // Sekunden — lang genug, um den Zieler zu halten. TIMER_SPEEDUP liesse
+    // ihr eine Sekunde, und das Phasenbanner sperrt die Eingabe davon die Haelfte.
+    await page.addInitScript(`const _osi = window.setInterval;
+      window.setInterval = (f, m, ...a) => _osi(f, m === 1000 ? 200 : m, ...a);
+      window.__mmDebug = true; window.__weltSeed = ${700 + w};`);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await loadMenu(page); await jsClick(page, ['LOKAL', 'PLAY LOCAL']); await page.waitForTimeout(250);
+      await startBotGame(page);
+      const welt = await page.waitForFunction(() => window.__waterTheme && window.__waterTheme() && window.__waterTheme().name, null, { timeout: 15000 })
+        .then(h => h.jsonValue()).catch(() => '?');
+      const cv = page.locator('canvas');
+      let z = null, ohne = null, mit = null, versuche = 0;
+      // Auf Schussphase warten, dann halten; das Banner sperrt Eingaben —
+      // deshalb wiederholen, bis der Zieler wirklich gezeichnet wurde.
+      for (const ende = Date.now() + 60000; Date.now() < ende && !z; ) {
+        if (await page.evaluate(() => window.__phase()) !== 'shoot') { await page.waitForTimeout(100); continue; }
+        versuche++;
+        const cb = await cv.boundingBox();
+        await page.evaluate(() => { window.__zielDbg = null; });
+        ohne = await cv.screenshot();
+        const sxp = cb.x + cb.width * 0.5, syp = cb.y + cb.height * 0.8;
+        await page.mouse.move(sxp, syp); await page.mouse.down();
+        await page.mouse.move(sxp + 25, syp + 70, { steps: 4 });
+        await page.waitForTimeout(120);
+        mit = await cv.screenshot();
+        z = await page.evaluate(() => window.__zielDbg);
+        await page.mouse.up();
+        if (!z) await page.waitForTimeout(250);
+      }
+      if (!z) { fail(`Zieler ${welt}: nicht gezeichnet (${versuche} Versuche in der Schussphase)`); continue; }
+      const cb = await cv.boundingBox();
+      const sx = (cb.width * 2) / z.W; // Bildpixel je Spielfeld-Einheit (Faktor 2)
+      const m = await ZIELER_MESSEN(page, ohne.toString('base64'), mit.toString('base64'), z, sx);
+      const f = (g) => `${g.n} px, Median ${g.p50.toFixed(1)}:1, oberstes Fuenftel ${g.p80.toFixed(1)}:1`;
+      const text = `Fadenkreuz ${f(m.kreuz)} · Linie ${f(m.linie)}`;
+      (m.kreuz.n >= 150 && m.linie.n >= 60 && m.kreuz.p80 >= 3 && m.linie.p80 >= 3)
+        ? ok(`Zieler ${welt}: ${text} ✓`)
+        : fail(`Zieler ${welt}: zu schwach — ${text} (verlangt: oberstes Fuenftel >= 3:1, mind. 150/60 px)`);
+    } finally { await ctx.close(); }
+  }
+  return { res, errs };
+}
+
+// ── Ueberlappungen (v3.131.0) ───────────────────────────────────────────
+//
+// Gemeldet: „ab und an Ueberlappungen". Gefunden im Rundgang ueber alle
+// Phasen und vier Geraete, und keiner davon war fuer die bisherigen Pruefungen
+// sichtbar: der Shop von P1 lag ueber dem von P3 (3 Spieler, ein Geraet),
+// „0/0 Feuerbereit" ragte aus seinem Kasten (iPhone SE), das Info-Knoepfchen
+// war 74 statt 22 px gross. Zwei Regeln:
+//   1. Text ragt nicht aus dem Kasten, auf dem er steht (naechster Vorfahr
+//      mit eigenem Hintergrund) — mehr als 2 px gelten als Ueberstand.
+//   2. Fenster (Panel-Signatur: Rand >= 4 px) ueberdecken einander nicht.
+const UEBERLAPP_MESSEN = (page) => page.evaluate(() => {
+  const raus = [];
+  const sichtbar = (e) => { for (let a = e; a && a.nodeType === 1; a = a.parentElement) { const c = getComputedStyle(a); if (c.display === 'none' || c.visibility === 'hidden' || parseFloat(c.opacity) < 0.05) return false; } return true; };
+  const hatGrund = (c) => c.backgroundImage !== 'none' || (c.backgroundColor !== 'rgba(0, 0, 0, 0)' && !/, 0\)$/.test(c.backgroundColor));
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+  while ((n = w.nextNode())) {
+    const t = n.textContent.trim(); if (!t) continue;
+    const el = n.parentElement; if (!el || el.closest('svg,script,style') || !sichtbar(el)) continue;
+    const rg = document.createRange(); rg.selectNodeContents(n); let r = rg.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) continue;
+    // abgeschnittener Text (Ellipse) zaehlt nur mit seinem sichtbaren Teil
+    for (let a = el; a && a !== document.body; a = a.parentElement) {
+      const c = getComputedStyle(a);
+      if (c.overflowX !== 'visible' || c.overflowY !== 'visible') { const k = a.getBoundingClientRect(); r = { left: Math.max(r.left, k.left), right: Math.min(r.right, k.right), top: Math.max(r.top, k.top), bottom: Math.min(r.bottom, k.bottom) }; }
+    }
+    if (r.right - r.left < 2 || r.bottom - r.top < 2) continue;
+    for (let a = el, i = 0; a && a !== document.body && i < 5; a = a.parentElement, i++) {
+      const c = getComputedStyle(a); if (!hatGrund(c)) continue;
+      const k = a.getBoundingClientRect(); if (k.width < 8 || k.height < 8) break;
+      const ueber = Math.max(k.left - r.left, r.right - k.right, k.top - r.top, r.bottom - k.bottom);
+      if (ueber > 2) raus.push(`„${t.slice(0, 24)}" ragt ${Math.round(ueber)} px aus seinem Kasten`);
+      break;
+    }
+  }
+  const fenster = [...document.querySelectorAll('div')].filter((e) => {
+    const c = getComputedStyle(e); return parseFloat(c.borderTopWidth) >= 4 && hatGrund(c) && sichtbar(e);
+  }).map((e) => ({ e, b: e.getBoundingClientRect() })).filter((x) => x.b.width > 60 && x.b.height > 40)
+    // Nur Fenster, die an mindestens einer Stelle OBEN liegen — das Menue
+    // unter einem Dialog-Schleier ist kein Ueberlappungsfehler.
+    .filter(({ e, b }) => [[0.5, 0.5], [0.2, 0.15], [0.8, 0.15], [0.2, 0.85], [0.8, 0.85]].some(([fx, fy]) => {
+      const o = document.elementFromPoint(b.left + b.width * fx, b.top + b.height * fy); return o && (o === e || e.contains(o));
+    }));
+  for (let i = 0; i < fenster.length; i++) for (let j = i + 1; j < fenster.length; j++) {
+    const A = fenster[i], B = fenster[j]; if (A.e.contains(B.e) || B.e.contains(A.e)) continue;
+    const ww = Math.min(A.b.right, B.b.right) - Math.max(A.b.left, B.b.left), hh = Math.min(A.b.bottom, B.b.bottom) - Math.max(A.b.top, B.b.top);
+    if (ww > 10 && hh > 10) raus.push(`Fenster „${A.e.textContent.trim().slice(0, 18)}" und „${B.e.textContent.trim().slice(0, 18)}" ueberdecken sich (${Math.round(ww)}×${Math.round(hh)})`);
+  }
+  return [...new Set(raus)];
+});
+
+async function suiteUeberlappung(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Keine Ueberlappungen (Menues und Spielphasen)\n' + '='.repeat(50));
+  const GERAETE = [['iPhone SE', 375, 667], ['iPhone', 390, 844], ['iPad', 820, 1180]];
+  const pruefe = async (page, name) => {
+    await page.evaluate(() => Promise.race([Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => 0))), new Promise(r => setTimeout(r, 3000))]));
+    const m = await UEBERLAPP_MESSEN(page);
+    m.length === 0 ? ok(`Ueberlappung ${name}: keine ✓`) : fail(`Ueberlappung ${name}: ${m.slice(0, 4).join(' | ')}`);
+  };
+  for (const [geraet, bw, bh] of GERAETE) {
+    const ctx = await browser.newContext({ viewport: { width: bw, height: bh }, hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    // Sanfter Zeitraffer wie in suiteZieler: Phasen von ~4 s, damit jede
+    // Phase sicher erwischt wird und das Banner (2,5 s Echtzeit) schon weg ist.
+    await page.addInitScript(`const _osi = window.setInterval;
+      window.setInterval = (f, m, ...a) => _osi(f, m === 1000 ? 120 : m, ...a); window.__mmDebug = true;`);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      for (const [name, wo] of [['Menue', null], ['Profil', ['Profil bearbeiten']], ['Gold-Shop', ['Gold-Shop']], ['Schmiede', ['Schmiede']]]) {
+        await loadMenu(page);
+        if (wo && (await jsClick(page, wo)) === null) { fail(`Ueberlappung ${geraet} ${name}: nicht geoeffnet`); continue; }
+        await page.waitForTimeout(400); await pruefe(page, `${geraet} ${name}`);
+      }
+      for (const drei of [false, true]) {
+        await loadMenu(page); await jsClick(page, ['LOKAL', 'PLAY LOCAL']); await page.waitForTimeout(250);
+        if (drei) await jsClick(page, ['3 Spieler']); else await startBotGame(page);
+        const art = drei ? '3 Spieler' : 'Bot';
+        // Reihenfolge: Runde 1 hat keine Bauphase — Aufstellen, Schiessen,
+        // dann Bauen und Ruesten.
+        for (const ph of ['shoot', 'cannon']) {
+          const da = await page.waitForFunction((ph) => window.__phase && window.__phase() === ph, ph, { timeout: 60000 }).then(() => true).catch(() => false);
+          if (!da) { fail(`Ueberlappung ${geraet} ${art} ${ph}: Phase nicht erreicht`); continue; }
+          await page.waitForTimeout(700);
+          await pruefe(page, `${geraet} ${art} ${ph}`);
+        }
+      }
+    } finally { await ctx.close(); }
+  }
+  return { res, errs };
+}
+
 async function suiteKontrast(browser) {
   const res = [], errs = [];
   const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
@@ -7488,6 +7686,8 @@ async function suiteOnlineHaerte(browser, fbPort) {
       schmiede: () => suiteSchmiede(browser),
       rollen: () => suiteKeinRollen(browser),
       kontrast: () => suiteKontrast(browser),
+      zieler: () => suiteZieler(browser),
+      ueberlappung: () => suiteUeberlappung(browser),
     };
     const unbekannt = NUR.filter(n => !einzeln[n]);
     if (unbekannt.length) {
@@ -7594,6 +7794,8 @@ async function suiteOnlineHaerte(browser, fbPort) {
     () => suiteSchmiede(browser),
     () => suiteKeinRollen(browser),
     () => suiteKontrast(browser),
+    () => suiteZieler(browser),
+    () => suiteUeberlappung(browser),
   ], 6);
   const rHeavy = await onlineHeavy;
 

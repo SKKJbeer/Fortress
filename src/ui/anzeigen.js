@@ -87,7 +87,7 @@ function XpBarUI({ level, xp }) {
   const pct = Math.min(100, xp / needed * 100);
   return React.createElement("div", { style: { marginTop: 5 } },
     React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 3 } },
-      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#fffaf0", textShadow: "0 1px 0 #1b0f06, 0 0 3px rgba(27,15,6,0.6)" } }, xp + " / " + needed + " XP")
+      React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#fffaf0", textShadow: KONTURTEXT } }, xp + " / " + needed + " XP")
     ),
     React.createElement("div", { style: { height: 12, background: "#0d1f45", border: "2px solid #1b0f06", borderRadius: 8, overflow: "hidden", position: "relative", boxSizing: "border-box" } },
       React.createElement("div", { style: { position: "absolute", top: 0, left: 0, height: "100%", width: pct + "%", background: "linear-gradient(180deg,#d8f7ff 0%,#4fc3ff 45%,#1f7fd8 100%)", borderRadius: 6, boxShadow: "inset 0 2px 0 rgba(255,255,255,0.5)", transition: "width 0.4s ease" } })

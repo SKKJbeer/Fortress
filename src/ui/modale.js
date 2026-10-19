@@ -120,7 +120,7 @@ export function AchievementPopup({ item, onDone , achTitle }) {
     boxShadow: "0 0 40px rgba(124,58,237,0.7),0 8px 32px rgba(0,0,0,0.6)",
     backdropFilter: "blur(20px)"
   } },
-    React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.12em", marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 } },
+    React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.12em", marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 } },
       React.createElement(Icon, { name: "trophy", size: 11, color: "#fbbf24" }), "ACHIEVEMENT"),
     React.createElement("div", { style: { marginBottom: 4, display: "flex", justifyContent: "center", color: "#fff" } },
       React.createElement(Icon, { name: item.icon, size: 22 })),
@@ -182,10 +182,10 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
           : h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
               h("div", { style: { flex: 1, height: 7, background: "rgba(0,0,0,0.35)", border: "1.5px solid " + FARBE.kontur, borderRadius: 5, overflow: "hidden" } },
                 h("div", { style: { height: "100%", width: pct + "%", background: "linear-gradient(90deg," + kat.color + "aa," + kat.color + ")", transition: "width 0.4s ease" } })),
-              h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.textGedaempft, whiteSpace: "nowrap" } }, progress + " / " + def.target))),
+              h("span", { style: { fontSize: 11, fontWeight: 800, color: FARBE.textGedaempft, whiteSpace: "nowrap" } }, progress + " / " + def.target))),
       h("div", { style: { display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end", flexShrink: 0 } },
-        def.xp > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: "#ffffff", background: "rgba(109,60,200,0.85)", padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.xp + " XP"),
-        def.gold > 0 && h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.textDunkel, background: FARBE.gold, padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.gold + " Gold")));
+        def.xp > 0 && h("span", { style: { fontSize: 11, fontWeight: 800, color: "#ffffff", background: "rgba(109,60,200,0.85)", padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.xp + " XP"),
+        def.gold > 0 && h("span", { style: { fontSize: 11, fontWeight: 800, color: FARBE.textDunkel, background: FARBE.gold, padding: "1px 6px", borderRadius: 6, border: "1.5px solid " + FARBE.kontur } }, "+" + def.gold + " Gold")));
   };
   return h("div", { style: {
     position: "fixed", inset: 0, zIndex: 3000,
@@ -221,7 +221,7 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
             } },
               mitSymbol ? h(Icon, { name: c.icon, size: 14 }) : null,
               h("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.label),
-              h("span", { style: { fontSize: 10.5, fontFamily: SCHRIFT_TEXT, fontWeight: 900, opacity: 0.9 } }, n + "/" + liste.length));
+              h("span", { style: { fontSize: 11, fontFamily: SCHRIFT_TEXT, fontWeight: 900, opacity: 0.9 } }, n + "/" + liste.length));
           })),
         h(Seiten, { schluessel: katKey, eintraege: ACHIEVEMENTS.filter(d => d.cat === katKey), proSeite, spalten: 1, render: karteFuer }))));
 }
@@ -274,8 +274,8 @@ export function ItemRevealModal({ rec, onClose , t }) {
         forgeItemVisual(rec, rec.cat === "trail" ? 118 : 94))
     ),
     ...sparks,
-    h("div", { style: __spreadValues({ fontSize: 13, fontWeight: 900, letterSpacing: "0.2em", padding: "5px 20px", borderRadius: 999, border: "1.5px solid " + rar.c, marginBottom: 12, textShadow: "0 0 14px rgba(" + rar.glow + ",0.8)", background: "rgba(" + rar.glow + ",0.08)" }, badgeStyle) }, rar.label),
-    h("div", { style: { fontSize: "clamp(23px,7vw,32px)", fontWeight: 900, color: "#fff", textAlign: "center", textShadow: "0 0 24px rgba(" + rar.glow + ",0.7)", marginBottom: 6, animation: "revealBurstIn 0.5s 0.34s both" } }, t("cos_" + rec.id)),
+    h("div", { style: __spreadValues({ fontSize: 13, fontWeight: 900, letterSpacing: "0.2em", padding: "5px 20px", borderRadius: 999, border: "1.5px solid " + rar.c, marginBottom: 12, textShadow: KONTURTEXT + ", 0 0 14px rgba(" + rar.glow + ",0.8)", background: "rgba(" + rar.glow + ",0.08)" }, badgeStyle) }, rar.label),
+    h("div", { style: { fontSize: "clamp(23px,7vw,32px)", fontWeight: 900, color: "#fff", textAlign: "center", textShadow: KONTURTEXT + ", 0 0 24px rgba(" + rar.glow + ",0.7)", marginBottom: 6, animation: "revealBurstIn 0.5s 0.34s both" } }, t("cos_" + rec.id)),
     h("div", { style: { fontSize: 12, color: "#dbe7fb", marginBottom: 30, animation: "revealBurstIn 0.5s 0.4s both" } }, catLabel + " · " + t("forgeRevealEquipped")),
     h("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", animation: "glowpulse 1.6s ease-in-out infinite" } }, t("forgeRevealTap"))
   );
@@ -307,7 +307,7 @@ function XpResultAnim({ xpChange , t }) {
       animation: "lvlUpFlash 0.55s cubic-bezier(.36,1.6,.56,1) both",
       boxShadow: "0 2px 18px rgba(251,191,36,0.15)"
     } },
-      React.createElement("div", { style: { fontSize: 16, fontWeight: 900, color: "#fbbf24", letterSpacing: "0.18em", textShadow: "0 0 18px rgba(251,191,36,0.8)" } }, "★ LEVEL UP! ★"),
+      React.createElement("div", { style: { fontSize: 16, fontWeight: 900, color: "#fbbf24", letterSpacing: "0.18em", textShadow: KONTURTEXT + ", 0 0 18px rgba(251,191,36,0.8)" } }, "★ LEVEL UP! ★"),
       React.createElement("div", { style: { fontSize: 12, color: "#a78bfa", marginTop: 3, fontWeight: 700 } }, "Level " + xpChange.oldLevel + " → Level " + xpChange.newLevel)
     ),
     React.createElement("div", { style: {
@@ -315,9 +315,9 @@ function XpResultAnim({ xpChange , t }) {
       borderRadius: 14, padding: "11px 18px", textAlign: "center",
       boxShadow: "0 2px 18px rgba(167,139,250,0.12)"
     } },
-      React.createElement("div", { style: { fontSize: 9, color: FARBE.textGedaempft, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
-      React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: "0 0 16px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
-      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: FARBE.textGedaempft, marginBottom: 6 } },
+      React.createElement("div", { style: { fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.1em", fontWeight: 700, textTransform: "uppercase", marginBottom: 5 } }, "XP"),
+      React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: "#a78bfa", marginBottom: 8, textShadow: KONTURTEXT + ", 0 0 16px rgba(167,139,250,0.7)", animation: "xpNumPop 0.4s ease" } }, "+" + xpChange.xpGained + " XP"),
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 11, color: FARBE.textGedaempft, marginBottom: 6 } },
         React.createElement("span", null, "Level " + xpChange.newLevel),
         React.createElement("span", null, xpChange.newXp + " / " + needed)
       ),
@@ -331,7 +331,7 @@ function XpResultAnim({ xpChange , t }) {
         } })
       )
     ),
-    nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 10, color: FARBE.textGedaempft, textAlign: "center", fontStyle: "italic" } },
+    nextUnlockEntry && React.createElement("div", { style: { marginTop: 6, fontSize: 11, color: FARBE.textGedaempft, textAlign: "center", fontStyle: "italic" } },
       t('nextRewardAt', { n: nextUnlockEntry[1] })
     )
   );
@@ -412,8 +412,8 @@ export function DailyRewardModal({ daily, onCollect, onClose, collected, t }) {
       borderRadius: 10, padding: "6px 1px", minWidth: 0,
       animation: isCurrent ? "streakGlow 2s ease infinite" : "none"
     } },
-      React.createElement("div", { style: { fontSize: 10, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 2 } }, "T" + (i + 1)),
-      React.createElement("div", { style: { fontSize: 10.5, fontWeight: 900, color: isCurrent || isPast ? FARBE.text : FARBE.textGedaempft, textShadow: isCurrent || isPast ? KONTURTEXT : "none", whiteSpace: "nowrap" } },
+      React.createElement("div", { style: { fontSize: 11, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 2 } }, "T" + (i + 1)),
+      React.createElement("div", { style: { fontSize: 11, fontWeight: 900, color: isCurrent || isPast ? FARBE.text : FARBE.textGedaempft, textShadow: isCurrent || isPast ? KONTURTEXT : "none", whiteSpace: "nowrap" } },
         isPast ? "✓" : r.special === "chest" ? "★" : "+" + Math.round(r.gold * mult) + "G"
       )
     );

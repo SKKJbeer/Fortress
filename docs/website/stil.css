@@ -58,8 +58,13 @@
   --text:  "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   /* Comic-Kontur fuer Schrift — dieselbe wie KONTURTEXT im Spiel */
-  --kontur-text: 0 2px 0 var(--kontur), 1.5px 1.5px 0 var(--kontur), -1.5px 1.5px 0 var(--kontur),
-                 1.5px -1px 0 var(--kontur), -1.5px -1px 0 var(--kontur);
+  --kontur-text: 0 clamp(1px, .11em, 2.5px) 0 var(--kontur),
+    clamp(.75px, .07em, 1.6px) 0 0 var(--kontur), calc(-1 * clamp(.75px, .07em, 1.6px)) 0 0 var(--kontur),
+    0 clamp(.75px, .07em, 1.6px) 0 var(--kontur), 0 calc(-1 * clamp(.75px, .07em, 1.6px)) 0 var(--kontur),
+    calc(.72 * clamp(.75px, .07em, 1.6px)) calc(.72 * clamp(.75px, .07em, 1.6px)) 0 var(--kontur),
+    calc(-.72 * clamp(.75px, .07em, 1.6px)) calc(.72 * clamp(.75px, .07em, 1.6px)) 0 var(--kontur),
+    calc(.72 * clamp(.75px, .07em, 1.6px)) calc(-.72 * clamp(.75px, .07em, 1.6px)) 0 var(--kontur),
+    calc(-.72 * clamp(.75px, .07em, 1.6px)) calc(-.72 * clamp(.75px, .07em, 1.6px)) 0 var(--kontur);
   --schatten: 0 8px 0 var(--kontur), 0 22px 44px -12px rgba(0,0,0,.65);
 }
 

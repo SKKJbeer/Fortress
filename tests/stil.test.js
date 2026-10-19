@@ -105,3 +105,64 @@ test('drawImage im Spielfeld immer mit Zielgroesse', () => {
   }
   assert.deepStrictEqual(fehler, []);
 });
+
+// ── Scharfe Schrift (v3.131.0) ──────────────────────────────────────────
+// Gemeldet: „Schrift teilweise unscharf auf Hintergruenden". Drei Ursachen,
+// je eine Regel: zu dicke feste Kontur auf kleiner Schrift (Innenraeume
+// liefen zu), weiche Leuchtschatten statt Kontur, und Text, der endlos
+// skaliert (auf iOS wird die Ebene vergroessert statt neu gesetzt).
+const ALLE = [...NUTZER, 'src/ui/blaettern.js'];
+
+test('KONTURTEXT waechst mit der Schrift und hat keine Unschaerfe', () => {
+  const teile = STIL.KONTURTEXT.split(/,(?![^(]*\))/);
+  assert.ok(teile.length >= 8, `rund in acht Richtungen, nicht ${teile.length}`);
+  assert.match(STIL.KONTURTEXT, /em/, 'Breite in em — fest 1,5 px fuellt bei 12 px die Buchstaben zu');
+  for (const t of teile) {
+    const ohneFarbe = t.replace(/#[0-9a-f]{3,8}/i, '').trim();
+    assert.match(ohneFarbe, /\s0$/, `kein Weichzeichner in „${t.trim()}"`);
+  }
+});
+
+test('Kein weicher Textschatten ohne scharfe Kontur davor', () => {
+  // Ein Leuchten HINTER der Kontur ist erlaubt (Seltenheit, Level-Up) —
+  // allein laesst es die Buchstaben verschwimmen.
+  const blur = /(?:^|[\s"'`,(])-?[\d.]+(?:px)?\s+-?[\d.]+(?:px)?\s+([\d.]*[1-9][\d.]*)px/;
+  const fehler = [];
+  for (const datei of ALLE) {
+    const s = lies(datei);
+    for (const m of s.matchAll(/textShadow:\s*([^\n]*?)(?=,\s*[A-Za-z]+\s*:|\s*\}|$)/gm)) {
+      if (blur.test(m[1]) && !/KONTURTEXT|titel\(/.test(m[1])) fehler.push(`${datei}: ${m[1].slice(0, 70)}`);
+    }
+  }
+  const html = lies('index.html');
+  for (const m of html.matchAll(/(?<![-\w])text-shadow:([^;}]*)/g)) {
+    if (blur.test(' ' + m[1]) && !/@keyframes/.test(m[0])) fehler.push(`index.html: ${m[1].slice(0, 70)}`);
+  }
+  assert.deepEqual(fehler, []);
+});
+
+test('Keine Schrift unter 11 px', () => {
+  const fehler = [];
+  for (const datei of ALLE) {
+    for (const m of lies(datei).matchAll(/fontSize:\s*(\d+(?:\.\d+)?)\s*[,}]/g)) {
+      if (Number(m[1]) < 11) fehler.push(`${datei}: fontSize ${m[1]}`);
+    }
+  }
+  assert.deepEqual(fehler, []);
+});
+
+test('Endlos-Animationen skalieren nichts', () => {
+  // closePulse vergroesserte die Schliessen-Warnung um 22 % — sie ragte in
+  // den Nachbarn und war auf iOS dauerhaft weich. Erlaubt nur fuer reine
+  // Lichtkreise ohne Text.
+  const OHNE_TEXT = new Set(['revealHalo']);
+  const html = lies('index.html');
+  const namen = new Set();
+  for (const datei of ALLE) for (const m of lies(datei).matchAll(/animation:\s*["'`]([A-Za-z]+)[^"'`]*infinite/g)) namen.add(m[1]);
+  assert.ok(namen.size >= 4, 'Endlos-Animationen gefunden: ' + [...namen]);
+  for (const n of namen) {
+    const kf = html.match(new RegExp(`@keyframes ${n}\\{(.*?\\})\\}`));
+    assert.ok(kf, `@keyframes ${n} fehlt in index.html`);
+    if (!OHNE_TEXT.has(n)) assert.doesNotMatch(kf[1], /scale\(/, `${n} skaliert endlos`);
+  }
+});

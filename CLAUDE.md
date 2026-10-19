@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.130.3
+- **Aktuelle Version**: v3.131.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -436,6 +436,19 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
 
 ## Grafik (seit v3.119.0)
 
+- **Scharfe Schrift (seit v3.131.0).** `KONTURTEXT` waechst mit der Schrift
+  (7 % in em, acht Richtungen) — nie wieder feste 1,5 px: bei 12 px liefen die
+  Innenraeume der Buchstaben zu. Kein weicher Textschatten (`0 0 10px`) ohne
+  Kontur davor, keine Schrift unter 11 px, keine Endlos-Animation mit
+  `scale()` auf Text. `tests/stil.test.js` haelt alle vier fest.
+- **Zieler mit Kontur (seit v3.131.0):** jeder Strich erst dunkel, dann in
+  Spielerfarbe — sonst verschwindet Gelb auf Schnee/Sand/Wiese.
+  `suiteZieler` misst alle sieben Welten. Neue Canvas-Schrift im Spielfeld:
+  `strokeText` ist fuer P1 genauso gegengespiegelt wie `fillText`.
+- **Ueberlappungen werden GEMESSEN (seit v3.131.0):** `suiteUeberlappung`
+  (Menues + Spielphasen, Bot und 3 Spieler, SE/iPhone/iPad): kein Text ragt
+  aus seinem Kasten, keine Fenster ueberdecken sich. `panel()` hat 22 px
+  Innenabstand — fuer kleine Knoepfe `knopf()` nehmen.
 - **Designsystem `src/ui/stil.js` (seit v3.121.0).** Neue Oberflaechen nehmen
   `knopf`/`panel`/`titel`/… von dort, KEINE neuen Inline-Farben. Schriften
   Lilita One + Nunito lokal in `public/fonts`. Keine lokale Variable darf einen

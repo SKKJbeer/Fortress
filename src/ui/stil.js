@@ -40,8 +40,25 @@ const KNOPF = {
   grau:  ['#e6edf7', '#9aaac4', '#62718d', '#343e52'],
 };
 
-// Text mit dicker Comic-Kontur (lesbar auf jedem Untergrund)
-export const KONTURTEXT = `0 2px 0 ${FARBE.kontur}, 1.5px 1.5px 0 ${FARBE.kontur}, -1.5px 1.5px 0 ${FARBE.kontur}, 1.5px -1px 0 ${FARBE.kontur}, -1.5px -1px 0 ${FARBE.kontur}`;
+// Text mit Comic-Kontur (lesbar auf jedem Untergrund).
+//
+// **Seit v3.131.0 waechst die Kontur mit der Schrift** (gemeldet: „Schrift
+// teilweise unscharf"). Vorher war sie fest 1,5 px in vier schraegen
+// Richtungen — bei 12-px-Schrift ist das ein Achtel der Buchstabenhoehe: Die
+// Innenraeume von a, e, D, u liefen zu, Buchstaben verschmolzen zu einem
+// Klumpen, und das sah auf dem Geraet wie Unschaerfe aus. Jetzt 7 % der
+// Schriftgroesse (0,75 bis 1,6 px) in ACHT Richtungen — gleichmaessig rund,
+// ohne Kerben. `em` bezieht sich auf die Schrift des Elements selbst; wer die
+// Kontur erbt, erbt den beim Elternteil berechneten Pixelwert.
+// Keine Unschaerfe (blur) in Textschatten — `tests/stil.test.js`.
+const KW = 'clamp(0.75px, 0.07em, 1.6px)';
+const KD = `calc(${KW} * 0.72)`;
+const KF = 'clamp(1px, 0.11em, 2.5px)';
+const neg = (x) => `calc(-1 * ${x})`;
+export const KONTURTEXT = [
+  `0 ${KF} 0`, `${KW} 0 0`, `${neg(KW)} 0 0`, `0 ${KW} 0`, `0 ${neg(KW)} 0`,
+  `${KD} ${KD} 0`, `${neg(KD)} ${KD} 0`, `${KD} ${neg(KD)} 0`, `${neg(KD)} ${neg(KD)} 0`,
+].map((x) => `${x} ${FARBE.kontur}`).join(', ');
 
 /** Grosser Spielknopf: Verlauf, dicke Kontur, 3D-Kante, Glanzlicht. */
 export function knopf(variante = 'gold', extra = {}) {

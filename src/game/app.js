@@ -533,6 +533,9 @@ window.StackSiegeApp = function StackSiegeApp() {
     const str = (LANGS[lang] && LANGS[lang][key]) || (LANGS.de[key]) || key;
     return str.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? String(vars[k]) : '{' + k + '}');
   };
+  // Fuer den Zeichen-Takt: der laeuft in einem einmal angelegten Abschluss
+  // und saehe sonst die Sprache vom Spielstart.
+  const langRef = useRef(lang); langRef.current = lang;
   // Achievement-Texte übersetzen (DE = Array-Fallback, EN aus ACH_EN-Map)
   const achTitle = (def) => (lang === 'en' && ACH_EN[def.id]) ? ACH_EN[def.id].t : def.title;
   const achDesc  = (def) => (lang === 'en' && ACH_EN[def.id]) ? ACH_EN[def.id].d : def.desc;
@@ -5786,7 +5789,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       shakeRef.current *= 0.72;
     }
     const p1Flipped = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
-    let p1FlipPatch = null;
+    let p1FlipPatch = null, p1FlipPatchS = null;
     if (p1Flipped) {
       ctx.save();
       ctx.translate(0, H);
@@ -5800,14 +5803,27 @@ window.StackSiegeApp = function StackSiegeApp() {
         this.restore();
       };
       ctx.fillText = p1FlipPatch;
+      // strokeText ebenso (v3.131.0: Konturschrift am Zieler) — sonst stuende
+      // die Kontur gespiegelt neben der aufrechten Fuellung.
+      const _origST = CanvasRenderingContext2D.prototype.strokeText;
+      p1FlipPatchS = function(text, x, y, maxW) {
+        this.save();
+        this.translate(x, y);
+        this.scale(1, -1);
+        _origST.call(this, text, 0, 0, maxW);
+        this.restore();
+      };
+      ctx.strokeText = p1FlipPatchS;
     }
     function p1CounterFlip(cx, cy) {
       ctx.save(); ctx.translate(cx, cy); ctx.scale(1, -1); ctx.translate(-cx, -cy);
       ctx.fillText = CanvasRenderingContext2D.prototype.fillText;
+      ctx.strokeText = CanvasRenderingContext2D.prototype.strokeText;
     }
     function p1CounterFlipEnd() {
       ctx.restore();
       ctx.fillText = p1FlipPatch;
+      ctx.strokeText = p1FlipPatchS;
     }
     try {
     const terObj = terrain.current;
@@ -6214,22 +6230,25 @@ window.StackSiegeApp = function StackSiegeApp() {
       // und er landet weiterhin unten links auf dem Bildschirm.
       bc.save();
       if (p1Flipped) { bc.translate(0, H); bc.scale(1, -1); }
-      bc.font = "700 13px 'Segoe UI', system-ui, sans-serif";
-      bc.textBaseline = "bottom";
+      // v3.131.0: weiter nach innen und deckend. Vorher sass die Pille bei
+      // x=6 in der abgerundeten Ecke des Spielfeldrahmens und wurde unten
+      // angeschnitten; graue Schrift mit 75 % Deckkraft auf 45 % Schwarz lag
+      // auf hellen Boeden (Wueste, Kristalltal) unter 3:1.
+      bc.font = "800 12px 'Nunito', system-ui, sans-serif";
+      bc.textBaseline = "middle";
       const wtLabel = WT.name.toUpperCase();
       const wtW = bc.measureText(wtLabel).width;
-      // Pill-Badge mit Theme-Kante
-      bc.fillStyle = "rgba(0,0,0,0.45)";
+      const wtX = 16, wtH = 20, wtY = H - 18 - wtH;
+      bc.fillStyle = "rgba(13,31,69,0.85)";
       bc.beginPath();
-      if (bc.roundRect) bc.roundRect(6, H - 26, wtW + 20, 21, 10.5);
-      else bc.rect(6, H - 26, wtW + 20, 21);
+      if (bc.roundRect) bc.roundRect(wtX, wtY, wtW + 20, wtH, wtH / 2);
+      else bc.rect(wtX, wtY, wtW + 20, wtH);
       bc.fill();
-      bc.strokeStyle = WT.mtnEdge;
-      bc.lineWidth = 1;
+      bc.strokeStyle = "#1b0f06";
+      bc.lineWidth = 1.5;
       bc.stroke();
-      bc.fillStyle = WT.mtnCap;
-      bc.globalAlpha = 0.75;
-      bc.fillText(wtLabel, 16, H - 9);
+      bc.fillStyle = "#fffaf0";
+      bc.fillText(wtLabel, wtX + 10, wtY + wtH / 2 + 0.5);
       bc.restore();
       // ── Vignette (v3.41.0, AAA-Stufe 2) ─────────────────────────────────────
       // Randbereiche abdunkeln → das Auge wandert zur Spielmitte. Ohne das
@@ -6539,12 +6558,32 @@ window.StackSiegeApp = function StackSiegeApp() {
         if (pt) zielOverlays.push(() => {
           const tgt = slingTarget(player, pt.x, pt.y);
           const col = ACCENT_RGB[player] || ACCENT_RGB[1];
-          ctx.strokeStyle = col + "0.35)";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(anchor.x, anchor.y);
-          ctx.lineTo(pt.x, pt.y);
-          ctx.stroke();
+          // Sichtbar auf JEDEM Boden (v3.131.0, gemeldet: das Gelb von P1
+          // verschwand auf Sand, Wueste und Herbstlaub). Jeder Strich laeuft
+          // zweimal: erst eine dunkle Kontur, dann die Spielerfarbe darauf.
+          // Auf hellem Grund traegt die Kontur, auf dunklem die helle Farbe —
+          // ein Paar, das gegen jeden Untergrund Kontrast hat. Gemessen in
+          // `suiteZieler` auf allen sieben Welten.
+          const zug = (pfad, breite, alpha) => {
+            ctx.strokeStyle = "rgba(27,15,6," + Math.min(0.9, alpha + 0.2) + ")";
+            ctx.lineWidth = breite + 3;
+            ctx.beginPath(); pfad(); ctx.stroke();
+            ctx.strokeStyle = col + alpha + ")";
+            ctx.lineWidth = breite;
+            ctx.beginPath(); pfad(); ctx.stroke();
+          };
+          const schrift = (text, x, y, groesse, farbe) => {
+            ctx.font = `bold ${groesse}px system-ui`;
+            ctx.textAlign = "center";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = "rgba(27,15,6,0.9)";
+            ctx.lineWidth = 3;
+            ctx.strokeText(text, x, y);
+            ctx.fillStyle = farbe;
+            ctx.fillText(text, x, y);
+            ctx.textAlign = "left";
+          };
+          zug(() => { ctx.moveTo(anchor.x, anchor.y); ctx.lineTo(pt.x, pt.y); }, 2.5, 0.95);
           if (tgt) {
             const { tx, ty } = tgt;
             const pulse2 = 1 + 0.15 * Math.sin(now / 150);
@@ -6552,51 +6591,32 @@ window.StackSiegeApp = function StackSiegeApp() {
             // verspricht der Zieler Feuer aus Rohren, die gar nicht schiessen.
             const aktiveArt = salvenModus.current[player] || "std";
             const readyCannons = list.filter((cn) => isReady(cn) && (cn.kt || "std") === aktiveArt);
-            ctx.strokeStyle = col + "0.45)";
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 7]);
+            ctx.setLineDash([5, 7]);
             for (const cn of readyCannons) {
-              ctx.beginPath();
-              ctx.moveTo(cn.c * CELL + CELL / 2, cn.r * CELL + CELL / 2);
-              ctx.lineTo(tx, ty);
-              ctx.stroke();
+              zug(() => { ctx.moveTo(cn.c * CELL + CELL / 2, cn.r * CELL + CELL / 2); ctx.lineTo(tx, ty); }, 1.5, 0.7);
             }
             ctx.setLineDash([]);
-            ctx.strokeStyle = col + "0.95)";
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.arc(tx, ty, CELL * 0.85 * pulse2, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(tx, ty, CELL * 0.28, 0, Math.PI * 2);
-            ctx.stroke();
+            zug(() => ctx.arc(tx, ty, CELL * 1.05 * pulse2, 0, Math.PI * 2), 3, 1);
+            zug(() => ctx.arc(tx, ty, CELL * 0.32, 0, Math.PI * 2), 3, 1);
             for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-              ctx.beginPath();
-              ctx.moveTo(tx + ddx * CELL * 0.5, ty + ddy * CELL * 0.5);
-              ctx.lineTo(tx + ddx * CELL * 1.15 * pulse2, ty + ddy * CELL * 1.15 * pulse2);
-              ctx.stroke();
+              zug(() => {
+                ctx.moveTo(tx + ddx * CELL * 0.6, ty + ddy * CELL * 0.6);
+                ctx.lineTo(tx + ddx * CELL * 1.45 * pulse2, ty + ddy * CELL * 1.45 * pulse2);
+              }, 3, 1);
             }
+            // Gesicherter Messpunkt fuer suiteZieler: wo das Fadenkreuz auf dem
+            // SCHIRM steht (P1 sieht sein Feld gespiegelt).
+            if (typeof window !== "undefined" && window.__mmDebug)
+              window.__zielDbg = { tx, ty: p1Flipped ? H - ty : ty, ax: anchor.x, ay: p1Flipped ? H - anchor.y : anchor.y, px: pt.x, py: p1Flipped ? H - pt.y : pt.y, W, H, r: CELL * 1.6 };
             if (readyCannons.length > 1) {
               const maxScatter = Math.min((readyCannons.length - 1) * 0.3, 1) * CELL;
-              ctx.strokeStyle = col + "0.25)";
-              ctx.lineWidth = 1;
-              ctx.setLineDash([2, 4]);
-              ctx.beginPath();
-              ctx.arc(tx, ty, maxScatter, 0, Math.PI * 2);
-              ctx.stroke();
+              ctx.setLineDash([3, 4]);
+              zug(() => ctx.arc(tx, ty, maxScatter, 0, Math.PI * 2), 1.2, 0.55);
               ctx.setLineDash([]);
-              ctx.fillStyle = col + "0.9)";
-              ctx.font = `bold ${CELL * 0.75}px system-ui`;
-              ctx.textAlign = "center";
-              ctx.fillText(`\xD7${readyCannons.length}`, tx, ty - CELL * 1.4 * pulse2);
-              ctx.textAlign = "left";
+              schrift(`\xD7${readyCannons.length}`, tx, ty - CELL * 1.4 * pulse2, CELL * 0.85, col + "1)");
             }
           } else {
-            ctx.fillStyle = "rgba(255,255,255,0.5)";
-            ctx.font = `${CELL * 0.6}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.fillText("weiter ziehen\u2026", anchor.x, anchor.y < H / 2 ? anchor.y + CELL * 3.6 : anchor.y - CELL * 3.2);
-            ctx.textAlign = "left";
+            schrift((LANGS[langRef.current] || LANGS.de).aimPullFurther, anchor.x, anchor.y < H / 2 ? anchor.y + CELL * 3.6 : anchor.y - CELL * 3.2, CELL * 0.75, "#fffaf0");
           }
         });
       }
@@ -6881,7 +6901,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     ctx.lineWidth = 2.5;
     ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
     } finally {
-      if (p1Flipped) { ctx.fillText = CanvasRenderingContext2D.prototype.fillText; ctx.restore(); }
+      if (p1Flipped) { ctx.fillText = CanvasRenderingContext2D.prototype.fillText; ctx.strokeText = CanvasRenderingContext2D.prototype.strokeText; ctx.restore(); }
       if (didShake) ctx.restore();
     }
     if (online.current && myRole.current === 1) pushState(false);
@@ -7098,11 +7118,10 @@ window.StackSiegeApp = function StackSiegeApp() {
   const achNew = Math.max(0, achUnlockedCount - achSeenCount);
   // Schriftzug in der Spieler-Namensbox als Ergänzung zum pochenden Rand.
   const closeWarnSpan = (align) => /* @__PURE__ */ React.createElement("span", { style: {
-    fontSize: 14, color: "#fee2e2", fontWeight: 900, letterSpacing: "0.02em",
-    whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", display: "inline-block",
+    fontSize: 14, color: "#ffd0c8", fontFamily: SCHRIFT_TITEL, letterSpacing: "0.02em", textShadow: KONTURTEXT,
+    whiteSpace: "nowrap", minWidth: 0, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", flex: "1 1 auto", display: "inline-block",
     textAlign: align || "left",
-    transformOrigin: (align === "right" ? "right" : align === "center" ? "center" : "left") + " center",
-    animation: "closePulse 0.45s ease-in-out infinite"
+    animation: "closePulse 0.6s ease-in-out infinite"
   } }, "⚠ " + t('closeWarn'));
   // Verbindungs-Banner (v3.115.3 aus dem Menue-Zweig hierher geholt): Sie
   // standen seit v3.70.0 im MENUE-Return, verlangten aber screen === "game" —
@@ -7299,12 +7318,22 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { marginTop: 22, fontSize: 12, color: FARBE.textGedaempft, textShadow: "0 1px 2px rgba(0,0,0,0.8)", letterSpacing: "0.08em", fontWeight: 700, cursor: "default" } }, "Stack & Siege \xB7 Version 3.130.3"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.131.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
     // Plattform-Weiche (ARCHITEKTUR.md E7).
-    !istNativ() && /* @__PURE__ */ React.createElement("div", { key: "recht" }, /* @__PURE__ */ React.createElement("a", { href: "privacy.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('privacyLink')), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "impressum.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('imprintLink')), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "agb.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('termsLink')), /* @__PURE__ */ React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 11, margin: "0 8px" } }, "\xB7"), /* @__PURE__ */ React.createElement("a", { href: "uebersicht.html", target: "_blank", rel: "noopener", style: { display: "inline-block", marginTop: 8, fontSize: 11, color: FARBE.textGedaempft, letterSpacing: "0.06em", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(71,85,105,0.5)" } }, t('reportsLink')))), showTutorialIntro && (() => {
+    !istNativ() && (() => {
+      // v3.131.0: Die Links standen mit weichem Schatten direkt auf der
+      // gemalten Wiese (unscharf, Kontrast schwankte mit dem Bild) und brachen
+      // am Telefon mit einem verwaisten „·" am Zeilenende um. Jetzt eine
+      // dunkle Unterlage und Abstand statt Trennpunkten — umbrechen darf es,
+      // haengen bleibt nichts. Knapp gesetzt: Die Fusszeile darf nicht hoeher
+      // werden als vorher, sonst rollt das Menue auf SE und iPad (suiteKeinRollen).
+      const link = (href, key) => React.createElement("a", { key, href, target: "_blank", rel: "noopener", style: { fontSize: 11.5, lineHeight: 1.35, color: FARBE.text, letterSpacing: "0.03em", fontWeight: 700, textDecoration: "underline", textDecorationColor: "rgba(255,210,58,0.6)", textUnderlineOffset: 2 } }, t(key));
+      return React.createElement("div", { key: "recht", style: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1px 14px", margin: "4px auto 0", padding: "3px 12px", borderRadius: 10, background: "rgba(13,31,69,0.78)", maxWidth: 440 } },
+        link("privacy.html", "privacyLink"), link("impressum.html", "imprintLink"), link("agb.html", "termsLink"), link("uebersicht.html", "reportsLink"));
+    })()), showTutorialIntro && (() => {
     const h = React.createElement;
     // Mini-Diagramm: Burg (Quadrat) + Mauerring; gap=true lässt oben eine
     // Lücke und zeichnet die rote Leck-Spur hindurch.
@@ -7473,8 +7502,8 @@ window.StackSiegeApp = function StackSiegeApp() {
           boxShadow: equipped ? "0 0 10px rgba(255,210,58,0.45)" : "none"
         } },
           h(ArtikelBild, { id: it.id, groesse: 36, ersatz: invPreview(invReiter, it) }),
-          h("span", { style: { fontSize: 10, fontWeight: 800, color: FARBE.text, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + it.id)),
-          h("span", { style: { fontSize: 9, fontWeight: 900, color: equipped ? FARBE.gold : FARBE.textGedaempft } }, equipped ? t("cosEquipped") : t("invTapEquip"))
+          h("span", { style: { fontSize: 11, fontWeight: 800, color: FARBE.text, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + it.id)),
+          h("span", { style: { fontSize: 11, fontWeight: 900, color: equipped ? FARBE.gold : FARBE.textGedaempft } }, equipped ? t("cosEquipped") : t("invTapEquip"))
         );
       } }),
       h("button", { onClick: () => { setShowProfileEditor(false); setShowGoldShop(true); }, style: knopf("gold", { width: "100%", marginTop: 8, padding: "7px", fontSize: 14, borderRadius: 12, gap: 6 }) },
@@ -7515,10 +7544,10 @@ window.StackSiegeApp = function StackSiegeApp() {
         h(Icon, { name: gesichert ? "shieldCheck" : "cloud", size: 14, color: farbe }),
         h("span", { style: { fontSize: 12, fontWeight: 800, color: helle } },
           t(gesichert ? "cloudOnTitle" : "cloudOffTitle")),
-        cloudState === "syncing" ? h("span", { style: { fontSize: 9.5, color: FARBE.textGedaempft, marginLeft: "auto" } }, t("cloudSyncing")) : null,
-        cloudState === "saved" ? h("span", { style: { fontSize: 9.5, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
+        cloudState === "syncing" ? h("span", { style: { fontSize: 11, color: FARBE.textGedaempft, marginLeft: "auto" } }, t("cloudSyncing")) : null,
+        cloudState === "saved" ? h("span", { style: { fontSize: 11, color: "#4ade80", marginLeft: "auto" } }, "✓") : null
       ),
-      h("div", { style: { fontSize: 10.5, color: "#dbe7fb", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
+      h("div", { style: { fontSize: 11, color: "#dbe7fb", lineHeight: 1.4, marginBottom: gesichert ? 0 : 9 } },
         gesichert   ? t("cloudOnSub", { mail: F.mail || "" })
       : garNichts   ? t("cloudNoAuthSub")
       : kontoVerknuepfbar() ? t("cloudOffSub") : t("cloudOffSubApp")),
@@ -7539,7 +7568,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       h("button", { onClick: () => setConfirmWipe(true), style: {
         width: "100%", marginTop: 8, cursor: "pointer", borderRadius: 10, padding: "7px",
         background: "transparent", border: "1px solid rgba(248,113,113,0.25)",
-        color: "#f87171", fontSize: 10.5, fontWeight: 700
+        color: "#f87171", fontSize: 11, fontWeight: 700
       } }, t("wipeButton"))
     );
   })(),
@@ -7582,7 +7611,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           h("div", { style: { fontSize: 11, color: FARBE.textGedaempft, fontWeight: 700 } }, e.wins, " " + t('winsLabel') + " \xB7 ", e.losses, " " + t('lossLabel') + " \xB7 ", e.games, " " + t('gamesAbbr'))),
         h("div", { style: { textAlign: "right", flexShrink: 0 } },
           h("div", { style: { fontFamily: SCHRIFT_TITEL, fontSize: 19, color: FARBE.gold, textShadow: KONTURTEXT, lineHeight: 1 } }, e.elo),
-          h("div", { style: { fontSize: 9.5, color: FARBE.textGedaempft, fontWeight: 800 } }, "ELO")));
+          h("div", { style: { fontSize: 11, color: FARBE.textGedaempft, fontWeight: 800 } }, "ELO")));
     };
     const meinIdx = leaderboard && profile ? leaderboard.findIndex((e) => e.id === profile.id) : -1;
     const proSeite = Math.max(1, lbZeilen - (meinIdx >= lbZeilen ? 1 : 0));
@@ -7653,7 +7682,7 @@ window.StackSiegeApp = function StackSiegeApp() {
                   h("div", { style: { flex: 1, height: 8, borderRadius: 999, background: "rgba(0,0,0,0.35)", border: "1.5px solid " + FARBE.kontur, overflow: "hidden" } },
                     h("div", { style: { width: Math.round(frac * 100) + "%", height: "100%", borderRadius: 999, background: tk.collected || ready ? "linear-gradient(90deg,#b6f59a,#4fd36b)" : "linear-gradient(90deg,#fff2a0,#ffc72e)", transition: "width 0.4s ease" } })
                   ),
-                  h("span", { style: { fontSize: 10, fontWeight: 800, color: "#dbe7fb", flexShrink: 0 } }, prog + "/" + def.target)
+                  h("span", { style: { fontSize: 11, fontWeight: 800, color: "#dbe7fb", flexShrink: 0 } }, prog + "/" + def.target)
                 )
               ),
               tk.collected
@@ -7740,12 +7769,12 @@ window.StackSiegeApp = function StackSiegeApp() {
               padding: "8px 10px", borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)"
             } },
               h("div", null,
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: FARBE.textGedaempft, textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
+                h("div", { style: { fontSize: 11, fontWeight: 800, color: FARBE.textGedaempft, textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyPrice")),
                 h("div", { style: { fontSize: 15, fontWeight: 900, color: "#fcd34d" } }, it.price + " G")
               ),
               h("div", { style: { width: 1, height: 26, background: "rgba(255,255,255,0.1)" } }),
               h("div", null,
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: FARBE.textGedaempft, textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
+                h("div", { style: { fontSize: 11, fontWeight: 800, color: FARBE.textGedaempft, textTransform: "uppercase", letterSpacing: "0.07em" } }, t("confirmBuyAfter")),
                 h("div", { style: { fontSize: 15, fontWeight: 900, color: canPay ? "#e2e8f0" : "#ef4444" } }, (gold - it.price) + " G")
               )
             ),
@@ -7830,7 +7859,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999,
       // Fehlbetraege hellrot auf dunklerem Grund (v3.128.0: vorher 2,2–2,8:1)
       background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.14)",
-      fontSize: 10.5, fontWeight: 800, color: need !== void 0 && need > (mats[k] || 0) ? "#ffb4a8" : "#f1f5f9", whiteSpace: "nowrap"
+      fontSize: 11, fontWeight: 800, color: need !== void 0 && need > (mats[k] || 0) ? "#ffb4a8" : "#f1f5f9", whiteSpace: "nowrap"
     } },
       h("span", { style: { width: 8, height: 8, background: MAT_META[k].c, transform: "rotate(45deg)", borderRadius: 2, boxShadow: "0 0 5px " + MAT_META[k].c, flexShrink: 0 } }),
       // Fehlt etwas, steht der Fortschritt dran (v3.68.0) — "2/5" sagt, wie weit
@@ -7842,7 +7871,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     const goldChip = (n, short) => h("span", { style: {
       display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999,
       background: "rgba(0,0,0,0.5)", border: "1px solid rgba(251,191,36,0.35)",
-      fontSize: 10.5, fontWeight: 800, color: n > gold ? "#ffb4a8" : "#ffe27a", whiteSpace: "nowrap"
+      fontSize: 11, fontWeight: 800, color: n > gold ? "#ffb4a8" : "#ffe27a", whiteSpace: "nowrap"
     } }, h(Icon, { name: "coins", size: 10, color: "#fbbf24" }), n);
     const stdCard = (cat) => {
       const std = cat === "cannon" ? "cannon_standard" : "impact_standard";
@@ -7879,8 +7908,8 @@ window.StackSiegeApp = function StackSiegeApp() {
         }) }),
         h("div", { style: { flex: 1, fontSize: 12.5, fontWeight: 800, color: "#cbd5e1" } }, t("forgeStandard")),
         isEq
-          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: "0 1px 0 #1b0f06" } }, t("forgeEquipped"))
-          : h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
+          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: KONTURTEXT } }, t("forgeEquipped"))
+          : h("span", { style: { fontSize: 11, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
       );
     };
     const recipeCard = (rec) => {
@@ -7904,16 +7933,16 @@ window.StackSiegeApp = function StackSiegeApp() {
         h("div", { style: { flex: 1, minWidth: 0 } },
           h("div", { style: { fontSize: 15, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + rec.id)),
           owned ? null : needsBase
-            ? h("div", { style: { fontSize: 9.5, color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 } }, h(Icon, { name: "lock", size: 9 }), t("forgeNeedsBase"))
+            ? h("div", { style: { fontSize: 11, color: "#f59e0b", display: "flex", alignItems: "center", gap: 4 } }, h(Icon, { name: "lock", size: 9 }), t("forgeNeedsBase"))
             : h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } },
                 MAT_ORDER.filter((k) => rec.cost[k]).map((k) => matChip(k, null, rec.cost[k])),
                 rec.cost.gold ? goldChip(rec.cost.gold) : null
               )
         ),
         isEq
-          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: "0 1px 0 #1b0f06" } }, t("forgeEquipped"))
+          ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: KONTURTEXT } }, t("forgeEquipped"))
           : owned
-            ? h("span", { style: { fontSize: 10.5, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
+            ? h("span", { style: { fontSize: 11, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
             : h("span", { style: knopf(afford ? "gold" : "grau", { fontSize: 14, padding: "5px 12px", borderRadius: 12, opacity: afford ? 1 : 0.7, boxShadow: "0 3px 0 #1b0f06, inset 0 2px 0 rgba(255,255,255,0.45)" }) }, t("forgeCraft"))
       );
     };
@@ -7947,7 +7976,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               mats[k] || 0
             ))
           ),
-          h("div", { style: { fontSize: 10, color: FARBE.textGedaempft, marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
+          h("div", { style: { fontSize: 11, color: FARBE.textGedaempft, marginTop: 6, lineHeight: 1.45 } }, t("forgeHowTo")),
           // Klartext, wie viele Rezepte gerade drin sind (v3.68.0)
           h("div", { style: {
             fontSize: 11, fontWeight: 900, marginTop: 5,
@@ -8086,7 +8115,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       animation: "badgePop 0.35s ease both"
     } },
       /* @__PURE__ */ React.createElement("span", { style: {
-        flexShrink: 0, fontSize: 10.5, fontWeight: 900, color: "#7ee8ff", letterSpacing: "0.12em",
+        flexShrink: 0, fontSize: 11, fontWeight: 900, color: "#7ee8ff", letterSpacing: "0.12em",
         background: "rgba(34,211,238,0.14)", borderRadius: 6, padding: "3px 7px", marginTop: 1
       } }, React.createElement(Icon, { name: "lightbulb", size: 12, style: { verticalAlign: "-2px", marginRight: 4 } }), t('queueTipLabel')),
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#dbe7fb", lineHeight: 1.45 } }, t('queueTip_' + tipIdx))
@@ -8182,7 +8211,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       padding: "11px 18px", textAlign: "center", borderRadius: 18,
       boxShadow: "inset 0 0 0 3px rgb(" + r + "," + g + "," + b + "), 0 5px 0 #1b0f06, 0 10px 22px rgba(0,0,0,0.45)"
     });
-    const LABEL = { fontSize: 11, color: "#dbe7fb", letterSpacing: "0.08em", fontFamily: SCHRIFT_TITEL, textTransform: "uppercase", marginBottom: 5, textShadow: "0 1px 0 #1b0f06" };
+    const LABEL = { fontSize: 11, color: "#dbe7fb", letterSpacing: "0.08em", fontFamily: SCHRIFT_TITEL, textTransform: "uppercase", marginBottom: 5, textShadow: KONTURTEXT };
     return React.createElement("div", { className: "gross-schirm", style: {
       // Kraeftig abgedunkelt (v3.128.0): hier steht viel kleiner Text direkt
       // auf dem Bild — mit dem Menue-Schleier war er kaum lesbar.
@@ -8296,7 +8325,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           } },
             React.createElement(Icon, { name: tl.icon, size: 15, color: FARBE.gold }),
             React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, lineHeight: 1.05 } }, tl.val),
-            React.createElement("span", { style: { fontSize: 9.5, fontWeight: 800, color: FARBE.textGedaempft, letterSpacing: "0.03em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
+            React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: FARBE.textGedaempft, letterSpacing: "0.03em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, tl.label)
           ))
         )
       );
@@ -8316,7 +8345,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           React.createElement("span", { style: {
             fontSize: 28, fontWeight: 900,
             color: eloChangeRef.current.delta >= 0 ? "#4ade80" : "#ef4444",
-            textShadow: "0 0 10px currentColor"
+            textShadow: KONTURTEXT
           }}, eloChangeRef.current.newElo),
           React.createElement("span", { style: {
             fontSize: 13, fontWeight: 800,
@@ -8334,7 +8363,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           React.createElement("span", { style: { color: FARBE.textGedaempft, fontSize: 16, fontWeight: 900 }}, "→"),
           React.createElement("span", { style: {
             fontSize: 28, fontWeight: 900, color: "#fbbf24",
-            textShadow: "0 0 10px rgba(251,191,36,0.5)"
+            textShadow: KONTURTEXT
           }}, goldChangeRef.current.newGold),
           React.createElement("span", { style: {
             fontSize: 13, fontWeight: 800, color: "#fbbf24",
@@ -8354,11 +8383,11 @@ window.StackSiegeApp = function StackSiegeApp() {
             display: "flex", alignItems: "center", gap: 6
           } },
             React.createElement(MatPip, { k, size: 13 }),
-            React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: MAT_META[k].c, textShadow: "0 0 10px " + MAT_META[k].c + "88" } }, "+" + matChangeRef.current[k]),
-            React.createElement("span", { style: { fontSize: 9.5, fontWeight: 700, color: "#dbe7fb" } }, t("mat_" + k))
+            React.createElement("span", { style: { fontSize: 22, fontWeight: 900, color: MAT_META[k].c, textShadow: KONTURTEXT } }, "+" + matChangeRef.current[k]),
+            React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#dbe7fb" } }, t("mat_" + k))
           ))
         ),
-        React.createElement("div", { style: { fontSize: 9.5, color: "#fdba74", marginTop: 6, fontWeight: 700 } }, t("matToForge"))
+        React.createElement("div", { style: { fontSize: 11, color: "#fdba74", marginTop: 6, fontWeight: 700 } }, t("matToForge"))
       )
     ),
     // ── TEILEN ────────────────────────────────────────────────
@@ -8600,7 +8629,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       display: "flex", flexDirection: "column", gap: 4, justifyContent: "center"
     } },
       mitZeile ? React.createElement("div", { style: {
-        fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+        fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
         color: gesperrt ? FARBE.gold : "#b9c6dc", textAlign: "center"
       } }, gesperrt ? t("salvoLock") + " " + (restMs / 1000).toFixed(1) + "s" : t("salvoHint")) : null,
       React.createElement("div", { style: { display: "flex", gap: 6 } },
@@ -8624,25 +8653,33 @@ window.StackSiegeApp = function StackSiegeApp() {
     const bereit = (frozenReady.current[pl] || []).length;
     const stumm = Math.max(0, alle - bereit);
     const salve = salvenSchalter(pl);
+    // Niedrige Leiste (iPhone SE, ~52 px): Zahl und Wort NEBENEINANDER. Gestapelt
+    // brauchten sie ~60 px — die Zahl ragte oben aus dem Kasten, „Feuerbereit"
+    // lag auf seinem Rand (v3.131.0, gemessen im Rundgang ueber alle Phasen).
+    // Drei Kaesten nebeneinander (3 Spieler, ein Geraet) sind dafuer zu schmal
+    // (~120 px): dann gestapelt, aber kleiner.
+    const eng = barH < 66;
+    const schmal = eng && !online.current && numPlayersRef.current === 3;
+    const zeile = eng && !schmal;
     const zahl = React.createElement("div", { key: "zahl", style: {
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      gap: 3, flexShrink: 0
+      display: "flex", flexDirection: zeile ? "row" : "column", alignItems: "center", justifyContent: "center",
+      gap: zeile ? 8 : schmal ? 1 : 3, flexShrink: 0
     } },
       React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 3 } },
-        React.createElement("span", { style: { fontSize: 28, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, textShadow: KONTURTEXT, lineHeight: 1 } }, bereit),
-        React.createElement("span", { style: { fontSize: 16, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT } }, "/ " + alle)
+        React.createElement("span", { style: { fontSize: schmal ? 19 : eng ? 22 : 28, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, textShadow: KONTURTEXT, lineHeight: 1 } }, bereit),
+        React.createElement("span", { style: { fontSize: schmal ? 13 : 16, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT } }, "/ " + alle)
       ),
       React.createElement("div", { style: {
-        fontSize: 13, fontFamily: SCHRIFT_TITEL, letterSpacing: "0.05em", textTransform: "uppercase",
-        color: FARBE.text, textShadow: KONTURTEXT
+        fontSize: schmal ? 11 : 13, fontFamily: SCHRIFT_TITEL, letterSpacing: schmal ? "0.02em" : "0.05em", textTransform: "uppercase",
+        color: FARBE.text, textShadow: KONTURTEXT, lineHeight: schmal ? 1.05 : undefined
       } }, t("panelReady")),
-      stumm > 0 ? React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#ffb19e", textShadow: "0 1px 0 #1b0f06" } }, stumm + " " + t("panelMute")) : null
+      stumm > 0 ? React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#ffb19e", textShadow: KONTURTEXT } }, stumm + " " + t("panelMute")) : null
     );
     return React.createElement("div", { key: "rp" + pl, style: {
       flex: 1, display: "flex", flexDirection: salve ? "row" : "column",
       alignItems: "center", justifyContent: "center",
       gap: salve ? 12 : 3,
-      ...panel({ padding: salve ? "6px 10px" : "8px 6px", borderRadius: 16, boxShadow: "inset 0 0 0 3px " + col.d + ", 0 4px 0 #1b0f06" }),
+      ...panel({ padding: salve ? "6px 10px" : schmal ? "3px 4px" : eng ? "4px 6px" : "8px 6px", borderRadius: 16, boxShadow: "inset 0 0 0 3px " + col.d + ", 0 4px 0 #1b0f06" }),
       minHeight: 36
     } }, zahl, salve);
   }
@@ -8675,7 +8712,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     color: "#93c5fd",
     borderRadius: 8,
     padding: "6px 9px",
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: "monospace",
     lineHeight: 1.5,
     maxWidth: 180,
@@ -8704,14 +8741,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     alignItems: "center",
     gap: 6,
     justifyContent: "flex-start"
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#93c5fd", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: FARBE.textGedaempft, borderRadius: 6, padding: "1px 6px", fontSize: 10, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12.5, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: FARBE.textGedaempft, borderRadius: 6, padding: "1px 6px", fontSize: 11, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
     fontSize: 34,
     fontFamily: SCHRIFT_TITEL,
     color: timerColor,
     textShadow: KONTURTEXT + (timer <= 5 ? `, 0 0 18px ${timerColor}` : ""),
     fontVariantNumeric: "tabular-nums",
     lineHeight: 1
-  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: FARBE.textGedaempft } }, t('roundLabel'), round))), /* @__PURE__ */ React.createElement("div", { style: {
+  } }, String(timer).padStart(2, "0")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: FARBE.textGedaempft } }, t('roundLabel'), round))), /* @__PURE__ */ React.createElement("div", { style: {
     flex: "1 1 0",
     minWidth: 0,
     ...spielerKasten("rot"),
@@ -8720,16 +8757,21 @@ window.StackSiegeApp = function StackSiegeApp() {
     alignItems: "center",
     gap: 6,
     justifyContent: "flex-end"
-  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[2]), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 } }, (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#fca5a5", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[2] || 0))), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: hudBreite, zoom: hudZ === 1 ? void 0 : hudZ, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
+  } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[2]), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 } }, (urgentPlayers[2] ? closeWarnSpan("right") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12.5, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%", textAlign: "right" } }, online.current || botMode.current ? playerInfo.current[2].name + (myRole.current === 2 ? t('youSuffix') : "") : "P2")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[2] || 0))), /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[2].wappen : "roboter", size: 20 }))), numPlayers === 3 && /* @__PURE__ */ React.createElement("div", { ref: row3Ref, style: { width: hudBreite, zoom: hudZ === 1 ? void 0 : hudZ, display: "flex", justifyContent: "center", marginTop: 4 } }, /* @__PURE__ */ React.createElement("div", { style: {
     ...spielerKasten("gruen"),
     padding: "2px 10px",    display: "flex",
     alignItems: "center",
     gap: 8,
     maxWidth: "70%",
     opacity: eliminated.current[3] ? 0.4 : 1
-  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#6ee7b7", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? t('youSuffix') : "") : t('p3GreenFallback'), eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[3] || 0))), warnHinweis(), phase === "cannon" && (() => {
+  } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current ? (((_a = playerInfo.current[3]) == null ? void 0 : _a.wappen) || "phoenix") : "phoenix", size: 20 }), (urgentPlayers[3] ? closeWarnSpan("center") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } }, online.current ? (((_b = playerInfo.current[3]) == null ? void 0 : _b.name) || "P3") + (myRole.current === 3 ? t('youSuffix') : "") : t('p3GreenFallback'), eliminated.current[3] && " \u2620\uFE0F")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[3] || 0))), warnHinweis(), phase === "cannon" && (() => {
     const mine = online.current ? [myRole.current] : botMode.current ? [1] : playersList();
     const h = React.createElement;
+    // Drei Shops auf EINEM Geraet (v3.131.0): Voll hoch (~235 px) passten zwei
+    // oben plus einer unten auf kleinen Telefonen nicht uebereinander — der
+    // Shop von P1 schob sich ueber den von P3. Kompakt: kleinere Plakette,
+    // ohne Zusatzzeile, flacherer Fertig-Knopf (~165 px). Schrift bleibt gleich.
+    const kompakt = !online.current && !botMode.current && mine.length >= 3;
     const renderInner = (sp) => {
       // Kanone gekauft und wartet auf Platzierung → Shop AUSBLENDEN (v3.17.1),
       // damit das ganze Feld frei ist (das Panel verdeckte sonst die eigene
@@ -8739,7 +8781,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       // Reparatur-Highlight (v3.32.0): Shop kurz weg, Blick aufs Feld frei
       if ((shopHideUntil.current[sp] || 0) > performance.now()) return null;
       if ((cannonBudget.current[sp] || 0) > 0) {
-        return { kind: "placehint", el: h("div", { key: "placehint" + sp, style: { ...panel(), padding: "6px 15px", borderRadius: 999, fontSize: 12, animation: "shopCoinPulse 1.1s ease-in-out infinite" } }, t("armoryPlaceHint")) };
+        return { kind: "placehint", el: h("div", { key: "placehint" + sp, style: { ...panel(), padding: "6px 15px", borderRadius: 999, fontSize: 13, fontWeight: 800, textShadow: KONTURTEXT, animation: "streakGlow 1.1s ease-in-out infinite" } }, t("armoryPlaceHint")) };
       }
       // Spieler hat „Fertig" bestätigt → kompaktes Warte-Panel statt Shop (v3.18.1)
       if (armoryReady.current[sp]) {
@@ -8770,15 +8812,17 @@ window.StackSiegeApp = function StackSiegeApp() {
       const pGlow = sp === 1 ? "rgba(59,130,246,0.5)" : sp === 2 ? "rgba(239,68,68,0.5)" : "rgba(16,185,129,0.5)";
       const pFlag = FLAG_OF[sp] || "";
       const pName = (online.current || botMode.current) && playerInfo.current[sp] && playerInfo.current[sp].name ? playerInfo.current[sp].name : ("P" + sp);
-      return { kind: "shop", el: h("div", { key: "shop" + sp, style: { ...panel(), width: "100%", maxWidth: 452, pointerEvents: "auto", borderRadius: 20, padding: "9px 10px 11px", animation: "shopRise 0.42s cubic-bezier(.22,1,.36,1) both" } },
-          h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, padding: "0 3px" } },
+      return { kind: "shop", el: h("div", { key: "shop" + sp, style: { ...panel(), width: "100%", maxWidth: 452, pointerEvents: "auto", borderRadius: 20, padding: kompakt ? "6px 8px 8px" : "9px 10px 11px", animation: "shopRise 0.42s cubic-bezier(.22,1,.36,1) both" } },
+          h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: kompakt ? 5 : 8, padding: "0 3px" } },
             h("div", { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: "1 1 auto" } },
-              h("span", { style: { fontSize: 15, lineHeight: 1, color: pColor, flexShrink: 0, textShadow: "0 0 8px " + pGlow } }, pFlag),
+              h("span", { style: { fontSize: 15, lineHeight: 1, color: pColor, flexShrink: 0, textShadow: KONTURTEXT } }, pFlag),
               h("span", { style: { fontSize: 13, fontFamily: SCHRIFT_TITEL, letterSpacing: "0.03em", color: FARBE.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: KONTURTEXT } }, pName),
-              h("span", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", color: FARBE.textGedaempft, textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
+              h("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.09em", color: FARBE.textGedaempft, textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
             ),
             h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
-              h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: { ...panel(), width: 22, height: 22, borderRadius: 999, cursor: "pointer", fontSize: 12, fontStyle: "italic", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" } }, "i"),
+              // v3.131.0: knopf statt panel — panel() bringt 22 px Innenabstand mit,
+              // der „22 px"-Knopf war 74 px gross und ragte ueber den Shop-Kopf.
+              h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: knopf("blau", { width: 26, height: 26, padding: 0, borderRadius: 999, fontSize: 15, fontStyle: "italic", lineHeight: 1, flexShrink: 0, boxSizing: "border-box", border: "2.5px solid " + FARBE.kontur, boxShadow: "0 2px 0 " + FARBE.kontur + ", inset 0 2px 0 rgba(255,255,255,0.45)" }) }, "i"),
               h("div", { key: "coin" + have, style: {
                 display: "flex", alignItems: "center", gap: 4, padding: "3px 12px 3px 9px",
                 background: "linear-gradient(180deg,#fde68a 0%,#f59e0b 100%)", borderRadius: 999,
@@ -8804,8 +8848,8 @@ window.StackSiegeApp = function StackSiegeApp() {
                 className: "shop-card" + (afford ? " afford" : ""),
                 style: {
                   flex: 1, minWidth: 0, border: "none", cursor: afford ? "pointer" : "default",
-                  borderRadius: 15, padding: "8px 3px 6px",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                  borderRadius: 15, padding: kompakt ? "5px 3px 5px" : "8px 3px 6px",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: kompakt ? 3 : 4,
                   background: afford
                     ? "linear-gradient(180deg, rgba(" + th.glow + ",0.24) 0%, rgba(10,14,24,0.55) 100%)"
                     : "linear-gradient(180deg, rgba(40,48,64,0.42), rgba(12,16,26,0.55))",
@@ -8820,7 +8864,7 @@ window.StackSiegeApp = function StackSiegeApp() {
                 // jetzt geschmiedetes Medaillon - Metallfassung, Innenschein,
                 // Lichtreflex oben links (globale Lichtrichtung), Tiefenschatten.
                 h("div", { className: "shop-medal", style: {
-                  position: "relative", width: 38, height: 38, borderRadius: 999,
+                  position: "relative", width: kompakt ? 28 : 38, height: kompakt ? 28 : 38, borderRadius: 999,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   background: dim
                     ? "linear-gradient(155deg,#5b6472,#2a3140 60%,#1b212c)"
@@ -8838,10 +8882,10 @@ window.StackSiegeApp = function StackSiegeApp() {
                   h("div", { style: { position: "relative", display: "flex", filter: dim ? "none" : "drop-shadow(0 1px 1.5px rgba(0,0,0,0.55))" },
                     dangerouslySetInnerHTML: { __html: SHOP_ICONS[it.k] } })
                 ),
-                h("div", { style: { fontSize: 9.5, fontWeight: 800, color: dim ? "#c9d4e6" : "#f1f5f9", textAlign: "center", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", textShadow: "0 1px 2px rgba(0,0,0,0.5)" } }, it.label),
-                h("div", { style: { fontSize: 9, fontWeight: 800, color: dim ? "#b9c6dc" : "rgba(" + th.glow + ",1)", textAlign: "center", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", letterSpacing: "0.01em" } }, it.tag),
+                h("div", { style: { fontSize: 11, fontFamily: SCHRIFT_TITEL, color: dim ? "#e3edff" : FARBE.text, textAlign: "center", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", textShadow: KONTURTEXT } }, it.label),
+                !kompakt && h("div", { style: { fontSize: 11, fontWeight: 800, color: dim ? "#b9c6dc" : "rgba(" + th.glow + ",1)", textAlign: "center", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", letterSpacing: "0.01em" } }, it.tag),
                 it.max
-                  ? h("div", { style: { padding: "2px 9px", borderRadius: 999, background: "linear-gradient(180deg,#34d399,#059669)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 6px rgba(16,185,129,0.4)", fontSize: 9, fontWeight: 900, color: "#052e1a", letterSpacing: "0.05em" } }, t("shopMax"))
+                  ? h("div", { style: { padding: "2px 9px", borderRadius: 999, background: "linear-gradient(180deg,#34d399,#059669)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 6px rgba(16,185,129,0.4)", fontSize: 11, fontWeight: 900, color: "#052e1a", letterSpacing: "0.05em" } }, t("shopMax"))
                   : h("div", { style: {
                       display: "flex", alignItems: "center", gap: 2, padding: "2px 9px", borderRadius: 999,
                       background: afford ? "linear-gradient(180deg, rgba(0,0,0,0.48), rgba(0,0,0,0.74))" : "rgba(0,0,0,0.42)",
@@ -8857,7 +8901,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           // „FERTIG"-Button (v3.18.1): bestätigt Bereitschaft → Timer auf 3s
           // sobald alle aktiven Spieler bestätigt haben.
           h("button", { onClick: () => confirmArmory(sp), className: "shop-card", style: {
-            marginTop: 8, width: "100%", border: "none", cursor: "pointer", borderRadius: 13, padding: "9px",
+            marginTop: kompakt ? 6 : 8, width: "100%", border: "none", cursor: "pointer", borderRadius: 13, padding: kompakt ? "6px" : "9px",
             background: "linear-gradient(180deg,#34d399,#059669)", color: "#052e1a",
             fontSize: 14, fontWeight: 900, letterSpacing: "0.04em",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 5px 14px rgba(16,185,129,0.4)",
@@ -8910,7 +8954,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           h(Icon, { name: "hammer", size: 17, color: "#fbbf24" }),
           h("div", { style: { fontSize: 15, fontWeight: 900, color: "#f1f5f9", letterSpacing: "0.02em" } }, t("shopInfoTitle"))
         ),
-        h("div", { style: { fontSize: 10, fontWeight: 800, color: "#fbbf24", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("shopInfoEarnTitle")),
+        h("div", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 } }, t("shopInfoEarnTitle")),
         h("div", { style: { display: "flex", flexDirection: "column", gap: 3, marginBottom: 14, padding: "8px 10px", borderRadius: 12, background: "rgba(245,158,11,0.09)", border: "1px solid rgba(245,158,11,0.22)" } },
           earn.map((e, i) => h("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12.5, color: "#e2e8f0" } },
             h("span", null, e.l),
@@ -8918,7 +8962,7 @@ window.StackSiegeApp = function StackSiegeApp() {
               React.createElement(Icon, { name: "gem", size: 11, color: "#fcd34d" }), String(e.v))
           )),
           // Wiederaufbau-Paket (v3.30.0): Comeback-Regel transparent machen
-          h("div", { style: { fontSize: 10.5, color: "#dbe7fb", lineHeight: 1.35, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(245,158,11,0.18)" } }, t("shopInfoEarnRebuild"))
+          h("div", { style: { fontSize: 11, color: "#dbe7fb", lineHeight: 1.35, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(245,158,11,0.18)" } }, t("shopInfoEarnRebuild"))
         ),
         h("div", { style: { display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 } },
           rows.map((it) => {
@@ -8995,9 +9039,9 @@ window.StackSiegeApp = function StackSiegeApp() {
   },
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 3 } },
       /* @__PURE__ */ React.createElement(Icon, { name: "gradCap", size: 15 }),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.14em" } }, t('coachLabel')),
-      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#0b1020", background: "rgba(253,230,138,0.95)", borderRadius: 999, padding: "2px 8px", letterSpacing: "0.08em" } }, t('coachPausedTag')),
-      /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)" } }, phase === "setup" ? "1/4" : phase === "build" ? "2/4" : phase === "shoot" ? "3/4" : phase === "cannon" ? "4/4" : "✓")
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.82)", letterSpacing: "0.14em" } }, t('coachLabel')),
+      /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#0b1020", background: "rgba(253,230,138,0.95)", borderRadius: 999, padding: "2px 8px", letterSpacing: "0.08em" } }, t('coachPausedTag')),
+      /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.65)" } }, phase === "setup" ? "1/4" : phase === "build" ? "2/4" : phase === "shoot" ? "3/4" : phase === "cannon" ? "4/4" : "✓")
     ),
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13.5, fontWeight: 700, color: "#fff", lineHeight: 1.42 } }, t(coachMsg.textKey)),
     /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 9 } },
@@ -9013,11 +9057,17 @@ window.StackSiegeApp = function StackSiegeApp() {
     /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, color: "#dbe7fb", lineHeight: 1.5, marginBottom: 20 } }, t('tutorialDoneText')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(true), style: { ...knopf("gold", { fontSize: 19 }), width: "100%", padding: "14px", borderRadius: 12, cursor: "pointer", marginBottom: 9 } }, React.createElement(Icon, { name: "globe", size: 15, style: { verticalAlign: "-2px", marginRight: 6 } }), t('tutorialToOnline')),
     /* @__PURE__ */ React.createElement("button", { onClick: () => endTutorial(false), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "12px", borderRadius: 12, cursor: "pointer" } }, t('mainMenu'))
-  )), phaseBanner && (() => { const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: `calc(var(--sa-top,0px) + ${hudH + 10}px)`, left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", // Ohne width:max-content bleibt das Schild auf der HALBEN Bildschirm-
+  )), phaseBanner && !(phaseBanner === "cannon" && !online.current && !botMode.current) && (() => {
+    // Ruestphase am geteilten Geraet (v3.131.0): Dort liegt der Shop des
+    // Gegenuebers OBEN auf dem Brett — genau unter dem Banner. 2,5 s lang stand
+    // „RUESTPHASE" ueber „P2 RUESTPHASE", beim Ausblenden halbdurchsichtig Text
+    // auf Text. Jeder Shop traegt die Phase ohnehin im Kopf; die Sperrzeit
+    // (bannerActive) bleibt unveraendert, nur das Schild entfaellt.
+    const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: `calc(var(--sa-top,0px) + ${hudH + 10}px)`, left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", // Ohne width:max-content bleibt das Schild auf der HALBEN Bildschirm-
       // breite haengen: bei left:50% ohne right reicht der Platz eines fest
       // positionierten Kastens nur noch bis zum rechten Rand. Der Text brach
       // deshalb auf drei Zeilen um und deckte ein Drittel des Bretts zu.
-      width: "max-content", ...spielerKasten({ setup: "blau", build: "gruen", shoot: "rot", cannon: "gold" }[phaseBanner] || "blau", { borderRadius: 18, padding: "9px 20px", boxShadow: `0 5px 0 ${FARBE.kontur}, 0 10px 24px rgba(0,0,0,0.5), inset 0 3px 0 rgba(255,255,255,0.45)` }), maxWidth: "min(92vw,430px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: FARBE.text, display: "flex", flexShrink: 0, filter: "drop-shadow(0 2px 0 #1b0f06)" } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 23, fontFamily: SCHRIFT_TITEL, color: FARBE.text, letterSpacing: "0.03em", textShadow: KONTURTEXT, lineHeight: 1.1 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#fff", marginTop: 2, fontWeight: 800, lineHeight: 1.3, textShadow: "0 1px 0 #1b0f06, 0 0 3px rgba(0,0,0,0.6)" } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: buehneStil }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: "max-content", ...spielerKasten({ setup: "blau", build: "gruen", shoot: "rot", cannon: "gold" }[phaseBanner] || "blau", { borderRadius: 18, padding: "9px 20px", boxShadow: `0 5px 0 ${FARBE.kontur}, 0 10px 24px rgba(0,0,0,0.5), inset 0 3px 0 rgba(255,255,255,0.45)` }), maxWidth: "min(92vw,430px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: FARBE.text, display: "flex", flexShrink: 0, filter: "drop-shadow(0 2px 0 #1b0f06)" } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 23, fontFamily: SCHRIFT_TITEL, color: FARBE.text, letterSpacing: "0.03em", textShadow: KONTURTEXT, lineHeight: 1.1 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#fff", marginTop: 2, fontWeight: 800, lineHeight: 1.3, textShadow: KONTURTEXT } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: buehneStil }, /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: buildUrgencyOpen ? "3px solid #ef4b34" : "3px solid #1b0f06",

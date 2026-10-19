@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.130.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.131.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9423,3 +9423,72 @@ Vollstaendige Durchsicht dessen, was Apple sieht, gegen das aktuelle Spiel:
   DEVELOPER_REJECTED, und der Trockenlauf brach ab. Jetzt `EINREICHBAR`
   (alle bearbeitbaren Zustaende); Test schliesst Pruef- und Freigabezustaende
   aus, Gegenprobe rot.
+
+## v3.131.0 — Scharfe Schrift, keine Ueberlappungen, Zieler auf jedem Boden
+
+Drei Meldungen des Betreibers, jede gemessen, behoben und mit einer Pruefung
+festgehalten, die am alten Stand rot war.
+
+**Schrift unscharf auf Hintergruenden.** Rundgang ueber alle Schirme auf vier
+Geraeten (SE, iPhone, Pro Max, iPad) bei 3-facher Aufloesung. Ursachen:
+- **Kontur zu dick fuer kleine Schrift.** `KONTURTEXT` war fest 1,5 px in vier
+  schraegen Richtungen. Bei 12 px ist das ein Achtel der Buchstabenhoehe — die
+  Innenraeume von a, e, D, u liefen zu, Buchstaben verschmolzen, und das wirkt
+  auf dem Geraet wie Unschaerfe. Jetzt 7 % der Schriftgroesse (0,75–1,6 px,
+  `clamp(…em…)`) in acht Richtungen. Gleiche Kontur in `docs/website/stil.css`
+  und `public/rechtstext.css`.
+- **Weiche Leuchtschatten statt Kontur** (`0 0 10px currentColor`, `0 1px 2px`,
+  `0 0 3px`): ELO-/Gold-/Material-Zahlen im Ergebnis, Spielerflagge im Shop,
+  Phasen-Untertitel, XP-Zahl, Shop-Beschriftungen, Ladebild. Jetzt scharfe
+  Kontur; wo ein Leuchten gewollt ist (Seltenheit, Level-Up), liegt es HINTER
+  der Kontur.
+- **Fusszeile im Menue** (Version, Rechtslinks) stand mit weichem Schatten auf
+  der gemalten Wiese und brach mit einem verwaisten „·" um. Jetzt dunkle
+  Unterlage, Links mit Abstand statt Trennpunkten. Erster Entwurf war 30 px
+  hoeher — `suiteKeinRollen` meldete Rollen auf SE und iPad 768×1024 (dort
+  vergroessert die Spalte um 1,34). Jetzt knapp gesetzt, auf dem iPad in einer
+  Zeile.
+- **Schrift unter 11 px** (35 Stellen mit 9–10,5 px) auf 11 px angehoben.
+- **Spielernamen im Spielkopf** weiss statt hellblau/hellrot auf blauem/rotem
+  Kasten, eigene Kontur in Namensgroesse.
+- **Endlos skalierte Schrift:** Die Schliessen-Warnung pulsierte um 22 %, der
+  Platzier-Hinweis in der Ruestphase ebenso. Auf iOS wird dabei die Ebene
+  vergroessert statt neu gesetzt (weich), und die Warnung ragte in den
+  Nachbarn. Jetzt Aufleuchten statt Vergroessern.
+- **Weltname unten links** (Canvas): sass in der abgerundeten Ecke des
+  Rahmens und wurde angeschnitten, graue Schrift bei 75 % Deckkraft. Jetzt
+  nach innen versetzt, deckende Pille, weisse Schrift.
+
+**Ueberlappungen.** Rundgang ueber alle Spielphasen fuer 2 und 3 Spieler:
+- Bei 3 Spielern an einem Geraet lag der Shop von P1 ueber dem von P3 (zwei
+  volle Shops oben plus einer unten passten auf dem SE nicht). Jetzt kompakte
+  Shops (kleinere Plakette, ohne Zusatzzeile) — gleiche Schriftgroessen.
+- Das Info-Knoepfchen im Shop war 74 statt 22 px gross (`panel()` bringt 22 px
+  Innenabstand mit) und ragte ueber den Shop-Kopf. Jetzt `knopf`, 26 px.
+- Das Phasenbanner „Ruestphase" lag am geteilten Geraet 2,5 s ueber dem Shop
+  des Gegenuebers, beim Ausblenden halbdurchsichtig Text auf Text. Dort
+  entfaellt das Schild; die Eingabesperre bleibt gleich.
+- „0/0 Feuerbereit" ragte auf dem SE aus seinem Kasten. Niedrige Leiste:
+  nebeneinander; drei Kaesten (3 Spieler): kleiner gestapelt.
+
+**Zieler auf jedem Boden.** Das Gelb von P1 verschwand auf Schnee, Sand,
+Wiese und Herbstlaub. Jetzt laeuft jeder Strich zweimal — dunkle Kontur,
+darauf die Spielerfarbe —, Fadenkreuz groesser (Radius 1,05 statt 0,85
+Zellen), Striche 3 statt 2,5 px. „×N" und „weiter ziehen…" mit Kontur, der
+Hinweis jetzt uebersetzt (`aimPullFurther`). `strokeText` wird fuer die
+gespiegelte P1-Ansicht genauso gegengespiegelt wie `fillText`.
+
+**Pruefungen:**
+- `suiteZieler` (`NUR=zieler`): sieben Welten, Bild ohne/mit gehaltenem
+  Zieler, Kontrast je geaendertem Pixel gegen denselben Pixel ohne Zieler;
+  das staerkste Fuenftel muss 3:1 schaffen (Fadenkreuz und Linie). Gegenprobe
+  ohne Kontur: 6 von 7 Welten rot (nur Vulkanschlund war schon immer gut).
+  Zwei Messregeln davor verworfen: „40 % aller Pixel" und „dunklere gegen
+  hellere Pixel" messen bei zwei Schichten nichts.
+- `suiteUeberlappung` (`NUR=ueberlappung`): Menues und Spielphasen (Bot und
+  3 Spieler) auf SE, iPhone, iPad. Text ragt nicht aus seinem Kasten,
+  Fenster ueberdecken einander nicht. Gegenprobe am alten Stand: die drei
+  gefundenen Faelle rot.
+- `tests/stil.test.js`: KONTURTEXT in em und ohne Weichzeichner, kein weicher
+  Textschatten ohne Kontur davor, keine Schrift unter 11 px, keine
+  Endlos-Animation mit `scale()`. Am alten Stand alle vier rot.

@@ -58,7 +58,7 @@ export function Reiter({ reiter, aktiv, onWahl }) {
       r.badge ? h("span", { style: {
         position: "absolute", top: -7, right: -5, minWidth: 18, height: 18, borderRadius: 9,
         background: "linear-gradient(180deg,#ff8a7a,#ef4b34 55%,#a8261a)", border: "2px solid " + FARBE.kontur,
-        fontSize: 10, fontFamily: SCHRIFT_TITEL, color: "#fff", textShadow: KONTURTEXT,
+        fontSize: 11, fontFamily: SCHRIFT_TITEL, color: "#fff", textShadow: KONTURTEXT,
         display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
       } }, r.badge) : null)));
 }
