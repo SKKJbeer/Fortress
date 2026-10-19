@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.131.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.131.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9492,3 +9492,30 @@ gespiegelte P1-Ansicht genauso gegengespiegelt wie `fillText`.
 - `tests/stil.test.js`: KONTURTEXT in em und ohne Weichzeichner, kein weicher
   Textschatten ohne Kontur davor, keine Schrift unter 11 px, keine
   Endlos-Animation mit `scale()`. Am alten Stand alle vier rot.
+
+## v3.131.1 — Die App ist fuehrend: jede neue Version geht nach TestFlight
+
+Rueckfrage des Betreibers nach v3.131.0: „nur auf der GitHub-Page? Hauptziel
+ist die App, und die ist fuehrend." Stimmte: v3.131.0 war im Browser live,
+die App blieb auf dem alten Bau.
+
+**Ursache:** `ios.yml` sollte bei jedem Versions-Tag bauen. Den Tag setzt
+`deploy.yml` mit dem GITHUB_TOKEN — und solche Tags starten bei GitHub
+keinen weiteren Ablauf. Der Ausloeser hat nie gegriffen; jeder TestFlight-Bau
+bisher war von Hand gestartet.
+
+**Jetzt:** `deploy.yml` stoesst nach gruener Testkette und Auslieferung
+`ios.yml` mit `upload=true` per `workflow_dispatch` an (das ist mit dem
+GITHUB_TOKEN erlaubt; Recht `actions: write`). Nur wenn der Versions-Tag NEU
+ist — Doku-Commits ohne Versionssprung sind kein App-Bau. Die
+Freigabe-Pruefung in `ios.yml` wartet weiterhin, bis der deploy.yml-Lauf
+dieses Commits gruen ist.
+
+**Pruefung:** `tests/app-fuehrend.test.js` haelt die Kette als Konstruktion
+fest (Recht, Tag-Ausgabe `neu`, Aufruf mit `upload=true`, Bedingung, Lage
+hinter Tests und Auslieferung; Freigabe in ios.yml). Gegenprobe mit dem
+alten deploy.yml: rot.
+
+**App Store:** TestFlight bekommt jede Version automatisch. Eine neue
+Store-Fassung braucht Apples Pruefung und wird eingereicht, sobald die
+vorige durch ist (oder auf Entscheidung des Betreibers die laufende ersetzt).

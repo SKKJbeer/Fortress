@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.131.0
+- **Aktuelle Version**: v3.131.1
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -722,6 +722,16 @@ npm run test:e2e
 ---
 
 ## iOS (seit v3.76.0)
+
+**Die App ist fuehrend (seit v3.131.1, Entscheidung des Betreibers).** Jede
+neue Version geht automatisch nach TestFlight: `deploy.yml` stoesst nach
+gruener Testkette `ios.yml` mit `upload=true` an — nur bei NEUEM Versions-Tag.
+Darum: **Jede Aenderung am Spiel bekommt eine neue Versionsnummer**, sonst
+kommt sie nie in die App. Nach dem Push nicht nur `deploy.yml`, sondern auch
+den angestossenen `ios.yml`-Lauf ansehen. (Der Tag-Ausloeser in ios.yml greift
+dafuer nicht: Tags vom GITHUB_TOKEN starten keinen Ablauf.)
+`tests/app-fuehrend.test.js` haelt die Kette fest. Eine neue App-Store-Fassung
+mit dem neuesten Bau wird eingereicht, sobald die vorige Pruefung durch ist.
 
 Architektur-Entscheidungen mit Begruendung: **`ARCHITEKTUR.md`**. Kurz:
 

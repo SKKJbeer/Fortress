@@ -1,8 +1,11 @@
 name: iOS-Build (TestFlight)
 
 # Bewusst NICHT bei jedem Push: ein TestFlight-Upload ist eine
-# Aussenwirkung. Der Build laeuft auf Zuruf oder wenn ein Versions-Tag
-# entsteht — dann ist die Absicht eindeutig.
+# Aussenwirkung. Der Build laeuft auf Zuruf oder bei jeder NEUEN Version:
+# deploy.yml stoesst ihn nach gruener Testkette per workflow_dispatch an
+# (v3.131.1 — die App ist fuehrend). Der Tag-Ausloeser unten greift dafuer
+# nicht: Tags, die deploy.yml mit dem GITHUB_TOKEN setzt, starten keinen
+# Ablauf. Er bleibt fuer von Hand gesetzte Tags.
 on:
   workflow_dispatch:
     inputs:

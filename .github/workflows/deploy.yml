@@ -13,6 +13,8 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  # actions: write — fuer den Anstoss des App-Baus (siehe letzter Schritt).
+  actions: write
 
 concurrency:
   group: pages
@@ -123,6 +125,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Git Tag setzen
+        id: tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -136,6 +139,7 @@ jobs:
           else
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
+            echo "neu=true" >> "$GITHUB_OUTPUT"
           fi
 
       # **Auf den Commit festgenagelt, nicht auf das bewegliche `v2`.**
@@ -161,3 +165,20 @@ jobs:
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # **Die App ist fuehrend (v3.131.1, Entscheidung des Betreibers).** Jede
+      # neue Version geht nach TestFlight, nicht nur auf GitHub Pages.
+      #
+      # Bis hierher sollte das der Tag-Ausloeser in ios.yml leisten — der hat
+      # nie gegriffen: Ein Tag, den dieser Ablauf mit dem GITHUB_TOKEN setzt,
+      # startet bei GitHub KEINEN weiteren Ablauf. Ausgenommen ist ein
+      # ausdruecklicher `workflow_dispatch` — deshalb hier. Nur bei NEUEM Tag
+      # (Version wirklich erhoeht), sonst gingen Doku-Commits als App-Bau raus.
+      # ios.yml wartet in seiner Freigabe-Pruefung, bis DIESER Lauf gruen ist.
+      - name: App-Bau anstossen (TestFlight)
+        if: ${{ steps.tag.outputs.neu == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run ios.yml --repo "${{ github.repository }}" --ref main -f upload=true
+          echo "App-Bau fuer v${{ steps.version.outputs.version }} angestossen (ios.yml, upload=true)." >> "$GITHUB_STEP_SUMMARY"
