@@ -41,6 +41,14 @@ on:
         description: 'Nur fuer einreichen (EINREICHEN), freigeben (FREIGEBEN) bzw. zurueckweisen (ZURUECKWEISEN)'
         type: string
         default: ''
+      # Seit v3.131.2: an welcher Store-Fassung gearbeitet wird. Leer = 1.0.
+      # Fuer das Update 1.0.1: fuellen → sprachen → store → einreichen-probe →
+      # einreichen, jeweils mit fassung=1.0.1. Apple haengt nur Bauten mit
+      # derselben MARKETING_VERSION an (Xcode-Projekt).
+      fassung:
+        description: 'Store-Fassung (leer = 1.0), z. B. 1.0.1'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -90,6 +98,7 @@ jobs:
           ASC_KONTAKT_MAIL: ${{ secrets.ASC_KONTAKT_MAIL }}
           ASC_KONTAKT_TELEFON: ${{ secrets.ASC_KONTAKT_TELEFON }}
           BESTAETIGUNG: ${{ inputs.bestaetigung }}
+          ASC_FASSUNG: ${{ inputs.fassung }}
         run: |
           case "${{ inputs.modus }}" in
             anlegen)    python3 scripts/asc.py --anlegen ;;

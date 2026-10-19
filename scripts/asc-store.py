@@ -187,6 +187,8 @@ def neuester_bau(apple: Apple, app_id: str):
     """
     stand, antwort = apple.holen("v1/builds", **{
         "filter[app]": app_id, "filter[processingState]": "VALID",
+        # Nur Bauten DIESER Fassung (v3.131.2): An 1.0.1 haengt Apple keinen 1.0-Bau.
+        "filter[preReleaseVersion.version]": FASSUNG,
         "sort": "-version", "limit": 50})
     if stand != 200:
         return None

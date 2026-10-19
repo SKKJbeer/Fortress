@@ -46,7 +46,20 @@ import requests
 BASIS = "https://api.appstoreconnect.apple.com"
 BUNDLE = "de.skkjbeer.stackandsiege"
 SPRACHE = "de-DE"
-FASSUNG = "1.0"          # MARKETING_VERSION im Xcode-Projekt
+# Die Store-Fassung, an der gearbeitet wird. Standard 1.0; fuer Updates ueber
+# die Eingabe `fassung` in appstore.yml (Umgebung ASC_FASSUNG), z. B. 1.0.1.
+# Muss zur MARKETING_VERSION der hochgeladenen Bauten passen — Apple haengt an
+# eine Fassung nur Bauten mit derselben Versionsnummer.
+ERSTE_FASSUNG = "1.0"
+FASSUNG = (os.environ.get("ASC_FASSUNG") or "").strip() or ERSTE_FASSUNG
+if not re.fullmatch(r"\d+\.\d+(\.\d+)?", FASSUNG):
+    raise SystemExit(f"::error::Fassung „{FASSUNG}\" ist keine Versionsnummer (z. B. 1.0.1)")
+
+
+def ist_update() -> bool:
+    """Apple verlangt „Neuigkeiten" fuer jede Fassung ausser der ersten — und
+    lehnt das Feld bei der ersten ab."""
+    return FASSUNG != ERSTE_FASSUNG
 WURZEL = pathlib.Path(__file__).resolve().parent.parent
 
 erledigt: list[str] = []
@@ -138,7 +151,7 @@ def bloecke() -> dict:
 # Apples Grenzen. Ueberschreitet ein Text sie, lehnt App Store Connect erst
 # am ENDE einer Einreichung ab — deshalb hier, vor dem Schreiben.
 GRENZEN = {"Name": 30, "Untertitel": 30, "Werbetext": 170,
-           "Beschreibung": 4000, "Schlüsselwörter": 100}
+           "Beschreibung": 4000, "Schlüsselwörter": 100, "Neuigkeiten": 4000}
 
 
 def zu_lang(texte: dict) -> list[str]:
@@ -213,19 +226,24 @@ def app_eintrag(apple: Apple):
 
 
 def fassung(apple: Apple, app: str, fuellen: bool):
-    """Die bearbeitbare Fassung — notfalls angelegt."""
+    """Die Fassung FASSUNG — notfalls angelegt.
+
+    Bis v3.131.1 nahm diese Funktion die ERSTE nicht veroeffentlichte Fassung,
+    egal welche Nummer. Fuer 1.0.1 haette `fuellen` damit die Texte der
+    laufenden 1.0 ueberschrieben, statt 1.0.1 anzulegen."""
     stand, antwort = apple.holen(f"v1/apps/{app}/appStoreVersions",
                                  **{"limit": 20, "filter[platform]": "IOS"})
     if stand != 200:
         offen.append(f"Fassungen nicht lesbar ({stand}): {kurz(antwort)}")
         return None
     for eintrag in antwort.json().get("data", []):
+        if feld(eintrag, "versionString") != FASSUNG:
+            continue
         zustand = feld(eintrag, "appStoreState") or feld(eintrag, "appVersionState")
-        if zustand not in ("READY_FOR_SALE", "REMOVED_FROM_SALE"):
-            erledigt.append(f"Fassung {feld(eintrag, 'versionString')} in Arbeit ({zustand})")
-            return eintrag["id"]
+        erledigt.append(f"Fassung {FASSUNG} gefunden ({zustand})")
+        return eintrag["id"]
     if not fuellen:
-        offen.append("Keine bearbeitbare Fassung — mit --fuellen wird 1.0 angelegt")
+        offen.append(f"Fassung {FASSUNG} gibt es noch nicht — mit --fuellen wird sie angelegt")
         return None
     stand, antwort = apple.anlegen("v1/appStoreVersions", {"data": {
         "type": "appStoreVersions",
@@ -275,6 +293,10 @@ def texte_der_fassung(apple: Apple, version: str, texte: dict, fuellen: bool):
     soll = {"description": texte.get("Beschreibung"),
             "keywords": texte.get("Schlüsselwörter"),
             "promotionalText": texte.get("Werbetext")}
+    if ist_update():
+        if not texte.get("Neuigkeiten"):
+            offen.append(f"Fassung {FASSUNG} ist ein Update — Block „Neuigkeiten\" fehlt in store/listing.md")
+        soll["whatsNew"] = texte.get("Neuigkeiten")
     soll = {k: v for k, v in soll.items() if v}
     fehlt = {k: v for k, v in soll.items() if feld(ort, k) != v}
     if not fehlt:

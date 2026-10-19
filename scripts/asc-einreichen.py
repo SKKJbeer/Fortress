@@ -92,6 +92,8 @@ def vorbedingungen(apple: Apple):
     # ZAHL, nicht nach Text (Apples sort=-version sortiert „99" vor „100").
     stand2, antwort = apple.holen("v1/builds", **{
         "filter[app]": app_id, "filter[processingState]": "VALID",
+        # Nur Bauten DIESER Fassung (v3.131.2): An 1.0.1 haengt Apple keinen 1.0-Bau.
+        "filter[preReleaseVersion.version]": FASSUNG,
         "sort": "-version", "limit": 50})
     bauten = (antwort.json().get("data") or []) if stand2 == 200 else []
     neu = max(bauten, key=nummer) if bauten else None

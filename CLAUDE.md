@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.131.1
+- **Aktuelle Version**: v3.131.2
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -732,6 +732,13 @@ den angestossenen `ios.yml`-Lauf ansehen. (Der Tag-Ausloeser in ios.yml greift
 dafuer nicht: Tags vom GITHUB_TOKEN starten keinen Ablauf.)
 `tests/app-fuehrend.test.js` haelt die Kette fest. Eine neue App-Store-Fassung
 mit dem neuesten Bau wird eingereicht, sobald die vorige Pruefung durch ist.
+
+**Store-Fassungen (seit v3.131.2):** `appstore.yml` nimmt `fassung` (leer =
+1.0). Ein Update: `MARKETING_VERSION` im Xcode-Projekt heben, Block
+„Neuigkeiten (… X.Y.Z)" in `store/listing.md` + `listing-en.md` neu schreiben
+(`tests/fassung.test.js` verlangt Gleichstand), dann mit `fassung=X.Y.Z`:
+fuellen → sprachen → store → einreichen-probe → einreichen. Apple haengt nur
+Bauten mit derselben Versionsnummer an. App: 1.0.1 (1.0 ist bei Apple).
 
 Architektur-Entscheidungen mit Begruendung: **`ARCHITEKTUR.md`**. Kurz:
 

@@ -24,7 +24,7 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from asc import Apple, BUNDLE, FASSUNG, WURZEL, erste, feld, kurz  # noqa: E402
+from asc import Apple, BUNDLE, FASSUNG, WURZEL, erste, feld, ist_update, kurz  # noqa: E402
 
 sag = print
 SPRACHEN = ["en-US", "en-GB"]
@@ -99,7 +99,9 @@ def main() -> int:
                              fass["id"], sprache,
                              {"description": t["Beschreibung"], "keywords": t["Schlüsselwörter"],
                               "promotionalText": t["Werbetext"], "supportUrl": SUPPORT,
-                              "marketingUrl": MARKETING}, schreiben)
+                              "marketingUrl": MARKETING,
+                              # Updates brauchen „What's New" (v3.131.2); die erste Fassung lehnt es ab.
+                              **({"whatsNew": t["Neuigkeiten"]} if ist_update() else {})}, schreiben)
     return 1 if fehler else 0
 
 

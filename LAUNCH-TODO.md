@@ -247,6 +247,11 @@ nur, was fehlt.
 - [ ] **Nach Apples Freigabe veroeffentlichen** — `appstore.yml` mit
       `freigeben-probe`, dann `freigeben` (Eingabe FREIGEBEN), oder in App
       Store Connect „Diese Version veroeffentlichen".
+- [ ] **Direkt danach Update 1.0.1 einreichen** (Entscheidung 19.10.: 1.0
+      laeuft zu Ende, die Korrekturen aus v3.131.0 — scharfe Schrift, Zieler mit
+      Kontur, keine Ueberlappungen — kommen als 1.0.1). Bauten gehen seit
+      v3.131.2 als 1.0.1 nach TestFlight. Ablauf mit `fassung=1.0.1`: `fuellen`
+      → `sprachen` → `store` → `einreichen-probe` → `einreichen` (EINREICHEN).
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
 - [x] **Bau 28 (v3.94.0) der Fassung zugeordnet** (17.09., `→ store`)

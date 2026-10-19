@@ -60,3 +60,12 @@ fortress,cannon,strategy,tactics,medieval,multiplayer,2,player,local,offline,bot
 ```
 Not repeated: words from name and subtitle (stack, siege, castle, duel, build,
 walls, breach, fort) — Apple searches those anyway. No trademarks.
+
+### Neuigkeiten (What's New, max. 4000 — version 1.0.1)
+```
+Easier to see, on every device:
+• Text is sharp and clearly readable on every background.
+• The aim line and crosshair now have a dark outline and stand out on all seven worlds – even on snow, sand and autumn leaves.
+• With three players on one device, the armory shops no longer overlap.
+• Smaller fixes for labels that spilled over their edges on small phones.
+```

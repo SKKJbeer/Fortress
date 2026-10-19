@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.131.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.131.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9519,3 +9519,30 @@ alten deploy.yml: rot.
 **App Store:** TestFlight bekommt jede Version automatisch. Eine neue
 Store-Fassung braucht Apples Pruefung und wird eingereicht, sobald die
 vorige durch ist (oder auf Entscheidung des Betreibers die laufende ersetzt).
+
+## v3.131.2 — Store-Update 1.0.1 vorbereitet
+
+Entscheidung des Betreibers: Fassung 1.0 (Bau 45) laeuft bei Apple zu Ende,
+direkt nach ihrer Veroeffentlichung geht 1.0.1 mit dem neuesten Bau in die
+Pruefung — mit den Korrekturen aus v3.131.0.
+
+- **App-Version 1.0.1** (`MARKETING_VERSION`). Ab jetzt gehen die Bauten als
+  1.0.1 nach TestFlight; an eine Store-Fassung haengt Apple nur Bauten mit
+  derselben Nummer.
+- **Fassung einstellbar:** `appstore.yml` hat die Eingabe `fassung` (leer =
+  1.0, Umgebung `ASC_FASSUNG`). Bis hierher stand „1.0" fest in allen
+  Store-Skripten, und `asc.py` nahm „die erste nicht veroeffentlichte
+  Fassung" — fuer ein Update haette `fuellen` die Texte der laufenden 1.0
+  ueberschrieben, statt 1.0.1 anzulegen. Jetzt nach Nummer.
+- **Nur Bauten dieser Fassung:** `store` und `einreichen` suchen den neuesten
+  Bau mit `preReleaseVersion = FASSUNG`.
+- **Neuigkeiten** (Apple-Pflicht fuer Updates, bei der ersten Fassung
+  abgelehnt): neuer Block in `store/listing.md` und `listing-en.md`, von
+  `asc.py` bzw. `asc-sprachen.py` nur bei Updates eingetragen.
+- **Ablauf fuer 1.0.1** (jeweils `fassung=1.0.1`): `fuellen` (legt an, Texte)
+  → `sprachen` → `store` (Bau, Kategorie, Altersfreigabe) → `einreichen-probe`
+  → `einreichen` (EINREICHEN). Bilder uebernimmt Apple aus der Vorfassung.
+- **Pruefung:** `tests/fassung.test.js` — Auswahl nach Nummer, Eingabe bis
+  ins Skript durchgereicht, Bau-Filter, Neuigkeiten nur bei Updates und in
+  beiden Sprachen, Ueberschrift der Neuigkeiten = App-Version (wer die Version
+  hebt, schreibt neue). Gegenprobe am alten Stand: alle drei rot.

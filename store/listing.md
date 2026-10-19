@@ -93,6 +93,17 @@ burg,burgen,belagerung,kanone,strategie,taktik,mittelalter,multiplayer,2,spieler
   greift „2 spieler" UND „spieler" einzeln.
 Der Spielname gehört **nicht** hinein — Apple durchsucht ihn ohnehin.
 
+### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.1)
+```
+Besser zu sehen, auf jedem Gerät:
+• Schrift ist auf allen Hintergründen scharf und klar lesbar.
+• Der Zieler hat eine dunkle Kontur und ist auf allen sieben Welten gut sichtbar – auch auf Schnee, Sand und Herbstlaub.
+• Zu dritt an einem Gerät überdecken sich die Rüst-Shops nicht mehr.
+• Kleinere Korrekturen an Anzeigen, die auf kleinen Telefonen über ihren Rand ragten.
+```
+Wird von `asc.py` nur bei Updates eingetragen (`ist_update()`); bei der ersten
+Fassung lehnt Apple das Feld ab. Für jede neue Fassung neu schreiben.
+
 ### Altersfreigabe
 4+ — Gewaltdarstellung ist abstrakt (Blöcke zerfallen), keine Figuren, kein
 Blut, keine Schrift von Dritten im Spiel.
