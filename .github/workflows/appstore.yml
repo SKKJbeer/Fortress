@@ -28,6 +28,8 @@ on:
           - freigeben  # die von Apple freigegebene Fassung VEROEFFENTLICHEN (Eingabe FREIGEBEN)
           - neuer-bau-probe # nur lesen: kann die freigegebene Fassung fuer einen neueren Bau zurueckgewiesen werden?
           - zurueckweisen # freigegebene Fassung zurueckweisen (Eingabe ZURUECKWEISEN), um neu einzureichen
+          - verfuegbar-stand # nur lesen: in welchen Laendern ist die App verfuegbar?
+          - verfuegbar # Verfuegbarkeit anlegen, ALLE Gebiete (Eingabe VERFUEGBAR); nur wenn Apple keine kennt
           - oeffentlich # zusaetzlich: externe Gruppe mit oeffentlichem Link
                         # + Beta-Pruefung beantragen. Damit kann JEDER testen.
           - pflichtangaben-stand # nur lesen: copyright, Support-URL, Preis, Datenschutz-Schnittstelle
@@ -38,7 +40,7 @@ on:
           - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
           - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
       bestaetigung:
-        description: 'Nur fuer einreichen (EINREICHEN), freigeben (FREIGEBEN) bzw. zurueckweisen (ZURUECKWEISEN)'
+        description: 'Nur fuer einreichen (EINREICHEN), freigeben (FREIGEBEN), zurueckweisen (ZURUECKWEISEN) bzw. verfuegbar (VERFUEGBAR)'
         type: string
         default: ''
       # Seit v3.131.2: an welcher Store-Fassung gearbeitet wird. Leer = 1.0.
@@ -139,6 +141,13 @@ jobs:
               fi
               python3 scripts/asc-freigeben.py --freigeben ;;
             neuer-bau-probe) python3 scripts/asc-neuer-bau.py ;;
+            verfuegbar-stand) python3 scripts/asc-verfuegbar.py ;;
+            verfuegbar)
+              if [ "$BESTAETIGUNG" != "VERFUEGBAR" ]; then
+                echo "::error::Zum Anlegen die Eingabe 'bestaetigung' auf VERFUEGBAR setzen."
+                exit 1
+              fi
+              python3 scripts/asc-verfuegbar.py --setzen ;;
             zurueckweisen)
               if [ "$BESTAETIGUNG" != "ZURUECKWEISEN" ]; then
                 echo "::error::Zum Zurueckweisen die Eingabe 'bestaetigung' auf ZURUECKWEISEN setzen."
