@@ -249,11 +249,16 @@ nur, was fehlt.
       mit FREIGEBEN stellte sie auf `READY_FOR_SALE`. Apple verteilt in den
       folgenden Stunden an alle Stores. Wartezeit in der Pruefung: 7 Tage
       (eingereicht 13.10., 15:36 UTC).
-- [ ] **Direkt danach Update 1.0.1 einreichen** (Entscheidung 19.10.: 1.0
-      laeuft zu Ende, die Korrekturen aus v3.131.0 — scharfe Schrift, Zieler mit
-      Kontur, keine Ueberlappungen — kommen als 1.0.1). Bauten gehen seit
-      v3.131.2 als 1.0.1 nach TestFlight. Ablauf mit `fassung=1.0.1`: `fuellen`
-      → `sprachen` → `store` → `einreichen-probe` → `einreichen` (EINREICHEN).
+- [x] **Update 1.0.1 eingereicht am 20.10.2026** (Bau 48 = v3.131.2, mit den
+      Korrekturen aus v3.131.0: scharfe Schrift, Zieler mit Kontur, keine
+      Ueberlappungen). Ablauf mit `fassung=1.0.1`: `fuellen` → `sprachen` →
+      `store` → `einreichen-probe` → `einreichen`. Zustand: `WAITING_FOR_REVIEW`,
+      Veroeffentlichung von Hand (`freigeben` mit `fassung=1.0.1`).
+      Die Kategorie liess sich fuer 1.0.1 nicht erneut setzen (HTTP 409 — der
+      veroeffentlichte Eintrag ist gesperrt); sie steht von 1.0 her, die Probe
+      vor dem Einreichen hat nichts bemaengelt.
+- [ ] **1.0.1 nach Apples Freigabe veroeffentlichen** — `freigeben-probe`, dann
+      `freigeben` (FREIGEBEN), jeweils mit `fassung=1.0.1`.
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
 - [x] **Bau 28 (v3.94.0) der Fassung zugeordnet** (17.09., `→ store`)
