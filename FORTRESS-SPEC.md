@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.131.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9655,3 +9655,67 @@ CLAUDE.md Stichwortliste + die haertesten Regeln. (2) Prueftermin fuer Store-Upd
 von 3 auf 6 Stunden (Apples Pruefung dauert Tage). (3) Arbeitsweise: Bilder nur als
 verkleinerte Blaetter, Protokolle nur gefiltert lesen.
 
+
+## v3.132.0 — Zwei Spieler gegenüber an einem Gerät; Ton beim Minimieren
+
+Zwei Meldungen des Betreibers aus dem Spiel an EINEM Gerät.
+
+**1. Gegenüber-Modus (lokal, 2 Spieler).** Wer gegeneinander an einem Gerät
+spielt, sitzt sich gegenüber — bis dahin stand aber alles in einer Richtung, für
+den Gegenüber auf dem Kopf (Shop, Bauteil-Vorschau, Kopfzeile). Jetzt
+(`istGegenueber()` = lokal, 2 Spieler, kein Bot, nicht online):
+
+- **P1 (blau, Burg oben) sitzt oben, P2 (rot, Burg unten) unten.** Alles, was P1
+  bedient, steht um 180° gedreht an SEINER Kante.
+- **Obere Leiste** (`topBarRef`, `data-leiste="oben"`) zwischen Kopfzeile und
+  Brett, so hoch wie die untere; `fit()` reserviert beide (`leisten` = 2), das
+  Brett schrumpft auf dem iPad um rund 10 %, auf dem Telefon (breitenbegrenzt)
+  nicht. Inhalt: Bauteil-Vorschau bzw. „Feuerbereit" von P1 plus eine eigene
+  Uhr (die Zahl der Kopfzeile stünde für ihn verkehrt, aus 25 würde 52).
+- **Bauteil-Vorschau von P1:** Das Raster wird gegen die Drehung der Leiste um
+  180° gegengedreht (Zeile UND Spalte) — damit zeigt sie dieselbe Lage wie der
+  Geist auf dem Brett, den P1 zieht.
+- **Rüstphase:** Shop von P1 oben und gedreht, Shop von P2 unten und aufrecht
+  (vorher P1 unten, P2 oben, beide gleich herum). Im Shop-Kopf steht lokal die
+  Restzeit (`data-shopuhr`).
+- **Kopfzeile:** Der Kasten von P1 ist gedreht. **Phasenschild** je Spieler an
+  seiner Kante (`phasebannerGedreht` in index.html — die Animation setzt
+  `transform` selbst, ein Stil-`transform` würde überschrieben).
+- **Bedienung:** Das Bauteil hebt sich vom Finger weg — bei P1 bildschirm-
+  abwärts (`liftedGhost`), bei P2 wie bisher aufwärts. Der Abbruchbereich
+  (Finger tief außerhalb des Bretts) liegt für P1 ÜBER dem Brett, für P2
+  darunter (`imAbbruchBereich`, vorher dreimal inline). Die Hebelinie im Canvas
+  folgt (`ownFlipped`).
+- **Unverändert:** Bot, online, 3 Spieler lokal (dort sitzen mehr als zwei, es
+  gibt kein „Gegenüber"). Das Ergebnisbild bleibt einfach (nicht gedreht).
+
+**2. Ton nach Minimieren hängt / läuft doppelt.** Ursache: Im Hintergrund steht
+der AudioContext still, Host- und Bot-Zeitgeber laufen aber weiter und planten
+weiter Sounds ein; `start()` auf einem stehenden Context reiht sie nur ein, bei
+der Rückkehr platzte der Stau auf einmal los und war nicht mehr anzuhalten. Die
+Musik wurde beim Minimieren nie angehalten, und ein spät aufgelöstes `play()`
+konnte sie nach dem Ausschalten wieder anwerfen. Behoben in `src/audio.js`:
+
+- `hintergrund(an)` (hängt an `visibilitychange`, `pagehide`/`pageshow`,
+  `freeze`/`resume`; wiederholbar): `SFX.ruhen()` stoppt alle laufenden Quellen
+  (`_aktiv`), pausiert die iOS-Tags und `suspend()`et den Context; `wecken()`
+  nimmt `resume()` vor. Im Hintergrund wird NICHTS eingeplant (`_ruht`).
+- `MUSIC._soll()` ist die eine Wahrheit; `play()` wirft im Hintergrund nichts
+  an, ein spät aufgelöstes `play()` pausiert wieder, wenn die Musik inzwischen
+  aus ist; `stop()` setzt zusätzlich den Gain auf 0 (haengendes Element bleibt
+  still). `wecken()` nimmt die ZULETZT gewünschte Spur.
+- Der alte `visibilitychange`-Handler in app.js entfällt (er weckte nur den
+  Context, nie die Musik).
+
+**Prüfungen:** `tests/audio.test.js` (11 Tests gegen Attrappen von
+AudioContext/Audio; Gegenprobe: gegen den alten `audio.js` alle rot), E2E
+`suiteSound` (Hintergrund/Rückkehr im echten Browser) und neue
+`suiteGegenueber` (`NUR=gegenueber`, iPhone + iPad: Leiste oben/gedreht,
+Vorschau, Hebe-Richtung und Abbruchbereich je Spieler, beide Shops; Gegenprobe
+Bot und 3 Spieler ohne Leiste) — Gegenprobe `istGegenueber()` = false → 6 rot.
+Neuer gesperrter Prüfhaken `window.__geist(p)`.
+
+**Offen:** Auf dem Gerät nicht gemessen: das Verhalten von iOS beim
+App-Wechsel (Unterbrechung „interrupted") — die Behebung folgt der bekannten
+Ursache, ist aber nur in Attrappen und Chromium geprüft. Ergebnisbild und
+Canvas-Schrift (schwebende Zahlen) stehen für P1 weiter auf dem Kopf.

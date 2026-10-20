@@ -14,6 +14,36 @@ const SFX = {
   ctx: null,
   enabled: true,
   haptics: true,
+  // Hintergrund (v3.132.0): Solange die Seite nicht sichtbar ist, wird nichts
+  // abgespielt und nichts eingeplant. Gemeldet: Nach Minimieren und Rueckkehr
+  // hing der Ton, war nicht abzustellen oder lief doppelt. Ursache: Der
+  // AudioContext steht im Hintergrund still, Bot-/Host-Zeitgeber laufen aber
+  // weiter und planten Sounds ein (`start()` auf einem stehenden Context
+  // reiht sie nur ein) — bei der Rueckkehr platzte der ganze Stau auf einmal
+  // los, und was einmal eingeplant war, liess sich nicht mehr anhalten.
+  _ruht: typeof document !== "undefined" && !!document.hidden,
+  // Alle gerade laufenden WebAudio-Quellen — damit man sie anhalten KANN.
+  _aktiv: new Set(),
+  _merke(src) {
+    this._aktiv.add(src);
+    src.onended = () => { this._aktiv.delete(src); };
+  },
+  _stopAlle() {
+    for (const s of this._aktiv) { try { s.stop(); } catch (e) {} try { s.disconnect(); } catch (e) {} }
+    this._aktiv.clear();
+    for (const n in this._tags) { try { this._tags[n].pause(); } catch (e) {} }
+  },
+  ruhen() {
+    this._ruht = true;
+    this._stopAlle();
+    // suspend() gibt auf iOS die Audiositzung frei; ohne das bleibt der Context
+    // nach dem Wechsel auf „interrupted" haengen.
+    try { const c = this.ctx; if (c && c.state === "running") c.suspend().catch(() => {}); } catch (e) {}
+  },
+  wecken() {
+    this._ruht = false;
+    try { const c = this.ctx; if (c && c.state !== "running") c.resume().catch(() => {}); } catch (e) {}
+  },
   _ensure() {
     if (this.ctx) return this.ctx;
     try {
@@ -104,7 +134,7 @@ const SFX = {
   },
   // Sample abspielen; false wenn (noch) kein Buffer → Aufrufer nutzt Fallback-Töne
   _play(name, vol) {
-    if (!this.enabled) return true;
+    if (!this.enabled || this._ruht) return true;
     // iOS: HTML-Audio (Medien-Kanal) zuerst — WebAudio hängt dort am
     // Klingelton-Kanal und ist bei Stummschalter lautlos (v3.32.3).
     if (this._isIOS && this._playTag(name, vol)) return true;
@@ -118,12 +148,13 @@ const SFX = {
       const g = c.createGain();
       g.gain.value = vol != null ? vol : 1;
       s.connect(g).connect(c.destination);
+      this._merke(s);
       s.start();
       return true;
     } catch (e) { return false; }
   },
   _tone(o) {
-    if (!this.enabled) return;
+    if (!this.enabled || this._ruht) return;
     const c = this._ensure();
     if (!c) return;
     try {
@@ -138,12 +169,13 @@ const SFX = {
       gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
       gain.gain.exponentialRampToValueAtTime(1e-4, t0 + dur);
       osc.connect(gain).connect(c.destination);
+      this._merke(osc);
       osc.start(t0);
       osc.stop(t0 + dur + 0.03);
     } catch (e) {}
   },
   _noise(o) {
-    if (!this.enabled) return;
+    if (!this.enabled || this._ruht) return;
     const c = this._ensure();
     if (!c) return;
     try {
@@ -162,6 +194,7 @@ const SFX = {
       filter.type = "lowpass";
       filter.frequency.setValueAtTime(filterFreq, t0);
       src.connect(filter).connect(gain).connect(c.destination);
+      this._merke(src);
       src.start(t0);
       src.stop(t0 + dur + 0.03);
     } catch (e) {}
@@ -191,6 +224,7 @@ const MUSIC = {
   cur: null,
   enabled: true,
   userVol: 0.45, // Master (Regler im Menü, fortress_music_vol)
+  _ruht: typeof document !== "undefined" && !!document.hidden, // Hintergrund (v3.132.0)
   _rel: { menu: 1.0 }, // Menü voll; Welt-Tracks laufen über den 0.75-Default
   _mk() {
     if (this.el) return;
@@ -217,9 +251,13 @@ const MUSIC = {
     if (this._gain) { this._gain.gain.value = v; try { this.el.volume = 1; } catch (e) {} }
     else { try { this.el.volume = v; } catch (e) {} }
   },
+  // Soll jetzt Musik laufen? Eine Quelle fuer alle Pfade — vorher entschied
+  // jeder Aufrufer selbst, und ein spaet aufgeloestes play() konnte die
+  // Musik nach stop() oder im Hintergrund wieder anwerfen.
+  _soll() { return this.enabled && !!this.cur && !this._ruht; },
   play(track) {
     this.cur = track;
-    if (!this.enabled || !track) return;
+    if (!this.enabled || !track || this._ruht) return;
     this._mk();
     if (!this.el) return;
     const srcName = "music/" + track + ".mp3";
@@ -227,10 +265,22 @@ const MUSIC = {
     this._wire();
     this._applyVol(track);
     const pr = this.el.play();
-    if (pr && pr.catch) pr.catch(() => {}); // vor erster Geste blockiert — retry() holt nach
+    if (pr && pr.then) {
+      // Spaet aufgeloestes play(): Ist die Musik inzwischen aus oder die Seite
+      // im Hintergrund, sofort wieder anhalten statt weiterzuspielen.
+      pr.then(() => { if (!this._soll()) { try { this.el.pause(); } catch (e) {} } }).catch(() => {}); // vor erster Geste blockiert — retry() holt nach
+    }
   },
-  retry() { if (this.enabled && this.cur && this.el && this.el.paused) this.play(this.cur); },
-  stop() { if (this.el) { try { this.el.pause(); } catch (e) {} } },
+  retry() { if (this._soll() && this.el && this.el.paused) this.play(this.cur); },
+  // Anhalten ist endgueltig: Pause UND Gain auf 0. Haengt das Element nach
+  // einer Unterbrechung (iOS), bleibt es trotzdem still.
+  stop() {
+    if (!this.el) return;
+    try { this.el.pause(); } catch (e) {}
+    if (this._gain) { try { this._gain.gain.value = 0; } catch (e) {} }
+  },
+  ruhen() { this._ruht = true; this.stop(); },
+  wecken() { this._ruht = false; if (this._soll()) this.play(this.cur); },
   setEnabled(on) {
     this.enabled = on;
     if (on) this.play(this.cur); else this.stop();
@@ -242,4 +292,21 @@ const MUSIC = {
 };
 window.MUSIC = MUSIC;
 
-export { SFX, MUSIC };
+// ── Lebenszyklus (v3.132.0) ───────────────────────────────────────────
+// Ein Ort fuer „Seite verschwindet / kommt zurueck". visibilitychange allein
+// reicht auf iOS nicht (App-Wechsel, Sperrbildschirm, Anruf kommen teils nur
+// als pagehide/freeze), mehrfaches Melden schadet nicht — ruhen()/wecken()
+// sind wiederholbar.
+function hintergrund(an) {
+  if (an) { SFX.ruhen(); MUSIC.ruhen(); }
+  else { SFX.wecken(); MUSIC.wecken(); }
+}
+if (typeof document !== "undefined" && typeof window !== "undefined") {
+  document.addEventListener("visibilitychange", () => hintergrund(!!document.hidden));
+  window.addEventListener("pagehide", () => hintergrund(true));
+  window.addEventListener("pageshow", () => { if (!document.hidden) hintergrund(false); });
+  document.addEventListener("freeze", () => hintergrund(true));
+  document.addEventListener("resume", () => { if (!document.hidden) hintergrund(false); });
+}
+
+export { SFX, MUSIC, hintergrund };

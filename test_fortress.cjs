@@ -5518,6 +5518,26 @@ async function suiteSound(browser) {
     const vol = await page.evaluate(() => ({ ls: localStorage.getItem('fortress_music_vol'), mgr: window.MUSIC.userVol }));
     vol.ls === '0.2' && Math.abs(vol.mgr - 0.2) < 0.001 ? ok('Musik: Regler persistiert + wirkt (20%) ✓') : fail('Musik: Regler-Wert falsch (' + JSON.stringify(vol) + ')');
 
+    // ── Hintergrund (v3.132.0): Minimieren darf weder Musik noch Sounds laufen lassen ──
+    // Gemeldet: nach Minimieren und Rueckkehr hing der Ton, war nicht abzustellen
+    // oder lief doppelt. Gegengeprueft: audio.js ohne hintergrund() → rot.
+    const hg = await page.evaluate(() => {
+      const setze = (h) => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => h }); document.dispatchEvent(new Event('visibilitychange')); };
+      SFX.resume();
+      setze(true);
+      const imHg = { sfx: SFX._ruht, musik: MUSIC._ruht, still: !MUSIC.el || MUSIC.el.paused };
+      const vorher = SFX._aktiv.size;
+      SFX.shoot(); SFX.impact(); SFX.destroy(); SFX.win();
+      const nachher = SFX._aktiv.size;
+      setze(false);
+      const zurueck = { sfx: SFX._ruht, musik: MUSIC._ruht };
+      delete document.hidden;
+      return { imHg, vorher, nachher, zurueck };
+    });
+    (hg.imHg.sfx && hg.imHg.musik && hg.imHg.still) ? ok('Hintergrund: Ton ruht, Musik pausiert ✓') : fail('Hintergrund: Ton/Musik laufen weiter (' + JSON.stringify(hg.imHg) + ')');
+    hg.vorher === hg.nachher ? ok('Hintergrund: keine Sounds eingeplant (kein Stau) ✓') : fail('Hintergrund: Sounds eingeplant (' + hg.vorher + ' → ' + hg.nachher + ')');
+    (!hg.zurueck.sfx && !hg.zurueck.musik) ? ok('Rückkehr: Ton und Musik wieder frei ✓') : fail('Rückkehr: Ton bleibt gesperrt (' + JSON.stringify(hg.zurueck) + ')');
+
     errs.length ? errs.forEach(e => fail(`JS-Fehler: ${e.slice(0, 80)}`)) : ok('Sound: Keine JS-Fehler ✓');
   } catch (e) {
     fail('Sound-Suite Ausnahme: ' + e.message);
@@ -6138,6 +6158,138 @@ async function suiteKontrast(browser) {
   }
   return { res, errs };
 }
+
+// ════════════════════════════════════════════════════════════
+// SUITE: Zwei Spieler gegenueber an EINEM Geraet (v3.132.0)
+// ════════════════════════════════════════════════════════════
+// Der obere Spieler (P1, Burg oben) sieht das Brett auf dem Kopf: seine Leiste,
+// sein Shop und sein Kopfzeilen-Kasten stehen um 180 Grad gedreht an SEINER
+// Kante, und das Bauteil hebt sich von SEINEM Finger weg (bildschirmabwaerts).
+// Gegengeprueft: istGegenueber() auf false → rot.
+async function suiteGegenueber(browser) {
+  const res = [], errs = [];
+  const ok   = m => { res.push('✅ ' + m); console.log('✅ ' + m); };
+  const fail = m => { res.push('❌ ' + m); console.log('❌ ' + m); };
+  console.log('\n' + '='.repeat(50) + '\nTEST: Zwei Spieler gegenueber\n' + '='.repeat(50));
+  const GROESSEN = [[390, 844, 'iPhone'], [820, 1180, 'iPad']];
+  for (const [vw, vh, name] of GROESSEN) {
+    const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, hasTouch: true, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(PROFILE_INIT);
+    await page.addInitScript(FB_SPERRE);
+    // Sanfter Zeitraffer (wie suiteUeberlappung): Phasen von einigen Sekunden,
+    // das Phasenschild (2,5 s Echtzeit, sperrt die Eingabe) ist dann weg.
+    await page.addInitScript(`const _osi = window.setInterval;
+      window.setInterval = (f, m, ...a) => _osi(f, m === 1000 ? 300 : m, ...a); window.__mmDebug = true;`);
+    await page.route('**firebase**', r => r.abort());
+    await page.route('**gstatic**', r => r.abort());
+    await page.route('**googleapis**', r => r.abort());
+    await oeffneRichtlinieFuerTestgegenstelle(ctx);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await loadMenu(page);
+      await jsClick(page, ['LOKAL']); await page.waitForTimeout(250);
+      await jsClick(page, ['2 Spieler']);
+      await page.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 8000 });
+      await page.waitForFunction(() => window.__phase() === 'build', null, { timeout: 60000 });
+      await page.waitForTimeout(2700);   // Phasenschild abwarten (sperrt die Eingabe)
+      const lage = await page.evaluate(() => {
+        const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { t: b.top, b: b.bottom, l: b.left, r: b.right }; };
+        const cv = document.querySelector('canvas');
+        const oben = document.querySelector('[data-leiste="oben"]');
+        const dreh = (el) => { for (let e = el; e; e = e.parentElement) if (getComputedStyle(e).transform === 'matrix(-1, 0, 0, -1, 0, 0)') return true; return false; };
+        return {
+          cv: r(cv), oben: r(oben), p1: r(document.querySelector('[data-teil="1"]')), p2: r(document.querySelector('[data-teil="2"]')),
+          n1: document.querySelectorAll('[data-teil="1"]').length, n2: document.querySelectorAll('[data-teil="2"]').length,
+          obenGedreht: dreh(oben), p1Gedreht: dreh(document.querySelector('[data-teil="1"]')), p2Gedreht: dreh(document.querySelector('[data-teil="2"]')),
+          hoehe: innerHeight, breite: innerWidth, rollt: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      lage.oben ? ok(`${name}: obere Leiste vorhanden ✓`) : fail(`${name}: obere Leiste fehlt`);
+      if (lage.oben) {
+        lage.obenGedreht ? ok(`${name}: obere Leiste um 180° gedreht ✓`) : fail(`${name}: obere Leiste nicht gedreht`);
+        (lage.oben.b <= lage.cv.t + 1) ? ok(`${name}: obere Leiste liegt über dem Brett ✓`) : fail(`${name}: obere Leiste überdeckt das Brett (${lage.oben.b.toFixed(0)} > ${lage.cv.t.toFixed(0)})`);
+        (lage.n1 === 1 && lage.n2 === 1) ? ok(`${name}: je ein Bauteil-Feld pro Spieler ✓`) : fail(`${name}: Bauteil-Felder P1=${lage.n1} P2=${lage.n2}`);
+        (lage.p1 && lage.p1.b <= lage.cv.t + 1 && lage.p1Gedreht) ? ok(`${name}: Bauteil von P1 oben und gedreht ✓`) : fail(`${name}: Bauteil von P1 falsch (${JSON.stringify(lage.p1)}, gedreht=${lage.p1Gedreht})`);
+        (lage.p2 && lage.p2.t >= lage.cv.b - 1 && !lage.p2Gedreht) ? ok(`${name}: Bauteil von P2 unten und aufrecht ✓`) : fail(`${name}: Bauteil von P2 falsch (${JSON.stringify(lage.p2)}, gedreht=${lage.p2Gedreht})`);
+      }
+      // Senkrecht: die untere Leiste liegt im Bild (das Brett selbst ist auf einem
+      // 390er-Telefon seit jeher 2 px breiter als der Schirm und wird beschnitten).
+      (lage.p2 && lage.p2.b <= lage.hoehe + 1 && !lage.rollt)
+        ? ok(`${name}: untere Leiste im Bild, nichts läuft über ✓`) : fail(`${name}: Layout läuft über (${JSON.stringify(lage.p2)}, Höhe ${lage.hoehe})`);
+
+      // ── Bauteil hebt sich vom Finger weg: oben abwärts, unten aufwärts ──
+      const zeile = (y) => Math.floor((y - lage.cv.t) / ((lage.cv.b - lage.cv.t) / 68));
+      const x = (lage.cv.l + lage.cv.r) / 2;
+      const y1 = lage.cv.t + (lage.cv.b - lage.cv.t) * 0.22;
+      await page.mouse.move(x, y1); await page.mouse.down();
+      await page.mouse.move(x, y1 + 2, { steps: 2 }); await page.waitForTimeout(100);
+      const g1 = await page.evaluate(() => window.__geist(1));
+      await page.mouse.up(); await page.waitForTimeout(100);
+      (g1 && g1.r !== null && g1.r > zeile(y1) + 3) ? ok(`${name}: P1 — Bauteil schwebt UNTER dem Finger (Zeile ${g1.r} > ${zeile(y1)}) ✓`)
+        : fail(`${name}: P1 — Bauteil hebt sich falsch ab (Geist ${JSON.stringify(g1)}, Finger-Zeile ${zeile(y1)})`);
+      const y2 = lage.cv.t + (lage.cv.b - lage.cv.t) * 0.8;
+      await page.mouse.move(x, y2); await page.mouse.down();
+      await page.mouse.move(x, y2 + 2, { steps: 2 }); await page.waitForTimeout(100);
+      const g2 = await page.evaluate(() => window.__geist(2));
+      const zeilenH = (lage.cv.b - lage.cv.t) / 68;
+      // Abbruchbereich: P1 oben, P2 unten — und nie umgekehrt
+      await page.mouse.move(x, lage.cv.b + 9 * zeilenH, { steps: 3 });
+      const a2u = await page.evaluate(() => window.__cancelHover(2));
+      await page.mouse.move(x, lage.cv.t - 9 * zeilenH, { steps: 3 });
+      const a2o = await page.evaluate(() => window.__cancelHover(2));
+      await page.mouse.up(); await page.waitForTimeout(100);
+      (g2 && g2.r !== null && g2.r < zeile(y2) - 3) ? ok(`${name}: P2 — Bauteil schwebt ÜBER dem Finger (Zeile ${g2.r} < ${zeile(y2)}) ✓`)
+        : fail(`${name}: P2 — Bauteil hebt sich falsch ab (Geist ${JSON.stringify(g2)}, Finger-Zeile ${zeile(y2)})`);
+      (a2u === true && a2o === false) ? ok(`${name}: P2 bricht nur UNTER dem Brett ab ✓`) : fail(`${name}: P2-Abbruch unten=${a2u} oben=${a2o}`);
+      await page.mouse.move(x, y1); await page.mouse.down();
+      await page.mouse.move(x, lage.cv.t - 9 * zeilenH, { steps: 4 });
+      const a1o = await page.evaluate(() => window.__cancelHover(1));
+      await page.mouse.move(x, lage.cv.b + 9 * zeilenH, { steps: 4 });
+      const a1u = await page.evaluate(() => window.__cancelHover(1));
+      await page.mouse.up(); await page.waitForTimeout(100);
+      (a1o === true && a1u === false) ? ok(`${name}: P1 bricht nur ÜBER dem Brett ab ✓`) : fail(`${name}: P1-Abbruch oben=${a1o} unten=${a1u}`);
+
+      // ── Rüstphase: Shops an den Kanten, der obere gedreht ──
+      await page.waitForFunction(() => window.__phase() === 'cannon', null, { timeout: 90000 });
+      await page.waitForTimeout(1200);
+      const shop = await page.evaluate(() => {
+        const dreh = (el) => { for (let e = el; e; e = e.parentElement) if (getComputedStyle(e).transform === 'matrix(-1, 0, 0, -1, 0, 0)') return true; return false; };
+        const w = (n) => { const el = document.querySelector('[data-shopuhr="' + n + '"]'); if (!el) return null; const b = el.getBoundingClientRect(); return { y: (b.top + b.bottom) / 2, dreh: dreh(el) }; };
+        const cv = document.querySelector('canvas').getBoundingClientRect();
+        return { s1: w(1), s2: w(2), mitte: (cv.top + cv.bottom) / 2, hoehe: innerHeight };
+      });
+      (shop.s1 && shop.s2) ? ok(`${name}: beide Shops sichtbar ✓`) : fail(`${name}: Shop fehlt (${JSON.stringify(shop)})`);
+      if (shop.s1 && shop.s2) {
+        (shop.s1.y < shop.mitte && shop.s1.dreh) ? ok(`${name}: Shop von P1 oben und gedreht ✓`) : fail(`${name}: Shop von P1 falsch (${JSON.stringify(shop.s1)})`);
+        (shop.s2.y > shop.mitte && !shop.s2.dreh) ? ok(`${name}: Shop von P2 unten und aufrecht ✓`) : fail(`${name}: Shop von P2 falsch (${JSON.stringify(shop.s2)})`);
+      }
+    } catch (e) {
+      fail(`${name}: Gegenüber-Prüfung abgebrochen: ${e.message.split('\n')[0]}`);
+    }
+    await ctx.close();
+  }
+
+  // ── Gegenprobe: gegen den Bot und zu dritt bleibt alles beim Alten ──
+  for (const modus of ['bot', 'drei']) {
+    const { ctx, page } = await makeCtx(browser);
+    await page.addInitScript(`window.__mmDebug = true;`);
+    page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
+    try {
+      await loadMenu(page);
+      await jsClick(page, ['LOKAL']); await page.waitForTimeout(250);
+      if (modus === 'bot') await startBotGame(page); else await jsClick(page, ['3 Spieler']);
+      await page.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 8000 });
+      await page.waitForTimeout(500);
+      const da = await page.evaluate(() => !!document.querySelector('[data-leiste="oben"]'));
+      !da ? ok(`${modus === 'bot' ? 'Bot-Spiel' : '3 Spieler'}: keine obere Leiste (Gegenüber-Modus nur zu zweit lokal) ✓`)
+          : fail(`${modus === 'bot' ? 'Bot-Spiel' : '3 Spieler'}: obere Leiste erscheint fälschlich`);
+    } catch (e) { fail(`Gegenprobe ${modus}: ${e.message.split('\n')[0]}`); }
+    await ctx.close();
+  }
+  return { res, errs };
+}
+
 
 // ── Kein Menue rollt (v3.123.0) ─────────────────────────────────────────
 //
@@ -7685,6 +7837,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
       goldshop: () => suiteGoldShop(browser),
       schmiede: () => suiteSchmiede(browser),
       rollen: () => suiteKeinRollen(browser),
+      gegenueber: () => suiteGegenueber(browser),
       kontrast: () => suiteKontrast(browser),
       zieler: () => suiteZieler(browser),
       ueberlappung: () => suiteUeberlappung(browser),
@@ -7767,7 +7920,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     await Promise.all(Array.from({ length: Math.min(n, aufgaben.length) }, arbeiter));
     return erg;
   };
-  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen, rKontrast] = await begrenzt([
+  const [rMenu, rOff, rPlat, rSA, rPad, rName, r2P, r3P, rMech, rQuit, rOnlineUI, rProg, rAch, rBuild, rOnb, rSnd, rI18n, rTut, rSettle, rReady, rKill, rTasks, rShop, rSchmiede, rRollen, rKontrast, rGegen, rZieler, rUeberl] = await begrenzt([
     () => suiteMenu(browser),
     () => suiteOffline(browser),
     () => suitePlattform(browser),
@@ -7794,6 +7947,7 @@ async function suiteOnlineHaerte(browser, fbPort) {
     () => suiteSchmiede(browser),
     () => suiteKeinRollen(browser),
     () => suiteKontrast(browser),
+    () => suiteGegenueber(browser),
     () => suiteZieler(browser),
     () => suiteUeberlappung(browser),
   ], 6);
@@ -7821,9 +7975,9 @@ async function suiteOnlineHaerte(browser, fbPort) {
   mockFbSrv.close();
 
   const allRes  = [...rMenu.res, ...rOff.res, ...rPlat.res, ...rSA.res, ...rPad.res, ...rName.res, ...rWarn.res, ...r2P.res,  ...r3P.res,  ...rMech.res,  ...rQuit.res,
-                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rRollen.res, ...rKontrast.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
+                   ...rOnlineUI.res, ...rOnline2P.res, ...rMM.res, ...rMM3.res, ...rWQ.res, ...rVN.res, ...rIH.res, ...rProg.res, ...rAch.res, ...rBuild.res, ...rOnb.res, ...rSnd.res, ...rI18n.res, ...rTut.res, ...rSettle.res, ...rReady.res, ...rKill.res, ...rTasks.res, ...rShop.res, ...rSchmiede.res, ...rRollen.res, ...rKontrast.res, ...rGegen.res, ...rZieler.res, ...rUeberl.res, ...rHB.res, ...rCS.res, ...rTR.res, ...rHrt.res, ...rAkt.res, ...rLB.res, ...rBot2.res, ...rFbs.res];
   const allErrs = [...rMenu.errs, ...rOff.errs, ...rPlat.errs, ...rSA.errs, ...rPad.errs, ...rName.errs, ...rWarn.errs, ...r2P.errs, ...r3P.errs, ...rMech.errs, ...rQuit.errs,
-                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rRollen.errs, ...rKontrast.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
+                   ...rOnlineUI.errs, ...rOnline2P.errs, ...rMM.errs, ...rMM3.errs, ...rWQ.errs, ...rVN.errs, ...rIH.errs, ...rProg.errs, ...rAch.errs, ...rBuild.errs, ...rOnb.errs, ...rSnd.errs, ...rI18n.errs, ...rTut.errs, ...rSettle.errs, ...rReady.errs, ...rKill.errs, ...rTasks.errs, ...rShop.errs, ...rSchmiede.errs, ...rRollen.errs, ...rKontrast.errs, ...rGegen.errs, ...rZieler.errs, ...rUeberl.errs, ...rHB.errs, ...rCS.errs, ...rTR.errs, ...rHrt.errs, ...rAkt.errs, ...rLB.errs, ...rBot2.errs, ...rFbs.errs];
 
   console.log('\n' + '='.repeat(50) + '\nTESTERGEBNIS\n' + '='.repeat(50));
   allRes.forEach(r => console.log(r));

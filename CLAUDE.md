@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.131.2
+- **Aktuelle Version**: v3.132.0
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -172,6 +172,16 @@ Zahnrad-Glyphe ist ersatzlos entfallen.
 - **Grid**: 44×68 Zellen, 14px pro Zelle (W=616, H=952)
 - **Welt-Themes (seit v3.15.0)**: `WORLD_THEMES` (7 Welten: Kristalltal, Frostreich, Glutwüste, Vulkanschlund, Nebelmoor, Herbstwald, Astralebene) — `worldThemeOf(terrainSeed)` = `seed % 7`, deterministisch → online automatisch synchron. Farben laufen komplett über den bgCanvas-Offscreen-Render. WICHTIG (v3.30.2, Bug-Fix): bgCanvas wird OHNE Vor-Flip gerendert — der frühere Vor-Flip + Haupt-Flip = Doppel-Flip ließ das Terrain aufrecht erscheinen, während Objekte gespiegelt rendern; der Fluss lag dadurch visuell an der GESPIEGELTEN Position und Spieler bauten scheinbar 'im Fluss'. Nur der Welt-Namenszug hat einen eigenen Gegen-Flip (lesbar, unten links). |
 - **Spieler**: P1=Blau(♔), P2=Rot(♚), P3=Grün(♜)
+- **Gegenüber-Modus (seit v3.132.0):** Lokal zu zweit (kein Bot, nicht online) sitzt P1 (Burg oben) OBEN
+  und sieht das Brett auf dem Kopf — `istGegenueber()` in app.js. Seine Leiste, sein Shop, sein
+  HUD-Kasten und sein Phasenschild sind um 180° gedreht (`topBarRef`/`data-leiste="oben"`); das Bauteil
+  hebt sich bei ihm bildschirmabwärts, sein Abbruchbereich liegt ÜBER dem Brett (`imAbbruchBereich`).
+  Neue Bedienelemente im lokalen 2-Spieler-Spiel müssen BEIDE Seiten bedenken. `suiteGegenueber`
+  (`NUR=gegenueber`) hält es fest.
+- **Ton im Hintergrund (seit v3.132.0):** `src/audio.js` → `hintergrund()` (visibilitychange, pagehide,
+  freeze): Im Hintergrund wird NICHTS eingeplant (`SFX._ruht`/`MUSIC._ruht`), laufende Quellen werden
+  gestoppt, Context `suspend()`. Neue Klangquellen in audio.js über `_merke(src)` anmelden, sonst sind
+  sie nicht anhaltbar. `tests/audio.test.js`.
 
 ---
 

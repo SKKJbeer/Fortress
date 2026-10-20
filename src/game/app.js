@@ -497,6 +497,7 @@ window.StackSiegeApp = function StackSiegeApp() {
   const scoreBarRef = useRef(null);
   const row3Ref = useRef(null);
   const bottomBarRef = useRef(null);
+  const topBarRef = useRef(null);   // Leiste des oberen Spielers im Gegenueber-Modus (v3.132.0)
   const [screen, setScreen] = useState("menu");
   const [phase, setPhase] = useState("build");
   const [timer, setTimer] = useState(BUILD_TIME);
@@ -879,17 +880,15 @@ window.StackSiegeApp = function StackSiegeApp() {
   useEffect(() => {
     const r = () => { SFX.resume(); MUSIC.retry(); };
     window.addEventListener('pointerdown', r);
-    // iOS: Context wird im Hintergrund suspendiert/interrupted → bei Rückkehr
-    // in den Tab wieder anwerfen (v3.32.2).
-    const v = () => { if (!document.hidden) SFX.resume(); };
-    document.addEventListener('visibilitychange', v);
+    // Hintergrund/Rückkehr (iOS: Context „interrupted") regelt seit v3.132.0
+    // src/audio.js selbst (hintergrund) — Ton und Musik ruhen dort ganz.
     // iOS-Lupe (v3.32.3, Härtung): CSS user-select reicht nicht immer — Safari
     // startet die Text-Lupe trotzdem gelegentlich per Long-Press. Textauswahl
     // und Kontextmenü hart unterbinden (Eingabefelder ausgenommen).
     const noSel = (e) => { const tg = e.target; if (tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return; e.preventDefault(); };
     document.addEventListener('selectstart', noSel);
     document.addEventListener('contextmenu', noSel);
-    return () => { window.removeEventListener('pointerdown', r); document.removeEventListener('visibilitychange', v); document.removeEventListener('selectstart', noSel); document.removeEventListener('contextmenu', noSel); };
+    return () => { window.removeEventListener('pointerdown', r); document.removeEventListener('selectstart', noSel); document.removeEventListener('contextmenu', noSel); };
   }, []);
   // Gated Test-Hook (nur bei window.__mmDebug): Schrott gutschreiben, damit
   // Tests den echten Kauf-Flow im Shop deterministisch auslösen können.
@@ -936,6 +935,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     window.__forceReady = gated((p) => { setArmoryReady(p); return true; });
     // Testhilfe: Reset-Hover-Zustand lesen (v3.18.2, Bottom-Placement-Fix)
     window.__cancelHover = gated((p) => !!cancelHover.current[p]);
+    // Geist-Lage (v3.132.0, Gegenueber-Modus): Zeile/Spalte des schwebenden Bauteils
+    window.__geist = gated((p) => { const q = pieces.current[p]; return q ? { r: q.ghostR, c: q.ghostC } : null; });
     // Testhilfe: Kanonen-Kill auslösen (CANNON_HP Bälle auf eine Feindkanone)
     // `alle` (v3.127.0): auf JEDE Feindkanone zugleich. Der Wiederaufbau-Test
     // braucht 0 Kanonen in EINER Schussphase; Kanone fuer Kanone lief er im
@@ -2264,11 +2265,18 @@ window.StackSiegeApp = function StackSiegeApp() {
       // auf einem Tablett ist das Brett hoehenbegrenzt, jeder dieser Punkte
       // fehlt also direkt am Brett.
       const BAR_MIN = tablett ? Math.min(118, Math.max(96, Math.round(raum.h * 0.092))) : 52;
+      // Gegenueber-Modus (v3.132.0): Die Leiste des oberen Spielers sitzt
+      // zwischen Kopfzeile und Brett und ist genauso hoch wie die untere.
+      const leisten = istGegenueber() ? 2 : 1;
+      // Auf einem Tablett (hoehenbegrenztes Brett) kostet jede Leiste direkt
+      // Brett: zwei volle Leisten drueckten es auf dem 12,9er von 63 auf 50 %
+      // des Schirms. Zu zweit darum je Leiste knapp ein Viertel weniger.
+      const leistenMin = leisten === 2 && tablett ? Math.round(BAR_MIN * 0.76) : BAR_MIN;
       const vw = raum.w - 2;
-      const vh = raum.h - topH - BAR_MIN - 8;
+      const vh = raum.h - topH - leistenMin * leisten - 8;
       const scale = Math.min(vw / W, vh / H, 1.4);
       const w = Math.floor(W * scale), h = Math.floor(H * scale);
-      const bar = Math.max(BAR_MIN, Math.min(150, raum.h - topH - h - 8));
+      const bar = Math.max(leistenMin, Math.min(150, Math.floor((raum.h - topH - h - 8) / leisten)));
       // `voll` ist die volle nutzbare Breite — das Brett behaelt sein
       // Seitenverhaeltnis, Kopfzeile, Buehne und Unterleiste spannen darueber
       // hinaus bis an den Rand. Sonst stehen auf einem iPad links und rechts
@@ -2291,6 +2299,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     const ro = new ResizeObserver(fit);
     if (scoreBarRef.current) ro.observe(scoreBarRef.current);
     if (bottomBarRef.current) ro.observe(bottomBarRef.current);
+    if (topBarRef.current) ro.observe(topBarRef.current);
     return () => {
       clearTimeout(fitTimerRef.current);
       window.removeEventListener("resize", fit);
@@ -5476,8 +5485,21 @@ window.StackSiegeApp = function StackSiegeApp() {
     };
   }, []);
   const LIFT_ROWS = 6;
+  // Gegenueber-Modus (v3.132.0): Zwei Spieler an EINEM Geraet sitzen sich
+  // gegenueber. P1 (Burg oben) sitzt oben und sieht das Brett auf dem Kopf —
+  // seine Bedienelemente sind um 180 Grad gedreht, und das Bauteil hebt sich
+  // von SEINEM Finger weg, also bildschirmabwaerts. Online und gegen den Bot
+  // gibt es nur einen Spieler am Geraet, dort aendert sich nichts.
+  function istGegenueber() { return !online.current && !botMode.current && numPlayersRef.current === 2; }
+  // Steht der Finger im Abbruchbereich? Fuer den unteren Spieler tief UNTER dem
+  // Brett, fuer den oberen (gedrehten) tief DARUeBER — dort liegt seine Leiste.
+  function imAbbruchBereich(e, player, rc) {
+    if (!rc) return false;
+    const schwelle = (LIFT_ROWS + 2) * (rc.height / ROWS);
+    return player === 1 && istGegenueber() ? e.clientY < rc.top - schwelle : e.clientY > rc.bottom + schwelle;
+  }
   function liftedGhost(player, x, y) {
-    const fl = (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
+    const fl = ((online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2) || (player === 1 && istGegenueber());
     let gr = Math.floor(y / CELL) + (fl ? LIFT_ROWS : -LIFT_ROWS);
     let gc = Math.floor(x / CELL);
     // Formabhängig klemmen (v3.40.4): placePiece setzt den Anker (gr,gc) per
@@ -5569,7 +5591,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       // (LIFT_ROWS+2) Zellen unter dem Rand als Reset werten, sonst konnte man
       // ganz unten nicht mehr platzieren.
       const rc = canvasRect.current;
-      cancelHover.current[player] = !!(rc && e.clientY > rc.bottom + (LIFT_ROWS + 2) * (rc.height / ROWS));
+      cancelHover.current[player] = imAbbruchBereich(e, player, rc);
       const { gr, gc } = liftedGhost(player, x, y);
       pieces.current[player].ghostR = gr;
       pieces.current[player].ghostC = gc;
@@ -5621,7 +5643,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       // abbrechen. Schwelle wie in onPointerMove, damit die untersten Bau-Reihen
       // (Finger knapp unter dem Rand) weiter platzierbar bleiben.
       const rcU = canvasRect.current;
-      if (rcU && e.clientY > rcU.bottom + (LIFT_ROWS + 2) * (rcU.height / ROWS)) {
+      if (imAbbruchBereich(e, player, rcU)) {
         pieces.current[player].ghostR = null;
         pieces.current[player].ghostC = null;
         cancelHover.current[player] = false;
@@ -5653,7 +5675,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       activeBuild.current[player] = null;
       // Reset-Geste (v3.16.6 / v3.18.2): tief unter dem Feldrand → abbrechen.
       const rcC = canvasRect.current;
-      if (rcC && e.clientY > rcC.bottom + (LIFT_ROWS + 2) * (rcC.height / ROWS)) {
+      if (imAbbruchBereich(e, player, rcC)) {
         pieces.current[player].ghostR = null;
         pieces.current[player].ghostC = null;
         cancelHover.current[player] = false;
@@ -6499,7 +6521,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         ctx.strokeStyle = col + "0.4)";
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 4]);
-        const ownFlipped = p1Flipped && player === 1;
+        const ownFlipped = (p1Flipped || istGegenueber()) && player === 1;
         const liftSign = ownFlipped ? -1 : 1;
         ctx.beginPath();
         ctx.moveTo(ghostCenterX, ownFlipped ? offR * CELL : (p.ghostR + Math.floor(Math.max(...cells.map(([r]) => r)) / 2) + 1) * CELL);
@@ -7318,7 +7340,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.131.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.132.0"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -8508,6 +8530,10 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Modus bei 2 Spielern. Die Hand-Vorschau MUSS dieselbe Spiegelung zeigen —
     // sonst zeigt sie eine andere Richtung als der Ghost, den man zieht.
     const flip = pl === 1 && (online.current && myRole.current === 1 || botMode.current) && numPlayersRef.current === 2;
+    // Gegenueber-Modus: Die ganze obere Leiste ist um 180 Grad gedreht. Damit die
+    // Vorschau trotzdem dieselbe Lage zeigt wie der Geist auf dem Brett, wird das
+    // Raster vorher um 180 Grad gegengedreht (Zeile UND Spalte gespiegelt).
+    const drehung = pl === 1 && istGegenueber();
     return React.createElement("div", {
       key: "pp" + pl,
       // Feste Markierung fuer Tests (v3.121.0): vorher erkannten sie das Feld
@@ -8531,7 +8557,7 @@ window.StackSiegeApp = function StackSiegeApp() {
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${maxC + 1}, ${dot}px)`, gridTemplateRows: `repeat(${maxR + 1}, ${dot}px)`, gap: 2 } },
           Array.from({ length: (maxR + 1) * (maxC + 1) }).map((_, i) => {
             const r = Math.floor(i / (maxC + 1)), c = i % (maxC + 1);
-            const on = cells.some(([cr, cc]) => cr === (flip ? maxR - r : r) && cc === c);
+            const on = cells.some(([cr, cc]) => cr === (flip || drehung ? maxR - r : r) && cc === (drehung ? maxC - c : c));
             return React.createElement("div", { key: i, style: {
               width: dot, height: dot, borderRadius: Math.max(3, dot * 0.22), boxSizing: "border-box",
               background: on ? "linear-gradient(180deg, rgba(255,255,255,0.55), " + col.d + " 45%, rgba(0,0,0,0.25)), " + col.d : "rgba(255,255,255,0.05)",
@@ -8683,6 +8709,27 @@ window.StackSiegeApp = function StackSiegeApp() {
       minHeight: 36
     } }, zahl, salve);
   }
+  // ── Gegenueber-Modus (v3.132.0) ─────────────────────────────────────
+  // Zwei Spieler an einem Geraet sitzen sich gegenueber. P1 (blau, Burg oben)
+  // sitzt oben und sieht das Brett auf dem Kopf: seine Leiste, sein Shop und
+  // sein Kasten in der Kopfzeile stehen um 180 Grad gedreht an SEINER Kante.
+  // Die Leiste liegt zwischen Kopfzeile und Brett und ist so hoch wie die
+  // untere — `fit` reserviert beide.
+  const gegenueber = istGegenueber();
+  const obereLeiste = () => React.createElement("div", { key: "obereLeiste", ref: topBarRef, "data-leiste": "oben", style: {
+    width: vollB, height: barH, flexShrink: 0,
+    display: "flex", alignItems: "stretch", justifyContent: "space-between",
+    padding: "4px 2px", boxSizing: "border-box", gap: 6,
+    transform: "rotate(180deg)"
+  } },
+    // Uhr fuer den oberen Spieler: Die Zahl der Kopfzeile steht fuer ihn auf dem
+    // Kopf, und aus 25 wird dort 52.
+    React.createElement("div", { "data-uhr": "oben", style: { flex: "0 0 auto", minWidth: 64, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 } },
+      React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) },
+        phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')),
+      React.createElement("span", { style: { fontSize: 28, fontFamily: SCHRIFT_TITEL, color: timerColor, textShadow: KONTURTEXT, fontVariantNumeric: "tabular-nums", lineHeight: 1 } }, String(timer).padStart(2, "0"))),
+    phase === "build" ? piecePanel(1) : phase === "shoot" ? readyPanel(1) : null
+  );
   return /* @__PURE__ */ React.createElement("div", { ref: wrapRef, style: {
     // Spielflaeche (v3.122.0): tiefes Designsystem-Blau statt Schwarz,
     // passend zu Panels und Unterleiste.
@@ -8740,7 +8787,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     display: "flex",
     alignItems: "center",
     gap: 6,
-    justifyContent: "flex-start"
+    justifyContent: "flex-start",
+    transform: gegenueber ? "rotate(180deg)" : void 0
   } }, /* @__PURE__ */ React.createElement(WappenAvatar, { id: online.current || botMode.current ? playerInfo.current[1].wappen : "skelett", size: 20 }), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 } }, (urgentPlayers[1] ? closeWarnSpan("left") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12.5, color: FARBE.text, textShadow: KONTURTEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", maxWidth: "100%" } }, online.current || botMode.current ? playerInfo.current[1].name + (myRole.current === 1 || botMode.current ? t('youSuffix') : "") : "P1")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#fbbf24", flexShrink: 0, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, padding: "1px 5px", minWidth: 42, justifyContent: "center", fontVariantNumeric: "tabular-nums", display: "inline-flex", alignItems: "center", gap: 2 } }, React.createElement(Icon, { name: "gem", size: 9, color: "#fbbf24" }), String(scrap.current[1] || 0))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontFamily: SCHRIFT_TITEL, color: FARBE.goldHell, flexShrink: 0, textShadow: KONTURTEXT } }, scores[1])), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", flex: "0 0 auto", padding: "0 2px", maxWidth: "24%" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 } }, /* @__PURE__ */ React.createElement("span", { style: pille(phase === "build" ? "gruen" : phase === "shoot" ? "rot" : "gold", { fontSize: 11, padding: "1px 8px", borderWidth: 2 }) }, phase === "build" ? t('phaseBuild') : phase === "shoot" ? t('phaseShoot') : phase === "setup" ? t('phaseSetup') : t('phaseCannon')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(true), title: "beenden", style: { background: "rgba(100,116,139,0.12)", border: "1px solid rgba(100,116,139,0.22)", color: FARBE.textGedaempft, borderRadius: 6, padding: "1px 6px", fontSize: 11, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0 } }, "✕")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: {
     fontSize: 34,
     fontFamily: SCHRIFT_TITEL,
@@ -8820,6 +8868,9 @@ window.StackSiegeApp = function StackSiegeApp() {
               h("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.09em", color: FARBE.textGedaempft, textTransform: "uppercase", flexShrink: 0, marginLeft: 2 } }, t("bannerCannonTitle"))
             ),
             h("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
+              // Lokal sitzen zwei Spieler vor demselben Geraet; die Uhr der
+              // Kopfzeile ist fuer einen von ihnen weit weg bzw. verkehrt herum.
+              !online.current && !botMode.current ? h("span", { "data-shopuhr": sp, style: pille(timer <= 5 ? "rot" : "gold", { fontSize: 13, padding: "0 9px", borderWidth: 2, fontVariantNumeric: "tabular-nums" }) }, String(timer).padStart(2, "0")) : null,
               // v3.131.0: knopf statt panel — panel() bringt 22 px Innenabstand mit,
               // der „22 px"-Knopf war 74 px gross und ragte ueber den Shop-Kopf.
               h("button", { onClick: () => setShowShopInfo(true), "aria-label": "Info", style: knopf("blau", { width: 26, height: 26, padding: 0, borderRadius: 999, fontSize: 15, fontStyle: "italic", lineHeight: 1, flexShrink: 0, boxSizing: "border-box", border: "2.5px solid " + FARBE.kontur, boxShadow: "0 2px 0 " + FARBE.kontur + ", inset 0 2px 0 rgba(255,255,255,0.45)" }) }, "i"),
@@ -8926,9 +8977,19 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Flex-Spalte oben stapeln (mit Gap) statt fixer Einzel-Offsets 54/116px, die
     // sich bei vollhohen Shop-Panels überlappten. P1 bleibt unten. Der Container
     // ist pointer-events-transparent; nur die Panels selbst sind klickbar.
-    const stack = (list, posStyle, key) => list.length ? h("div", {
+    const stack = (list, posStyle, key, gedreht) => list.length ? h("div", {
       key, style: __spreadValues({ position: "fixed", left: 6, right: 6, zIndex: 1200, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, pointerEvents: "none" }, posStyle)
-    }, list.map((x) => x.r.el)) : null;
+    }, list.map((x) => gedreht
+      ? h("div", { key: "dreh" + x.sp, style: { width: "100%", display: "flex", justifyContent: "center", pointerEvents: "none", transform: "rotate(180deg)" } }, x.r.el)
+      : x.r.el)) : null;
+    // Zwei Spieler gegenueber (v3.132.0): Der obere Spieler (P1) bekommt seinen
+    // Shop an SEINER Kante und um 180 Grad gedreht, der untere (P2) seinen
+    // aufrecht unten. Vorher stand P1 unten und P2 oben, beide in derselben
+    // Richtung — fuer den Gegenueber auf dem Kopf.
+    if (numPlayersRef.current === 2) return [
+      stack(parts.filter((x) => x.sp === 1), { top: `calc(var(--sa-top,0px) + ${hudH + 4}px)` }, "shopStackTop", true),
+      stack(parts.filter((x) => x.sp !== 1), { bottom: "calc(var(--sa-bottom, 0px) + 12px)" }, "shopStackBot")
+    ];
     return [
       stack(parts.filter((x) => x.sp !== 1), { top: `calc(var(--sa-top,0px) + ${hudH + 4}px)` }, "shopStackTop"),
       stack(parts.filter((x) => x.sp === 1), { bottom: "calc(var(--sa-bottom, 0px) + 12px)" }, "shopStackBot")
@@ -9063,11 +9124,17 @@ window.StackSiegeApp = function StackSiegeApp() {
     // „RUESTPHASE" ueber „P2 RUESTPHASE", beim Ausblenden halbdurchsichtig Text
     // auf Text. Jeder Shop traegt die Phase ohnehin im Kopf; die Sperrzeit
     // (bannerActive) bleibt unveraendert, nur das Schild entfaellt.
-    const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; return /* @__PURE__ */ React.createElement("div", { key: "pb" + phaseBannerKey.current, style: { position: "fixed", top: `calc(var(--sa-top,0px) + ${hudH + 10}px)`, left: "50%", transform: "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: "phasebanner 2.5s ease forwards", // Ohne width:max-content bleibt das Schild auf der HALBEN Bildschirm-
+    const pb = PHASE_BANNERS[phaseBanner]; const pbTitleKey = phaseBanner === "setup" ? "bannerSetupTitle" : phaseBanner === "build" ? "bannerBuildTitle" : phaseBanner === "shoot" ? "bannerShootTitle" : "bannerCannonTitle"; const pbSubKey = phaseBanner === "setup" ? "bannerSetupSub" : phaseBanner === "build" ? "bannerBuildSub" : phaseBanner === "shoot" ? "bannerShootSub" : "bannerCannonSub"; const schild = (key, lage, gedreht) => /* @__PURE__ */ React.createElement("div", { key, style: { position: "fixed", ...lage, left: "50%", transform: gedreht ? "translateX(-50%) rotate(180deg)" : "translateX(-50%)", zIndex: 1200, pointerEvents: "none", textAlign: "left", animation: (gedreht ? "phasebannerGedreht" : "phasebanner") + " 2.5s ease forwards", // Ohne width:max-content bleibt das Schild auf der HALBEN Bildschirm-
       // breite haengen: bei left:50% ohne right reicht der Platz eines fest
       // positionierten Kastens nur noch bis zum rechten Rand. Der Text brach
       // deshalb auf drei Zeilen um und deckte ein Drittel des Bretts zu.
-      width: "max-content", ...spielerKasten({ setup: "blau", build: "gruen", shoot: "rot", cannon: "gold" }[phaseBanner] || "blau", { borderRadius: 18, padding: "9px 20px", boxShadow: `0 5px 0 ${FARBE.kontur}, 0 10px 24px rgba(0,0,0,0.5), inset 0 3px 0 rgba(255,255,255,0.45)` }), maxWidth: "min(92vw,430px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: FARBE.text, display: "flex", flexShrink: 0, filter: "drop-shadow(0 2px 0 #1b0f06)" } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 23, fontFamily: SCHRIFT_TITEL, color: FARBE.text, letterSpacing: "0.03em", textShadow: KONTURTEXT, lineHeight: 1.1 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#fff", marginTop: 2, fontWeight: 800, lineHeight: 1.3, textShadow: KONTURTEXT } }, t(pbSubKey)))); })(), /* @__PURE__ */ React.createElement("div", { style: buehneStil }, /* @__PURE__ */ React.createElement("div", { style: {
+      width: "max-content", ...spielerKasten({ setup: "blau", build: "gruen", shoot: "rot", cannon: "gold" }[phaseBanner] || "blau", { borderRadius: 18, padding: "9px 20px", boxShadow: `0 5px 0 ${FARBE.kontur}, 0 10px 24px rgba(0,0,0,0.5), inset 0 3px 0 rgba(255,255,255,0.45)` }), maxWidth: "min(92vw,430px)", display: "flex", alignItems: "center", gap: 13 } }, /* @__PURE__ */ React.createElement("div", { style: { color: FARBE.text, display: "flex", flexShrink: 0, filter: "drop-shadow(0 2px 0 #1b0f06)" } }, /* @__PURE__ */ React.createElement(Icon, { name: { setup: "crown", build: "shield", shoot: "flame", cannon: "target" }[phaseBanner] || "shield", size: 26 })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 23, fontFamily: SCHRIFT_TITEL, color: FARBE.text, letterSpacing: "0.03em", textShadow: KONTURTEXT, lineHeight: 1.1 } }, t(pbTitleKey)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#fff", marginTop: 2, fontWeight: 800, lineHeight: 1.3, textShadow: KONTURTEXT } }, t(pbSubKey))));
+    // Gegenueber-Modus: je ein Schild an der Kante jedes Spielers, das obere gedreht.
+    if (gegenueber) return [
+      schild("pbo" + phaseBannerKey.current, { top: `calc(var(--sa-top,0px) + ${hudH + 10}px)` }, true),
+      schild("pbu" + phaseBannerKey.current, { bottom: `calc(var(--sa-bottom,0px) + ${barH + 12}px)` }, false)
+    ];
+    return schild("pb" + phaseBannerKey.current, { top: `calc(var(--sa-top,0px) + ${hudH + 10}px)` }, false); })(), gegenueber && obereLeiste(), /* @__PURE__ */ React.createElement("div", { style: buehneStil }, /* @__PURE__ */ React.createElement("div", { style: {
     width: viewSize.w,
     height: viewSize.h,
     border: buildUrgencyOpen ? "3px solid #ef4b34" : "3px solid #1b0f06",
@@ -9108,13 +9175,13 @@ window.StackSiegeApp = function StackSiegeApp() {
     boxSizing: "border-box",
     gap: 6
   } }, phase === "build" ? React.createElement(React.Fragment, null,
-    (!online.current || myRole.current === 1) && piecePanel(1),
+    (!online.current || myRole.current === 1) && !gegenueber && piecePanel(1),
     // Bot-Modus (v3.30.1): Die Hand des Bots (P2) wird NICHT angezeigt — wie
     // online sieht man nur das eigene nächste Teil (kein Info-Vorteil/Clutter).
     (!online.current && !botMode.current || online.current && myRole.current === 2) && piecePanel(2),
     (!online.current && numPlayers === 3 || online.current && myRole.current === 3) && piecePanel(3)
   ) : phase === "shoot" ? React.createElement(React.Fragment, null,
-    (!online.current || myRole.current === 1) && readyPanel(1),
+    (!online.current || myRole.current === 1) && !gegenueber && readyPanel(1),
     (!online.current && !botMode.current || online.current && myRole.current === 2) && readyPanel(2),
     (!online.current && numPlayers === 3 || online.current && myRole.current === 3) && readyPanel(3)
   ) : null), showQuitConfirm &&/* @__PURE__ */ React.createElement("div", { style: { ...schleier(), position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { ...panel(), borderRadius: 20, padding: 24, maxWidth: 340, width: "100%", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 10, color: "#f87171", display: "flex", justifyContent: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "x", size: 30 })), /* @__PURE__ */ React.createElement("h2", { style: { ...titel(24), margin: "0 0 6px" } }, t('quitTitle')), /* @__PURE__ */ React.createElement("p", { style: { color: FARBE.textGedaempft, fontSize: 13, marginBottom: 22 } }, online.current ? t('quitMsgOnline') : t('quitMsgLocal')), /* @__PURE__ */ React.createElement("button", { onClick: quitGame, style: { ...knopf("rot", { fontSize: 18 }), width: "100%", padding: "14px", borderRadius: 14, cursor: "pointer", marginBottom: 10 } }, t('quitYes')), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowQuitConfirm(false), style: { ...knopf("grau", { fontSize: 17 }), width: "100%", padding: "13px", borderRadius: 14, cursor: "pointer" } }, t('quitContinue')))));

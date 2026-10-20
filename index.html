@@ -24,7 +24,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.131.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.132.0</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -87,6 +87,8 @@
        haengt es an seiner Oberkante, und die setzt der Spielcode direkt
        unter die gemessene Kopfzeile. */
     @keyframes phasebanner{0%{opacity:0;transform:translateX(-50%) scale(0.75)}14%{opacity:1;transform:translateX(-50%) scale(1.04)}20%{transform:translateX(-50%) scale(1)}76%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) scale(0.93)}}
+    /* Dasselbe Schild fuer den oberen Spieler im Gegenueber-Modus (v3.132.0): die Animation setzt transform selbst, ein transform im Stil wuerde ueberschrieben. */
+    @keyframes phasebannerGedreht{0%{opacity:0;transform:translateX(-50%) rotate(180deg) scale(0.75)}14%{opacity:1;transform:translateX(-50%) rotate(180deg) scale(1.04)}20%{transform:translateX(-50%) rotate(180deg) scale(1)}76%{opacity:1;transform:translateX(-50%) rotate(180deg) scale(1)}100%{opacity:0;transform:translateX(-50%) rotate(180deg) scale(0.93)}}
     /* ── Tablet-Massstab (v3.87.0) ────────────────────────────────────────
        Menue und Ergebnis sind fuer ein Telefon gesetzt: eine Spalte von
        440 px, Karten von 320 px, Schrift in festen Pixeln. Auf einem iPad
