@@ -266,6 +266,17 @@ nur, was fehlt.
       vor dem Einreichen hat nichts bemaengelt.
 - [ ] **1.0.1 nach Apples Freigabe veroeffentlichen** — `freigeben-probe`, dann
       `freigeben` (FREIGEBEN), jeweils mit `fassung=1.0.1`.
+- [x] **Neue Store-Bilder (Plakate) fertig** — 20.10., `tools/make-store-bilder.cjs`,
+      sieben je Groesse in DE und EN, im Repo (`store/ios-6.7[-en]`,
+      `store/ipad-12.9[-en]`). Apple sperrt Bilder waehrend der Pruefung und im
+      Verkauf — sie erscheinen erst mit der naechsten Fassung.
+- [ ] **1.0.2 nur mit den neuen Bildern** (Entscheidung des Betreibers 20.10.:
+      1.0.1 durchlassen, danach 1.0.2). Reihenfolge: 1.0.1 veroeffentlichen →
+      `MARKETING_VERSION` 1.0.2 + Spielversion heben (loest den App-Bau aus) +
+      Block „Neuigkeiten" fuer 1.0.2 in `listing.md`/`listing-en.md` → Bau 1.0.2
+      in TestFlight `VALID` → mit `fassung=1.0.2`: `fuellen` → `sprachen` →
+      `store` → `store-bilder-probe` → `store-bilder` → `einreichen-probe` →
+      `einreichen`. Ein Termin arbeitet das ab.
 - [x] **Preisplan** vorhanden
 - [x] **Impressum** ausgefüllt (12.09.), Datenschutz und Nutzungsbedingungen live
 - [x] **Bau 28 (v3.94.0) der Fassung zugeordnet** (17.09., `→ store`)
