@@ -9636,3 +9636,22 @@ des Hochladens.
 **Offen — Apples Regel:** Bilder einer Fassung sind gesperrt, solange sie in
 Prüfung ist (1.0.1) oder verkauft wird (1.0). Neue Bilder erscheinen erst mit
 einer Fassung, die noch bearbeitbar ist.
+
+## v3.131.2 — Nachtrag 20.10.2026: Token sparen
+
+Anlass: Der Betreiber hatte den Eindruck, mehr Token zu verbrauchen.
+
+**Gemessen** (Verlauf dieser einen Sitzung, 53 MB Rohdaten): 63 Bildschirmfotos als
+Werkzeug-Ergebnisse (22,8 MB Base64, ein Vielfaches des gesamten Textes), CLAUDE.md
+62 KB (≈ 16 000 Token), in dieser Sitzung 8-mal komplett neu eingelesen; die
+Anweisungsbloecke der angebundenen Dienste (Vercel, Gmail, CoinMarketCap,
+Cloudflare — fuer dieses Projekt ohne Nutzen) 71-mal eingeblendet; Prueftermin
+alle 3 Stunden, jeweils ein voller Durchlauf mit dem ganzen Verlauf.
+
+**Umgesetzt:** (1) CLAUDE.md von 62 auf 43,5 KB: Nachschlage-Teile nach
+`docs/CLAUDE-REFERENZ.md` (Refs, Profil, Progression, 3 Spieler, geloeste Bugs) und
+`docs/CLAUDE-TESTLEHREN.md` (lange Test-Herleitungen), Inhalt unveraendert, in
+CLAUDE.md Stichwortliste + die haertesten Regeln. (2) Prueftermin fuer Store-Update
+von 3 auf 6 Stunden (Apples Pruefung dauert Tage). (3) Arbeitsweise: Bilder nur als
+verkleinerte Blaetter, Protokolle nur gefiltert lesen.
+
