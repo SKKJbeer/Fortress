@@ -108,10 +108,16 @@ ANTWORTEN = {
 # Pflicht sind 6,7" und — solange die App auf dem iPad laeuft — 12,9".
 # Die Reihenfolge ist die Reihenfolge im Store; das Menue steht vorn, weil es
 # den Namen traegt, danach der Takt des Spiels.
+# Reihenfolge = Rang im Store (v3.131.2, Nachtrag): das staerkste Bild zuerst —
+# Apple zeigt in der Suche nur die ersten drei. Erzeugt von
+# `tools/make-store-bilder.cjs`; Namen und Reihenfolge stehen dort in `SZENEN`,
+# `tests/plakate.test.js` haelt beide gleich.
+PLAKATE = ["1-aktion", "2-zieler", "3-drei", "4-bauen", "5-ruesten", "6-helden", "7-welten"]
 BILDER = {
-    "APP_IPHONE_67":          ("store/ios-6.7",   ["menu", "game", "shoot", "shop"]),
-    "APP_IPAD_PRO_3GEN_129":  ("store/ipad-12.9", ["menu", "game", "shoot", "shop"]),
+    "APP_IPHONE_67":          ("store/ios-6.7",   PLAKATE),
+    "APP_IPAD_PRO_3GEN_129":  ("store/ipad-12.9", PLAKATE),
 }
+SATZ_MAX = 10   # Apple: hoechstens zehn Bildschirmfotos je Satz
 
 sag = print
 
@@ -246,6 +252,10 @@ def bilder(apple: Apple, fass_id: str, trocken: bool):
             anzahl = len(aw.json().get("data") or []) if st == 200 else 0
         if anzahl >= len(namen):
             sag(f"  ✓ {typ}: {anzahl} Bilder liegen bereits"); continue
+        if anzahl:
+            # Ein Satz fasst zehn Bilder; zu den liegenden dazuladen sprengt ihn
+            # und mischt alte und neue. Ersetzen ist Sache von `store-bilder`.
+            sag(f"  · {typ}: {anzahl} andere Bilder liegen schon — zum Ersetzen `store-bilder` nehmen"); continue
         dateien = [WURZEL / ordner / f"{n}.png" for n in namen]
         fehlend = [d for d in dateien if not d.exists()]
         if fehlend:
@@ -288,8 +298,10 @@ def bilder_ersetzen_sprache(apple: Apple, fass_id: str, trocken: bool, sprache: 
 
     **Reihenfolge: erst hochladen, dann loeschen.** Andersherum stuende der
     Eintrag bei einem Fehler mitten im Lauf ohne Bilder da — und ohne Bilder
-    nimmt Apple keine Einreichung an. Ein Satz fasst zehn Bilder; vier alte
-    plus vier neue passen.
+    nimmt Apple keine Einreichung an. Ein Satz fasst zehn Bilder: Passen alte
+    und neue nicht zusammen hinein (vier alte + sieben neue = elf), kommen erst
+    so viele neue dazu, wie Platz ist, dann werden die alten entfernt, dann der
+    Rest. Der Satz ist dabei nie leer.
 
     **Wiederholbar:** Stimmen die Pruefsummen der liegenden Bilder schon mit
     den Dateien ueberein, passiert nichts.
@@ -330,12 +342,14 @@ def bilder_ersetzen_sprache(apple: Apple, fass_id: str, trocken: bool, sprache: 
             if st not in (200, 201):
                 sag(f"  ! {typ}: Satz nicht anlegbar ({st}): {kurz(aw)}"); continue
             satz_id = aw.json()["data"]["id"]
+        platz = max(0, SATZ_MAX - len(alte))
+        vorab, spaeter = dateien[:platz], dateien[platz:]
         gut = 0
-        for datei in dateien:
+        for datei in vorab:
             if not hochladen(apple, satz_id, datei):
                 break
             gut += 1
-        if gut < len(dateien):
+        if gut < len(vorab) or (not vorab and dateien):
             # Alte bleiben stehen — lieber doppelt als leer.
             sag(f"  ! {typ}: nur {gut} von {len(dateien)} neuen hochgeladen — alte bleiben stehen"); continue
         weg = 0
@@ -345,6 +359,12 @@ def bilder_ersetzen_sprache(apple: Apple, fass_id: str, trocken: bool, sprache: 
                 weg += 1
             else:
                 sag(f"      ! altes Bild {b['id']} nicht entfernt ({st}): {kurz(aw)}")
+        for datei in spaeter:
+            if not hochladen(apple, satz_id, datei):
+                break
+            gut += 1
+        if gut < len(dateien):
+            sag(f"  ! {typ}: nur {gut} von {len(dateien)} neuen hochgeladen — Rest bitte wiederholen (der Ablauf ist wiederholbar)")
         st, aw = apple.holen(f"v1/appScreenshotSets/{satz_id}/appScreenshots")
         jetzt = len(aw.json().get("data") or []) if st == 200 else -1
         sag(f"  ✓ {typ}: {gut} neue hochgeladen, {weg} von {len(alte)} alten entfernt, "

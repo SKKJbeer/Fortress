@@ -83,7 +83,10 @@ test("asc-store.py: Bilder ersetzen laedt erst hoch, dann loescht es", () => {
   const hoch = f.indexOf("hochladen(apple, satz_id, datei)");
   const weg = f.indexOf("apple.loeschen(");
   assert.ok(hoch > 0 && weg > 0 && hoch < weg, "Reihenfolge: erst hochladen, dann loeschen");
-  assert.match(f, /if gut < len\(dateien\):[\s\S]{0,200}continue/, "bei Fehlschlag duerfen die alten nicht geloescht werden");
+  assert.match(f, /if gut < len\(vorab\)[^\n]*:[\s\S]{0,200}continue/, "bei Fehlschlag duerfen die alten nicht geloescht werden");
+  // Ein Satz fasst zehn Bilder: alte + neue duerfen ihn nie sprengen.
+  assert.match(f, /platz = max\(0, SATZ_MAX - len\(alte\)\)/);
+  assert.match(s, /SATZ_MAX = 10/);
   const ablauf = readFileSync(join(WURZEL, ".github", "workflows", "appstore.yml"), "utf8");
   assert.match(ablauf, /store-bilder-probe\) python3 scripts\/asc-store\.py --bilder-ersetzen --trocken ;;/);
 });
@@ -91,9 +94,12 @@ test("asc-store.py: Bilder ersetzen laedt erst hoch, dann loescht es", () => {
 test("Store-Bildschirmfotos haben Apples Pflichtmasse", () => {
   // PNG-Kopf: Breite/Hoehe als 32-Bit-Zahlen ab Byte 16.
   const masse = (p) => { const d = readFileSync(p); return [d.readUInt32BE(16), d.readUInt32BE(20)]; };
+  const skript = readFileSync(join(WURZEL, "scripts", "asc-store.py"), "utf8");
+  const namen = JSON.parse(skript.match(/PLAKATE = (\[[^\]]*\])/)[1]);
+  assert.equal(namen.length, 7);
   for (const [ordner, w, h] of [["ios-6.7", 1290, 2796], ["ipad-12.9", 2048, 2732],
                                 ["ios-6.7-en", 1290, 2796], ["ipad-12.9-en", 2048, 2732]])
-    for (const n of ["menu", "game", "shoot", "shop"])
+    for (const n of namen)
       assert.deepEqual(masse(join(WURZEL, "store", ordner, n + ".png")), [w, h], `${ordner}/${n}.png`);
 });
 

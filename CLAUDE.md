@@ -495,9 +495,19 @@ Konzept + Details in `FORTRESS-SPEC.md` Abschnitt 14. Kurzfassung:
   `public/rechtstext.css` (seit v3.130.1) — KEIN Stilblock in den Seiten. Sie
   liegen im Spiel UND auf der Website: nur relative Pfade, Schriften unter
   `fonts/` an beiden Orten.
-- **Store-Bilder austauschen:** `node tools/make-screenshots.cjs` (alle Ziele),
-  dann Ablauf `appstore.yml` mit `store-bilder-probe`, danach `store-bilder`.
-  `store` allein laedt nur hoch, wo noch NICHTS liegt.
+- **Store-Bilder sind Plakate (seit v3.131.2, Nachtrag):** `node
+  tools/make-store-bilder.cjs alles` (oder `aufnahmen` / `plakate`, je
+  `[phone|pad] [de|en]`; `NUR=aktion` fuer eine Szene) nimmt das ECHTE Spiel auf
+  und setzt Schlagzeile, Rahmen und Hintergrund darum — sieben Plakate je
+  Groesse, das staerkste zuerst, `store/ios-6.7[-en]` und `store/ipad-12.9[-en]`.
+  Danach `appstore.yml`: `store-bilder-probe`, dann `store-bilder`. `store`
+  allein laedt nur hoch, wo noch NICHTS liegt. **Nie vergroessern** (Karte wird
+  schmaler statt weich), **iPad: ganze Szene** im Bild (Shop, beide Burgen),
+  Aufnahme- und Poster-Reihenfolge stehen in `SZENEN`, `asc-store.py` hat sie
+  als `PLAKATE` — `tests/store.test.js` haelt beide gleich. Nicht mehr
+  `make-screenshots.cjs` fuer den Store: das ist nur noch Website und Play.
+  Ein Satz fasst zehn Bilder; `store-bilder` ersetzt in der richtigen Reihenfolge
+  (erst Platz nutzen, dann alte weg, dann Rest).
 
 - **Neue Grafik entsteht mit dem Skill `spielgrafik`** (`.claude/skills/spielgrafik/SKILL.md`):
   FLUX.1-schnell lokal, Varianten mit 512 px, Real-ESRGAN auf 1024. Kein

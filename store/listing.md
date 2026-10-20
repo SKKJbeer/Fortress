@@ -157,10 +157,12 @@ https://skkjbeer.github.io/Fortress/privacy.html
 ```
 
 **Grafiken** liegen unter `store/`:
-- `ios-6.7/` — 1290×2796, Pflichtformat für die Einreichung
-- `ios-6.7-en/`, `ipad-12.9-en/` — dieselben Bilder mit englischer Oberfläche
-  (für en-US und en-GB; `SPRACHE=en node tools/make-screenshots.cjs ios-6.7`)
-- `ios-6.5/` — 1242×2688
+- `ios-6.7/` — 1290×2796, Pflichtformat für die Einreichung; `ipad-12.9/` —
+  2048×2732. Sieben **Plakate** je Größe mit Schlagzeile, das stärkste zuerst
+  (Apple zeigt in der Suche nur die ersten drei). Erzeugt von
+  `node tools/make-store-bilder.cjs alles` aus ECHTEN Spielaufnahmen
+- `ios-6.7-en/`, `ipad-12.9-en/` — dieselben Plakate mit englischer Oberfläche
+  und Schlagzeile (für en-US und en-GB)
 - `feature-graphic-1024x500.png` — nur Google Play
 - Play-Telefonbilder: `public/screenshots/` (1080×2340)
 

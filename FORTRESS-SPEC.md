@@ -9583,3 +9583,56 @@ als Auskunftszeile gelesen, nie als Befund.
 steht, ist kein Hinweis, sondern ein Befund, der nie ausgewertet wurde. Wer
 etwas als „nicht abfragbar" fuehrt, muss sagen, WAS geantwortet hat — ein 404
 auf eine Einzelressource heisst „gibt es nicht".
+
+## v3.131.2 — Nachtrag 20.10.2026: Store-Bilder als Plakate
+
+Anlass: Der Betreiber sah die Store-Bilder als „unscharf" und wollte sie als
+Marketing-Experte neu — das stärkste zuerst, so dass man es spielen und laden
+will.
+
+**Befund (gemessen, nicht gefühlt).** Die Dateien waren technisch scharf:
+Laplace-Varianz 425–837 gegenüber 66–138 bei einer halbierten und wieder
+hochskalierten Kopie. Sie WIRKTEN weich, weil (1) die Bedienung auf dem großen
+Bild winzig ist, (2) der gemalte Boden von Natur aus weich ist, (3) die Vorschau
+im Store auf ein Zehntel schrumpft und (4) sie vor der Schriftkorrektur v3.131.0
+entstanden. Dazu: ganz vorn stand das **Menü mit Profil, ELO-Zahlen und der
+Versionsnummer „3.130.1"**, danach vier leere Bretter ohne Schlagzeile. Apple
+zeigt in der Suche nur die ersten drei Bilder.
+
+**Neu: `tools/make-store-bilder.cjs`.** Nimmt das ECHTE Spiel (v3.131.2) auf und
+setzt Schlagzeile, Rahmen und Hintergrund darum — keine Montage der
+Spielinhalte. Sieben Plakate je Größe (iPhone 1290×2796, iPad 2048×2732) in
+Deutsch und Englisch, in dieser Reihenfolge: **Feuer frei!** (Gefecht mit
+Einschlägen, Vulkanschlund), **Ziehen. Zielen. Feuern.** (Zieler mit Kontur),
+**Zu dritt an einem Gerät**, **Baue deine Festung**, **Rüste auf – zerstöre
+mehr** (Shop), **Wähle deinen Helden**, **Sieben Welten** (Collage).
+- Das Gefechtsbild wird aus bis zu 70 Bildern der Schussphase gewählt, das mit
+  den meisten Einschlägen; Bänder (Phase, Warnung „BURG offen", Shop) zählen
+  nicht — beim ersten Anlauf zählte das gelbe „RÜSTPHASE"-Band als Einschlag.
+- **Nie vergrößern:** Ist der Ausschnitt kleiner als die Karte, wird die Karte
+  schmaler. **iPad: ganze Szene** im Bild — mit der Phone-Regel „unten
+  anschneiden" fehlten der Shop und die halbe Burg.
+- Schlagzeile mit Comic-Kontur (7 % der Schrift, acht Richtungen) und
+  Unterschatten wie im Spiel. Ein NEGATIVER `calc()` im Schatten war ungültig
+  und verwarf ihn ganz — die Schlagzeile stand ohne Kontur im Bild; gefunden im
+  100-%-Ausschnitt, nicht in der Vorschau.
+- Keine Versionsnummer, kein ELO, keine Rechtslinks im Bild. Demo-Profil unter
+  `FB_SPERRE`.
+
+**Upload:** `asc-store.py` kennt die sieben Namen (`PLAKATE`). Ein Satz fasst
+zehn Bilder — vier alte + sieben neue = elf —, darum nutzt `store-bilder` erst
+den freien Platz, entfernt dann die alten und lädt den Rest nach; der Satz ist
+nie leer. `store` (Erstbefüllung) fasst einen Satz mit anderen Bildern nicht
+mehr an. Der alte Aufnehmer `make-screenshots.cjs` schreibt nicht mehr in
+`store/ios-6.7` und `store/ipad-12.9`; die ungenutzten Ordner `ios-6.5` und
+`ipad-13` sind entfallen.
+
+**Prüfungen:** `tests/plakate.test.js` (Reihenfolge Werkzeug = Upload, DE/EN
+gleiche Szenen, keine Version/Marke/Profilfelder, Kontur gültig, nie
+vergrößern, Bänder zählen nicht) — Gegenproben: alter calc-Fehler rot,
+verdrehte Reihenfolge rot. `tests/store.test.js`: sieben Namen, Maße, Reihenfolge
+des Hochladens.
+
+**Offen — Apples Regel:** Bilder einer Fassung sind gesperrt, solange sie in
+Prüfung ist (1.0.1) oder verkauft wird (1.0). Neue Bilder erscheinen erst mit
+einer Fassung, die noch bearbeitbar ist.

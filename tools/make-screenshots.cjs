@@ -39,13 +39,11 @@ const ROOT = path.join(__dirname, '..');
 // deutschen Bilder zeigten.
 const SPRACHE = process.env.SPRACHE === 'en' ? 'en' : 'de';
 const ZIELE = [
-  { name: 'ios-6.7',  w: 430,  h: 932,  scale: 3, out: 'store/ios-6.7' },
-  { name: 'ios-6.5',  w: 414,  h: 896,  scale: 3, out: 'store/ios-6.5' },
-  // iPad ist PFLICHT, solange TARGETED_DEVICE_FAMILY "1,2" ist — Apple prueft
-  // dann auch auf dem iPad und verlangt eigene Bilder. Wer das nicht liefern
-  // will, muss die App auf iPhone beschraenken.
-  { name: 'ipad-13',  w: 1032, h: 1376, scale: 2, out: 'store/ipad-13' },
-  { name: 'ipad-12.9',w: 1024, h: 1366, scale: 2, out: 'store/ipad-12.9' },
+  // **Die Store-Bilder (iPhone 6,7", iPad 12,9") entstehen NICHT mehr hier**
+  // (v3.131.2, Nachtrag): `tools/make-store-bilder.cjs` macht daraus Plakate mit
+  // Schlagzeile. Dieser Aufnehmer schrieb nackte Bildschirmfotos nach
+  // `store/ios-6.7` und haette die Plakate ueberschrieben. iPad bleibt PFLICHT,
+  // solange TARGETED_DEVICE_FAMILY "1,2" ist — dort mit eigenen iPad-Aufnahmen.
   { name: 'play',     w: 360,  h: 780,  scale: 3, out: 'public/screenshots' },
   // Fuer die Website. JPEG statt PNG, und das ist keine Nachlaessigkeit: die
   // vier PNG der Play-Groesse wiegen zusammen ueber 3 MB. Auf einer Seite, die

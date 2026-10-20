@@ -243,8 +243,9 @@ zurückbringt und nie wieder ein totes Eingabefeld (siehe `src/platform.ts`).
 
 ## Vor der Einreichung noch nötig
 
-- **Screenshots** hochladen — liegen fertig unter `store/ios-6.7/`,
-  `store/ios-6.5/`, `store/ipad-13/`
+- **Screenshots** hochladen — liegen fertig als Plakate unter `store/ios-6.7/`
+  und `store/ipad-12.9/` (je `-en` fuer Englisch), erzeugt mit
+  `node tools/make-store-bilder.cjs alles`
 - **Texte** aus `store/listing.md`
 - **Altersfreigabe:** Fragebogen. Gewalt ist abstrakt (Blöcke zerfallen), keine
   Figuren, kein Blut → 4+
