@@ -733,6 +733,17 @@ dafuer nicht: Tags vom GITHUB_TOKEN starten keinen Ablauf.)
 `tests/app-fuehrend.test.js` haelt die Kette fest. Eine neue App-Store-Fassung
 mit dem neuesten Bau wird eingereicht, sobald die vorige Pruefung durch ist.
 
+**Verfuegbarkeit im App Store (seit v3.131.2, Nachtrag 20.10.):** Eine Fassung
+auf READY_FOR_SALE ist erst dann zu finden, wenn Apple Gebiete kennt. 1.0 ging
+am 20.10. in KEINEM Land live — `appAvailabilityV2` antwortete seit Wochen mit
+404, und die Pruefungen fuehrten das als „nicht abfragbar". Jetzt: 404 =
+**fehlt** (`verfuegbarkeit_zaehlen` in `asc.py`), `freigeben` veroeffentlicht
+nicht ohne Gebiet, Ablaeufe `verfuegbar-stand` (lesen) und `verfuegbar`
+(Eingabe VERFUEGBAR, nur wenn Apple keine kennt). Nach JEDER Veroeffentlichung
+`itunes.apple.com/lookup?bundleId=de.skkjbeer.stackandsiege&country=de` pruefen
+— `READY_FOR_SALE` allein beweist nicht, dass die App zu finden ist. App-ID
+6811299708.
+
 **Store-Fassungen (seit v3.131.2):** `appstore.yml` nimmt `fassung` (leer =
 1.0). Ein Update: `MARKETING_VERSION` im Xcode-Projekt heben, Block
 „Neuigkeiten (… X.Y.Z)" in `store/listing.md` + `listing-en.md` neu schreiben

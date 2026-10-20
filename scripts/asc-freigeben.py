@@ -23,38 +23,26 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from asc import Apple, BUNDLE, FASSUNG, erste, feld, kurz  # noqa: E402
+from asc import Apple, BUNDLE, FASSUNG, erste, feld, kurz, verfuegbarkeit_zaehlen  # noqa: E402
 
 sag = print
 
 
-def verfuegbarkeit(apple: Apple, app_id: str) -> None:
-    """Wo die App erscheint. Nur zur Auskunft — Apple hat die Fassung mit
-    dieser Einstellung freigegeben; Aendern ist Sache von App Store Connect."""
-    st, aw = apple.holen(f"v1/apps/{app_id}/appAvailabilityV2")
-    if st != 200:
-        sag(f"  ? Verfuegbarkeit nicht abfragbar (HTTP {st}) — bitte in App Store Connect ansehen")
-        return
-    vid = aw.json()["data"]["id"]
-    gebiete, pfad = [], f"v2/appAvailabilities/{vid}/territoryAvailabilities"
-    werte = {"limit": 200, "include": "territory"}
-    while pfad:
-        st, aw = apple.holen(pfad, **werte)
-        if st != 200:
-            sag(f"  ? Gebiete nicht abfragbar (HTTP {st}): {kurz(aw)}"); return
-        j = aw.json()
-        for g in j.get("data") or []:
-            if feld(g, "available"):
-                rel = (g.get("relationships") or {}).get("territory", {}).get("data") or {}
-                gebiete.append(rel.get("id", "?"))
-        # Apple liefert die naechste Seite als volle Adresse; `holen` will den
-        # Pfad hinter der Basis, die Abfrage steckt schon in der Adresse.
-        nxt = (j.get("links") or {}).get("next")
-        pfad = nxt.split("api.appstoreconnect.apple.com/", 1)[1] if nxt else None
-        werte = {}
-    de = "DEU" in gebiete
-    sag(f"  {'✓' if gebiete else '!'} verfuegbar in {len(gebiete)} Gebieten"
-        + (", darunter Deutschland" if de else " — Deutschland NICHT dabei"))
+def verfuegbarkeit(apple: Apple, app_id: str) -> bool:
+    """Wo die App erscheint. **Gibt False zurueck, wenn sie in KEINEM Land
+    verfuegbar ist** — dann wuerde „Veroeffentlichen" nichts sichtbar machen
+    (v3.131.3: genau so ging 1.0 am 20.10. live, ohne irgendwo zu erscheinen;
+    der 404 stand wochenlang als „?" im Protokoll)."""
+    art, anzahl = verfuegbarkeit_zaehlen(apple, app_id)
+    if art == "unbekannt":
+        sag("  ? Verfuegbarkeit nicht abfragbar — bitte in App Store Connect ansehen")
+        return True
+    if not anzahl:
+        sag("  ! Verfuegbarkeit: KEIN Gebiet — die App waere in keinem Land zu finden "
+            "(Ablauf `verfuegbar` mit Eingabe VERFUEGBAR)")
+        return False
+    sag(f"  ✓ verfuegbar in {anzahl} Gebieten")
+    return True
 
 
 def main() -> int:
@@ -75,11 +63,14 @@ def main() -> int:
         + ("" if wirklich else "  — TROCKENLAUF, es wird nichts geschrieben"))
     st, bau = erste(apple, f"v1/appStoreVersions/{fass['id']}/build")
     sag(f"  Bau {feld(bau, 'version') if bau else '—'} haengt an der Fassung")
-    verfuegbarkeit(apple, app["id"])
+    verfuegbar = verfuegbarkeit(apple, app["id"])
 
     if zustand != "PENDING_DEVELOPER_RELEASE":
         sag(f"\nNichts zu tun: veroeffentlicht wird nur aus PENDING_DEVELOPER_RELEASE (jetzt {zustand}).")
         return 0
+    if not verfuegbar:
+        sag("\n! Nicht veroeffentlicht: erst die Verfuegbarkeit anlegen.")
+        return 1
     if not wirklich:
         sag("\n→ wuerde die Fassung jetzt im App Store veroeffentlichen")
         return 0

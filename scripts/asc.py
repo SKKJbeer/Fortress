@@ -112,6 +112,36 @@ def kurz(antwort) -> str:
     return antwort.text[:250]
 
 
+def verfuegbarkeit_zaehlen(apple: Apple, app_id: str):
+    """('gesetzt', n) | ('fehlt', 0) | ('unbekannt', None) — in wie vielen Gebieten
+    ist die App verfuegbar?
+
+    **404 heisst „fehlt", nicht „nicht abfragbar"** (v3.131.3). Genau diese
+    Verwechslung hat die App am 20.10. in null Laendern veroeffentlicht: Fassung
+    1.0 stand auf READY_FOR_SALE, Apple kannte aber keine Verfuegbarkeit
+    (`There is no resource of type 'appAvailabilities'`), und beide Pruefungen
+    meldeten sie wochenlang als „?" und „nicht abfragbar". `marktreif` fragte
+    dazu einen Pfad ab, den es nicht gibt (`v2/apps/{id}/appAvailability`).
+    """
+    st, aw = apple.holen(f"v1/apps/{app_id}/appAvailabilityV2")
+    if st == 404:
+        return "fehlt", 0
+    if st != 200:
+        return "unbekannt", None
+    vid = aw.json()["data"]["id"]
+    n, pfad, werte = 0, f"v2/appAvailabilities/{vid}/territoryAvailabilities", {"limit": 200}
+    while pfad:
+        st, aw = apple.holen(pfad, **werte)
+        if st != 200:
+            return "unbekannt", None
+        j = aw.json()
+        n += sum(1 for g in j.get("data") or [] if feld(g, "available"))
+        nxt = (j.get("links") or {}).get("next")
+        pfad = nxt.split("api.appstoreconnect.apple.com/", 1)[1] if nxt else None
+        werte = {}
+    return "gesetzt", n
+
+
 def erste(apple: Apple, pfad: str, **werte):
     """Ein Datensatz oder der erste einer Liste.
 

@@ -23,7 +23,7 @@ import sys
 import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from asc import Apple, BUNDLE, FASSUNG, erste, feld, kurz  # noqa: E402
+from asc import Apple, BUNDLE, FASSUNG, erste, feld, kurz, verfuegbarkeit_zaehlen  # noqa: E402
 
 # Apples Kuerzel fuer die Bildschirmgroessen, die eine Einreichung braucht.
 # 6,7" ist Pflicht; die uebrigen erbt Apple daraus, WENN nichts eigenes da ist.
@@ -184,16 +184,15 @@ def main() -> int:
     else:
         fehlt("contentRightsDeclaration fehlt (App) — eine Rechtserklaerung, nur der Betreiber")
 
-    stand, antwort = apple.holen(f"v2/apps/{app_id}/appAvailability",
-                                 **{"include": "territoryAvailabilities"})
-    if stand == 200:
-        anzahl = len((antwort.json().get("included") or []))
-        if anzahl:
-            hake(f"Verfuegbarkeit gesetzt ({anzahl} Gebiete gelistet)")
-        else:
-            fehlt("Verfuegbarkeit: kein Gebiet ausgewaehlt")
+    # Verfuegbarkeit: 404 = FEHLT (v3.131.3, siehe `verfuegbarkeit_zaehlen`).
+    art, anzahl = verfuegbarkeit_zaehlen(apple, app_id)
+    if art == "gesetzt" and anzahl:
+        hake(f"Verfuegbarkeit gesetzt ({anzahl} Gebiete verfuegbar)")
+    elif art == "unbekannt":
+        blind("Verfuegbarkeit nicht abfragbar (Apple antwortet weder mit Daten noch mit 404)")
     else:
-        blind(f"Verfuegbarkeit nicht abfragbar (HTTP {stand})")
+        fehlt("Verfuegbarkeit: kein Gebiet — die App waere in keinem Land zu finden "
+              "(Ablauf `verfuegbar` mit Eingabe VERFUEGBAR)")
 
     # ── Laeuft schon eine Einreichung? ────────────────────────────────────
     stand, antwort = apple.holen("v1/reviewSubmissions", **{"filter[app]": app_id})

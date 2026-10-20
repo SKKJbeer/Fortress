@@ -9546,3 +9546,40 @@ Pruefung — mit den Korrekturen aus v3.131.0.
   ins Skript durchgereicht, Bau-Filter, Neuigkeiten nur bei Updates und in
   beiden Sprachen, Ueberschrift der Neuigkeiten = App-Version (wer die Version
   hebt, schreibt neue). Gegenprobe am alten Stand: alle drei rot.
+
+## v3.131.2 — Nachtrag 20.10.2026: Veroeffentlicht, aber in keinem Land
+
+Fassung 1.0 wurde um 12:39 UTC auf READY_FOR_SALE gestellt (Apple hatte Bau 45
+freigegeben). Der Betreiber meldete kurz darauf: „der App-Eintrag ist weg."
+Gemessen: Der Eintrag ist da (App-ID 6811299708), aber **Apple kannte fuer die
+App keine Verfuegbarkeit** (`There is no resource of type 'appAvailabilities'`).
+Eine Fassung ohne Gebiet steht auf „zum Verkauf" und ist trotzdem nirgends zu
+finden — `itunes.apple.com/lookup` lieferte in de, us, gb, at, ch nichts.
+
+**Warum es niemand merkte:** `asc-freigeben.py` meldete den 404 als „?
+Verfuegbarkeit nicht abfragbar" (mit einem Kommentar, Apple habe die Fassung mit
+dieser Einstellung freigegeben — nie belegt), `asc-marktreif.py` fragte einen
+Pfad ab, den es nicht gibt (`v2/apps/{id}/appAvailability`) und fuehrte die
+Zeile unter „nicht abfragbar". Die Angabe stand in jedem Protokoll und wurde
+als Auskunftszeile gelesen, nie als Befund.
+
+**Behoben:**
+- `verfuegbarkeit_zaehlen` (asc.py): 404 = **fehlt**; nur Antworten ohne Daten
+  UND ohne 404 bleiben „unbekannt". `marktreif` zaehlt fehlende Verfuegbarkeit
+  als Mangel, `freigeben` weigert sich zu veroeffentlichen (auch im Trockenlauf
+  ein „!"), solange kein Gebiet gesetzt ist.
+- Neues Skript `asc-verfuegbar.py`, Ablauf `verfuegbar-stand` (nur lesen:
+  rohe Antworten zu Verfuegbarkeit, Gebieten, Preisplan, Fassungen) und
+  `verfuegbar` (Eingabe VERFUEGBAR): legt die Verfuegbarkeit fuer ALLE 175
+  Gebiete an, kuenftige eingeschlossen — nur, wenn Apple keine kennt.
+- Angelegt am 20.10. um 14:12 UTC (HTTP 201); Gegenlesen: 175 von 175
+  Gebieten verfuegbar. Fassung 1.0.1 (Bau 48) liegt zur Pruefung, sie erbt die
+  App-weite Einstellung.
+- `tests/verfuegbar.test.js`: 404 = fehlt, richtiger Pfad, Sperre vor dem
+  Veroeffentlichen, Anlegen nur ohne vorhandene Verfuegbarkeit, nur mit Eingabe
+  und mit genau einem Schreibzugriff. Gegenprobe am alten Stand: drei rot.
+
+**Lehre (fuer CLAUDE.md):** Eine Zeile „nicht abfragbar", die in JEDEM Protokoll
+steht, ist kein Hinweis, sondern ein Befund, der nie ausgewertet wurde. Wer
+etwas als „nicht abfragbar" fuehrt, muss sagen, WAS geantwortet hat — ein 404
+auf eine Einzelressource heisst „gibt es nicht".
