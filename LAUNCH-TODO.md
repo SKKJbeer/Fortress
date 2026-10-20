@@ -253,9 +253,9 @@ nur, was fehlt.
       war aber in keinem Land zu finden: Apple kannte keine Verfuegbarkeit
       (siehe FORTRESS-SPEC, Nachtrag zu v3.131.2). Jetzt 175 von 175 Gebieten,
       kuenftige eingeschlossen. Apples Suche braucht danach Stunden.
-- [ ] **Pruefen, dass die App im Store zu finden ist** —
-      `itunes.apple.com/lookup?bundleId=de.skkjbeer.stackandsiege&country=de`
-      muss ein Ergebnis liefern (App-ID 6811299708).
+- [x] **App im Store zu finden** — 20.10. 15:54 UTC in AT, CH, US, FR; der
+      Betreiber bestaetigte am selben Tag auch Deutschland. App-ID 6811299708,
+      Link z. B. `apps.apple.com/at/app/stack-siege-burgenduell/id6811299708`.
 - [x] **Update 1.0.1 eingereicht am 20.10.2026** (Bau 48 = v3.131.2, mit den
       Korrekturen aus v3.131.0: scharfe Schrift, Zieler mit Kontur, keine
       Ueberlappungen). Ablauf mit `fassung=1.0.1`: `fuellen` → `sprachen` →
