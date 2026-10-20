@@ -244,9 +244,11 @@ nur, was fehlt.
       („turn-based" falsch, Loeschweg), Beschreibung DE/EN (Bezwinger, Welten,
       Avatare), englische Bildschirmfotos fuer en-US/en-GB. Dafuer aus der
       Pruefung zurueckgezogen und um 15:36 neu eingereicht: `WAITING_FOR_REVIEW`.
-- [ ] **Nach Apples Freigabe veroeffentlichen** — `appstore.yml` mit
-      `freigeben-probe`, dann `freigeben` (Eingabe FREIGEBEN), oder in App
-      Store Connect „Diese Version veroeffentlichen".
+- [x] **Fassung 1.0 veroeffentlicht am 20.10.2026, 12:39 UTC** — Apple hatte
+      Bau 45 (v3.129.0) freigegeben (`PENDING_DEVELOPER_RELEASE`), `freigeben`
+      mit FREIGEBEN stellte sie auf `READY_FOR_SALE`. Apple verteilt in den
+      folgenden Stunden an alle Stores. Wartezeit in der Pruefung: 7 Tage
+      (eingereicht 13.10., 15:36 UTC).
 - [ ] **Direkt danach Update 1.0.1 einreichen** (Entscheidung 19.10.: 1.0
       laeuft zu Ende, die Korrekturen aus v3.131.0 — scharfe Schrift, Zieler mit
       Kontur, keine Ueberlappungen — kommen als 1.0.1). Bauten gehen seit
