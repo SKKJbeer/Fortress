@@ -15,8 +15,11 @@ the device language).
 
 ### Name (max. 30)
 ```
-Stack & Siege – Castle Duel
+Stack & Siege – Castle
 ```
+22 characters, shortened on 21.10.2026 (with 1.0.2) so the search result row does not cut it
+off — on an iPhone about 23 characters show next to the button, and the old name appeared
+as "Stack & Siege – Castle D…".
 
 ### Untertitel (max. 30)
 ```

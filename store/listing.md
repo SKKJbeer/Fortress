@@ -13,9 +13,15 @@ auf, und keins davon verkauft ein Strategiespiel.
 
 ### Name (max. 30)
 ```
-Stack & Siege – Burgenduell
+Stack & Siege – Burgen
 ```
-27 Zeichen von 30. **Die Begruendung hat sich mit dem Namen gedreht:** Beim
+22 Zeichen. **Neu seit 1.0.2 (21.10.2026): gekuerzt, damit er in der Suche nicht abgeschnitten
+wird.** Auf einem iPhone zeigt die Trefferzeile rund 23 Zeichen, daneben steht der Knopf:
+„Stack & Siege – Burgenduell" erschien als „Stack & Siege – Burgend…". „Burgenduell" ist
+ausserdem ein erfundenes Wort, das niemand eintippt; „Burgen" tippt jemand. Die Marke bleibt
+vorn, deshalb loest „stack and siege" weiter die App aus.
+
+Aeltere Begruendung (gilt fuer den Zusatz im Namen ueberhaupt): Beim
 alten Namen war der Zusatz noetig, weil das Hauptwort als Suchbegriff
 hoffnungslos belegt war. „Stack & Siege" ist dagegen eine erfundene Verbindung
 — am 12.09. ueber Apples Suche geprueft, im deutschen App Store traegt keine App
@@ -159,7 +165,7 @@ Eintrag hängen an der anonymen Kennung.
 
 ### Titel (max. 30)
 ```
-Stack & Siege – Burgenduell
+Stack & Siege – Burgen
 ```
 
 ### Kurzbeschreibung (max. 80)

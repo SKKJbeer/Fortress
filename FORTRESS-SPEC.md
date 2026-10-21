@@ -9760,3 +9760,13 @@ veröffentlichen → `MARKETING_VERSION` 1.0.2 → Neuigkeiten einsetzen → Bau
 darf Apple jederzeit ohne neue Fassung geändert werden (der neue Wortlaut stimmt auch für 1.0).
 Ob die Änderungen Downloads bringen, zeigen erst die Zahlen aus App Store Connect.
 
+**Nachtrag 21.10.2026 (abends): Name gekürzt.** Beim Suchen nach „stack and siege" zeigt die
+Trefferzeile auf dem iPhone rund 23 Zeichen neben dem Knopf; „Stack & Siege – Burgenduell"
+erschien als „Stack & Siege – Burgend…". Neu (mit 1.0.2): DE „Stack & Siege – Burgen" (22),
+EN „Stack & Siege – Castle" (22). „Burgenduell" war ein erfundenes Wort ohne Suchwert.
+Gemessen am Store (Lookup, 21.10.): Fassung 1.0 hat 4 iPhone- und 4 iPad-Bilder, das erste ist
+noch der Menü-Schirm (`menu.png`), und 0 Bewertungen — die neuen Plakate und der neue Name
+kommen erst mit 1.0.2. Wer die App schon installiert hat („Öffnen"), sieht in der Suche
+vermutlich die kompakte Zeile ohne Bilder; das ist nicht belegt und gehört auf einem Gerät
+ohne die App geprüft.
+
