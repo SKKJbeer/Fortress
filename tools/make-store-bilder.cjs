@@ -55,7 +55,9 @@ const GERAETE = {
 // Rand abgeschnitten werden. `kopf` skaliert die Schlagzeile.
 const SZENEN = [
   { id: 'aktion', welt: process.env.AKTION_WELT !== undefined ? +process.env.AKTION_WELT : 3, ausschnitt: [0.14, 0.10, 0.86, 0.755], ausschnittPad: [0.13, 0.13, 0.87, 0.86], kopf: 1.25 },
-  { id: 'zieler', welt: 2 }, { id: 'drei', welt: 0 }, { id: 'bauen', welt: 5 },
+  // Platz 2 und 3 gehoeren dem Alleinstellungsmerkmal: zu zweit bzw. zu dritt an EINEM Geraet,
+  // ohne Internet (Apple zeigt in der Suche nur die ersten drei Bilder).
+  { id: 'zuzweit', welt: 1, ganz: true }, { id: 'drei', welt: 0 }, { id: 'zieler', welt: 2 }, { id: 'bauen', welt: 5 },
   { id: 'ruesten', welt: 6, ausschnitt: [0, 0.165, 1, 1], ausschnittPad: [0, 0, 1, 1] },
   { id: 'helden', welt: 4, ausschnitt: [0, 0.2, 1, 0.94], ausschnittPad: [0.17, 0.2, 0.83, 0.8] }, { id: 'welten', collage: true },
 ];
@@ -204,6 +206,20 @@ async function zieler(browser, g, sprache, dir) {
   } finally { await ctx.close(); }
 }
 
+// Zu zweit an einem Geraet (seit v3.132.0 gegenueber): Ruestphase, beide Shops zugleich
+// sichtbar — der obere um 180 Grad gedreht an der Kante des oberen Spielers.
+async function zuzweit(browser, g, sprache, dir) {
+  const { ctx, p } = await oeffne(browser, g, sprache, 1);
+  try {
+    await klick(p, ['LOKAL', 'LOCAL']); await p.waitForTimeout(300);
+    await klick(p, ['2 Spieler', '2 Players']);
+    await p.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 15000 });
+    await warte(p, async () => (await phase(p)) === 'cannon' && await p.evaluate(() => !!document.querySelector('[data-shopuhr="1"]') && !!document.querySelector('[data-shopuhr="2"]')), 150000, 'Ruestphase zu zweit mit beiden Shops');
+    await p.waitForTimeout(700);
+    speichere(dir, 'zuzweit', await p.screenshot({ type: 'png' }));
+  } finally { await ctx.close(); }
+}
+
 // Zu dritt an einem Geraet: Bauphase ohne Banner, drei Bauteil-Felder unten.
 async function drei(browser, g, sprache, dir) {
   const { ctx, p } = await oeffne(browser, g, sprache, 0);
@@ -278,7 +294,7 @@ async function welten(browser, g, geraet, ziel) {
   }));
 }
 
-const SZENENFUNKTION = { aktion, zieler, drei, bauen, ruesten, helden };
+const SZENENFUNKTION = { aktion, zieler, zuzweit, drei, bauen, ruesten, helden };
 
 async function aufnahmen(browser, geraet, sprache) {
   const g = GERAETE[geraet];
@@ -309,8 +325,9 @@ async function aufnahmen(browser, geraet, sprache) {
 const TEXTE = {
   de: {
     aktion:  ['Feuer frei!', 'Bauen. Verteidigen. Zerstören.'],
+    zuzweit: ['Zu zweit an<br>einem Gerät', 'Ohne Internet, Spieler gegenüber'],
+    drei:    ['Zu dritt an<br>einem Gerät', 'Offline oder online mit Freunden'],
     zieler:  ['Ziehen. Zielen.<br>Feuern.', 'Einfach zu steuern – jede Kugel zählt'],
-    drei:    ['Zu dritt an<br>einem Gerät', 'Oder online gegen Freunde und Rivalen'],
     bauen:   ['Baue deine<br>Festung', 'Stein für Stein – bevor die Kugeln fliegen'],
     ruesten: ['Rüste auf –<br>zerstöre mehr', 'Kanonen, Panzerung, Schnellladen'],
     helden:  ['Wähle deinen<br>Helden', 'Sammle Helden und Kanonen-Skins'],
@@ -318,8 +335,9 @@ const TEXTE = {
   },
   en: {
     aktion:  ['Open fire!', 'Build. Defend. Destroy.'],
+    zuzweit: ['Two players,<br>one device', 'No internet – face to face'],
+    drei:    ['Three players,<br>one screen', 'Offline, or online with friends'],
     zieler:  ['Drag. Aim.<br>Fire.', 'Simple controls – every shot counts'],
-    drei:    ['Three players,<br>one screen', 'Or play online against friends and rivals'],
     bauen:   ['Build your<br>fortress', 'Brick by brick – before the cannonballs fly'],
     ruesten: ['Upgrade your<br>arsenal', 'Cannons, armor, faster reloads'],
     helden:  ['Choose your<br>hero', 'Collect heroes and cannon skins'],
@@ -352,7 +370,10 @@ function plakatHtml(g, szene, sprache, bild, ausschnitt, kopfSkala, eigen) {
   // Phone-Regel „unten anschneiden" fehlte der Shop und die halbe Burg.
   // Darum schrumpft die Karte, bis der Ausschnitt in den Platz unter der
   // Schlagzeile passt.
-  if (pad) kartenBreite = Math.min(kartenBreite, Math.floor((H - mindestKopf - rand) / verhaeltnis) + 2 * rand);
+  // `ganz` (Szene "zuzweit"): auch auf dem Telefon die ganze Szene — beide Shops, oben
+  // gedreht und unten aufrecht, sind der Beweis fuers Gegenueber-Sitzen.
+  const ganz = !!(SZENEN.find((x) => x.id === szene) || {}).ganz;
+  if (pad || ganz) kartenBreite = Math.min(kartenBreite, Math.floor((H - mindestKopf - rand) / verhaeltnis) + 2 * rand);
   // **Nie vergroessern.** Ist der Ausschnitt kleiner als die Karte (Profilfenster
   // auf dem iPad), wird die Karte schmaler statt die Aufnahme weich zu ziehen.
   kartenBreite = Math.min(kartenBreite, Math.floor((x1 - x0) * bw) + 2 * rand);
@@ -440,16 +461,18 @@ async function plakate(browser, geraet, sprache) {
   const ctx = await browser.newContext({ viewport: { width: g.poster[0], height: g.poster[1] }, deviceScaleFactor: 1 });
   await ctx.addInitScript(FB_SPERRE);
   const p = await ctx.newPage();
-  let nr = 0;
-  for (const s of SZENEN) {
+  // Nummer = Platz in SZENEN (nicht Anzahl der gerenderten): so bleibt der Dateiname
+  // stabil, auch wenn nur einzelne Plakate neu entstehen (NUR=zuzweit,drei).
+  const nur = (process.env.NUR || '').split(',').filter(Boolean);
+  for (const [i, s] of SZENEN.entries()) {
+    if (nur.length && !nur.includes(s.id)) continue;
+    const nr = i + 1;
     const datei = path.join(roh, s.id + '.png');
     if (s.collage) {
       if (!fs.existsSync(path.join(ROH, `${geraet}-welten`, 'welt-6.png'))) { console.log('   ! welten: keine Aufnahmen'); continue; }
-      nr++;
       await p.setContent(plakatHtml(g, s.id, sprache, null, [0, 0, 1, 1], s.kopf, weltenInhalt(geraet)));
     } else {
       if (!fs.existsSync(datei)) { console.log(`   ! ${s.id}: keine Aufnahme (${datei})`); continue; }
-      nr++;
       await p.setContent(plakatHtml(g, s.id, sprache, fs.readFileSync(datei), (geraet === 'pad' && s.ausschnittPad) || s.ausschnitt || [0, 0, 1, 1], s.kopf));
     }
     await p.evaluate(() => document.fonts.ready);

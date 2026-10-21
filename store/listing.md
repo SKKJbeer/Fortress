@@ -25,19 +25,26 @@ tatsaechlich eintippt. Ohne ihn faende die App nur, wer sie schon kennt.
 
 ### Untertitel (max. 30)
 ```
-Mauern bauen, Festung knacken
+Strategie zu zweit, offline
 ```
-29 Zeichen.
+27 Zeichen. **Neu seit 1.0.2 (21.10.2026).** Vorher „Mauern bauen, Festung knacken" —
+reine Handlung, ohne Suchwort, das wir gewinnen koennen. Gemessen am 21.10. gegen
+Apples Suche (DE, Top 200): „strategie zu zweit" hat nur 33 Treffer, die grossen
+Begriffe („2 spieler", „offline spiele") 150-190, besetzt von Apps mit dem Wort im
+Namen. Das Alleinstellungsmerkmal — zu zweit oder dritt an EINEM Geraet, ohne
+Internet — gehoert dorthin, wo Apple sucht und wo der Mensch zuerst liest.
 
 ### Werbetext (max. 170, jederzeit änderbar ohne neue Version)
 ```
-Baue deine Burg aus fallenden Steinen und schieße die des Gegners auf.
-Eine Lücke in deiner Mauer entscheidet die Partie. Online oder offline
-gegen den Bot.
+Zu zweit oder zu dritt an einem Gerät – ganz ohne Internet. Baue deine Burg aus fallenden Steinen und schieße die des Gegners auf. Eine Lücke entscheidet.
 ```
+154 Zeichen.
 
 ### Beschreibung (max. 4000)
 ```
+Zwei oder drei Spieler, ein Gerät, kein Internet nötig. Ihr sitzt euch
+gegenüber, und jeder hat sein Bedienfeld an der eigenen Kante – richtig herum.
+
 Zwei Burgen, ein Fluss dazwischen. Du baust deine Mauer aus fallenden
 Steinen — der Gegner schießt sie dir wieder weg.
 
@@ -61,10 +68,14 @@ Jede Partie spielt in einer anderen gemalten Landschaft, vom
 Frostreich bis in den Vulkanschlund. Zwölf gemalte Avatare schaltest
 du mit steigender Stufe frei.
 
-ONLINE ODER ALLEIN
-Spiele online gegen zufällige Gegner, mit Freunden über einen Code,
-zu zweit oder zu dritt an einem Gerät — oder offline gegen den Bot in
-drei Stufen.
+AN EINEM GERÄT, OHNE INTERNET
+Zu zweit oder zu dritt auf demselben Bildschirm: Zu zweit sitzt ihr euch
+gegenüber, Shop, Bauteil-Vorschau und Anzeigen stehen für jeden an der
+eigenen Kante. Es braucht kein Netz, kein Konto, kein WLAN — auch nicht
+für die Übung gegen den Bot in drei Stufen.
+
+ONLINE
+Oder spiele online gegen zufällige Gegner und mit Freunden über einen Code.
 
 SAMMELN UND SCHMIEDEN
 Erspielte Beute wird zu Ausbauten, erspieltes Gold zu Kosmetik:
@@ -80,9 +91,21 @@ Kosmetik sind Anerkennung für Gespieltes, kein Verkaufsartikel.
 
 ### Schlüsselwörter (max. 100, kommagetrennt, keine Leerzeichen)
 ```
-burg,burgen,belagerung,kanone,strategie,taktik,mittelalter,multiplayer,2,spieler,offline,bot,steine
+festung,bauen,burg,belagerung,kanone,dritt,gegeneinander,lokal,mehrspieler,mittelalter,ohne,internet
 ```
-99 Zeichen. Überarbeitet am 07.10.2026 (`tests/store.test.js` hält die Regeln fest):
+100 Zeichen. **Neu seit 1.0.2 (21.10.2026)**, gemessen gegen Apples Suche (DE, Top 200):
+- Raus: `steine` (Treffer sind Steinbestimmung), `bot`, `taktik`, `burgen`, `2,spieler`,
+  `multiplayer`. Mit ihnen standen wir bei „2 spieler", „zu zweit", „offline spiele",
+  „lokaler multiplayer" auf KEINEM Platz in den Top 200 — die Zeichen waren verschenkt.
+  Wieder aufnehmen, sobald Bewertungen und Downloads da sind.
+- Rein: `dritt` (mit „zu" aus dem Untertitel: „zu dritt", nur 4 Treffer), `gegeneinander`
+  (15), `lokal`, `mehrspieler`, `ohne`+`internet`, dazu `festung`+`bauen`, die aus dem
+  alten Untertitel hierher wandern — Apple kombiniert feldübergreifend, „festung bauen"
+  stand vorher auf Platz 9 und „festung bauen offline" auf Platz 1.
+- Gelaufen am 21.10.: „festung bauen offline" 1, „festung bauen" 9, „kanonen strategie" 24,
+  „belagerung" 35, „festung" 63; „stack siege" 2.
+
+Frühere Überarbeitung am 07.10.2026 (`tests/store.test.js` hält die Regeln fest):
 - **„tetris" raus** — fremde Marke. Apple lehnt Marken in Schlagworten ab
   (Richtlinie 2.3.7); das hätte die Prüfung kosten können.
 - **„rundenbasiert" raus** — falsch: gespielt wird gleichzeitig in Phasen mit
@@ -103,6 +126,21 @@ Besser zu sehen, auf jedem Gerät:
 ```
 Wird von `asc.py` nur bei Updates eingetragen (`ist_update()`); bei der ersten
 Fassung lehnt Apple das Feld ab. Für jede neue Fassung neu schreiben.
+
+**Entwurf für Fassung 1.0.2** (bewusst KEIN Codeblock: `tests/fassung.test.js` verlangt, dass
+der Block oben zur `MARKETING_VERSION` passt. Beim Heben auf 1.0.2 die Überschrift oben auf
+1.0.2 stellen und diesen Text einsetzen):
+
+> Neu: Zu zweit am selben Gerät sitzt ihr euch jetzt gegenüber. Jeder Spieler hat Shop,
+> Bauteil-Vorschau und Anzeigen an seiner Kante, richtig herum — und das Bauteil hebt sich
+> von seinem Finger weg. Dazu:
+> • Der Ton bleibt nach dem Minimieren nicht mehr hängen und läuft nicht doppelt.
+> • Kleine Schrift ist schärfer und besser lesbar.
+> • Neue Bildschirmfotos im App Store.
+
+Hinweis zu 1.0.2: Der neue Einstiegssatz der Beschreibung („Ihr sitzt euch gegenüber …")
+stimmt erst, wenn 1.0.2 mit v3.132.0 oder später ausgeliefert wird. Bis dahin NICHT mit
+`fassung=1.0.1` einspielen (die Fassung ist ohnehin in Prüfung und gesperrt).
 
 ### Altersfreigabe
 4+ — Gewaltdarstellung ist abstrakt (Blöcke zerfallen), keine Figuren, kein

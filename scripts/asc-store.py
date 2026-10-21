@@ -112,7 +112,7 @@ ANTWORTEN = {
 # Apple zeigt in der Suche nur die ersten drei. Erzeugt von
 # `tools/make-store-bilder.cjs`; Namen und Reihenfolge stehen dort in `SZENEN`,
 # `tests/plakate.test.js` haelt beide gleich.
-PLAKATE = ["1-aktion", "2-zieler", "3-drei", "4-bauen", "5-ruesten", "6-helden", "7-welten"]
+PLAKATE = ["1-aktion", "2-zuzweit", "3-drei", "4-zieler", "5-bauen", "6-ruesten", "7-helden", "8-welten"]
 BILDER = {
     "APP_IPHONE_67":          ("store/ios-6.7",   PLAKATE),
     "APP_IPAD_PRO_3GEN_129":  ("store/ipad-12.9", PLAKATE),

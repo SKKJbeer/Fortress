@@ -415,8 +415,8 @@ Warteschlange (nicht `fb.subscribe`); kein `onDisconnect`-Löschen des Spielknot
 - **Store-Bilder sind Plakate (seit v3.131.2, Nachtrag):** `node
   tools/make-store-bilder.cjs alles` (oder `aufnahmen` / `plakate`, je
   `[phone|pad] [de|en]`; `NUR=aktion` fuer eine Szene) nimmt das ECHTE Spiel auf
-  und setzt Schlagzeile, Rahmen und Hintergrund darum — sieben Plakate je
-  Groesse, das staerkste zuerst, `store/ios-6.7[-en]` und `store/ipad-12.9[-en]`.
+  und setzt Schlagzeile, Rahmen und Hintergrund darum — acht Plakate je
+  Groesse (seit 21.10.: Platz 2 `zuzweit`, Platz 3 `drei` — das Alleinstellungsmerkmal "zu zweit/dritt an EINEM Geraet, ohne Internet" steht in den ersten drei, die Apple in der Suche zeigt), das staerkste zuerst, `store/ios-6.7[-en]` und `store/ipad-12.9[-en]`.
   Danach `appstore.yml`: `store-bilder-probe`, dann `store-bilder`. `store`
   allein laedt nur hoch, wo noch NICHTS liegt. **Nie vergroessern** (Karte wird
   schmaler statt weich), **iPad: ganze Szene** im Bild (Shop, beide Burgen),

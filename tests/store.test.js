@@ -96,7 +96,7 @@ test("Store-Bildschirmfotos haben Apples Pflichtmasse", () => {
   const masse = (p) => { const d = readFileSync(p); return [d.readUInt32BE(16), d.readUInt32BE(20)]; };
   const skript = readFileSync(join(WURZEL, "scripts", "asc-store.py"), "utf8");
   const namen = JSON.parse(skript.match(/PLAKATE = (\[[^\]]*\])/)[1]);
-  assert.equal(namen.length, 7);
+  assert.equal(namen.length, 8);
   for (const [ordner, w, h] of [["ios-6.7", 1290, 2796], ["ipad-12.9", 2048, 2732],
                                 ["ios-6.7-en", 1290, 2796], ["ipad-12.9-en", 2048, 2732]])
     for (const n of namen)

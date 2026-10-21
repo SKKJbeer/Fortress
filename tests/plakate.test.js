@@ -55,10 +55,10 @@ test('Schlagzeile hat Kontur: kein negativer calc im Schatten', () => {
   assert.doesNotMatch(code, /const (kw|kd) = [^;]*calc\(/, 'calc() in der Konturbreite');
 });
 
-test('Bilder werden nie vergroessert, das iPad zeigt die ganze Szene', () => {
+test('Bilder werden nie vergroessert, das iPad (und "zuzweit") zeigt die ganze Szene', () => {
   const code = ohneKommentar(WERKZEUG);
   assert.match(code, /kartenBreite = Math\.min\(kartenBreite, Math\.floor\(\(x1 - x0\) \* bw\) \+ 2 \* rand\)/);
-  assert.match(code, /if \(pad\) kartenBreite = Math\.min\(kartenBreite, Math\.floor\(\(H - mindestKopf - rand\) \/ verhaeltnis\)/);
+  assert.match(code, /if \(pad \|\| ganz\) kartenBreite = Math\.min\(kartenBreite, Math\.floor\(\(H - mindestKopf - rand\) \/ verhaeltnis\)/);
 });
 
 test('Das Gefechtsbild zaehlt keine Baender als Einschlag', () => {

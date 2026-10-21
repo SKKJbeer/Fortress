@@ -9719,3 +9719,44 @@ Neuer gesperrter Prüfhaken `window.__geist(p)`.
 App-Wechsel (Unterbrechung „interrupted") — die Behebung folgt der bekannten
 Ursache, ist aber nur in Attrappen und Chromium geprüft. Ergebnisbild und
 Canvas-Schrift (schwebende Zahlen) stehen für P1 weiter auf dem Kopf.
+
+## v3.132.0 — Nachtrag 21.10.2026: Store-Texte für die Suche, Plakate neu geordnet
+
+Reine Store-/Werkzeug-Änderung, keine neue Spielversion. Wirkt erst mit Fassung 1.0.2
+(1.0.1 ist bei Apple in Prüfung und gesperrt, 1.0 im Verkauf).
+
+**Gemessen** gegen Apples Suche (`itunes.apple.com/search`, DE und US, Top 200; Suchmengen
+veröffentlicht Apple nicht): „festung bauen offline" Platz 1, „stack siege" 2, „festung bauen" 9,
+„kanonen strategie" 24, „belagerung" 35, „festung" 63. NICHT in den Top 200: „2 spieler",
+„zu zweit", „offline spiele", „spiele ohne internet", „lokaler multiplayer", „strategie ohne
+internet" (150–190 Treffer, besetzt von Apps mit dem Wort im Namen). In den USA stand die App bei
+keinem der 25 Begriffe. Schmale Begriffe mit wenig Konkurrenz: „strategie zu zweit" (33
+Treffer), „zu dritt" (4), „gegeneinander" (15), „gleiches gerät" (6), „festung verteidigen" (29).
+
+**Befund:** Das Alleinstellungsmerkmal — zwei oder drei Spieler an EINEM Gerät, ohne Internet —
+stand im Untertitel und im Werbetext gar nicht, in der Beschreibung im fünften Absatz, auf den
+Plakaten nur auf Platz 3 und dort ohne „ohne Internet". Im Schlagwortfeld standen Wörter ohne
+Treffer (`steine`, `bot`, `taktik`, `burgen`, `2,spieler`).
+
+**Geändert:** Untertitel DE „Strategie zu zweit, offline" / EN „2-3 players, one device";
+Werbetext DE/EN mit dem Merkmal vorn; Beschreibung beginnt damit (der Satz über das
+Gegenübersitzen gilt erst ab v3.132.0, also ab Fassung 1.0.2); Schlagwörter neu (DE
+`festung,bauen,burg,belagerung,kanone,dritt,gegeneinander,lokal,mehrspieler,mittelalter,ohne,internet`,
+`festung`+`bauen` wandern aus dem alten Untertitel ins Schlagwortfeld, damit „festung bauen"
+erhalten bleibt). Entwürfe der Neuigkeiten für 1.0.2 stehen als Zitat in `store/listing.md` und
+`listing-en.md` (kein Codeblock: `tests/fassung.test.js` bindet den Block an `MARKETING_VERSION`).
+
+**Plakate:** acht statt sieben je Größe und Sprache, neue Reihenfolge `1-aktion, 2-zuzweit,
+3-drei, 4-zieler, 5-bauen, 6-ruesten, 7-helden, 8-welten`. Neue Szene `zuzweit` (Rüstphase zu
+zweit, beide Shops zugleich, der obere gedreht; `ganz: true` zeigt auch auf dem Telefon die
+ganze Szene), `drei` mit neuer Unterzeile. Das Werkzeug nummeriert jetzt nach Platz in `SZENEN`
+(nicht nach Anzahl der gerenderten) und kennt `NUR` auch bei `plakate` — einzelne Plakate lassen
+sich neu rendern, ohne alle Aufnahmen zu wiederholen. `asc-store.py` (`PLAKATE`) und
+`tests/store.test.js` kennen acht Namen.
+
+**Offen / Reihenfolge für 1.0.2** (unverändert, `LAUNCH-TODO.md`): 1.0.1 nach Freigabe
+veröffentlichen → `MARKETING_VERSION` 1.0.2 → Neuigkeiten einsetzen → Bau in TestFlight `VALID` →
+`fuellen` → `sprachen` → `store-bilder-probe`/`store-bilder` → `einreichen`. Der **Werbetext**
+darf Apple jederzeit ohne neue Fassung geändert werden (der neue Wortlaut stimmt auch für 1.0).
+Ob die Änderungen Downloads bringen, zeigen erst die Zahlen aus App Store Connect.
+
