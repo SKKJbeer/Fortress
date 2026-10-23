@@ -9785,3 +9785,16 @@ setzt und `ios.yml` einen Bau mit der neuen `MARKETING_VERSION` 1.0.2 nach TestF
   Texte und acht Plakate. Weg: Bau in TestFlight `VALID` → `fuellen` → `sprachen` → `store` →
   `store-bilder-probe` → `store-bilder` → `einreichen-probe` → `einreichen`, jeweils mit
   `fassung=1.0.2`.
+
+**Nachtrag 23.10.2026, 22:00 UTC: 1.0.2 eingereicht.** `fuellen` → `sprachen` → `store` →
+`store-bilder` (48 Plakate: 8 je Größe, Sprache de/en-US/en-GB) → `einreichen-probe` →
+`einreichen`, alles mit `fassung=1.0.2`. Zustand `WAITING_FOR_REVIEW`, Veröffentlichung von Hand.
+Unterwegs gefunden und behoben: (1) Die Store-Skripte nahmen den ERSTEN `appInfo` — neben der
+verkauften Fassung ist das der verkaufte, gesperrte (HTTP 409 „can not be modified in the
+current state", bei 1.0.1 die Kategorie, bei 1.0.2 der Untertitel); `bearbeitbare_info()`
+in `scripts/asc.py` wählt den bearbeitbaren, `tests/fassung.test.js` hält es fest. (2) Der
+deutsche Name wurde gar nicht geschrieben (nur Untertitel und Datenschutz-Adresse); `namen()`
+trägt ihn jetzt mit ein. (3) Der erste iOS-Bau von v3.132.1 scheiterte an der Simulator-Probe
+(„Weboberfläche hat sich nicht gemeldet" — der Runner brauchte 3 Minuten für Installieren und
+Starten); derselbe Code hatte die Probe als v3.132.0 bestanden, der zweite Lauf war grün.
+

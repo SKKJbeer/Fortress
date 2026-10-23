@@ -264,13 +264,19 @@ nur, was fehlt.
       Die Kategorie liess sich fuer 1.0.1 nicht erneut setzen (HTTP 409 — der
       veroeffentlichte Eintrag ist gesperrt); sie steht von 1.0 her, die Probe
       vor dem Einreichen hat nichts bemaengelt.
-- [ ] **1.0.1 nach Apples Freigabe veroeffentlichen** — `freigeben-probe`, dann
+- [x] **1.0.1 veroeffentlicht am 23.10.2026** (Apple hatte freigegeben, `freigeben` mit FREIGEBEN → `READY_FOR_SALE`). Alt: **1.0.1 nach Apples Freigabe veroeffentlichen** — `freigeben-probe`, dann
       `freigeben` (FREIGEBEN), jeweils mit `fassung=1.0.1`.
 - [x] **Neue Store-Bilder (Plakate) fertig** — 20.10., `tools/make-store-bilder.cjs`,
       sieben je Groesse in DE und EN, im Repo (`store/ios-6.7[-en]`,
       `store/ipad-12.9[-en]`). Apple sperrt Bilder waehrend der Pruefung und im
       Verkauf — sie erscheinen erst mit der naechsten Fassung.
-- [ ] **1.0.2 nur mit den neuen Bildern** (Entscheidung des Betreibers 20.10.:
+- [x] **1.0.2 eingereicht am 23.10.2026, 22:00 UTC** (Bau 50 = v3.132.1; neuer Name „Stack & Siege –
+      Burgen", Untertitel „Strategie zu zweit, offline", neue Schlagwoerter, acht Plakate je
+      Groesse und Sprache, Gegenueber-Modus, Ton-Fix). Zustand: `WAITING_FOR_REVIEW`,
+      Veroeffentlichung von Hand (`freigeben-probe`, dann `freigeben` mit FREIGEBEN und
+      `fassung=1.0.2`). Dabei fiel auf: die Skripte nahmen den ERSTEN appInfo (den verkauften,
+      gesperrten) — `bearbeitbare_info()` in `asc.py` waehlt jetzt den bearbeitbaren.
+      Alt: **1.0.2 nur mit den neuen Bildern** (Entscheidung des Betreibers 20.10.:
       1.0.1 durchlassen, danach 1.0.2). Reihenfolge: 1.0.1 veroeffentlichen →
       `MARKETING_VERSION` 1.0.2 + Spielversion heben (loest den App-Bau aus) +
       Block „Neuigkeiten" fuer 1.0.2 in `listing.md`/`listing-en.md` → Bau 1.0.2
