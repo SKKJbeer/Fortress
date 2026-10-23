@@ -323,11 +323,12 @@ def namen(apple: Apple, app: str, texte: dict, fuellen: bool):
     if not ort:
         offen.append(f"Deutsche App-Angaben nicht gefunden ({stand})")
         return
-    soll = {"subtitle": texte.get("Untertitel"),
+    soll = {"name": texte.get("Name"),   # seit 23.10.2026: auch der Name (gekuerzt mit 1.0.2)
+            "subtitle": texte.get("Untertitel"),
             "privacyPolicyUrl": "https://skkjbeer.github.io/Fortress/privacy.html"}
     fehlt = {k: v for k, v in soll.items() if v and feld(ort, k) != v}
     if not fehlt:
-        erledigt.append("Untertitel und Datenschutz-Adresse stehen")
+        erledigt.append("Name, Untertitel und Datenschutz-Adresse stehen")
         return
     if not fuellen:
         offen.append(f"Einzutragen: {', '.join(fehlt)} — mit --fuellen")
@@ -335,8 +336,8 @@ def namen(apple: Apple, app: str, texte: dict, fuellen: bool):
     stand, antwort = apple.aendern(f"v1/appInfoLocalizations/{ort['id']}", {"data": {
         "type": "appInfoLocalizations", "id": ort["id"], "attributes": fehlt}})
     (erledigt if stand == 200 else offen).append(
-        f"Untertitel/Datenschutz-Adresse eingetragen" if stand == 200
-        else f"Untertitel nicht eintragbar ({stand}): {kurz(antwort)}")
+        f"Name/Untertitel/Datenschutz-Adresse eingetragen ({', '.join(fehlt)})" if stand == 200
+        else f"Name/Untertitel nicht eintragbar ({stand}): {kurz(antwort)}")
 
 
 def texte_der_fassung(apple: Apple, version: str, texte: dict, fuellen: bool):

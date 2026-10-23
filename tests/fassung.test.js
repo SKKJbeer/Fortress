@@ -65,6 +65,8 @@ test('appInfo: Untertitel, Sprachen und Kategorie gehen an den BEARBEITBAREN Dat
   assert.match(asc, /INFO_GESPERRT = \{[^}]*"READY_FOR_SALE"[^}]*"IN_REVIEW"[^}]*\}/);
   const namen = asc.slice(asc.indexOf('def namen('), asc.indexOf('def texte_der_fassung('));
   assert.match(namen, /bearbeitbare_info\(/);
+  // Der deutsche NAME gehoert in dieselbe Eintragung (23.10.2026: sonst blieb „Burgenduell" stehen).
+  assert.match(namen, /"name": texte\.get\("Name"\)/);
   assert.doesNotMatch(namen, /erste\(apple, f"v1\/apps\/\{app\}\/appInfos"/, 'erster appInfo = verkaufter');
   const spr = lies('scripts', 'asc-sprachen.py');
   assert.match(spr, /bearbeitbare_info\(a_info\.json\(\)/);
