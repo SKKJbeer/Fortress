@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.0)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9770,3 +9770,18 @@ kommen erst mit 1.0.2. Wer die App schon installiert hat („Öffnen"), sieht in
 vermutlich die kompakte Zeile ohne Bilder; das ist nicht belegt und gehört auf einem Gerät
 ohne die App geprüft.
 
+
+## v3.132.1 — App-Fassung 1.0.2 vorbereitet (23.10.2026)
+
+Keine Spieländerung: die Version wird gehoben, damit `deploy.yml` einen neuen Versions-Tag
+setzt und `ios.yml` einen Bau mit der neuen `MARKETING_VERSION` 1.0.2 nach TestFlight bringt.
+
+- **1.0.1 ist im Verkauf.** Apple hatte sie freigegeben (`PENDING_DEVELOPER_RELEASE`, Bau 48 =
+  v3.131.2); `freigeben` mit FREIGEBEN am 23.10. stellte sie auf `READY_FOR_SALE`. Sie enthält die
+  scharfe Schrift und den Zieler mit Kontur — NICHT den Gegenüber-Modus und den Ton-Fix aus
+  v3.132.0.
+- **1.0.2** (diese Fassung): `MARKETING_VERSION` 1.0.2, Neuigkeiten in `store/listing.md` und
+  `listing-en.md` (Gegenüber-Modus, Ton-Fix, neue Bildschirmfotos), neuer kürzerer Name, neue
+  Texte und acht Plakate. Weg: Bau in TestFlight `VALID` → `fuellen` → `sprachen` → `store` →
+  `store-bilder-probe` → `store-bilder` → `einreichen-probe` → `einreichen`, jeweils mit
+  `fassung=1.0.2`.

@@ -122,27 +122,16 @@ Frühere Überarbeitung am 07.10.2026 (`tests/store.test.js` hält die Regeln fe
   greift „2 spieler" UND „spieler" einzeln.
 Der Spielname gehört **nicht** hinein — Apple durchsucht ihn ohnehin.
 
-### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.1)
+### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.2)
 ```
-Besser zu sehen, auf jedem Gerät:
-• Schrift ist auf allen Hintergründen scharf und klar lesbar.
-• Der Zieler hat eine dunkle Kontur und ist auf allen sieben Welten gut sichtbar – auch auf Schnee, Sand und Herbstlaub.
-• Zu dritt an einem Gerät überdecken sich die Rüst-Shops nicht mehr.
-• Kleinere Korrekturen an Anzeigen, die auf kleinen Telefonen über ihren Rand ragten.
+Neu: Zu zweit am selben Gerät sitzt ihr euch jetzt gegenüber. Jeder Spieler hat Shop, Bauteil-Vorschau und Anzeigen an seiner Kante, richtig herum – und das Bauteil hebt sich von seinem Finger weg.
+• Der Ton bleibt nach dem Minimieren nicht mehr hängen und läuft nicht doppelt.
+• Neue Bildschirmfotos im App Store.
 ```
 Wird von `asc.py` nur bei Updates eingetragen (`ist_update()`); bei der ersten
 Fassung lehnt Apple das Feld ab. Für jede neue Fassung neu schreiben.
 
-**Entwurf für Fassung 1.0.2** (bewusst KEIN Codeblock: `tests/fassung.test.js` verlangt, dass
-der Block oben zur `MARKETING_VERSION` passt. Beim Heben auf 1.0.2 die Überschrift oben auf
-1.0.2 stellen und diesen Text einsetzen):
-
-> Neu: Zu zweit am selben Gerät sitzt ihr euch jetzt gegenüber. Jeder Spieler hat Shop,
-> Bauteil-Vorschau und Anzeigen an seiner Kante, richtig herum — und das Bauteil hebt sich
-> von seinem Finger weg. Dazu:
-> • Der Ton bleibt nach dem Minimieren nicht mehr hängen und läuft nicht doppelt.
-> • Kleine Schrift ist schärfer und besser lesbar.
-> • Neue Bildschirmfotos im App Store.
+Der Block oben gehört zu Fassung 1.0.2 (`MARKETING_VERSION`). Für die nächste Fassung neu schreiben.
 
 Hinweis zu 1.0.2: Der neue Einstiegssatz der Beschreibung („Ihr sitzt euch gegenüber …")
 stimmt erst, wenn 1.0.2 mit v3.132.0 oder später ausgeliefert wird. Bis dahin NICHT mit

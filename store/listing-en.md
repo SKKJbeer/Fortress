@@ -77,25 +77,14 @@ one, device) — Apple searches those anyway. No trademarks. Dropped on 21.10.20
 `2`, `player`, `bot`, `blocks` ("2 player" is now covered by the subtitle's "players",
 and none of them ranked); added `versus`, `couch`, `party` for the local-play audience.
 
-### Neuigkeiten (What's New, max. 4000 — version 1.0.1)
+### Neuigkeiten (What's New, max. 4000 — version 1.0.2)
 ```
-Easier to see, on every device:
-• Text is sharp and clearly readable on every background.
-• The aim line and crosshair now have a dark outline and stand out on all seven worlds – even on snow, sand and autumn leaves.
-• With three players on one device, the armory shops no longer overlap.
-• Smaller fixes for labels that spilled over their edges on small phones.
+New: with two players on one device you now sit face to face. Each player gets the shop, piece preview and displays on their own edge, the right way up – and the piece lifts away from their own finger.
+• Sound no longer gets stuck or doubles after minimising the app.
+• New screenshots in the App Store.
 ```
 
-**Draft for version 1.0.2** (deliberately NOT a fenced block: `tests/fassung.test.js` ties the
-block above to `MARKETING_VERSION`. When bumping to 1.0.2, set the heading above to 1.0.2 and
-use this text):
-
-> New: with two players on one device you now sit face to face. Each player gets the shop,
-> piece preview and displays on their own edge, the right way up — and the piece lifts away
-> from their own finger. Also:
-> • Sound no longer gets stuck or doubles after minimising the app.
-> • Small text is sharper and easier to read.
-> • New screenshots in the App Store.
+The block above belongs to version 1.0.2 (`MARKETING_VERSION`). Rewrite it for the next version.
 
 Note for 1.0.2: the new opening sentence of the description ("You sit face to face …") is
 only true once 1.0.2 ships with v3.132.0 or later.
