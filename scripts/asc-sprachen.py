@@ -24,7 +24,7 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from asc import Apple, BUNDLE, FASSUNG, WURZEL, erste, feld, ist_update, kurz  # noqa: E402
+from asc import Apple, BUNDLE, FASSUNG, WURZEL, bearbeitbare_info, erste, feld, ist_update, kurz  # noqa: E402
 
 sag = print
 SPRACHEN = ["en-US", "en-GB"]
@@ -76,7 +76,8 @@ def main() -> int:
     stand, app = erste(apple, "v1/apps", **{"filter[bundleId]": BUNDLE})
     if not app:
         sag(f"Kein App-Eintrag (HTTP {stand})"); return 1
-    stand, info = erste(apple, f"v1/apps/{app['id']}/appInfos", limit=10)
+    s_info, a_info = apple.holen(f"v1/apps/{app['id']}/appInfos", limit=10)
+    info = bearbeitbare_info(a_info.json().get("data") or []) if s_info == 200 else None
     stand, fass = erste(apple, f"v1/apps/{app['id']}/appStoreVersions",
                         **{"filter[versionString]": FASSUNG})
     if not info or not fass:

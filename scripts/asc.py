@@ -255,6 +255,30 @@ def app_eintrag(apple: Apple):
     return treffer[0]["id"]
 
 
+# Zustaende, in denen ein appInfo-Datensatz GESPERRT ist (verkauft, in Pruefung, abgeloest).
+INFO_GESPERRT = {"READY_FOR_SALE", "READY_FOR_DISTRIBUTION", "REPLACED_WITH_NEW_INFO", "ACCEPTED",
+                 "PENDING_DEVELOPER_RELEASE", "PENDING_APPLE_RELEASE", "IN_REVIEW",
+                 "WAITING_FOR_REVIEW", "PROCESSING_FOR_APP_STORE"}
+
+
+def bearbeitbare_info(daten: list):
+    """Der appInfo-Datensatz, den man ANFASSEN darf.
+
+    Sobald neben der verkauften Fassung eine zweite angelegt ist (1.0.2 neben 1.0.1),
+    liefert Apple ZWEI appInfos. Der erste Eintrag ist die verkaufte und gesperrt: jede
+    Aenderung an Untertitel oder Kategorie scheitert dort mit HTTP 409 „can not be
+    modified in the current state" — bei 1.0.1 die Kategorie, bei 1.0.2 der Untertitel.
+    Gibt Apple keinen Zustand an, bleibt es beim ersten Eintrag (das alte Verhalten).
+    """
+    if not daten:
+        return None
+    for eintrag in daten:
+        a = eintrag.get("attributes") or {}
+        if (a.get("appStoreState") or a.get("state") or "") not in INFO_GESPERRT:
+            return eintrag
+    return daten[0]
+
+
 def fassung(apple: Apple, app: str, fuellen: bool):
     """Die Fassung FASSUNG — notfalls angelegt.
 
@@ -289,7 +313,8 @@ def fassung(apple: Apple, app: str, fuellen: bool):
 def namen(apple: Apple, app: str, texte: dict, fuellen: bool):
     """Name, Untertitel und Datenschutz-Adresse — sie haengen an der App, nicht
     an der Fassung, und ueberdauern deshalb jede Version."""
-    stand, info = erste(apple, f"v1/apps/{app}/appInfos", **{"limit": 10})
+    stand, antwort = apple.holen(f"v1/apps/{app}/appInfos", **{"limit": 10})
+    info = bearbeitbare_info(antwort.json().get("data") or []) if stand == 200 else None
     if not info:
         offen.append(f"App-Angaben nicht lesbar ({stand})")
         return

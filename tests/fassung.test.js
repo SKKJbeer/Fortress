@@ -53,3 +53,24 @@ test('Neuigkeiten: nur bei Updates, DE und EN, passend zur App-Version', () => {
   }
   assert.notEqual(version, '1.0', 'die erste Fassung ist bei Apple — Bauten fuers Update brauchen eine hoehere Nummer');
 });
+
+// appInfo-Auswahl (23.10.2026): Neben der verkauften Fassung (1.0.1) liefert Apple fuer 1.0.2
+// ZWEI appInfos. Die Skripte nahmen blind den ERSTEN — den verkauften, gesperrten —, und
+// Untertitel (1.0.2) bzw. Kategorie (1.0.1) scheiterten mit HTTP 409 „can not be modified in
+// the current state". Gegenprobe: die alte Zeile `erste(... appInfos ...)` bzw. `[0]` bringt
+// diese Pruefung zum Rot.
+test('appInfo: Untertitel, Sprachen und Kategorie gehen an den BEARBEITBAREN Datensatz', () => {
+  const asc = lies('scripts', 'asc.py');
+  assert.match(asc, /def bearbeitbare_info\(daten: list\):/);
+  assert.match(asc, /INFO_GESPERRT = \{[^}]*"READY_FOR_SALE"[^}]*"IN_REVIEW"[^}]*\}/);
+  const namen = asc.slice(asc.indexOf('def namen('), asc.indexOf('def texte_der_fassung('));
+  assert.match(namen, /bearbeitbare_info\(/);
+  assert.doesNotMatch(namen, /erste\(apple, f"v1\/apps\/\{app\}\/appInfos"/, 'erster appInfo = verkaufter');
+  const spr = lies('scripts', 'asc-sprachen.py');
+  assert.match(spr, /bearbeitbare_info\(a_info\.json\(\)/);
+  assert.doesNotMatch(spr, /erste\(apple, f"v1\/apps\/\{app\['id'\]\}\/appInfos"/);
+  const store = lies('scripts', 'asc-store.py');
+  assert.match(store, /ziel = bearbeitbare_info\(daten\)\["id"\]/);
+  assert.doesNotMatch(store, /ziel = daten\[0\]\["id"\]/);
+  assert.match(store, /info = bearbeitbare_info\(antwort\.json\(\)\.get\("data"\) or \[\]\)/);
+});

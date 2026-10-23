@@ -32,7 +32,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from asc import Apple, BASIS, BUNDLE, FASSUNG, SPRACHE, WURZEL, erste, feld, kurz  # noqa: E402
+from asc import Apple, BASIS, BUNDLE, FASSUNG, SPRACHE, WURZEL, bearbeitbare_info, erste, feld, kurz  # noqa: E402
 
 import requests  # noqa: E402
 
@@ -134,7 +134,7 @@ def kategorien(apple: Apple, app_id: str, trocken: bool):
         hat = ((bez.get("primaryCategory") or {}).get("data") or {}).get("id")
         if hat == HAUPT:
             sag(f"  ✓ Kategorie steht bereits: {hat}"); return
-    ziel = daten[0]["id"]
+    ziel = bearbeitbare_info(daten)["id"]   # nicht der verkaufte (gesperrt, 409)
     if trocken:
         sag(f"  → wuerde setzen: {HAUPT} / {UNTER_EINS} / {UNTER_ZWEI}"); return
     koerper = {"data": {"type": "appInfos", "id": ziel, "relationships": {
@@ -151,7 +151,7 @@ def altersfreigabe(apple: Apple, app_id: str, trocken: bool):
     stand, antwort = apple.holen(f"v1/apps/{app_id}/appInfos")
     if stand != 200:
         sag(f"  ! Altersfreigabe: appInfos nicht lesbar (HTTP {stand})"); return
-    info = (antwort.json().get("data") or [None])[0]
+    info = bearbeitbare_info(antwort.json().get("data") or [])
     if not info:
         sag("  ! Altersfreigabe: kein appInfo-Datensatz"); return
     stand, erkl = erste(apple, f"v1/appInfos/{info['id']}/ageRatingDeclaration")
