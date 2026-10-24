@@ -9807,3 +9807,9 @@ der Eingabe `AUTOMATISCH` (`scripts/asc-freigeben.py --automatisch`). Das Einrei
 nur in Zuständen vor der Freigabe, nie ohne Verfügbarkeit in mindestens einem Gebiet). Für 1.0.2
 am 24.10. gesetzt.
 
+**24.10.2026, 04:55 UTC: 1.0.2 veröffentlicht.** Apple hatte die Fassung über Nacht freigegeben
+(`PENDING_DEVELOPER_RELEASE`, Prüfdauer unter 7 Stunden); `freigeben` mit FREIGEBEN stellte sie
+auf `READY_FOR_SALE` (Bau 50 = v3.132.1, 175 Gebiete). Der Schritt `freigabe-automatisch` kam
+damit zu spät für 1.0.2 (Zustand schon freigegeben, er meldet „Nichts umzustellen"); für die
+nächste Fassung gilt: gleich nach dem Einreichen `freigabe-automatisch` mit AUTOMATISCH laufen lassen.
+

@@ -270,6 +270,7 @@ nur, was fehlt.
       sieben je Groesse in DE und EN, im Repo (`store/ios-6.7[-en]`,
       `store/ipad-12.9[-en]`). Apple sperrt Bilder waehrend der Pruefung und im
       Verkauf — sie erscheinen erst mit der naechsten Fassung.
+- [x] **1.0.2 VERÖFFENTLICHT am 24.10.2026, 04:55 UTC** (Apple gab sie in unter 7 Stunden frei).
 - [x] **1.0.2 eingereicht am 23.10.2026, 22:00 UTC** (Bau 50 = v3.132.1; neuer Name „Stack & Siege –
       Burgen", Untertitel „Strategie zu zweit, offline", neue Schlagwoerter, acht Plakate je
       Groesse und Sprache, Gegenueber-Modus, Ton-Fix). Zustand: `WAITING_FOR_REVIEW`,
