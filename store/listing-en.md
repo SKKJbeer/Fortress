@@ -77,14 +77,14 @@ one, device) — Apple searches those anyway. No trademarks. Dropped on 21.10.20
 `2`, `player`, `bot`, `blocks` ("2 player" is now covered by the subtitle's "players",
 and none of them ranked); added `versus`, `couch`, `party` for the local-play audience.
 
-### Neuigkeiten (What's New, max. 4000 — version 1.0.2)
+### Neuigkeiten (What's New, max. 4000 — version 1.0.3)
 ```
-New: with two players on one device you now sit face to face. Each player gets the shop, piece preview and displays on their own edge, the right way up – and the piece lifts away from their own finger.
-• Sound no longer gets stuck or doubles after minimising the app.
-• New screenshots in the App Store.
+Cleaner on every iPhone:
+• The forge, gold shop, leaderboard and profile now stay inside the safe area – nothing slips under the status bar or the home indicator any more, and the page arrows no longer sit on top of "Got it".
+• The main menu fits the screen again on iPhones with a Dynamic Island.
 ```
 
-The block above belongs to version 1.0.2 (`MARKETING_VERSION`). Rewrite it for the next version.
+The block above belongs to version 1.0.3 (`MARKETING_VERSION`). Rewrite it for the next version.
 
 Note for 1.0.2: the new opening sentence of the description ("You sit face to face …") is
 only true once 1.0.2 ships with v3.132.0 or later.

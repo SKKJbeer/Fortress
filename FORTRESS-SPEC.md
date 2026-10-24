@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.1)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9812,4 +9812,34 @@ am 24.10. gesetzt.
 auf `READY_FOR_SALE` (Bau 50 = v3.132.1, 175 Gebiete). Der Schritt `freigabe-automatisch` kam
 damit zu spät für 1.0.2 (Zustand schon freigegeben, er meldet „Nichts umzustellen"); für die
 nächste Fassung gilt: gleich nach dem Einreichen `freigabe-automatisch` mit AUTOMATISCH laufen lassen.
+
+## v3.132.2 — Fenster innerhalb der Sicherheitsbereiche, Hauptmenü passt (24.10.2026)
+
+Anlass: Foto der Schmiede auf einem iPhone — unten lag die Seitensteuerung (Pfeile, Punkte) auf dem
+Knopf „Verstanden", und das Fenster reichte bis an beide Bildschirmränder.
+
+**Gemessen** (Chromium, 393×852, Sicherheitsbereiche 59/34 wie auf dem iPhone): Schmiede
+y=35–842 von 852, Bestenliste 42–810 — beide ragten unter Statusleiste und/oder Home-Anzeige; die
+Seitensteuerung lag 2 px über „Verstanden", ihr Schatten (4 px) darauf. Das Hauptmenü rollte
+(794 > 759): die Zoomstufen in `index.html` kannten die Sicherheitsbereiche nicht.
+
+**Ursachen:** (1) `maxHeight: calc(100dvh - 32px)` an vier Fenstern (Profil, Bestenliste, Gold-Shop,
+Schmiede) zog das Panel auf die volle Bildschirmhöhe. (2) Die Zeilenzahl je Seite war eine
+Schätzung (`zeilenFuer(Fensterhöhe − 340, 80)`); Schrift, Zeilenumbrüche und die Kosten-Chips
+(brechen auf dem iPhone in eine zweite Zeile um) machten die Zeilen höher als geschätzt. (3) Die
+Seitensteuerung hatte 2 px Abstand zum folgenden Knopf.
+
+**Behoben:** `fensterRand()` in `src/ui/stil.js` (Polsterung des Schleiers inkl. Sicherheitsbereiche)
+und `maxHeight: "100%"` an den vier Panels; `Seiten` (`src/ui/blaettern.js`) **misst**: läuft das
+umgebende Fenster (nächster Vorfahr mit overflow hidden) über, zeigt es eine Zeile weniger je Seite,
+bis nichts mehr beschnitten wird (gilt für alle Fenster mit Seiten, auch die Erfolge);
+Seitensteuerung mit `marginBottom: 8`; Zoomstufe .95 im Hauptmenü bis 880 px Höhe (vorher 830).
+
+**Prüfungen:** `suiteKeinRollen` läuft jetzt auch auf 393×852 und fährt auf 390×844 und 393×852
+mit Sicherheitsbereichen (59/34); sie prüft je Fenster mit Seiten: Inhalt nicht beschnitten, Fenster
+innerhalb der Sicherheitsbereiche, mindestens 6 px zwischen Seitensteuerung und folgendem Element.
+Gegenprobe ohne die Korrekturen: rot (Schmiede 35–842, Bestenliste 42–810, Menü rollt).
+`tests/stil.test.js` hält die Bausteine statisch fest.
+
+**App:** `MARKETING_VERSION` 1.0.3, Neuigkeiten dazu in `store/listing.md` / `listing-en.md`.
 

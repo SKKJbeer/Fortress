@@ -122,16 +122,16 @@ Frühere Überarbeitung am 07.10.2026 (`tests/store.test.js` hält die Regeln fe
   greift „2 spieler" UND „spieler" einzeln.
 Der Spielname gehört **nicht** hinein — Apple durchsucht ihn ohnehin.
 
-### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.2)
+### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.3)
 ```
-Neu: Zu zweit am selben Gerät sitzt ihr euch jetzt gegenüber. Jeder Spieler hat Shop, Bauteil-Vorschau und Anzeigen an seiner Kante, richtig herum – und das Bauteil hebt sich von seinem Finger weg.
-• Der Ton bleibt nach dem Minimieren nicht mehr hängen und läuft nicht doppelt.
-• Neue Bildschirmfotos im App Store.
+Sauberer auf jedem iPhone:
+• Schmiede, Gold-Shop, Bestenliste und Profil bleiben innerhalb des sicheren Bereichs – nichts ragt mehr unter die Statusleiste oder die Home-Anzeige, und die Seitenpfeile liegen nicht mehr auf „Verstanden".
+• Das Hauptmenü passt auf iPhones mit Dynamic Island wieder ganz auf den Bildschirm.
 ```
 Wird von `asc.py` nur bei Updates eingetragen (`ist_update()`); bei der ersten
 Fassung lehnt Apple das Feld ab. Für jede neue Fassung neu schreiben.
 
-Der Block oben gehört zu Fassung 1.0.2 (`MARKETING_VERSION`). Für die nächste Fassung neu schreiben.
+Der Block oben gehört zu Fassung 1.0.3 (`MARKETING_VERSION`). Für die nächste Fassung neu schreiben.
 
 Hinweis zu 1.0.2: Der neue Einstiegssatz der Beschreibung („Ihr sitzt euch gegenüber …")
 stimmt erst, wenn 1.0.2 mit v3.132.0 oder später ausgeliefert wird. Bis dahin NICHT mit

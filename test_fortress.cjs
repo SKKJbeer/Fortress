@@ -6324,7 +6324,30 @@ async function suiteKeinRollen(browser) {
       }
       if (weg) raus.push((b.textContent || b.title || b.getAttribute('aria-label') || '?').trim().slice(0, 24));
     }
-    return { roll, raus };
+    // Fenster mit Seiten (24.10.2026): Auf dem iPhone ragte die Schmiede unter Statusleiste und
+    // Home-Anzeige, und die Seitensteuerung lag auf „Verstanden". Geprueft, WENN Sicherheits-
+    // bereiche gesetzt sind (--sa-top/--sa-bottom): Fenster innerhalb, Inhalt nicht beschnitten,
+    // und zwischen Seitensteuerung und dem naechsten Element mindestens 6 px (die Pfeile werfen
+    // 4 px Schatten nach unten).
+    const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sa-top')) || 0;
+    const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sa-bottom')) || 0;
+    const fenster = [];
+    for (const wz of document.querySelectorAll('[data-seiten]')) {
+      let p = wz.parentElement;
+      while (p && p !== document.body && !/(hidden|clip)/.test(getComputedStyle(p).overflowY)) p = p.parentElement;
+      if (!p || p === document.body) continue;
+      const q = p.getBoundingClientRect();
+      const name = (p.textContent || '').trim().slice(0, 14);
+      if (p.scrollHeight > p.clientHeight + 1) fenster.push(name + ': Inhalt beschnitten (' + p.scrollHeight + ' > ' + p.clientHeight + ')');
+      if (q.top < sat - 0.5 || q.bottom > innerHeight - sab + 0.5) fenster.push(name + ': Fenster ' + Math.round(q.top) + '–' + Math.round(q.bottom) + ' ragt in die Sicherheitsbereiche (' + sat + '/' + sab + ')');
+      const pf = wz.querySelector('[data-blaettern]');
+      const leiste = pf && pf.parentElement;
+      if (leiste && leiste.nextElementSibling) {
+        const abstand = leiste.nextElementSibling.getBoundingClientRect().top - leiste.getBoundingClientRect().bottom;
+        if (abstand < 6) fenster.push(name + ': Seitensteuerung ' + Math.round(abstand) + ' px vor dem naechsten Element');
+      }
+    }
+    return { roll, raus, fenster };
   });
   // Bestenliste mit 30 Eintraegen — sonst gaebe es nichts zu blaettern.
   const LB = `window.__fb.ref = (db, pfad) => ({ __pfad: String(pfad) });
@@ -6342,11 +6365,14 @@ async function suiteKeinRollen(browser) {
     ['Erfolge', (p) => p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => x.title === 'Achievements'); b && b.click(); return !!b; })],
     ['Bestenliste', ['Bestenliste', 'Leaderboard']],
   ];
-  for (const [vw, vh] of [[375, 667], [390, 844], [768, 1024]]) {
+  for (const [vw, vh] of [[375, 667], [390, 844], [393, 852], [768, 1024]]) {
     const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, hasTouch: true, serviceWorkers: 'block' });
     const page = await ctx.newPage();
     await page.addInitScript(PROFILE_INIT);
     await page.addInitScript(FB_SPERRE);
+    // Sicherheitsbereiche wie auf einem iPhone mit Dynamic Island (59/34) — nur fuer die iPhone-
+    // Breiten; der SE hat keine, das iPad nur kleine.
+    if (vw >= 390 && vw < 700) await page.addInitScript(SA_STUB);
     await page.addInitScript(LB);
     page.on('pageerror', e => { if (!/firebase/i.test(e.message)) errs.push(e.message); });
     const schlecht = [];
@@ -6366,6 +6392,7 @@ async function suiteKeinRollen(browser) {
         const m = await miss(page);
         if (m.roll.length) schlecht.push(name + ' rollt ' + m.roll.join('; '));
         if (m.raus.length) schlecht.push(name + ' abgeschnitten: ' + m.raus.join(', '));
+        if (m.fenster.length) schlecht.push(name + ' ' + m.fenster.join('; '));
       }
       schlecht.length === 0
         ? ok(`Kein Rollen ${vw}x${vh}: ${gezaehlt} Menues passen auf einen Schirm ✓`)

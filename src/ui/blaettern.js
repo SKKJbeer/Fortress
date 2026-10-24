@@ -6,7 +6,7 @@
 // Wie viel auf eine Seite passt, rechnet `useSchirm` aus der echten
 // Fensterhoehe — so passt es auf dem iPhone SE genauso wie auf dem iPad.
 import React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Icon } from "./icons.js";
 import { FARBE, SCHRIFT_TITEL, KONTURTEXT, knopf, schalter } from "./stil.js";
 
@@ -63,6 +63,15 @@ export function Reiter({ reiter, aktiv, onWahl }) {
       } }, r.badge) : null)));
 }
 
+/** Das Fenster, das den Inhalt beschneidet (overflow hidden/clip/auto), von `el` aufwaerts. */
+function beschneidendesFenster(el) {
+  for (let p = el && el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+    const o = getComputedStyle(p).overflowY;
+    if (o === "hidden" || o === "clip" || o === "auto" || o === "scroll") return p;
+  }
+  return null;
+}
+
 /**
  * Blaetterbare Seiten: zeigt EINE Seite eines Rasters; darunter Punkte und
  * Pfeile, dazu Wischen. Ohne zweite Seite keine Steuerung (nichts Ueberfluessiges).
@@ -71,8 +80,23 @@ export function Reiter({ reiter, aktiv, onWahl }) {
  *   spalten    Spalten des Rasters
  *   render     (eintrag, index) => Element
  */
-export function Seiten({ eintraege, proSeite, spalten = 1, render, luecke = 8, schluessel }) {
+export function Seiten({ eintraege, proSeite: vorschlag, spalten = 1, render, luecke = 8, schluessel }) {
   const h = React.createElement;
+  // **Passt sich dem Platz an (23.10.2026).** `vorschlag` ist eine SCHAETZUNG aus der
+  // Fensterhoehe; wie hoch Kopf, Zeilen und Knopf wirklich werden, haengt von Schrift,
+  // Zeilenumbruechen und Sicherheitsbereichen ab. Auf dem iPhone ragte die Schmiede damit
+  // ueber das Fenster, und die Seitensteuerung lag auf „Verstanden". Laeuft das Fenster
+  // ueber, zeigt Seiten eine Zeile weniger je Seite — bis nichts mehr beschnitten wird.
+  const wurzel = useRef(null);
+  const key = schluessel + "|" + vorschlag;
+  const [fit, setFit] = useState({ k: key, abzug: 0 });
+  const abzug = fit.k === key ? fit.abzug : 0;       // neuer Reiter/neue Hoehe: neu anfangen
+  const proSeite = Math.max(spalten, vorschlag - abzug * spalten);
+  useLayoutEffect(() => {
+    const fenster = beschneidendesFenster(wurzel.current);
+    if (fenster && proSeite > spalten && fenster.scrollHeight > fenster.clientHeight + 1)
+      setFit({ k: key, abzug: abzug + 1 });
+  });
   const seiten = seitenVon(eintraege, proSeite);
   const [seite, setSeite] = useState(0);
   const start = useRef(null);
@@ -87,7 +111,7 @@ export function Seiten({ eintraege, proSeite, spalten = 1, render, luecke = 8, s
     onClick: () => geh(d),
     style: knopf("blau", { width: 38, height: 34, padding: 0, borderRadius: 12, opacity: (d < 0 ? s === 0 : s === seiten.length - 1) ? 0.35 : 1 }),
   }, h(Icon, { name, size: 18 }));
-  return h("div", { "data-seiten": seiten.length, "data-seite": s },
+  return h("div", { ref: wurzel, "data-seiten": seiten.length, "data-seite": s },
     h("div", {
       onPointerDown: (e) => { start.current = e.clientX; },
       onPointerUp: (e) => {
@@ -97,7 +121,9 @@ export function Seiten({ eintraege, proSeite, spalten = 1, render, luecke = 8, s
       },
       style: { display: "grid", gridTemplateColumns: `repeat(${spalten}, minmax(0, 1fr))`, gap: luecke, touchAction: "pan-y" },
     }, seiten[s].map((e, i) => render(e, s * proSeite + i))),
-    seiten.length > 1 ? h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 10 } },
+    // marginBottom 8: Die Pfeilknoepfe werfen 4 px Schatten nach unten; folgt direkt ein Knopf
+    // („Verstanden"), lag die Steuerung auf ihm (Schmiede auf dem iPhone, 24.10.2026).
+    seiten.length > 1 ? h("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 10, marginBottom: 8 } },
       pfeil(-1, "chevronLeft"),
       h("div", { style: { display: "flex", gap: 6 } }, seiten.map((_, i) => h("button", {
         key: i, "aria-label": "Seite " + (i + 1), onClick: () => setSeite(i),

@@ -89,6 +89,17 @@ export function symbolKnopf(variante = 'blau', extra = {}) {
 }
 
 /** Dunkler Schleier hinter Dialogen. */
+/**
+ * Polsterung eines Fenster-Schleiers: Sicherheitsbereiche (Dynamic Island, Home-Anzeige)
+ * PLUS `rand`. Ein Fenster darf nie unter die Statusleiste oder die Home-Anzeige ragen —
+ * dazu gehoert `maxHeight: "100%"` am Panel (Prozent vom Inhaltskasten des Schleiers),
+ * nicht `100dvh - 32px`: das zog das Panel bis an den Bildschirmrand (gemessen auf dem
+ * iPhone 15: y=35 bis 842 von 852).
+ */
+export function fensterRand(rand = 14) {
+  return `calc(var(--sa-top,0px) + ${rand}px) calc(var(--sa-right,0px) + ${rand}px) calc(var(--sa-bottom,0px) + ${rand}px) calc(var(--sa-left,0px) + ${rand}px)`;
+}
+
 export function schleier(extra = {}) {
   return {
     position: 'fixed', inset: 0, background: 'rgba(8,16,40,0.72)',

@@ -41,7 +41,7 @@ import { drawWall, drawRubble, ROOF_OF, FLAG_OF, ACCENT_OF, ACCENT_RGB, GHOST_RG
 import { __spreadValues, __spreadProps } from '../spread.js';
 import { Reiter, Seiten, useSchirm, zeilenFuer } from '../ui/blaettern.js';
 import { ArtikelBild } from '../ui/artikel.js';
-import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, schleier, panel, karte, titel, pille, bildHintergrund, bildHintergrundDunkel, wertKachel, schalter, spielerKasten } from '../ui/stil.js';
+import { FARBE, SCHRIFT_TITEL, SCHRIFT_TEXT, KONTURTEXT, knopf, symbolKnopf, fensterRand, schleier, panel, karte, titel, pille, bildHintergrund, bildHintergrundDunkel, wertKachel, schalter, spielerKasten } from '../ui/stil.js';
 
 // Vorschau eines Kosmetik-Artikels (Shop UND Inventar, v3.123.0 zusammengelegt):
 // Kanonen zeichnen das ECHTE Modell in ein Mini-Canvas (v3.45.0), Spuren und
@@ -7340,7 +7340,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.132.1"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.132.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7443,14 +7443,14 @@ window.StackSiegeApp = function StackSiegeApp() {
     // geben, und das sieht nicht nach einem Fenster aus, sondern nach einem
     // toten Feld.
     zIndex: 1160,
-    padding: "16px",
+    padding: fensterRand(16),
     alignItems: "center",
     overflow: "hidden"
   } }, /* @__PURE__ */ React.createElement("div", { style: {
     ...panel({ padding: "14px 14px 14px" }),
     maxWidth: 400,
     width: "100%",
-    maxHeight: "calc(100dvh - 32px)",
+    maxHeight: "100%",
     overflow: "hidden",
     textAlign: "center"
   } },
@@ -7637,8 +7637,8 @@ window.StackSiegeApp = function StackSiegeApp() {
     };
     const meinIdx = leaderboard && profile ? leaderboard.findIndex((e) => e.id === profile.id) : -1;
     const proSeite = Math.max(1, lbZeilen - (meinIdx >= lbZeilen ? 1 : 0));
-    return h("div", { style: { ...schleier(), zIndex: 1100, padding: 16 } },
-      h("div", { style: { ...panel({ padding: "16px 14px 14px" }), maxWidth: 420, width: "100%", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", display: "flex", flexDirection: "column" } },
+    return h("div", { style: { ...schleier(), zIndex: 1100, padding: fensterRand(16) } },
+      h("div", { style: { ...panel({ padding: "16px 14px 14px" }), maxWidth: 420, width: "100%", maxHeight: "100%", overflow: "hidden", display: "flex", flexDirection: "column" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 } },
           h("h2", { style: { ...titel(24), margin: 0, display: "flex", alignItems: "center", gap: 8 } }, h(Icon, { name: "trophy", size: 22, color: FARBE.gold }), t('lbTitle')),
           h("button", { onClick: () => setShowLeaderboard(false), "aria-label": t("close") || "Schliessen", style: symbolKnopf("rot", { width: 38, height: 38 }) }, h(Icon, { name: "x", size: 17 }))),
@@ -7758,7 +7758,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     // Kartenhoehe ~118 px; was nicht passt, wandert auf die naechste Seite.
     const shopZeilen = zeilenFuer(Math.min(schirm.h, 900) - 330, 118);
     return h("div", { onClick: () => { setConfirmBuy(null); setShowGoldShop(false); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1450, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 18px) calc(var(--sa-right,0px) + 18px) calc(var(--sa-bottom,0px) + 18px) calc(var(--sa-left,0px) + 18px)" } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 420, width: "100%", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 420, width: "100%", maxHeight: "100%", overflow: "hidden", borderRadius: 20, padding: "18px 16px 16px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
             h(Icon, { name: "shoppingCart", size: 22, color: FARBE.gold }),
@@ -7973,7 +7973,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     const bereitIn = (cat) => RECIPES.filter((r) => r.cat === cat && !cos.owned.includes(r.id) && canCraft(r)).length;
     const schmiedeZeilen = zeilenFuer(Math.min(schirm.h, 900) - 340, 80, 7);
     return h("div", { key: "forgeModal", onClick: () => { setShowForge(false); setConfirmCraft(null); }, style: { ...schleier(), position: "fixed", inset: 0, zIndex: 1150, display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(var(--sa-top,0px) + 14px) calc(var(--sa-right,0px) + 14px) calc(var(--sa-bottom,0px) + 14px) calc(var(--sa-left,0px) + 14px)" } },
-      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 440, width: "100%", maxHeight: "calc(100dvh - 32px)", overflow: "hidden", borderRadius: 20, padding: "16px 14px 13px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left" } },
+      h("div", { onClick: (e) => e.stopPropagation(), style: { ...panel(), maxWidth: 440, width: "100%", maxHeight: "100%", overflow: "hidden", borderRadius: 20, padding: "16px 14px 13px", animation: "dailyBounceIn 0.4s cubic-bezier(.36,1.5,.56,1) both", textAlign: "left" } },
         h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
             h(Icon, { name: "hammer", size: 22, color: FARBE.gold }),

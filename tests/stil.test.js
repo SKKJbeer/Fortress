@@ -166,3 +166,18 @@ test('Endlos-Animationen skalieren nichts', () => {
     if (!OHNE_TEXT.has(n)) assert.doesNotMatch(kf[1], /scale\(/, `${n} skaliert endlos`);
   }
 });
+
+// Fenster und Seiten (24.10.2026). Auf dem iPhone ragte die Schmiede von y=35 bis 842 (Statusleiste
+// 59, Home-Anzeige 34 px) und die Seitensteuerung lag auf „Verstanden": `maxHeight: calc(100dvh - 32px)`
+// zog das Panel an den Bildschirmrand, und die Zeilenzahl war nur geschaetzt.
+test('Fenster mit Seiten: maxHeight 100% im Schleier mit Sicherheitsbereichen, Seiten passt sich an', () => {
+  const app = fs.readFileSync(new URL('../src/game/app.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(app, /calc\(100dvh - 32px\)/, 'maxHeight 100dvh-32px zieht Fenster unter Statusleiste/Home-Anzeige');
+  assert.match(app, /fensterRand\(16\)/);
+  const stil = fs.readFileSync(new URL('../src/ui/stil.js', import.meta.url), 'utf8');
+  assert.match(stil, /export function fensterRand\(rand = 14\)[\s\S]*?var\(--sa-top,0px\)[\s\S]*?var\(--sa-bottom,0px\)/);
+  const bl = fs.readFileSync(new URL('../src/ui/blaettern.js', import.meta.url), 'utf8');
+  assert.match(bl, /useLayoutEffect\(\(\) => \{[\s\S]*?scrollHeight > fenster\.clientHeight \+ 1[\s\S]*?setFit\(/, 'Seiten misst und schrumpft');
+  assert.match(bl, /marginTop: 10, marginBottom: 8/, 'Abstand der Seitensteuerung zum folgenden Knopf');
+});
+

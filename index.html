@@ -24,7 +24,7 @@
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
-  <title>Stack &amp; Siege v3.132.1</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
+  <title>Stack &amp; Siege v3.132.2</title>  <style>    /* iOS-Lupen-Fix (v3.32.1): user-select auf html/body reicht Safari
     nicht — die Text-Lupe erschien beim Ziehen über HUD-/Shop-Texte. Global
     deaktivieren + Long-Press-Callout & Tap-Highlight aus; Eingabefelder
     behalten Textauswahl (Regel darunter). */
@@ -145,7 +145,11 @@
        Ein Fenster von 1280x800 ist niedrig, aber nicht eng, und soll nicht
        schrumpfen. Wo es trotzdem nicht reicht, rollt der Kasten wie bisher —
        es geht nichts verloren, es ist nur unbequem. */
-    @media (max-width:699px) and (max-height:830px) and (min-height:701px){ .gross-spalte{zoom:.95} }
+    /* 880 statt 830 (24.10.2026): Die Stufen messen die Fensterhoehe, aber auf einem iPhone mit
+       Dynamic Island gehen davon 93 px an Statusleiste und Home-Anzeige ab (59 + 34). Ein iPhone 15
+       (393x852) fiel knapp durch: Spalte 762 + Polster 32 = 794 gegen 759 Platz, das Menue rollte
+       und die Fusszeile lag halb unter dem Rand. 880 faengt 844 (14), 852 (15) und 874 (16 Pro) ab. */
+    @media (max-width:699px) and (max-height:880px) and (min-height:701px){ .gross-spalte{zoom:.95} }
     @media (max-width:699px) and (max-height:700px) and (min-height:621px){ .gross-spalte{zoom:.84} }
     @media (max-width:699px) and (max-height:620px){ .gross-spalte{zoom:.70} }
     @keyframes glowpulse{0%,100%{opacity:0.6}50%{opacity:1}}

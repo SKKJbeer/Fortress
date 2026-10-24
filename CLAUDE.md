@@ -10,7 +10,7 @@ Spieler bauen Burgmauern aus Tetrominos und beschiessen danach gegenseitig ihre 
 
 - **Live-URL**: https://skkjbeer.github.io/Fortress/
 - **Repo**: https://github.com/SKKJbeer/Fortress
-- **Aktuelle Version**: v3.132.1
+- **Aktuelle Version**: v3.132.2
 - **Sprache**: Deutsch (UI und Kommentare)
 
 ---
@@ -564,7 +564,7 @@ nicht ohne Gebiet, Ablaeufe `verfuegbar-stand` (lesen) und `verfuegbar`
 „Neuigkeiten (… X.Y.Z)" in `store/listing.md` + `listing-en.md` neu schreiben
 (`tests/fassung.test.js` verlangt Gleichstand), dann mit `fassung=X.Y.Z`:
 fuellen → sprachen → store → einreichen-probe → einreichen. Apple haengt nur
-Bauten mit derselben Versionsnummer an. App: 1.0.2 (1.0 und 1.0.1 sind bei Apple, 1.0.1 seit 23.10. im Verkauf).
+Bauten mit derselben Versionsnummer an. App: 1.0.3 (1.0, 1.0.1 und 1.0.2 sind bei Apple; 1.0.2 seit 24.10. im Verkauf).
 
 Architektur-Entscheidungen mit Begruendung: **`ARCHITEKTUR.md`**. Kurz:
 
