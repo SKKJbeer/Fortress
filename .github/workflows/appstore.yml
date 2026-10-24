@@ -26,6 +26,7 @@ on:
           - store-bilder # liegende Bildschirmfotos durch die aus store/ ersetzen
           - freigeben-probe # nur lesen: kann die freigegebene Fassung veroeffentlicht werden?
           - freigeben  # die von Apple freigegebene Fassung VEROEFFENTLICHEN (Eingabe FREIGEBEN)
+          - freigabe-automatisch # Fassung in Pruefung: nach Apples Freigabe SOFORT live (Eingabe AUTOMATISCH)
           - neuer-bau-probe # nur lesen: kann die freigegebene Fassung fuer einen neueren Bau zurueckgewiesen werden?
           - zurueckweisen # freigegebene Fassung zurueckweisen (Eingabe ZURUECKWEISEN), um neu einzureichen
           - verfuegbar-stand # nur lesen: in welchen Laendern ist die App verfuegbar?
@@ -40,7 +41,7 @@ on:
           - einreichen-probe # Trockenlauf: stehen alle Voraussetzungen? (schreibt nichts)
           - einreichen # Fassung wirklich zur Pruefung einreichen (braucht 'bestaetigung')
       bestaetigung:
-        description: 'Nur fuer einreichen (EINREICHEN), freigeben (FREIGEBEN), zurueckweisen (ZURUECKWEISEN) bzw. verfuegbar (VERFUEGBAR)'
+        description: 'Nur fuer einreichen (EINREICHEN), freigeben (FREIGEBEN), freigabe-automatisch (AUTOMATISCH), zurueckweisen (ZURUECKWEISEN) bzw. verfuegbar (VERFUEGBAR)'
         type: string
         default: ''
       # Seit v3.131.2: an welcher Store-Fassung gearbeitet wird. Leer = 1.0.
@@ -133,6 +134,13 @@ jobs:
             store-bilder-probe) python3 scripts/asc-store.py --bilder-ersetzen --trocken ;;
             store-bilder) python3 scripts/asc-store.py --bilder-ersetzen ;;
             freigeben-probe) python3 scripts/asc-freigeben.py ;;
+            # Nach Apples Freigabe sofort veroeffentlichen: nur mit der Eingabe AUTOMATISCH, ueber die Umgebung.
+            freigabe-automatisch)
+              if [ "$BESTAETIGUNG" != "AUTOMATISCH" ]; then
+                echo "::error::Zum Umstellen die Eingabe 'bestaetigung' auf AUTOMATISCH setzen."
+                exit 1
+              fi
+              python3 scripts/asc-freigeben.py --automatisch ;;
             # Veroeffentlichen: nur mit der Eingabe FREIGEBEN, ueber die Umgebung.
             freigeben)
               if [ "$BESTAETIGUNG" != "FREIGEBEN" ]; then

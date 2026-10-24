@@ -90,3 +90,22 @@ test("Skript: Apples verbundene Fehler werden ausgegeben", () => {
   assert.equal((e.match(/for z in verbundene_fehler\(a\):/g) || []).length, 2,
     "beide Fehlerstellen (Hinzufuegen und Abschicken) muessen die Details ausgeben");
 });
+
+// Automatisch live (24.10.2026, Wunsch des Betreibers: „mache das automatisch, alles live geht").
+// Das Einreichen bleibt bei MANUAL (Test oben: AFTER_APPROVAL kommt in asc-einreichen.py NICHT vor).
+// Wer will, dass Apples Freigabe die App sofort live schaltet, stellt es danach mit einem
+// EIGENEN Schritt um — mit eigener Eingabe, getrennt vom Einreichen und vom Veroeffentlichen.
+test("Automatisch veroeffentlichen: eigener Modus, eigene Eingabe AUTOMATISCH, im Ablauf UND im Skript", () => {
+  const ablauf = readFileSync(join(WURZEL, ".github", "workflows", "appstore.yml"), "utf8");
+  assert.match(ablauf, /- freigabe-automatisch #/);
+  assert.match(ablauf, /freigabe-automatisch\)\s*\n\s*if \[ "\$BESTAETIGUNG" != "AUTOMATISCH" \]; then[\s\S]{0,200}exit 1[\s\S]{0,40}python3 scripts\/asc-freigeben\.py --automatisch ;;/);
+  const s = readFileSync(join(WURZEL, "scripts", "asc-freigeben.py"), "utf8");
+  assert.match(s, /if automatisch and os\.environ\.get\("BESTAETIGUNG"\) != "AUTOMATISCH":\s*\n[^\n]*\n\s*return 1/);
+  // nur umstellen, solange die Fassung noch nicht freigegeben ist, und nie ohne Gebiet
+  assert.match(s, /NOCH_OFFEN = \{[^}]*"WAITING_FOR_REVIEW"[^}]*\}/);
+  assert.doesNotMatch(s.match(/NOCH_OFFEN = \{[^}]*\}/)[0], /PENDING_DEVELOPER_RELEASE|READY_FOR_SALE/);
+  assert.match(s, /if not verfuegbar:\s*\n\s*sag\("\\n! Nicht umgestellt/);
+  assert.match(s, /"attributes": \{"releaseType": "AFTER_APPROVAL"\}/);
+  // das Einreichen selbst bleibt MANUAL
+  assert.doesNotMatch(readFileSync(join(WURZEL, "scripts", "asc-einreichen.py"), "utf8"), /AFTER_APPROVAL/);
+});

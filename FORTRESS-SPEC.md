@@ -9798,3 +9798,12 @@ trägt ihn jetzt mit ein. (3) Der erste iOS-Bau von v3.132.1 scheiterte an der S
 („Weboberfläche hat sich nicht gemeldet" — der Runner brauchte 3 Minuten für Installieren und
 Starten); derselbe Code hatte die Probe als v3.132.0 bestanden, der zweite Lauf war grün.
 
+**Nachtrag 24.10.2026: automatisch live.** Auf Wunsch des Betreibers („mache das automatisch, alles
+live geht") gibt es einen eigenen Schritt, der eine noch in Prüfung stehende Fassung auf
+„nach Freigabe sofort veröffentlichen" (`AFTER_APPROVAL`) stellt: Ablauf `freigabe-automatisch` mit
+der Eingabe `AUTOMATISCH` (`scripts/asc-freigeben.py --automatisch`). Das Einreichen bleibt bei
+`MANUAL` — die sichere Voreinstellung; der Test in `tests/einreichen.test.js` verbietet
+`AFTER_APPROVAL` in `asc-einreichen.py` weiterhin und prüft den neuen Weg getrennt (eigene Eingabe,
+nur in Zuständen vor der Freigabe, nie ohne Verfügbarkeit in mindestens einem Gebiet). Für 1.0.2
+am 24.10. gesetzt.
+

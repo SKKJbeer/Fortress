@@ -9,6 +9,13 @@ Schritt ist der Knopf „Diese Version veroeffentlichen" — getrennt, mit Riege
                       Verfuegbarkeit und sagt, was geschaehe. Schreibt nichts.
     --freigeben       Wirklich veroeffentlichen. Verlangt die
                       Umgebungsvariable BESTAETIGUNG=FREIGEBEN (appstore.yml).
+    --automatisch     Eine Fassung, die NOCH in Pruefung ist, auf „nach Freigabe
+                      sofort veroeffentlichen" (AFTER_APPROVAL) stellen. Verlangt
+                      BESTAETIGUNG=AUTOMATISCH. Seit 24.10.2026, auf Wunsch des
+                      Betreibers („mache das automatisch, alles live geht"):
+                      `asc-einreichen.py` reicht weiter mit MANUAL ein (die
+                      sichere Voreinstellung); wer will, dass Apples Freigabe die
+                      App sofort live schaltet, setzt es danach hiermit.
 
 **Nicht zuruecknehmbar** wie eine Einreichung: Einmal veroeffentlicht, ist die
 App oeffentlich. Zurueck geht nur „Aus dem Verkauf nehmen" in App Store
@@ -45,10 +52,19 @@ def verfuegbarkeit(apple: Apple, app_id: str) -> bool:
     return True
 
 
+# Zustaende, in denen sich die Veroeffentlichungsart noch aendern laesst.
+NOCH_OFFEN = {"PREPARE_FOR_SUBMISSION", "READY_FOR_REVIEW", "WAITING_FOR_REVIEW", "IN_REVIEW",
+              "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"}
+
+
 def main() -> int:
     wirklich = "--freigeben" in sys.argv[1:]
+    automatisch = "--automatisch" in sys.argv[1:]
     if wirklich and os.environ.get("BESTAETIGUNG") != "FREIGEBEN":
         sag("Zum Veroeffentlichen die Eingabe 'bestaetigung' auf FREIGEBEN setzen.")
+        return 1
+    if automatisch and os.environ.get("BESTAETIGUNG") != "AUTOMATISCH":
+        sag("Zum Umstellen auf automatisches Veroeffentlichen die Eingabe 'bestaetigung' auf AUTOMATISCH setzen.")
         return 1
     apple = Apple()
     st, app = erste(apple, "v1/apps", **{"filter[bundleId]": BUNDLE})
@@ -64,6 +80,29 @@ def main() -> int:
     st, bau = erste(apple, f"v1/appStoreVersions/{fass['id']}/build")
     sag(f"  Bau {feld(bau, 'version') if bau else '—'} haengt an der Fassung")
     verfuegbar = verfuegbarkeit(apple, app["id"])
+    sag(f"  Veroeffentlichung: {feld(fass, 'releaseType')}")
+
+    if automatisch:
+        # Nur solange die Fassung noch nicht freigegeben ist. Ist sie es schon, gilt
+        # `--freigeben`; ist sie schon im Verkauf, gibt es nichts umzustellen.
+        if zustand not in NOCH_OFFEN:
+            sag(f"\nNichts umzustellen: Zustand {zustand} (umstellbar nur in {', '.join(sorted(NOCH_OFFEN))}). "
+                + ("Schon freigegeben — dann `freigeben`." if zustand == "PENDING_DEVELOPER_RELEASE" else ""))
+            return 0
+        if not verfuegbar:
+            sag("\n! Nicht umgestellt: erst die Verfuegbarkeit anlegen — sonst ginge die App automatisch "
+                "in KEINEM Land live.")
+            return 1
+        st, aw = apple.aendern(f"v1/appStoreVersions/{fass['id']}", {"data": {
+            "type": "appStoreVersions", "id": fass["id"],
+            "attributes": {"releaseType": "AFTER_APPROVAL"}}})
+        if st != 200:
+            sag(f"\n! releaseType nicht auf AFTER_APPROVAL setzbar ({st}): {kurz(aw)}"); return 1
+        st, neu = apple.holen(f"v1/appStoreVersions/{fass['id']}")
+        jetzt = feld(neu.json()["data"], "releaseType") if st == 200 else "?"
+        sag(f"\n✓ Veroeffentlichung jetzt: {jetzt}")
+        sag("  Sobald Apple die Fassung freigibt, erscheint sie OHNE weiteren Schritt im App Store.")
+        return 0 if jetzt == "AFTER_APPROVAL" else 1
 
     if zustand != "PENDING_DEVELOPER_RELEASE":
         sag(f"\nNichts zu tun: veroeffentlicht wird nur aus PENDING_DEVELOPER_RELEASE (jetzt {zustand}).")
