@@ -9864,3 +9864,16 @@ Spielcode, `src/ui/*` und `stil.js`; erlaubt nur den Pfeilknopf ohne Schrift (0.
 ausgeschiedenen Spieler 3. Gegenprobe (`opacity` in `schalter()` zurück): rot.
 
 **App:** `MARKETING_VERSION` 1.0.4, Neuigkeiten dazu in `store/listing.md` / `listing-en.md`.
+
+## Nachtrag 25.10.2026 — Wochenbericht aus App Store Connect (kein Spiel-Eingriff, keine neue Version)
+
+Neu: `scripts/asc-bericht.py` + `.github/workflows/bericht.yml` („Wochenbericht (App Store)").
+Holt Apples Analytics-Berichte (Discovery-and-Engagement, Downloads, Detail-Bericht mit
+Suchbegriffen) und schreibt einen Wochenbericht: Einblendungen, Produktseiten-Aufrufe,
+Erst-/Wiederladungen, Aufruf→Ladung, je Quelle und Land, Vorwoche als Vergleich.
+Modi: `stand` (nur lesen), `einrichten` (Berichtsanfragen ONGOING + ONE_TIME_SNAPSHOT anlegen,
+Eingabe `BERICHT`), `bericht`. Montags 05:17 UTC automatisch: Zusammenfassung des Laufs und —
+nur mit Daten — ein Issue „Wochenbericht App Store, JJJJ-KWnn". Fehlende Berichte stehen als
+„nicht geliefert", nie als 0; je Tag zaehlt nur die neueste Lieferung (Rueckblick und laufende
+Lieferung ueberlappen). Keine Verkaufsberichte (brauchen die Lieferantennummer).
+`tests/bericht.test.js` (Gegenprobe: 14 statt 7 Tage → rot).

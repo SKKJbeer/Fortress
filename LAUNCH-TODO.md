@@ -270,6 +270,9 @@ nur, was fehlt.
       sieben je Groesse in DE und EN, im Repo (`store/ios-6.7[-en]`,
       `store/ipad-12.9[-en]`). Apple sperrt Bilder waehrend der Pruefung und im
       Verkauf — sie erscheinen erst mit der naechsten Fassung.
+- [ ] **Wochenbericht** (25.10.): Ablauf „Wochenbericht (App Store)" (`bericht.yml`) steht; einmal
+      `einrichten` mit bestaetigung=BERICHT fahren, ab dem Folgetag liefert Apple Daten. Danach montags
+      automatisch ein Issue. Voraussetzung: der API-Schluessel darf Analytics lesen (Rolle Admin/App-Manager).
 - [x] **1.0.4 eingereicht am 25.10.2026, 06:18 UTC** (Bau 52 = v3.132.3; scharfe Schrift: gedimmte
       Karten ohne halbtransparente Ebene). Veroeffentlichung steht auf AFTER_APPROVAL (Ablauf
       `freigabe-automatisch`, Lauf 161) — erscheint ohne weiteren Schritt, sobald Apple freigibt.

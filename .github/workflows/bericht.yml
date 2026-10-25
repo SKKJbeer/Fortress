@@ -1,0 +1,71 @@
+name: Wochenbericht (App Store)
+
+# Holt die Analytics-Berichte aus App Store Connect (Einblendungen, Produktseiten-
+# Aufrufe, Ladevorgaenge je Quelle/Land, Suchbegriffe) und legt den Wochenbericht
+# als Zusammenfassung des Laufs ab. Montags automatisch; mit Daten entsteht zusaetzlich
+# ein Eintrag unter „Issues" (GitHub mailt ihn), ohne Daten nicht.
+#
+# Einmalig einrichten: Modus `einrichten` mit bestaetigung=BERICHT. Apple liefert die
+# ersten Tage dann am Folgetag; der einmalige Rueckblick braucht bis zu zwei Tage.
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      modus:
+        description: 'Was soll passieren?'
+        type: choice
+        default: bericht
+        options:
+          - bericht     # Wochenbericht schreiben
+          - stand       # nur lesen: welche Anfragen/Berichte/Tage gibt es?
+          - einrichten  # Berichtsanfragen bei Apple anlegen (Eingabe BERICHT)
+      bestaetigung:
+        description: 'Nur fuer einrichten: BERICHT'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: bericht
+  cancel-in-progress: false
+
+jobs:
+  bericht:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhaengigkeiten
+        run: pip install --quiet "pyjwt[crypto]" requests
+
+      - name: Bericht
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          BESTAETIGUNG: ${{ inputs.bestaetigung }}
+          MODUS: ${{ inputs.modus || 'bericht' }}
+          BERICHT_DATEI: ${{ runner.temp }}/bericht.md
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$MODUS" in
+            einrichten) python3 scripts/asc-bericht.py --einrichten ;;
+            stand)      python3 scripts/asc-bericht.py ;;
+            *)
+              python3 scripts/asc-bericht.py --bericht
+              cat "$BERICHT_DATEI" >> "$GITHUB_STEP_SUMMARY"
+              if ! grep -q "Noch keine Daten" "$BERICHT_DATEI"; then
+                gh issue create --repo "$GITHUB_REPOSITORY" \
+                  --title "Wochenbericht App Store, $(date -u +%G-KW%V)" \
+                  --body-file "$BERICHT_DATEI"
+              fi ;;
+          esac
