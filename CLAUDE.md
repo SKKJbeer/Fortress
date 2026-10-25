@@ -564,7 +564,7 @@ nicht ohne Gebiet, Ablaeufe `verfuegbar-stand` (lesen) und `verfuegbar`
 „Neuigkeiten (… X.Y.Z)" in `store/listing.md` + `listing-en.md` neu schreiben
 (`tests/fassung.test.js` verlangt Gleichstand), dann mit `fassung=X.Y.Z`:
 fuellen → sprachen → store → einreichen-probe → einreichen. Apple haengt nur
-Bauten mit derselben Versionsnummer an. App: 1.0.4 (1.0 bis 1.0.3 sind bei Apple; 1.0.3 seit 24.10. im Verkauf).
+Bauten mit derselben Versionsnummer an. App: 1.0.4 (1.0 bis 1.0.4 sind bei Apple; 1.0.3 seit 24.10. im Verkauf, 1.0.4 seit 25.10. in Pruefung, geht nach Freigabe automatisch live).
 
 Architektur-Entscheidungen mit Begruendung: **`ARCHITEKTUR.md`**. Kurz:
 

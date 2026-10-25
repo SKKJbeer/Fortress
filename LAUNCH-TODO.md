@@ -270,6 +270,11 @@ nur, was fehlt.
       sieben je Groesse in DE und EN, im Repo (`store/ios-6.7[-en]`,
       `store/ipad-12.9[-en]`). Apple sperrt Bilder waehrend der Pruefung und im
       Verkauf — sie erscheinen erst mit der naechsten Fassung.
+- [x] **1.0.4 eingereicht am 25.10.2026, 06:18 UTC** (Bau 52 = v3.132.3; scharfe Schrift: gedimmte
+      Karten ohne halbtransparente Ebene). Veroeffentlichung steht auf AFTER_APPROVAL (Ablauf
+      `freigabe-automatisch`, Lauf 161) — erscheint ohne weiteren Schritt, sobald Apple freigibt.
+- [x] **1.0.3 VERÖFFENTLICHT am 24.10.2026, 15:39 UTC** (Bau 51 = v3.132.2; Fenster innerhalb der
+      Sicherheitsbereiche). Per `lookup` bestaetigt: Name „Stack & Siege – Burgen", je 8 Bilder iPhone/iPad.
 - [x] **1.0.2 VERÖFFENTLICHT am 24.10.2026, 04:55 UTC** (Apple gab sie in unter 7 Stunden frei).
 - [x] **1.0.2 eingereicht am 23.10.2026, 22:00 UTC** (Bau 50 = v3.132.1; neuer Name „Stack & Siege –
       Burgen", Untertitel „Strategie zu zweit, offline", neue Schlagwoerter, acht Plakate je
