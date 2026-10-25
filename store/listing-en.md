@@ -77,14 +77,14 @@ one, device) — Apple searches those anyway. No trademarks. Dropped on 21.10.20
 `2`, `player`, `bot`, `blocks` ("2 player" is now covered by the subtitle's "players",
 and none of them ranked); added `versus`, `couch`, `party` for the local-play audience.
 
-### Neuigkeiten (What's New, max. 4000 — version 1.0.3)
+### Neuigkeiten (What's New, max. 4000 — version 1.0.4)
 ```
-Cleaner on every iPhone:
-• The forge, gold shop, leaderboard and profile now stay inside the safe area – nothing slips under the status bar or the home indicator any more, and the page arrows no longer sit on top of "Got it".
-• The main menu fits the screen again on iPhones with a Dynamic Island.
+Sharper text:
+• In the gold shop, the forge and the armory phase, names and prices are now crisp and easy to read, even on items you cannot afford yet.
+• Small labels in tabs and displays have more contrast.
 ```
 
-The block above belongs to version 1.0.3 (`MARKETING_VERSION`). Rewrite it for the next version.
+The block above belongs to version 1.0.4 (`MARKETING_VERSION`). Rewrite it for the next version.
 
 Note for 1.0.2: the new opening sentence of the description ("You sit face to face …") is
 only true once 1.0.2 ships with v3.132.0 or later.

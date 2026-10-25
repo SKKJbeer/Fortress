@@ -122,11 +122,11 @@ Frühere Überarbeitung am 07.10.2026 (`tests/store.test.js` hält die Regeln fe
   greift „2 spieler" UND „spieler" einzeln.
 Der Spielname gehört **nicht** hinein — Apple durchsucht ihn ohnehin.
 
-### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.3)
+### Neuigkeiten (max. 4000, nur Updates — Fassung 1.0.4)
 ```
-Sauberer auf jedem iPhone:
-• Schmiede, Gold-Shop, Bestenliste und Profil bleiben innerhalb des sicheren Bereichs – nichts ragt mehr unter die Statusleiste oder die Home-Anzeige, und die Seitenpfeile liegen nicht mehr auf „Verstanden".
-• Das Hauptmenü passt auf iPhones mit Dynamic Island wieder ganz auf den Bildschirm.
+Schärfere Schrift:
+• Im Gold-Shop, in der Schmiede und in der Rüstphase sind Namen und Preise jetzt auch bei Artikeln, die du dir noch nicht leisten kannst, klar und scharf lesbar.
+• Kleine Beschriftungen in Reitern und Anzeigen haben mehr Kontrast.
 ```
 Wird von `asc.py` nur bei Updates eingetragen (`ist_update()`); bei der ersten
 Fassung lehnt Apple das Feld ab. Für jede neue Fassung neu schreiben.

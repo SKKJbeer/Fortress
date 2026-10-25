@@ -1,4 +1,4 @@
-# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.2)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
+# Stack & Siege — Spezifikation & Regelwerk (aktuell: v3.132.3)> Diese Datei ist die **verbindliche Prüfgrundlage** für alle Änderungen am Spiel.
 > Vor jeder Code-Änderung wird gegen diese Spec geprüft. Wenn eine Änderung
 > einer Regel widerspricht, wird das gemeldet bevor etwas umgesetzt wird.
 > Bei bewussten Regeländerungen wird diese Datei mit aktualisiert.
@@ -9843,3 +9843,24 @@ Gegenprobe ohne die Korrekturen: rot (Schmiede 35–842, Bestenliste 42–810, M
 
 **App:** `MARKETING_VERSION` 1.0.3, Neuigkeiten dazu in `store/listing.md` / `listing-en.md`.
 
+
+## v3.132.3 — Gedimmte Karten ohne halbtransparente Ebene (25.10.2026)
+
+**Gemeldet:** Schrift im Gold-Shop wirkt unscharf (Bildschirmfoto vom iPhone).
+
+**Ursache:** Artikel, die man sich nicht leisten konnte, waren mit `opacity: 0.6` (Gold-Shop),
+`0.88` (Schmiede), `filter: saturate(0.5)` + `opacity: 0.84` (Rüstphasen-Shop) auf der ganzen
+Karte gedimmt. Eine `opacity` unter 1 rendert die Karte samt Schrift, Preis und Kontur in eine
+eigene halbtransparente Ebene: der Text verliert Kontrast und bekommt auf dem Gerät einen weichen
+Rand, ein `filter` am Elternteil rastert ihn zusätzlich neu.
+
+**Behoben:** Gedimmt wird nur das Bild (`filter` am Bildkasten) bzw. die Farbe; Namen, Preise und
+Beschriftungen stehen voll deckend. Entfernt: `opacity` an Gold-Shop-Karte, Schmiede-Zeile und
+-Knopf, Rüstphasen-Karte, Salven-Schalter (und dessen Zähler), Aufgabenkarte „abgeholt",
+Erfolge-Reitern, `schalter()` (stil.js), Material-Anzeige, Verbindungs-Hinweisen.
+
+**Prüfung:** `tests/stil.test.js` „Kein opacity unter 1 auf Behältern mit Schrift" durchsucht
+Spielcode, `src/ui/*` und `stil.js`; erlaubt nur den Pfeilknopf ohne Schrift (0.35) und den
+ausgeschiedenen Spieler 3. Gegenprobe (`opacity` in `schalter()` zurück): rot.
+
+**App:** `MARKETING_VERSION` 1.0.4, Neuigkeiten dazu in `store/listing.md` / `listing-en.md`.

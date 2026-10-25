@@ -217,11 +217,11 @@ export function AchievementsModal({ profile: prof, onClose , t, achTitle, achDes
             return h("button", { key: c.key, role: "tab", "aria-selected": an, "data-reiter": c.key, onClick: () => setKat(c.key), style: {
               ...knopf(an ? "gold" : "grau", { padding: "5px 4px", fontSize: 13, borderRadius: 12, gap: 5,
                 boxShadow: "0 3px 0 " + FARBE.kontur + ", inset 0 2px 0 rgba(255,255,255,0.45)" }),
-              opacity: an ? 1 : 0.86, minWidth: 0,
+              minWidth: 0,
             } },
               mitSymbol ? h(Icon, { name: c.icon, size: 14 }) : null,
               h("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.label),
-              h("span", { style: { fontSize: 11, fontFamily: SCHRIFT_TEXT, fontWeight: 900, opacity: 0.9 } }, n + "/" + liste.length));
+              h("span", { style: { fontSize: 11, fontFamily: SCHRIFT_TEXT, fontWeight: 900 } }, n + "/" + liste.length));
           })),
         h(Seiten, { schluessel: katKey, eintraege: ACHIEVEMENTS.filter(d => d.cat === katKey), proSeite, spalten: 1, render: karteFuer }))));
 }

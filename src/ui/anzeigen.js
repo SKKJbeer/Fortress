@@ -119,7 +119,7 @@ function MatRow({ vals, nurPositive, plus, size, gap, t }) {
         display: "inline-flex", alignItems: "center", gap: 4,
         fontSize: size || 11, fontWeight: 900,
         // 0 bleibt erkennbar gedimmt, aber lesbar (v3.128.0: vorher 2,2:1)
-        color: n > 0 ? "#e2e8f0" : "#9fb0cc", opacity: n > 0 ? 1 : 0.85
+        color: n > 0 ? "#e2e8f0" : "#9fb0cc"
       } },
         React.createElement(MatPip, { k, size: size ? size - 2 : 9 }),
         (plus && n > 0 ? "+" : "") + n

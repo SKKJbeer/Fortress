@@ -193,7 +193,7 @@ export function schalter(an, variante = 'gruen', extra = {}) {
   return knopf(an ? variante : 'grau', {
     padding: '6px 13px', fontSize: 15, borderRadius: 12, gap: 6, minWidth: 46,
     boxShadow: `0 3px 0 ${FARBE.kontur}, inset 0 2px 0 rgba(255,255,255,0.45)`,
-    opacity: an ? 1 : 0.82, ...extra,
+    ...extra,
   });
 }
 

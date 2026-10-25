@@ -7176,7 +7176,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(251,146,60,0.35)", borderTopColor: "#fb923c", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
     /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
       /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fdba74", lineHeight: 1.2 } }, t('connLostTitle')),
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fed7aa", opacity: 0.85, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('connLostSub'))
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fed7aa", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('connLostSub'))
     ),
     /* @__PURE__ */ React.createElement("button", {
       onClick: () => {
@@ -7199,7 +7199,7 @@ window.StackSiegeApp = function StackSiegeApp() {
     /* @__PURE__ */ React.createElement("div", { style: { width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(248,113,113,0.35)", borderTopColor: "#f87171", animation: "radarSpin 0.8s linear infinite", flexShrink: 0 } }),
     /* @__PURE__ */ React.createElement("div", { style: { textAlign: "left", minWidth: 0 } },
       /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#fca5a5", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t('oppLostTitle', { name: oppLost })),
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fecaca", opacity: 0.85, lineHeight: 1.25 } }, t('oppLostSub'))
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#fecaca", lineHeight: 1.25 } }, t('oppLostSub'))
     )
   )));
   if (screen === "menu") return /* @__PURE__ */ React.createElement("div", { style: {
@@ -7340,7 +7340,7 @@ window.StackSiegeApp = function StackSiegeApp() {
       try { localStorage.setItem('fortress_perf', perfAn.current ? '1' : '0'); } catch (e) {}
       setPerfSichtbar(perfAn.current);
     }
-  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.132.2"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
+  }, style: { margin: "14px 0 0", fontSize: 12, lineHeight: 1.3, color: FARBE.text, letterSpacing: "0.06em", fontWeight: 800, cursor: "default", display: "inline-block", padding: "3px 10px", borderRadius: 9, background: "rgba(13,31,69,0.78)" } }, "Stack & Siege \xB7 Version 3.132.3"), // **Rechtslinks nur im Browser.** In der App sind Impressum und
     // Nutzungsbedingungen auf dem Startbildschirm fehl am Platz: Dort steht
     // kein Anbieter zur Auswahl, und Apple verlangt die Datenschutzadresse in
     // den Store-Angaben, nicht in der App. Geprueft wird ueber die EINE
@@ -7688,7 +7688,6 @@ window.StackSiegeApp = function StackSiegeApp() {
             const frac = prog / def.target;
             return h("div", { key: tk.id, style: {
               display: "flex", alignItems: "center", gap: 10, ...karte({ padding: "9px 10px", borderRadius: 14 }),
-              opacity: tk.collected ? 0.7 : 1,
               border: "2px solid " + (ready ? FARBE.gruen : tk.collected ? "rgba(79,211,107,0.5)" : "rgba(10,20,50,0.55)"),
               boxShadow: ready ? "0 0 12px rgba(79,211,107,0.45)" : "none"
             } },
@@ -7742,10 +7741,11 @@ window.StackSiegeApp = function StackSiegeApp() {
         ...karte({ padding: "8px 4px 7px", borderRadius: 14 }), minWidth: 0,
         display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
         cursor: clickable ? "pointer" : "default",
-        border: equipped ? "3px solid " + FARBE.gruen : "2px solid rgba(10,20,50,0.55)",
-        opacity: !owned && !afford ? 0.6 : 1
+        border: equipped ? "3px solid " + FARBE.gruen : "2px solid rgba(10,20,50,0.55)"
       } },
-        h("div", { style: { height: 58, display: "flex", alignItems: "center", justifyContent: "center" } },
+        // Nicht leistbar: nur das BILD wird gedimmt (v3.132.3). Eine opacity auf der Karte
+        // legte auch Schrift und Preis auf eine halbtransparente Ebene — weich und zu blass.
+        h("div", { style: { height: 58, display: "flex", alignItems: "center", justifyContent: "center", filter: !owned && !afford ? "saturate(0.55) brightness(0.8)" : "none" } },
           h(ArtikelBild, { id: it.id, groesse: 56, ersatz: preview(cat, it) })),
         h("span", { style: { fontSize: 12, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, t("cos_" + it.id)),
         equipped
@@ -7947,11 +7947,10 @@ window.StackSiegeApp = function StackSiegeApp() {
         display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
         ...karte({ padding: "7px 10px", borderRadius: 14 }),
         border: isEq ? "3px solid " + FARBE.gruen : owned ? "2px solid " + FARBE.himmel : "2px solid rgba(10,20,50,0.55)",
-        cursor: isEq || (!owned && !afford) ? "default" : "pointer",
-        // Nicht leistbar: nur leicht gedimmt — die Kosten muessen lesbar bleiben
-        opacity: !owned && !afford ? 0.88 : 1
+        cursor: isEq || (!owned && !afford) ? "default" : "pointer"
       } },
-        h(ArtikelBild, { id: rec.id, groesse: 46, ersatz: preview(rec) }),
+        h("span", { style: { display: "flex", filter: !owned && !afford ? "saturate(0.55) brightness(0.85)" : "none" } },
+          h(ArtikelBild, { id: rec.id, groesse: 46, ersatz: preview(rec) })),
         h("div", { style: { flex: 1, minWidth: 0 } },
           h("div", { style: { fontSize: 15, fontFamily: SCHRIFT_TITEL, color: FARBE.text, textShadow: KONTURTEXT, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t("cos_" + rec.id)),
           owned ? null : needsBase
@@ -7965,7 +7964,7 @@ window.StackSiegeApp = function StackSiegeApp() {
           ? h("span", { style: { fontSize: 11, fontWeight: 900, color: "#7dff9a", whiteSpace: "nowrap", textShadow: KONTURTEXT } }, t("forgeEquipped"))
           : owned
             ? h("span", { style: { fontSize: 11, fontWeight: 800, color: "#93c5fd", whiteSpace: "nowrap" } }, t("forgeEquip"))
-            : h("span", { style: knopf(afford ? "gold" : "grau", { fontSize: 14, padding: "5px 12px", borderRadius: 12, opacity: afford ? 1 : 0.7, boxShadow: "0 3px 0 #1b0f06, inset 0 2px 0 rgba(255,255,255,0.45)" }) }, t("forgeCraft"))
+            : h("span", { style: knopf(afford ? "gold" : "grau", { fontSize: 14, padding: "5px 12px", borderRadius: 12, boxShadow: "0 3px 0 #1b0f06, inset 0 2px 0 rgba(255,255,255,0.45)" }) }, t("forgeCraft"))
       );
     };
     // Menues ohne Scrollen (v3.123.0): Kategorie als Reiter, Rezepte als Seiten.
@@ -8640,13 +8639,12 @@ window.StackSiegeApp = function StackSiegeApp() {
           // Leer/gesperrt bleibt erkennbar gedimmt, aber lesbar (v3.128.0)
           color: aktiv ? "#f8fafc" : (n ? "#e2e8f0" : "#aab8d0"),
           boxShadow: aktiv ? "0 3px 12px rgba(37,99,235,0.4)" : "none",
-          opacity: gesperrt && !aktiv ? 0.6 : (n ? 1 : 0.8),
           touchAction: "manipulation", whiteSpace: "nowrap", overflow: "hidden"
         }
       },
         React.createElement(Icon, { name: icon, size: 14, color: aktiv ? "#f8fafc" : (n ? "#e2e8f0" : "#aab8d0") }),
         React.createElement("span", { style: { overflow: "hidden", textOverflow: "ellipsis" } }, label),
-        React.createElement("span", { style: { fontFamily: "ui-monospace,monospace", fontSize: 11, opacity: 0.85 } }, n));
+        React.createElement("span", { style: { fontFamily: "ui-monospace,monospace", fontSize: 11 } }, n));
     };
     return React.createElement("div", { key: "salve", "data-salvenschalter": "1", style: {
       // Hoechstens 440 px: Auf dem iPad waere jeder Knopf sonst ~660 px breit
@@ -8907,8 +8905,7 @@ window.StackSiegeApp = function StackSiegeApp() {
                   boxShadow: afford
                     ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(" + th.glow + ",0.6), 0 6px 16px rgba(" + th.glow + ",0.3), 0 4px 10px rgba(0,0,0,0.42)"
                     : "inset 0 0 0 1px rgba(255,255,255,0.06), 0 3px 8px rgba(0,0,0,0.38)",
-                  filter: dim ? "saturate(0.5)" : "none", opacity: dim ? 0.84 : 1,
-                  animation: buyC ? "shopBuyPop 0.44s ease both" : ("shopCardIn 0.44s cubic-bezier(.22,1.4,.4,1) " + (0.04 + idx * 0.05).toFixed(2) + "s both")
+                                    animation: buyC ? "shopBuyPop 0.44s ease both" : ("shopCardIn 0.44s cubic-bezier(.22,1.4,.4,1) " + (0.04 + idx * 0.05).toFixed(2) + "s both")
                 }
               },
                 // Gegenstands-Plakette (v3.43.0, AAA): statt flacher Farbscheibe

@@ -181,3 +181,20 @@ test('Fenster mit Seiten: maxHeight 100% im Schleier mit Sicherheitsbereichen, S
   assert.match(bl, /marginTop: 10, marginBottom: 8/, 'Abstand der Seitensteuerung zum folgenden Knopf');
 });
 
+
+// Gedimmte Karten (25.10.2026, gemeldet: Schrift im Gold-Shop unscharf). `opacity` unter 1 auf einer
+// Karte legt ALLES darin — Schrift, Preis, Kontur — auf eine halbtransparente Ebene: der Text wird
+// blasser und am Rand weich, und `filter` auf dem Elternteil rastert ihn zusaetzlich neu. Gedimmt wird
+// das BILD (filter auf dem Bildkasten) oder die Farbe, nie ein Behaelter mit Schrift.
+test('Kein opacity unter 1 auf Behaeltern mit Schrift', () => {
+  // Ausnahmen: Pfeil-Knopf ohne Schrift (nur Symbol, 0.35 = gesperrt) und der ausgeschiedene Spieler 3
+  const ERLAUBT = [/opacity: \(d < 0 \? s === 0 : s === seiten\.length - 1\) \? 0\.35 : 1/, /opacity: eliminated\.current\[3\] \? 0\.4 : 1/];
+  const funde = [];
+  for (const datei of new Set([...ALLE, 'src/ui/stil.js'])) {
+    for (const zeile of lies(datei).split('\n')) {
+      const m = zeile.match(/(?<![A-Za-z.])opacity:\s*[^,}]*?0\.\d+/);
+      if (m && !ERLAUBT.some((r) => r.test(zeile))) funde.push(datei + ': ' + m[0]);
+    }
+  }
+  assert.deepStrictEqual(funde, []);
+});
