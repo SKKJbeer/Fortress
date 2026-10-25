@@ -38,6 +38,8 @@ test('Der Lauf haengt nur an den eigenen Schaltern und nutzt keine fremde Action
   assert.doesNotMatch(y.replace(/#.*$/gm, ''), /\$\{\{ inputs\.[a-z]+ \}\}"?\s*in\b/);
   for (const m of y.matchAll(/uses:\s*([^\s@]+)@/g)) assert.match(m[1], /^actions\//, `fremde Action ${m[1]}`);
   assert.match(y, /grep -q "Noch keine Daten"/, 'ohne Daten kein Eintrag');
+  assert.match(y, /ASC_KEY_ID: \$\{\{ secrets\.ASC_BERICHT_KEY_ID \|\| secrets\.ASC_KEY_ID \}\}/, 'eigener Schluessel geht vor');
+  assert.match(y, /ASC_KEY_P8: \$\{\{ secrets\.ASC_BERICHT_KEY_P8 \|\| secrets\.ASC_KEY_P8 \}\}/);
 });
 
 test('Auswertung: Zeitraeume, Quellen, Vergleich, fehlende Berichte (gegen Beispieldaten)', (t) => {

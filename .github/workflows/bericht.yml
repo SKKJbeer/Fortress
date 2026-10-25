@@ -49,9 +49,12 @@ jobs:
 
       - name: Bericht
         env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          # Analytics braucht mehr Rechte, als der Freigabe-Schluessel haben soll (Apple
+          # antwortet sonst 403). Ein eigener Schluessel nur fuer den Bericht geht vor;
+          # ohne ihn gilt der uebliche. Die Aussteller-Kennung ist fuer beide dieselbe.
+          ASC_KEY_ID: ${{ secrets.ASC_BERICHT_KEY_ID || secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_P8: ${{ secrets.ASC_BERICHT_KEY_P8 || secrets.ASC_KEY_P8 }}
           BESTAETIGUNG: ${{ inputs.bestaetigung }}
           MODUS: ${{ inputs.modus || 'bericht' }}
           BERICHT_DATEI: ${{ runner.temp }}/bericht.md

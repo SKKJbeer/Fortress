@@ -272,7 +272,10 @@ nur, was fehlt.
       Verkauf — sie erscheinen erst mit der naechsten Fassung.
 - [ ] **Wochenbericht** (25.10.): Ablauf „Wochenbericht (App Store)" (`bericht.yml`) steht; einmal
       `einrichten` mit bestaetigung=BERICHT fahren, ab dem Folgetag liefert Apple Daten. Danach montags
-      automatisch ein Issue. Voraussetzung: der API-Schluessel darf Analytics lesen (Rolle Admin/App-Manager).
+      automatisch ein Issue. GEMESSEN 25.10.: der bisherige Schluessel bekommt von Apple HTTP 403 auf die Analytics-
+      Anfrage. Noetig: EIN WEITERER API-Schluessel (App Store Connect → Benutzer und Zugriff →
+      Integrationen, Rolle Admin) als Geheimnisse `ASC_BERICHT_KEY_ID` + `ASC_BERICHT_KEY_P8`;
+      die Aussteller-Kennung bleibt `ASC_ISSUER_ID`. Der Freigabe-Schluessel bekommt so nicht mehr Rechte.
 - [x] **1.0.4 eingereicht am 25.10.2026, 06:18 UTC** (Bau 52 = v3.132.3; scharfe Schrift: gedimmte
       Karten ohne halbtransparente Ebene). Veroeffentlichung steht auf AFTER_APPROVAL (Ablauf
       `freigabe-automatisch`, Lauf 161) — erscheint ohne weiteren Schritt, sobald Apple freigibt.

@@ -60,6 +60,12 @@ def alle(apple: Apple, pfad: str, **werte) -> list:
 
 
 def anfragen(apple: Apple, app_id: str) -> list:
+    st, aw = apple.holen(f"v1/apps/{app_id}/analyticsReportRequests", limit=200)
+    if st == 403:
+        sag("  ! Apple lehnt den Schluessel fuer Analytics ab (HTTP 403). Noetig: ein API-Schluessel mit "
+            "Rolle Admin (App Store Connect → Benutzer und Zugriff → Integrationen), als Geheimnisse "
+            "ASC_BERICHT_KEY_ID und ASC_BERICHT_KEY_P8 hinterlegen.")
+        raise SystemExit(1)
     return alle(apple, f"v1/apps/{app_id}/analyticsReportRequests")
 
 

@@ -9877,3 +9877,8 @@ nur mit Daten — ein Issue „Wochenbericht App Store, JJJJ-KWnn". Fehlende Ber
 „nicht geliefert", nie als 0; je Tag zaehlt nur die neueste Lieferung (Rueckblick und laufende
 Lieferung ueberlappen). Keine Verkaufsberichte (brauchen die Lieferantennummer).
 `tests/bericht.test.js` (Gegenprobe: 14 statt 7 Tage → rot).
+
+**Gemessen beim ersten Lauf (25.10.):** Apple antwortet mit dem bisherigen Schluessel auf
+`v1/apps/{id}/analyticsReportRequests` mit HTTP 403 („The API key in use does not allow this request").
+Der Ablauf nimmt deshalb `ASC_BERICHT_KEY_ID`/`ASC_BERICHT_KEY_P8`, wenn gesetzt, sonst den ueblichen
+Schluessel (Aussteller-Kennung gemeinsam); das Skript nennt bei 403 die noetige Rolle.
